@@ -1,25 +1,43 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const LLAVE_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const LLAVE_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-function faltaConfiguracion() {
+function errorConfiguracion(mensaje: string) {
   return new NextResponse(
-    "Falta configurar NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en Vercel " +
-      "(Settings → Environment Variables) y volver a desplegar.",
+    mensaje + "\n\nRevisa las variables en Vercel (Settings → Environment Variables) y vuelve a desplegar " +
+      "(Deployments → ⋯ → Redeploy): las variables NEXT_PUBLIC_ se incluyen al compilar.",
     { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } },
   );
 }
 
+function urlValida(valor: string) {
+  try {
+    const url = new URL(valor);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export async function actualizarSesion(request: NextRequest) {
   // Sin variables, createServerClient lanza un error y Vercel muestra MIDDLEWARE_INVOCATION_FAILED.
-  if (!URL_SUPABASE || !LLAVE_SUPABASE) return faltaConfiguracion();
+  if (!URL_SUPABASE || !LLAVE_SUPABASE) {
+    return errorConfiguracion("Falta configurar NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+  if (!urlValida(URL_SUPABASE)) {
+    return errorConfiguracion(
+      `NEXT_PUBLIC_SUPABASE_URL no es una URL válida ("${URL_SUPABASE}"). ` +
+        "Debe verse como https://abcdefgh.supabase.co, sin comillas ni espacios.",
+    );
+  }
 
   let response = NextResponse.next({ request });
 
+  let supabase;
   try {
-    const supabase = createServerClient(URL_SUPABASE, LLAVE_SUPABASE, {
+    supabase = createServerClient(URL_SUPABASE, LLAVE_SUPABASE, {
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (lista: { name: string; value: string; options: CookieOptions }[]) => {
@@ -29,24 +47,28 @@ export async function actualizarSesion(request: NextRequest) {
         },
       },
     });
-
-    const { data: { user } } = await supabase.auth.getUser();
-    const esLogin = request.nextUrl.pathname.startsWith("/login");
-
-    if (!user && !esLogin) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
-    }
-    if (user && esLogin) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      return NextResponse.redirect(url);
-    }
-    return response;
   } catch (error) {
-    // Si Supabase no responde, se deja pasar: cada página vuelve a validar la sesión en el servidor.
+    // Si el cliente no se puede crear aquí, las páginas también fallarían con un error genérico.
     console.error("Middleware de sesión:", error);
-    return response;
+    return errorConfiguracion(`No se pudo crear el cliente de Supabase: ${error instanceof Error ? error.message : error}`);
   }
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error && error.name !== "AuthSessionMissingError") console.error("Middleware de sesión:", error);
+
+  const esLogin = request.nextUrl.pathname.startsWith("/login");
+
+  if (!user && !esLogin) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+  // Con ?error= el usuario llegó aquí porque le falta perfil o sucursal: mandarlo a / haría un ciclo.
+  if (user && esLogin && !request.nextUrl.searchParams.has("error")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
+  return response;
 }
