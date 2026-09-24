@@ -1,0 +1,132 @@
+import Link from "next/link";
+import { Aviso } from "@/components/Aviso";
+import { BotonEnviar } from "@/components/BotonEnviar";
+import { obtenerContexto, puedeGestionar } from "@/lib/contexto";
+import { hoyMX, pesos } from "@/lib/formato";
+import { cerrarDia } from "./actions";
+import { datosDelDia } from "./datos";
+
+type Cierre = {
+  venta_total: number; venta_neta: number; ticket_promedio: number; transacciones: number;
+  boveda_esperado: number; boveda_contado: number; boveda_diferencia: number;
+  cambios_diferencia: number; diferencia_turnos: number; deposito_ficha: string | null;
+};
+
+const Fila = ({ texto, valor, fuerte }: { texto: string; valor: string; fuerte?: boolean }) => (
+  <tr><td style={{ fontWeight: fuerte ? 700 : 400 }}>{texto}</td><td className="monto">{valor}</td></tr>
+);
+
+export default async function PaginaCierre({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
+  const { ok, error } = await searchParams;
+  const { supabase, perfil, sucursal, turno } = await obtenerContexto();
+  const fecha = hoyMX();
+
+  const { data: cierre } = await supabase.from("cierres_dia")
+    .select("venta_total, venta_neta, ticket_promedio, transacciones, boveda_esperado, boveda_contado, boveda_diferencia, cambios_diferencia, diferencia_turnos, deposito_ficha")
+    .eq("sucursal_id", sucursal.id).eq("fecha", fecha).maybeSingle<Cierre>();
+
+  if (cierre) {
+    return (
+      <>
+        <div className="encabezado"><h1>Cierre del día {fecha}</h1><p>Este día ya está cerrado.</p></div>
+        <Aviso ok={ok} error={error} />
+        <section className="seccion">
+          <table className="tabla"><tbody>
+            <Fila texto="Venta total con IVA" valor={pesos(cierre.venta_total)} />
+            <Fila texto="Venta neta sin IVA" valor={pesos(cierre.venta_neta)} fuerte />
+            <Fila texto="Transacciones" valor={String(cierre.transacciones)} />
+            <Fila texto="Ticket promedio sin IVA" valor={pesos(cierre.ticket_promedio)} />
+            <Fila texto="Diferencia de los arqueos de turno" valor={pesos(cierre.diferencia_turnos)} fuerte />
+            <Fila texto="Bóveda esperada" valor={pesos(cierre.boveda_esperado)} />
+            <Fila texto="Bóveda contada" valor={pesos(cierre.boveda_contado)} />
+            <Fila texto="Diferencia de bóveda" valor={pesos(cierre.boveda_diferencia)} fuerte />
+            <Fila texto="Diferencia del fondo de cambios" valor={pesos(cierre.cambios_diferencia)} />
+            <Fila texto="Ficha de depósito" valor={cierre.deposito_ficha ?? "Sin depósito"} />
+          </tbody></table>
+        </section>
+      </>
+    );
+  }
+
+  if (!puedeGestionar(perfil.rol)) {
+    return (
+      <>
+        <div className="encabezado"><h1>Cierre del día</h1></div>
+        <p className="aviso aviso-info">El cierre del día lo hace el gerente.</p>
+      </>
+    );
+  }
+
+  const d = await datosDelDia(supabase, sucursal.id, fecha);
+  const esperado = d.bovedaInicial + d.retiros - d.aperturas - d.depositos;
+  const bloqueado = !!turno || d.pendientes > 0;
+
+  const campo = (id: string, texto: string, ayuda?: string) => (
+    <div className="campo">
+      <label htmlFor={id}>{texto}</label>
+      <input id={id} name={id} type="number" inputMode="decimal" min="0" step="0.01" required />
+      {ayuda && <small>{ayuda}</small>}
+    </div>
+  );
+
+  return (
+    <>
+      <div className="encabezado">
+        <h1>Cierre del día {fecha}</h1>
+        <p>Las ventas se copian del reporte de Dodo IS. Los datos de bóveda salen de los movimientos confirmados.</p>
+      </div>
+      <Aviso ok={ok} error={error} />
+      {turno && <p className="aviso aviso-error">Hay un turno abierto. Ciérralo con su <Link href="/arqueo">arqueo de cierre</Link> primero.</p>}
+      {d.pendientes > 0 && <p className="aviso aviso-error">Hay {d.pendientes} movimientos sin confirmar en <Link href="/movimientos">Movimientos</Link>.</p>}
+
+      <form action={cerrarDia} className="pagina" style={{ padding: 0 }}>
+        <section className="seccion" aria-labelledby="t-ventas">
+          <h2 id="t-ventas">Ventas según Dodo IS</h2>
+          <div className="rejilla">
+            {campo("efectivo", "Efectivo")}
+            {campo("tarjeta", "Tarjeta")}
+            {campo("app", "App o pago en línea")}
+            {campo("rappi", "Rappi")}
+            {campo("descuentos", "Descuentos otorgados")}
+            {campo("iva", "IVA incluido", "Venta neta = venta total − IVA")}
+            <div className="campo">
+              <label htmlFor="transacciones">Transacciones</label>
+              <input id="transacciones" name="transacciones" type="number" inputMode="numeric" min="0" step="1" required />
+            </div>
+          </div>
+        </section>
+
+        <section className="seccion" aria-labelledby="t-boveda">
+          <h2 id="t-boveda">Bóveda</h2>
+          <table className="tabla"><tbody>
+            <Fila texto="Saldo del cierre anterior" valor={pesos(d.bovedaInicial)} />
+            <Fila texto="+ Retiros a bóveda de hoy" valor={pesos(d.retiros)} />
+            <Fila texto="− Fondos entregados a caja de venta" valor={pesos(d.aperturas)} />
+            <Fila texto="− Depósitos al banco de hoy" valor={pesos(d.depositos)} />
+            <Fila texto="= Debe haber en bóveda" valor={pesos(esperado)} fuerte />
+            <Fila texto="Diferencia de los arqueos de turno" valor={pesos(d.diferenciaTurnos)} />
+          </tbody></table>
+          <div className="rejilla">
+            {campo("boveda_contado", "Efectivo contado en bóveda")}
+            {campo("cambios_contado", "Fondo de cambios contado", `Debe sumar ${pesos(sucursal.fondo_cambios)}`)}
+          </div>
+        </section>
+
+        <section className="seccion" aria-labelledby="t-deposito">
+          <h2 id="t-deposito">Depósito al banco</h2>
+          <p className="saldo-nota">Si hoy se depositó, el movimiento ya debe estar registrado y confirmado. Aquí queda el dato de la ficha.</p>
+          <div className="rejilla">
+            <div className="campo"><label htmlFor="deposito_banco">Banco y cuenta</label><input id="deposito_banco" name="deposito_banco" /></div>
+            <div className="campo"><label htmlFor="deposito_ficha">Número de ficha</label><input id="deposito_ficha" name="deposito_ficha" /></div>
+            <div className="campo"><label htmlFor="deposito_fecha">Fecha y hora</label><input id="deposito_fecha" name="deposito_fecha" type="datetime-local" /></div>
+          </div>
+        </section>
+
+        <div className="acciones">
+          <BotonEnviar pendiente="Cerrando…">Cerrar el día</BotonEnviar>
+          {bloqueado && <span className="saldo-nota">Resuelve los avisos de arriba antes de cerrar.</span>}
+        </div>
+      </form>
+    </>
+  );
+}
