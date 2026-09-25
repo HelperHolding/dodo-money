@@ -1,18 +1,26 @@
-/* Paleta: papel frío de libro de caja, tinta azul petróleo, verde billete para lo que cuadra
-   y ámbar para lo que no. Tipografía legible con números tabulares para leer montos de pie. */
+/* Paleta de Dodo: naranja de marca para acciones, negro del contorno del logo, fondo blanco cálido.
+   Verde para lo que cuadra y rojo para lo que no (el naranja queda solo para la marca).
+   Naranja brillante solo en rellenos y líneas: como texto se usa --accion-oscuro (contraste 5.5:1).
+   Tipografía legible con números tabulares para leer montos de pie. */
 :root {
-  --papel: #f3f5f2;
-  --papel-2: #e8ece8;
+  --papel: #fffaf5;
+  --papel-2: #f5ece3;
   --blanco: #ffffff;
-  --tinta: #17252a;
-  --tinta-2: #4a5a5f;
-  --linea: #c9d1cc;
-  --accion: #24485a;
-  --accion-2: #1a3645;
+  --tinta: #1a1a1a;
+  --tinta-2: #5c534c;
+  --linea: #e3d6ca;
+  --accion: #ff6900;
+  --accion-2: #e55e00;
+  --accion-texto: #1a1a1a;
+  --accion-oscuro: #b34700;
   --cuadra: #1f6b4f;
   --cuadra-fondo: #e2efe8;
-  --alerta: #a8520e;
-  --alerta-fondo: #f7e9dc;
+  --cuadra-texto: #174d39;
+  --cuadra-borde: var(--cuadra-borde);
+  --alerta: #c62828;
+  --alerta-fondo: #fdecea;
+  --alerta-texto: #8e1c1c;
+  --alerta-borde: #f2b8b5;
   --display: "Bricolage Grotesque", "Segoe UI", sans-serif;
   --texto: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
   color-scheme: light;
@@ -34,14 +42,15 @@ h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.01em; }
 h2 { font-size: 1.3rem; font-weight: 650; }
 h3 { font-size: 1.05rem; font-weight: 650; }
 p { margin: 0; }
-a { color: var(--accion); }
+a { color: var(--accion-oscuro); }
 
-:focus-visible { outline: 3px solid var(--accion); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--accion-oscuro); outline-offset: 2px; }
 
 /* ─── Estructura ─── */
 .barra {
   background: var(--tinta);
-  color: var(--papel);
+  color: var(--blanco);
+  border-bottom: 4px solid var(--accion);
   padding: 14px clamp(16px, 4vw, 40px);
   display: flex;
   flex-wrap: wrap;
@@ -52,7 +61,7 @@ a { color: var(--accion); }
 .barra-turno { font-size: 0.95rem; opacity: 0.85; }
 .barra-usuario { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 0.95rem; }
 .barra-usuario button {
-  background: transparent; color: var(--papel); border: 1px solid #5d6f74;
+  background: transparent; color: var(--blanco); border: 1px solid #6b6b6b;
   border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; min-height: 40px;
 }
 
@@ -102,25 +111,25 @@ input, select, textarea {
   padding: 10px 12px;
   min-height: 48px;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--accion); outline: none; box-shadow: 0 0 0 3px #24485a33; }
+input:focus, select:focus, textarea:focus { border-color: var(--accion-oscuro); outline: none; box-shadow: 0 0 0 3px #ff690040; }
 input[type="number"] { text-align: right; }
 
 .boton {
   font: inherit; font-weight: 700;
-  background: var(--accion); color: var(--blanco);
+  background: var(--accion); color: var(--accion-texto);
   border: none; border-radius: 6px;
   padding: 12px 22px; min-height: 48px; cursor: pointer;
 }
 .boton:hover { background: var(--accion-2); }
 .boton:disabled { opacity: 0.5; cursor: not-allowed; }
-.boton-secundario { background: var(--blanco); color: var(--accion); border: 1.5px solid var(--accion); }
+.boton-secundario { background: var(--blanco); color: var(--accion-oscuro); border: 1.5px solid var(--accion-oscuro); }
 .boton-secundario:hover { background: var(--papel-2); }
 .boton-alerta { background: var(--blanco); color: var(--alerta); border: 1.5px solid var(--alerta); }
 .acciones { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 
 .aviso { border-radius: 6px; padding: 12px 14px; font-size: 0.95rem; }
-.aviso-error { background: var(--alerta-fondo); color: #7a3a08; border: 1px solid #e3c09f; }
-.aviso-ok { background: var(--cuadra-fondo); color: #174d39; border: 1px solid #b7d6c5; }
+.aviso-error { background: var(--alerta-fondo); color: var(--alerta-texto); border: 1px solid var(--alerta-borde); }
+.aviso-ok { background: var(--cuadra-fondo); color: var(--cuadra-texto); border: 1px solid var(--cuadra-borde); }
 .aviso-info { background: var(--papel-2); color: var(--tinta); border: 1px solid var(--linea); }
 
 /* ─── Conteo de denominaciones ─── */
@@ -160,15 +169,15 @@ input[type="number"] { text-align: right; }
 .tabla td { padding: 10px; border-bottom: 1px solid var(--papel-2); vertical-align: middle; }
 .tabla td.monto { text-align: right; font-weight: 700; white-space: nowrap; }
 .estado { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.85rem; font-weight: 700; }
-.estado-pendiente { background: var(--alerta-fondo); color: #7a3a08; }
-.estado-confirmado { background: var(--cuadra-fondo); color: #174d39; }
+.estado-pendiente { background: var(--alerta-fondo); color: var(--alerta-texto); }
+.estado-confirmado { background: var(--cuadra-fondo); color: var(--cuadra-texto); }
 .estado-rechazado { background: var(--papel-2); color: var(--tinta-2); text-decoration: line-through; }
 .vacio { color: var(--tinta-2); padding: 12px 0; }
 
 /* ─── Checklists ─── */
 .formulario { display: flex; flex-direction: column; gap: 16px; }
 fieldset.campo { border: 0; padding: 0; margin: 0; min-width: 0; }
-input[type="checkbox"], input[type="radio"] { min-height: auto; width: 22px; height: 22px; padding: 0; accent-color: var(--accion); }
+input[type="checkbox"], input[type="radio"] { min-height: auto; width: 22px; height: 22px; padding: 0; accent-color: var(--accion-oscuro); }
 
 .franjas { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }
 .franja {
@@ -177,8 +186,8 @@ input[type="checkbox"], input[type="radio"] { min-height: auto; width: 22px; hei
   border: 1.5px solid var(--linea); background: var(--blanco);
 }
 .franja strong { font-family: var(--display); font-size: 1rem; }
-.franja[data-estado="ok"] { background: var(--cuadra-fondo); border-color: #b7d6c5; color: #174d39; }
-.franja[data-estado="alerta"] { background: var(--alerta-fondo); border-color: #e3c09f; color: #7a3a08; }
+.franja[data-estado="ok"] { background: var(--cuadra-fondo); border-color: var(--cuadra-borde); color: var(--cuadra-texto); }
+.franja[data-estado="alerta"] { background: var(--alerta-fondo); border-color: var(--alerta-borde); color: var(--alerta-texto); }
 .franja[data-estado="abierta"] { border: 2px solid var(--accion); font-weight: 700; }
 .franja[data-estado="falta"] { background: var(--papel-2); color: var(--tinta-2); }
 .franja[data-estado="falta"] span { text-decoration: line-through; }
@@ -194,8 +203,8 @@ input[type="checkbox"], input[type="radio"] { min-height: auto; width: 22px; hei
   border: 1.5px solid var(--linea); background: var(--blanco); font-weight: 700;
 }
 .si-no label:has(input:checked) { border-color: var(--accion); background: var(--papel-2); }
-.si-no label:has(input[value="si"]:checked) { border-color: var(--cuadra); background: var(--cuadra-fondo); color: #174d39; }
-.si-no label:has(input[value="no"]:checked) { border-color: var(--alerta); background: var(--alerta-fondo); color: #7a3a08; }
+.si-no label:has(input[value="si"]:checked) { border-color: var(--cuadra); background: var(--cuadra-fondo); color: var(--cuadra-texto); }
+.si-no label:has(input[value="no"]:checked) { border-color: var(--alerta); background: var(--alerta-fondo); color: var(--alerta-texto); }
 .si-no label:has(input:focus-visible) { outline: 3px solid var(--accion); outline-offset: 2px; }
 
 .casilla { display: flex; align-items: center; gap: 10px; font-weight: 700; }
