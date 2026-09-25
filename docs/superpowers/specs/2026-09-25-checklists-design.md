@@ -22,7 +22,7 @@ Reemplazar el papel de tres registros del archivo `MX Checklists (base).xlsx` de
 2. **Dispositivo:** tablet fija en sucursal y celular. Cada registro queda a nombre del usuario con sesión abierta.
 3. **Temperatura de masa en norma:** de 12 a 22 °C, inclusive.
 4. **Norma de bolas por hora:** igual para todas las sucursales.
-5. **Producto de merma:** lista fija (catálogo), igual que en Dodo IS. Se arranca con una lista de ejemplo y se reemplaza con el catálogo de Dodo IS.
+5. **Producto de merma:** lista fija (catálogo), igual que en Dodo IS. Se carga con los productos del forecast de Dodo IS (ver Mermas).
 6. **Arquitectura mixta:** mermas y masa con tablas propias; recorrido con un esquema genérico de checklist de puntos sí/no.
 7. **Horario:** la hora del registro la fija el servidor (Ciudad de México). Una franja horaria se puede registrar desde su inicio hasta **10 minutos después de que termina**.
 
@@ -46,7 +46,8 @@ Reemplazar el papel de tres registros del archivo `MX Checklists (base).xlsx` de
 ### Mermas
 
 ```
-productos_merma  id uuid pk, nombre text unique not null, unidad text not null, activo bool default true
+productos_merma  id uuid pk, categoria text not null, nombre text unique not null, unidad text not null,
+                 orden int not null, activo bool default true
                  -- global; sin políticas de insert: solo admin por SQL Editor
 
 motivo_merma     enum ('caducidad', 'empaque_danado', 'mal_estado', 'error_humano')
@@ -65,6 +66,18 @@ cierres_merma    id uuid pk, sucursal_id, fecha, capturado_dodo bool not null,
 - Trigger en `mermas`: rechaza si existe `cierres_merma` para `(sucursal_id, fecha)` → *"Las mermas de hoy ya se cerraron."*; rechaza producto inactivo.
 - Política de insert en `cierres_merma`: `mi_rol() in ('encargado','gerente','admin')`, sucursal propia, `capturado_dodo = true` (la casilla es obligatoria para cerrar).
 - Se puede cerrar un día con cero mermas.
+
+Catálogo inicial (del forecast de productos de Dodo IS, 24.09.2026; en pantalla se agrupa por categoría):
+
+| Categoría | Productos (unidad) |
+|---|---|
+| Salsas | Salsa para pizza, Mango habanero, Salsa BBQ, Búfalo, Chimichurri, Leche condensada, Aderezo Ranch (kg) |
+| Otros | Orégano, Ajo (kg) · Tortilla (pieza) · Canela, Aceite, Levadura, Sal, Azúcar (kg) |
+| Entrantes | Papas francesas, Alitas, Boneless (kg) · Papas Gajo Medium (pieza) |
+| Verduras | Perejil, Cebolla morada, Pimiento verde, Jitomate, Champiñones (kg) |
+| Productos en conserva | Piña, Elote, Jalapeño (kg) |
+| Queso | Queso de cabra, Mozzarella, Parmesano (kg) · Cheddar (l) |
+| Carne | Jamón de pavo (kg) · Pepperoni (pieza) · Pollo, Tocino, Carne molida (kg) |
 
 Motivos en pantalla: Caducidad · Empaque dañado · Producto en mal estado · Error humano (de la hoja: *expiration date, damaged packaging, spoilage, human error*).
 
@@ -171,5 +184,5 @@ Una entrada nueva en `components/Nav.tsx`: **Checklists** → `/checklists`. Có
 ## Arranque
 
 1. Correr `supabase/migrations/0002_checklists.sql` en SQL Editor (no modifica tablas de 0001).
-2. Correr `supabase/seed_checklists.sql`: norma de masa, checklists de recorrido y catálogo de productos de ejemplo.
-3. Reemplazar el catálogo de ejemplo con el de Dodo IS (`insert` de nombre y unidad; desactivar con `activo = false`, no borrar).
+2. Correr `supabase/seed_checklists.sql`: norma de masa, checklists de recorrido y catálogo de productos del forecast.
+3. Para agregar productos: `insert` con categoría, nombre, unidad y orden; para quitarlos: `activo = false`, no borrar.
