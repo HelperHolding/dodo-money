@@ -78,6 +78,13 @@ Catálogo inicial (del forecast de productos de Dodo IS, 24.09.2026; en pantalla
 | Productos en conserva | Piña, Elote, Jalapeño (kg) |
 | Queso | Queso de cabra, Mozzarella, Parmesano (kg) · Cheddar (l) |
 | Carne | Jamón de pavo (kg) · Pepperoni (pieza) · Pollo, Tocino, Carne molida (kg) |
+| Masa | Masa (bola) |
+| Productos terminados | Pizza, Entrante preparado (pieza) |
+| Bebidas | Refresco, Agua (pieza) |
+| Postres | Postre (pieza) |
+| Empaques | Caja de pizza, Caja de entrante, Bolsa, Vaso (pieza) |
+
+Las últimas cinco categorías no vienen en el forecast; son genéricas para arrancar y se afinan con los nombres de Dodo IS.
 
 Motivos en pantalla: Caducidad · Empaque dañado · Producto en mal estado · Error humano (de la hoja: *expiration date, damaged packaging, spoilage, human error*).
 
