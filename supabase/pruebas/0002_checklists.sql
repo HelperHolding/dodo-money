@@ -62,17 +62,17 @@ begin
   end;
   v_ok := v_ok || 'cajero no cierra mermas';
 
-  begin
-    insert into mermas (sucursal_id, producto_id, cantidad, motivo, empleado) values (v_suc, v_prod, 1, 'caducidad', '   ');
-    raise exception 'FALLÓ: una merma sin nombre de empleado debe rechazarse';
-  exception when others then
-    if sqlerrm like 'FALLÓ%' then raise; end if;
-    if sqlerrm not like '%mermas_empleado_check%' then raise exception 'FALLÓ: mensaje inesperado para merma sin empleado: %', sqlerrm; end if;
-  end;
-  v_ok := v_ok || 'merma exige empleado';
-
-  -- Solo se puede probar si hoy no hay cierre real de mermas.
+  -- Solo se puede probar si hoy no hay cierre real de mermas (el cierre se revisa antes que el nombre).
   if not exists (select 1 from cierres_merma where sucursal_id = v_suc and fecha = dia_operativo()) then
+    begin
+      insert into mermas (sucursal_id, producto_id, cantidad, motivo, empleado) values (v_suc, v_prod, 1, 'caducidad', '   ');
+      raise exception 'FALLÓ: una merma sin nombre de empleado debe rechazarse';
+    exception when others then
+      if sqlerrm like 'FALLÓ%' then raise; end if;
+      if sqlerrm not like '%mermas_empleado_check%' then raise exception 'FALLÓ: mensaje inesperado para merma sin empleado: %', sqlerrm; end if;
+    end;
+    v_ok := v_ok || 'merma exige empleado';
+
     insert into mermas (sucursal_id, producto_id, cantidad, motivo, empleado)
     values (v_suc, v_prod, 0.5, 'caducidad', 'Prueba') returning id into v_merma;
     update mermas set cantidad = 99 where id = v_merma;
@@ -146,7 +146,7 @@ begin
     raise exception 'FALLÓ: 180 °C debe rechazarse';
   exception when others then
     if sqlerrm like 'FALLÓ%' then raise; end if;
-    if sqlerrm not like '%lecturas_masa_temperatura_check%' then raise exception 'FALLÓ: mensaje inesperado para 180 °C: %', sqlerrm; end if;
+    if sqlerrm not like 'Revisa la temperatura%' then raise exception 'FALLÓ: mensaje inesperado para 180 °C: %', sqlerrm; end if;
   end;
   v_ok := v_ok || 'temperatura absurda';
 

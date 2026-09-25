@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { diaOperativoMX, estadoCasilla, estadoFranja, franjasAbiertas, relojMX, siguienteFranja } from "./franjas.ts";
+import { claveFranjas, diaOperativoMX, estadoCasilla, estadoFranja, franjasAbiertas, relojMX, siguienteFranja } from "./franjas.ts";
 
 /** Instante a partir de una hora de Ciudad de México. */
 const mx = (s: string) => new Date(`${s}-06:00`);
@@ -59,4 +59,12 @@ test("siguienteFranja da la próxima hora del checklist o null", () => {
   assert.equal(siguienteFranja([10, 11, 12], mx("2026-09-25T09:30:00")), 10);
   assert.equal(siguienteFranja([12, 13], mx("2026-09-25T12:30:00")), 13);
   assert.equal(siguienteFranja([12, 13], mx("2026-09-25T13:30:00")), null);
+});
+
+test("claveFranjas cambia cuando cambian las horas disponibles, para que el formulario se reinicie", () => {
+  const a = [{ fecha: "2026-09-25", hora: 13 }, { fecha: "2026-09-25", hora: 12 }];
+  const b = [{ fecha: "2026-09-25", hora: 12 }];
+  assert.notEqual(claveFranjas(a), claveFranjas(b));
+  assert.equal(claveFranjas(a), claveFranjas([...a]));
+  assert.notEqual(claveFranjas([{ fecha: "2026-09-25", hora: 12 }], "manana"), claveFranjas([{ fecha: "2026-09-25", hora: 12 }], "tarde"));
 });

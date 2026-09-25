@@ -131,6 +131,11 @@ begin
   if not found then raise exception 'No hay norma de masa para las %:00.', lpad(new.hora::text, 2, '0'); end if;
   norma := case new.temp_area when 25 then n.bolas_25 when 30 then n.bolas_30 else n.bolas_35 end;
 
+  -- Antes que el check de la columna, para responder en español.
+  if new.temperatura not between -5 and 50 then
+    raise exception 'Revisa la temperatura de la masa: escríbela en grados centígrados.';
+  end if;
+
   new.comentario := nullif(trim(new.comentario), '');
   if new.comentario is null then
     if new.temperatura not between 12 and 22 then

@@ -60,3 +60,8 @@ export function siguienteFranja(horas: readonly number[], ahora: Date): number |
 export function diaOperativoMX(ahora: Date): string {
   return new Date(ahora.getTime() + DESFASE_MS - CORTE_DIA_HORAS * HORA_MS).toISOString().slice(0, 10);
 }
+
+/** Identifica un conjunto de horas disponibles. Como `key`, reinicia el formulario cuando se registra una hora. */
+export function claveFranjas(franjas: readonly Franja[], extra = ""): string {
+  return `${extra}:${franjas.map((f) => `${f.fecha}|${f.hora}`).join(",")}`;
+}

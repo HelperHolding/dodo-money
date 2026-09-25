@@ -1,6 +1,6 @@
 import { Aviso } from "@/components/Aviso";
 import { obtenerContexto } from "@/lib/contexto";
-import { diaOperativoMX, etiquetaHora, franjasAbiertas, siguienteFranja } from "@/lib/franjas";
+import { claveFranjas, diaOperativoMX, etiquetaHora, franjasAbiertas, siguienteFranja } from "@/lib/franjas";
 import { hora } from "@/lib/formato";
 import { bolasNorma } from "@/lib/masa";
 import type { LecturaMasa, NormaMasa } from "@/lib/tipos";
@@ -41,7 +41,7 @@ export default async function Masa({ searchParams }: { searchParams: Promise<{ o
 
       <section className="seccion" aria-labelledby="t-registro">
         <h2 id="t-registro">Registrar</h2>
-        {abiertas.length ? <FormMasa franjas={abiertas} normas={normas ?? []} /> : <p className="vacio">{sinFormulario}</p>}
+        {abiertas.length ? <FormMasa key={claveFranjas(abiertas)} franjas={abiertas} normas={normas ?? []} /> : <p className="vacio">{sinFormulario}</p>}
       </section>
 
       <section className="seccion" aria-labelledby="t-lecturas">

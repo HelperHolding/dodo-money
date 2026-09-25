@@ -1,6 +1,6 @@
 import { Aviso } from "@/components/Aviso";
 import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
-import { diaOperativoMX, etiquetaHora, franjasAbiertas, siguienteFranja } from "@/lib/franjas";
+import { claveFranjas, diaOperativoMX, etiquetaHora, franjasAbiertas, siguienteFranja } from "@/lib/franjas";
 import { hora } from "@/lib/formato";
 import type { Checklist, PuntoChecklist } from "@/lib/tipos";
 import { FormRecorrido, type OpcionRecorrido } from "./FormRecorrido";
@@ -55,7 +55,7 @@ export default async function Recorrido({ searchParams }: { searchParams: Promis
       <section className="seccion" aria-labelledby="t-registro">
         <h2 id="t-registro">Registrar recorrido</h2>
         {!puedeSupervisar(perfil.rol) ? <p className="vacio">El recorrido lo registra el encargado o el gerente.</p>
-          : opciones.length ? <FormRecorrido opciones={opciones} puntosPorChecklist={puntosPorChecklist} />
+          : opciones.length ? <FormRecorrido key={opciones.map((o) => claveFranjas([o], o.checklistId)).join(";")} opciones={opciones} puntosPorChecklist={puntosPorChecklist} />
           : <p className="vacio">{sinFormulario}</p>}
       </section>
 
