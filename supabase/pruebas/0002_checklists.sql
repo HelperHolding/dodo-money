@@ -1,7 +1,8 @@
 -- Pruebas de la migración 0002 (checklists). Córrelas completas en Supabase → SQL Editor
 -- después de 0002_checklists.sql y seed_checklists.sql.
 --
--- Necesitan un perfil activo con rol 'cajero' y otro con rol 'encargado' en la misma sucursal.
+-- Necesitan un encargado activo y otro usuario activo en la misma sucursal. Si no hay cajero,
+-- ese otro usuario (por ejemplo, el gerente) actúa como cajero solo mientras corre el script.
 -- El resultado aparece como ERROR A PROPÓSITO: así Postgres deshace todo y no queda ningún dato.
 --   · "PRUEBAS OK — …"  → todas las reglas funcionan.
 --   · "FALLÓ: …"        → dice qué regla no se cumplió.
@@ -31,7 +32,16 @@ begin
     join perfiles e on e.sucursal_id = c.sucursal_id and e.rol = 'encargado' and e.activo
    where c.rol = 'cajero' and c.activo
    limit 1;
-  if v_cajero is null then raise exception 'FALTAN DATOS: crea un cajero y un encargado activos en la misma sucursal.'; end if;
+  -- Sin cajero: otro perfil de la sucursal del encargado hace de cajero. Se deshace al final con todo lo demás.
+  if v_cajero is null then
+    select c.id, e.id, c.sucursal_id into v_cajero, v_enc, v_suc
+      from perfiles e
+      join perfiles c on c.sucursal_id = e.sucursal_id and c.id <> e.id and c.activo
+     where e.rol = 'encargado' and e.activo
+     limit 1;
+    update perfiles set rol = 'cajero' where id = v_cajero;
+  end if;
+  if v_cajero is null then raise exception 'FALTAN DATOS: se necesita un encargado activo y otro usuario activo en la misma sucursal.'; end if;
   select id into v_prod from productos_merma where activo order by orden limit 1;
   select id into v_check from checklists where clave = 'recorrido_manana';
   if v_prod is null or v_check is null then raise exception 'FALTAN DATOS: corre seed_checklists.sql.'; end if;

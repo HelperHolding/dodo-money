@@ -102,7 +102,7 @@ En Supabase → **SQL Editor**, corre en orden:
 
 1. `supabase/migrations/0002_checklists.sql`
 2. `supabase/seed_checklists.sql`
-3. `supabase/pruebas/0002_checklists.sql`: debe terminar con el error `PRUEBAS OK — …` (es a propósito, para no dejar datos). Necesita un cajero y un encargado activos en la misma sucursal.
+3. `supabase/pruebas/0002_checklists.sql`: debe terminar con el error `PRUEBAS OK — …` (es a propósito, para no dejar datos). Necesita un encargado y otro usuario activos en la misma sucursal (si no hay cajero, el otro usuario actúa como cajero solo durante la prueba).
 
 Para cambiar el catálogo de mermas:
 
