@@ -123,6 +123,17 @@ Con una ventana de incógnito por usuario:
 6. **Encargado** → Mermas: marca "Ya capturé…" y cierra. El formulario desaparece y el cajero ya no puede agregar mermas.
 7. **Gerente** → Checklists: el resumen muestra las horas en Listo, Revisar, Ahora o Falta, y al elegir el día anterior se ve su historial.
 
+## Foto del ticket en caja chica
+
+Al registrar un gasto se puede adjuntar la foto del ticket o recibo (opcional). En tablet y celular abre la cámara;
+la app reduce la foto en el dispositivo antes de subirla. Las fotos quedan en un bucket privado de Supabase,
+separadas por sucursal, y no se pueden reemplazar ni borrar. En la lista de gastos, "Ver foto" abre un enlace de 1 hora.
+
+Puesta en marcha, en Supabase → **SQL Editor**:
+
+1. `supabase/migrations/0003_foto_gastos.sql`
+2. `supabase/pruebas/0003_foto_gastos.sql`: debe terminar con el error `PRUEBAS OK — …`.
+
 ## Siguiente paso: conectar con Dodo IS
 
 Hoy las ventas en efectivo se copian del reporte de Dodo IS. Cuando esté el acceso a la API,

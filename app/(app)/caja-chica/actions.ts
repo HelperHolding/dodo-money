@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { obtenerContexto } from "@/lib/contexto";
 import { hoyMX, numero } from "@/lib/formato";
+import { BUCKET_FOTOS, rutaFoto, validarFoto } from "@/lib/fotos";
 
 const volver = (clave: "ok" | "error", texto: string) => redirect(`/caja-chica?${clave}=${encodeURIComponent(texto)}`);
 
@@ -18,6 +19,20 @@ export async function registrarGasto(formData: FormData) {
   if (monto <= 0) volver("error", "Escribe un monto mayor a cero.");
   if (comprobante === "cfdi" && !uuid) volver("error", "Con factura, escribe el folio fiscal (UUID) del CFDI.");
 
+  const foto = formData.get("foto");
+  const archivo = foto instanceof File && foto.size > 0 ? foto : null;
+  const problemaFoto = validarFoto(archivo);
+  if (problemaFoto) volver("error", problemaFoto);
+
+  // La foto se sube primero: si falla, el gasto no se registra y se puede volver a intentar.
+  let fotoPath: string | null = null;
+  if (archivo) {
+    fotoPath = rutaFoto(sucursal.id, crypto.randomUUID(), archivo.type);
+    const { error: errorFoto } = await supabase.storage.from(BUCKET_FOTOS)
+      .upload(fotoPath, archivo, { contentType: archivo.type, upsert: false });
+    if (errorFoto) volver("error", `No se pudo subir la foto: ${errorFoto.message}`);
+  }
+
   const { error } = await supabase.from("gastos_caja_chica").insert({
     sucursal_id: sucursal.id,
     fecha: String(formData.get("fecha") || hoyMX()),
@@ -26,6 +41,7 @@ export async function registrarGasto(formData: FormData) {
     monto,
     comprobante,
     uuid_cfdi: uuid,
+    foto_path: fotoPath,
   });
   if (error) volver("error", error.message);
   revalidatePath("/", "layout");
