@@ -6,6 +6,8 @@ export type DatosSucursal = {
   turnosAbiertos: number;
   turnosCerrados: number;
   diferenciaArqueos: number;
+  /** Arqueos de cierre con diferencia: dos turnos que se compensan siguen contando. */
+  arqueosDescuadrados: number;
   pendientes: number;
   deposito: number;
   cierre: { cerradoEn: string; ventaTotal: number; bovedaDiferencia: number } | null;
@@ -27,7 +29,7 @@ const hayDiferencia = (n: number) => Math.round(n * 100) !== 0;
 
 export function alertasDeSucursal(d: DatosSucursal, diaTerminado: boolean): Alerta[] {
   const alertas: Alerta[] = [];
-  if (hayDiferencia(d.diferenciaArqueos)) alertas.push("arqueos");
+  if (hayDiferencia(d.diferenciaArqueos) || d.arqueosDescuadrados > 0) alertas.push("arqueos");
   if (d.pendientes > 0) alertas.push("pendientes");
   if (d.cierre && !hayDiferencia(d.deposito)) alertas.push("deposito");
   if (!d.cierre && diaTerminado) alertas.push("cierre");
@@ -46,7 +48,19 @@ export function ordenarSucursales<T extends { nombre: string; alertas: readonly 
   );
 }
 
-/** La fecha pedida en la URL si es válida y no es futura; si no, hoy. */
+/** Fecha YYYY-MM-DD que existe en el calendario (descarta 2026-02-31 o 2026-00-10). */
+function fechaReal(texto: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
+  const d = new Date(`${texto}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === texto;
+}
+
+/** La fecha pedida en la URL si existe y no es futura; si no, hoy. */
 export function fechaElegida(pedida: string | undefined, hoy: string): string {
-  return pedida && /^\d{4}-\d{2}-\d{2}$/.test(pedida) && pedida <= hoy ? pedida : hoy;
+  return pedida && fechaReal(pedida) && pedida <= hoy ? pedida : hoy;
+}
+
+/** Mensaje del primer resultado con error, o null. Si algo no cargó, no se muestra un "todo en orden" falso. */
+export function primerError(resultados: readonly { error: { message: string } | null }[]): string | null {
+  return resultados.find((r) => r.error)?.error?.message ?? null;
 }

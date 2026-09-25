@@ -26,6 +26,8 @@ Reglas que aplica la base de datos, no solo la pantalla:
   esperado = fondo + ventas en efectivo según Dodo IS − retiros a bóveda. Diferencia = contado − esperado.
 - Guardar el arqueo de cierre cierra el turno. El día solo se cierra sin turnos abiertos ni movimientos pendientes.
 - Solo encargados y gerentes abren turno; solo gerentes cierran el día.
+- El día de operación cambia a las 4:00 (hora de Ciudad de México): un cierre o un movimiento después de medianoche
+  cuenta para el día que termina, igual en efectivo, checklists y la vista de corporativo.
 
 ## Puesta en marcha
 

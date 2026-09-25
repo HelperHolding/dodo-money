@@ -6,17 +6,18 @@ export const hora = (iso: string) =>
   new Intl.DateTimeFormat("es-MX", { hour: "2-digit", minute: "2-digit", timeZone: "America/Mexico_City" })
     .format(new Date(iso));
 
-/** Fecha de hoy en Ciudad de México (YYYY-MM-DD): el servidor de Vercel corre en UTC. */
-export function hoyMX(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(new Date());
+// México no tiene horario de verano desde 2022: UTC−6 todo el año. El servidor de Vercel corre en UTC.
+// El día de operación cambia a las 4:00 (igual que diaOperativoMX en lib/franjas.ts): un cierre
+// después de medianoche cuenta para el día que termina.
+
+/** Día de operación de hoy en Ciudad de México (YYYY-MM-DD). */
+export function hoyMX(ahora: Date = new Date()): string {
+  return new Date(ahora.getTime() - (6 + 4) * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-/** Inicio y fin del día de Ciudad de México en UTC, para filtrar por creado_en. */
+/** Inicio y fin del día de operación (4:00 a 4:00, Ciudad de México) en UTC, para filtrar por creado_en. */
 export function rangoDiaMX(fecha: string): { desde: string; hasta: string } {
-  // México no tiene horario de verano desde 2022: UTC−6 todo el año.
-  const desde = new Date(`${fecha}T00:00:00-06:00`);
+  const desde = new Date(`${fecha}T04:00:00-06:00`);
   const hasta = new Date(desde.getTime() + 24 * 60 * 60 * 1000);
   return { desde: desde.toISOString(), hasta: hasta.toISOString() };
 }

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { DatosSucursal } from "@/lib/corporativo";
+import { primerError, type DatosSucursal } from "@/lib/corporativo";
 import { estadoFranja } from "@/lib/franjas";
 import { rangoDiaMX } from "@/lib/formato";
 import { bolasNorma } from "@/lib/masa";
@@ -8,11 +8,7 @@ import type { Checklist, NormaMasa, TempArea } from "@/lib/tipos";
 /** Todas las sucursales en un día: una consulta por tabla, no una por sucursal. */
 export async function datosCorporativo(supabase: SupabaseClient, fecha: string, ahora: Date): Promise<DatosSucursal[]> {
   const { desde, hasta } = rangoDiaMX(fecha);
-  const [
-    { data: sucursales }, { data: turnos }, { data: movimientos }, { data: cierres },
-    { data: normas }, { data: lecturas }, { data: checklists }, { data: recorridos },
-    { data: cierresMerma }, { data: mermas }, { data: gastos },
-  ] = await Promise.all([
+  const resultados = await Promise.all([
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     supabase.from("turnos").select("id, sucursal_id, cerrado_en").eq("fecha", fecha)
       .returns<{ id: string; sucursal_id: string; cerrado_en: string | null }[]>(),
@@ -31,12 +27,20 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
     supabase.from("gastos_caja_chica").select("sucursal_id, monto, comprobante").eq("fecha", fecha)
       .returns<{ sucursal_id: string; monto: number; comprobante: string }[]>(),
   ]);
+  const errorCarga = primerError(resultados);
+  if (errorCarga) throw new Error(`No se pudieron cargar los datos: ${errorCarga}`);
+  const [
+    { data: sucursales }, { data: turnos }, { data: movimientos }, { data: cierres },
+    { data: normas }, { data: lecturas }, { data: checklists }, { data: recorridos },
+    { data: cierresMerma }, { data: mermas }, { data: gastos },
+  ] = resultados;
 
   const idsTurnos = (turnos ?? []).map((t) => t.id);
-  const { data: arqueos } = idsTurnos.length
+  const { data: arqueos, error: errorArqueos } = idsTurnos.length
     ? await supabase.from("arqueos").select("turno_id, diferencia").in("turno_id", idsTurnos).eq("momento", "cierre")
         .returns<{ turno_id: string; diferencia: number }[]>()
-    : { data: [] as { turno_id: string; diferencia: number }[] };
+    : { data: [] as { turno_id: string; diferencia: number }[], error: null };
+  if (errorArqueos) throw new Error(`No se pudieron cargar los arqueos: ${errorArqueos.message}`);
 
   const sucursalDeTurno = new Map((turnos ?? []).map((t) => [t.id, t.sucursal_id]));
   const normaPorHora = new Map((normas ?? []).map((n) => [n.hora, n]));
@@ -54,15 +58,15 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
     const gs = de(gastos, s.id);
     const horasConLectura = new Set(ls.map((l) => l.hora));
     const recorridosHechos = new Set(rs.map((r) => `${r.checklist_id}|${r.hora}`));
+    const arqueosDeSucursal = (arqueos ?? []).filter((a) => sucursalDeTurno.get(a.turno_id) === s.id);
 
     return {
       id: s.id,
       nombre: s.nombre,
       turnosAbiertos: ts.filter((t) => !t.cerrado_en).length,
       turnosCerrados: ts.filter((t) => t.cerrado_en).length,
-      diferenciaArqueos: (arqueos ?? [])
-        .filter((a) => sucursalDeTurno.get(a.turno_id) === s.id)
-        .reduce((suma, a) => suma + Number(a.diferencia), 0),
+      diferenciaArqueos: arqueosDeSucursal.reduce((suma, a) => suma + Number(a.diferencia), 0),
+      arqueosDescuadrados: arqueosDeSucursal.filter((a) => Math.round(Number(a.diferencia) * 100) !== 0).length,
       pendientes: ms.filter((m) => m.estado === "pendiente").length,
       deposito: ms.filter((m) => m.tipo === "deposito_banco" && m.estado === "confirmado")
         .reduce((suma, m) => suma + Number(m.monto), 0),
