@@ -74,10 +74,54 @@ app/
   (app)/movimientos/     bitácora de movimientos entre cajas
   (app)/caja-chica/      gastos y reposiciones
   (app)/cierre/          cierre del día del gerente
+  (app)/checklists/      mermas, temperatura de masa y recorrido de supervisor
 lib/                     cliente de Supabase, tipos, formatos, denominaciones
 supabase/migrations/     esquema, reglas y seguridad por renglón
 supabase/seed.sql        sucursal inicial
+supabase/seed_checklists.sql  norma de masa, recorridos y productos de merma
+supabase/pruebas/        pruebas de reglas para correr en el SQL Editor
 ```
+
+## Checklists
+
+Tres registros que antes eran de papel, en **Checklists** del menú:
+
+| Registro | Cuándo | Quién | Regla |
+|---|---|---|---|
+| Temperatura de masa | Cada hora de 10:00 a 22:00 | Cualquier rol | Masa de 12 a 22 °C y bolas según la norma de la temperatura del área; si no, comentario obligatorio |
+| Recorrido de supervisor | Cada hora, 12:00–17:00 (mañana) y 18:00–23:00 (tarde) | Encargado, gerente o admin | Los 7 puntos marcados; cada "no cumple" con comentario |
+| Mermas | Cuando pasan; se cierran al final del día | Cualquiera registra; encargado, gerente o admin cierra | Producto de la lista, cantidad, motivo y nombre de quien la hizo; después del cierre no se agregan |
+
+- Cada hora se puede registrar desde su inicio hasta 10 minutos después de que termina. La hora la fija el servidor.
+- El día de mermas y del resumen cambia a las 4:00, para que el cierre nocturno cuente para el día que termina.
+- Nada se edita ni se borra.
+
+### Puesta en marcha
+
+En Supabase → **SQL Editor**, corre en orden:
+
+1. `supabase/migrations/0002_checklists.sql`
+2. `supabase/seed_checklists.sql`
+3. `supabase/pruebas/0002_checklists.sql`: debe terminar con el error `PRUEBAS OK — …` (es a propósito, para no dejar datos). Necesita un cajero y un encargado activos en la misma sucursal.
+
+Para cambiar el catálogo de mermas:
+
+```sql
+insert into productos_merma (categoria, nombre, unidad, orden) values ('Bebidas', 'Refresco 600 ml', 'pieza', 405);
+update productos_merma set activo = false where nombre = 'Refresco';   -- quitar sin borrar
+```
+
+### Prueba manual
+
+Con una ventana de incógnito por usuario:
+
+1. **Cajero** → Checklists → Temperatura de masa: registra la hora actual con la norma exacta y 18 °C. Debe guardarse sin comentario.
+2. En la siguiente hora abierta, escribe 25 °C sin comentario: el formulario pide comentario; si lo quitas, la app responde "Escribe qué pasó: …".
+3. **Cajero** → Recorrido: debe decir que lo registra el encargado o el gerente.
+4. **Encargado** → Recorrido: marca un punto como "No cumple"; sin comentario no se guarda. Con comentario, aparece en "Recorridos de hoy".
+5. **Cajero** → Mermas: registra "0,5" kg de Mozzarella con nombre de empleado. En totales aparece 0.5 kg.
+6. **Encargado** → Mermas: marca "Ya capturé…" y cierra. El formulario desaparece y el cajero ya no puede agregar mermas.
+7. **Gerente** → Checklists: el resumen muestra las horas en Listo, Revisar, Ahora o Falta, y al elegir el día anterior se ve su historial.
 
 ## Siguiente paso: conectar con Dodo IS
 
