@@ -215,11 +215,20 @@ input[type="checkbox"], input[type="radio"] { min-height: auto; width: 22px; hei
   margin: 0; padding: 10px clamp(16px, 4vw, 40px);
   background: var(--papel-2); border-bottom: 1px solid var(--linea); font-weight: 700;
 }
-.tabla-corporativo th[scope="row"], .tabla-corporativo thead tr:last-child th:first-child {
-  position: sticky; left: 0; z-index: 1; background: var(--blanco); white-space: nowrap;
+.tarjetas { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.tarjeta {
+  background: var(--blanco); border: 1px solid var(--linea); border-top: 4px solid var(--cuadra);
+  border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 14px;
 }
-.tabla-corporativo thead .grupos th { text-align: center; border-bottom: 1px solid var(--linea); color: var(--tinta); }
-.tabla-corporativo td { white-space: nowrap; }
+.tarjeta[data-alerta] { border-top-color: var(--alerta); }
+.tarjeta-encabezado { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.tarjeta-encabezado h2 { font-size: 1.25rem; }
+.tarjeta-estado { font-size: 0.9rem; font-weight: 700; color: var(--cuadra-texto); }
+.tarjeta[data-alerta] .tarjeta-estado { color: var(--alerta-texto); }
+.tarjeta-datos { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 10px 14px; font-size: 0.95rem; }
+.tarjeta-datos dt { font-weight: 700; color: var(--tinta-2); }
+.tarjeta-datos dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.tarjeta-datos .celda-alerta { padding: 0 6px; border-radius: 4px; }
 .celda-alerta { background: var(--alerta-fondo); color: var(--alerta-texto); font-weight: 700; }
 .celda-alerta::before { content: "⚠ "; }
 
