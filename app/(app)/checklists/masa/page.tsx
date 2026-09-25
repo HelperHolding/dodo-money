@@ -8,7 +8,7 @@ import { FormMasa } from "./FormMasa";
 
 export default async function Masa({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
-  const { supabase, sucursal } = await obtenerContexto();
+  const { supabase, sucursal, soloLectura } = await obtenerContexto();
   const ahora = new Date();
   const fecha = diaOperativoMX(ahora);
 
@@ -41,7 +41,7 @@ export default async function Masa({ searchParams }: { searchParams: Promise<{ o
 
       <section className="seccion" aria-labelledby="t-registro">
         <h2 id="t-registro">Registrar</h2>
-        {abiertas.length ? <FormMasa key={claveFranjas(abiertas)} franjas={abiertas} normas={normas ?? []} /> : <p className="vacio">{sinFormulario}</p>}
+        {soloLectura ? <p className="vacio">Corporativo solo puede consultar.</p> : abiertas.length ? <FormMasa key={claveFranjas(abiertas)} franjas={abiertas} normas={normas ?? []} /> : <p className="vacio">{sinFormulario}</p>}
       </section>
 
       <section className="seccion" aria-labelledby="t-lecturas">

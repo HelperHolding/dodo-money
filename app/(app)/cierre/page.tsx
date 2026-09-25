@@ -18,7 +18,7 @@ const Fila = ({ texto, valor, fuerte }: { texto: string; valor: string; fuerte?:
 
 export default async function PaginaCierre({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
-  const { supabase, perfil, sucursal, turno } = await obtenerContexto();
+  const { supabase, perfil, sucursal, turno, soloLectura } = await obtenerContexto();
   const fecha = hoyMX();
 
   const { data: cierre } = await supabase.from("cierres_dia")
@@ -52,7 +52,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
     return (
       <>
         <div className="encabezado"><h1>Cierre del día</h1></div>
-        <p className="aviso aviso-info">El cierre del día lo hace el gerente.</p>
+        <p className="aviso aviso-info">{soloLectura ? "Este día todavía no se cierra." : "El cierre del día lo hace el gerente."}</p>
       </>
     );
   }

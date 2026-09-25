@@ -10,7 +10,7 @@ import { FormArqueo } from "./FormArqueo";
 
 export default async function PaginaArqueo({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
-  const { supabase, perfil, sucursal, turno } = await obtenerContexto();
+  const { supabase, perfil, sucursal, turno, soloLectura } = await obtenerContexto();
 
   if (!turno) {
     return (
@@ -59,7 +59,7 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
                     <td>{NOMBRE_MOMENTO[a.momento]}</td>
                     <td>{persona.get(a.entrega_id)}</td>
                     <td>
-                      {a.recibe_id ? persona.get(a.recibe_id) : a.entrega_id === perfil.id ? (
+                      {a.recibe_id ? persona.get(a.recibe_id) : soloLectura || a.entrega_id === perfil.id ? (
                         <span className="saldo-nota">Pendiente</span>
                       ) : (
                         <form action={recibirArqueo}>
@@ -79,7 +79,7 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
         </section>
       )}
 
-      <FormArqueo fondoInicial={fondo} retirosBoveda={retiros} momentoSugerido={momentoSugerido} />
+      {!soloLectura && <FormArqueo fondoInicial={fondo} retirosBoveda={retiros} momentoSugerido={momentoSugerido} />}
     </>
   );
 }

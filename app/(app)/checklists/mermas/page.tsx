@@ -8,7 +8,7 @@ import { cerrarMermas, registrarMerma } from "./actions";
 
 export default async function Mermas({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
-  const { supabase, perfil, sucursal } = await obtenerContexto();
+  const { supabase, perfil, sucursal, soloLectura } = await obtenerContexto();
   const fecha = diaOperativoMX(new Date());
 
   const [{ data: productos }, { data: mermas }, { data: cierre }, { data: nombres }] = await Promise.all([
@@ -44,7 +44,7 @@ export default async function Mermas({ searchParams }: { searchParams: Promise<{
         <p className="aviso aviso-info">
           Las mermas de hoy se cerraron a las {hora(cierre.cerrado_en)} ({persona.get(cierre.cerrado_por)}). Ya no se pueden agregar.
         </p>
-      ) : (
+      ) : soloLectura ? null : (
         <form action={registrarMerma} className="seccion" aria-labelledby="t-registrar">
           <h2 id="t-registrar">Registrar merma</h2>
           <div className="rejilla">

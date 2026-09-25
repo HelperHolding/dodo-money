@@ -9,7 +9,7 @@ import { confirmarMovimiento } from "./movimientos/actions";
 
 export default async function Inicio({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
-  const { supabase, perfil, sucursal, turno, cajas } = await obtenerContexto();
+  const { supabase, perfil, sucursal, turno, cajas, soloLectura } = await obtenerContexto();
 
   const [{ data: saldos }, { data: pendientes }, { data: nombres }] = await Promise.all([
     supabase.from("saldos_cajas").select("tipo, nombre, saldo").eq("sucursal_id", sucursal.id)
@@ -62,7 +62,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         {turno ? (
           <div className="acciones">
             <p>Turno {turno.tipo} abierto desde las {hora(turno.abierto_en)}.</p>
-            <Link className="boton" href="/arqueo">Registrar arqueo</Link>
+            {!soloLectura && <Link className="boton" href="/arqueo">Registrar arqueo</Link>}
           </div>
         ) : puedeAbrirTurno(perfil.rol) ? (
           <form action={abrirTurno} className="acciones">
@@ -73,7 +73,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
             <BotonEnviar pendiente="Abriendo…">Abrir turno</BotonEnviar>
           </form>
         ) : (
-          <p className="vacio">No hay turno abierto. Pide al encargado que lo abra.</p>
+          <p className="vacio">{soloLectura ? "No hay turno abierto." : "No hay turno abierto. Pide al encargado que lo abra."}</p>
         )}
       </section>
 
@@ -94,7 +94,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
                     <td>{persona.get(m.registrado_por)}</td>
                     <td className="monto">{pesos(m.monto)}</td>
                     <td>
-                      {m.registrado_por === perfil.id ? (
+                      {soloLectura ? null : m.registrado_por === perfil.id ? (
                         <span className="saldo-nota">Lo confirma otra persona</span>
                       ) : (
                         <form action={confirmarMovimiento} className="acciones">

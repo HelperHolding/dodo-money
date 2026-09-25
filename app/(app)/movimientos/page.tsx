@@ -8,7 +8,7 @@ import { FormMovimiento } from "./FormMovimiento";
 
 export default async function Movimientos({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
-  const { supabase, perfil, sucursal, cajas } = await obtenerContexto();
+  const { supabase, perfil, sucursal, cajas, soloLectura } = await obtenerContexto();
   const { desde, hasta } = rangoDiaMX(hoyMX());
 
   const [{ data: movimientos }, { data: nombres }] = await Promise.all([
@@ -27,7 +27,7 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
         <p>Cada vez que el efectivo pasa de una caja a otra se registra aquí. Quien lo recibe lo confirma con su propio usuario.</p>
       </div>
       <Aviso ok={ok} error={error} />
-      <FormMovimiento limiteRetiro={Number(sucursal.limite_retiro)} />
+      {!soloLectura && <FormMovimiento limiteRetiro={Number(sucursal.limite_retiro)} />}
 
       <section className="seccion" aria-labelledby="t-hoy">
         <h2 id="t-hoy">Movimientos de hoy</h2>
@@ -48,7 +48,7 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
                     <td>{m.folio ?? ""}</td>
                     <td>{persona.get(m.registrado_por)}</td>
                     <td>
-                      {m.estado === "pendiente" && m.registrado_por !== perfil.id ? (
+                      {m.estado === "pendiente" && m.registrado_por !== perfil.id && !soloLectura ? (
                         <form action={confirmarMovimiento} className="acciones">
                           <input type="hidden" name="id" value={m.id} />
                           <BotonEnviar name="aceptar" value="si" className="boton boton-secundario" pendiente="…">Confirmar</BotonEnviar>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { obtenerContexto } from "@/lib/contexto";
 import { hora } from "@/lib/formato";
@@ -5,10 +6,10 @@ import { cerrarSesion } from "@/app/login/actions";
 
 export const dynamic = "force-dynamic";
 
-const ROL: Record<string, string> = { cajero: "Cajero", encargado: "Encargado", gerente: "Gerente", admin: "Administrador" };
+const ROL: Record<string, string> = { cajero: "Cajero", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo" };
 
 export default async function LayoutApp({ children }: { children: React.ReactNode }) {
-  const { perfil, sucursal, turno } = await obtenerContexto();
+  const { perfil, sucursal, turno, soloLectura } = await obtenerContexto();
   return (
     <>
       <header className="barra">
@@ -21,7 +22,12 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
           <form action={cerrarSesion}><button type="submit">Salir</button></form>
         </div>
       </header>
-      <Nav />
+      {soloLectura && (
+        <p className="franja-lectura">
+          Viendo {sucursal.nombre} · Solo lectura · <Link href="/corporativo">Volver a corporativo</Link>
+        </p>
+      )}
+      <Nav corporativo={soloLectura} />
       <main className="pagina">{children}</main>
     </>
   );

@@ -14,7 +14,7 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
   const ahora = new Date();
   const hoy = diaOperativoMX(ahora);
   const fecha = fechaPedida && /^\d{4}-\d{2}-\d{2}$/.test(fechaPedida) ? fechaPedida : hoy;
-  const { supabase, sucursal } = await obtenerContexto();
+  const { supabase, sucursal, soloLectura } = await obtenerContexto();
 
   const [{ data: normas }, { data: lecturas }, { data: checklists }, { data: recorridos }, { count: mermas }, { data: cierre }] =
     await Promise.all([
@@ -65,7 +65,7 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
       <section className="seccion" aria-labelledby="t-masa">
         <div className="acciones">
           <h2 id="t-masa">Temperatura de masa</h2>
-          {esHoy && <Link className="boton" href="/checklists/masa">Registrar</Link>}
+          {esHoy && !soloLectura && <Link className="boton" href="/checklists/masa">Registrar</Link>}
         </div>
         <Franjas titulo="Horas de temperatura de masa" casillas={casillasMasa} />
       </section>
@@ -73,7 +73,7 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
       <section className="seccion" aria-labelledby="t-recorrido">
         <div className="acciones">
           <h2 id="t-recorrido">Recorrido de supervisor</h2>
-          {esHoy && <Link className="boton" href="/checklists/recorrido">Registrar</Link>}
+          {esHoy && !soloLectura && <Link className="boton" href="/checklists/recorrido">Registrar</Link>}
         </div>
         {listas.map((c) => (
           <div key={c.id} className="formulario">
@@ -86,7 +86,7 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
       <section className="seccion" aria-labelledby="t-mermas">
         <div className="acciones">
           <h2 id="t-mermas">Mermas</h2>
-          {esHoy && <Link className="boton" href="/checklists/mermas">Registrar</Link>}
+          {esHoy && !soloLectura && <Link className="boton" href="/checklists/mermas">Registrar</Link>}
         </div>
         <p>
           {totalMermas} {totalMermas === 1 ? "merma registrada" : "mermas registradas"}.{" "}

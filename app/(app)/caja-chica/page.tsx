@@ -11,7 +11,7 @@ const COMPROBANTE: Record<string, string> = { cfdi: "Factura", nota: "Nota", sin
 
 export default async function CajaChica({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
-  const { supabase, sucursal } = await obtenerContexto();
+  const { supabase, sucursal, soloLectura } = await obtenerContexto();
 
   const [{ data: ultima }, { data: saldo }] = await Promise.all([
     supabase.from("movimientos").select("creado_en").eq("sucursal_id", sucursal.id)
@@ -55,7 +55,7 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
           <div className="saldo"><span>Debe haber en caja</span><span className="saldo-monto">{pesos(enCaja)}</span>
             <span className="saldo-nota">Fondo menos gastos, más reposiciones confirmadas</span></div>
         </div>
-        {porReponer > 0 && (
+        {porReponer > 0 && !soloLectura && (
           <form action={solicitarReposicion} className="acciones">
             <input type="hidden" name="monto" value={porReponer} />
             <BotonEnviar className="boton boton-secundario" pendiente="Solicitando…">Solicitar reposición de {pesos(porReponer)}</BotonEnviar>
@@ -63,6 +63,7 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
         )}
       </section>
 
+      {!soloLectura && (
       <form action={registrarGasto} className="seccion" aria-labelledby="t-gasto">
         <h2 id="t-gasto">Registrar gasto</h2>
         <div className="rejilla">
@@ -83,6 +84,7 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
         </div>
         <div className="acciones"><BotonEnviar>Registrar gasto</BotonEnviar></div>
       </form>
+      )}
 
       <section className="seccion" aria-labelledby="t-gastos">
         <h2 id="t-gastos">Gastos desde la última reposición</h2>
