@@ -9,14 +9,17 @@ const ENLACES = [
   { href: "/movimientos", texto: "Movimientos" },
   { href: "/caja-chica", texto: "Caja chica" },
   { href: "/cierre", texto: "Cierre del día" },
+  { href: "/checklists", texto: "Checklists" },
 ];
+
+const activo = (ruta: string, href: string) => ruta === href || (href !== "/" && ruta.startsWith(`${href}/`));
 
 export function Nav() {
   const ruta = usePathname();
   return (
     <nav className="nav" aria-label="Secciones">
       {ENLACES.map((e) => (
-        <Link key={e.href} href={e.href} aria-current={ruta === e.href ? "page" : undefined}>
+        <Link key={e.href} href={e.href} aria-current={activo(ruta, e.href) ? "page" : undefined}>
           {e.texto}
         </Link>
       ))}
