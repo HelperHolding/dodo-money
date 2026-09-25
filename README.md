@@ -134,6 +134,35 @@ Puesta en marcha, en Supabase → **SQL Editor**:
 1. `supabase/migrations/0003_foto_gastos.sql`
 2. `supabase/pruebas/0003_foto_gastos.sql`: debe terminar con el error `PRUEBAS OK — …`.
 
+## Usuario corporativo
+
+Rol de **solo consulta** para oficina central. No tiene sucursal: al entrar ve la **vista general** con todas las
+sucursales del día (efectivo, cierre, checklists, mermas y caja chica), con lo que merece atención en rojo y primero.
+"Ver sucursal" abre las mismas pantallas del gerente sin formularios; "Volver a corporativo" regresa a la tabla.
+La base de datos rechaza cualquier escritura de este rol.
+
+### Puesta en marcha
+
+En Supabase → **SQL Editor**:
+
+1. `select * from perfiles where sucursal_id is null;` debe salir vacío (si no, asigna sucursal a esos perfiles).
+2. `supabase/migrations/0004_corporativo.sql`
+3. `supabase/pruebas/0004_corporativo.sql`: debe terminar con el error `PRUEBAS OK — …`.
+4. Crea el usuario en **Authentication → Users** y su perfil, sin sucursal:
+
+   ```sql
+   insert into perfiles (id, nombre, rol)
+   select id, 'Nombre Apellido', 'corporativo' from auth.users where email = 'correo@dominio.com';
+   ```
+
+### Prueba manual
+
+1. Entra como corporativo: debe abrir la vista general, no el inicio de una sucursal.
+2. Cambia el día a ayer: el cierre y las mermas sin cerrar aparecen en rojo si faltaron.
+3. "Ver sucursal": arriba dice "Viendo … · Solo lectura" y no hay formularios en Inicio, Arqueo, Movimientos,
+   Caja chica, Cierre ni Checklists. "Ver foto" en Caja chica sí abre.
+4. "Volver a corporativo" regresa a la tabla. "Salir" cierra la sesión.
+
 ## Siguiente paso: conectar con Dodo IS
 
 Hoy las ventas en efectivo se copian del reporte de Dodo IS. Cuando esté el acceso a la API,
