@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
+import { obtenerContextoParaEscribir, puedeSupervisar } from "@/lib/contexto";
 import { etiquetaHora } from "@/lib/franjas";
 
 const volver = (clave: "ok" | "error", texto: string) => redirect(`/checklists/recorrido?${clave}=${encodeURIComponent(texto)}`);
 
 export async function registrarRecorrido(formData: FormData) {
-  const { supabase, perfil } = await obtenerContexto();
+  const { supabase, perfil } = await obtenerContextoParaEscribir("/checklists/recorrido");
   if (!puedeSupervisar(perfil.rol)) volver("error", "El recorrido lo registra el encargado o el gerente.");
 
   const checklistId = String(formData.get("checklist_id") ?? "");

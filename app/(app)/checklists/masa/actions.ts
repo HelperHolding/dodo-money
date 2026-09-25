@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContexto } from "@/lib/contexto";
+import { obtenerContextoParaEscribir } from "@/lib/contexto";
 import { etiquetaHora } from "@/lib/franjas";
 import { decimal } from "@/lib/formato";
 import { TEMPS_AREA, temperaturaValida } from "@/lib/masa";
@@ -10,7 +10,7 @@ import { TEMPS_AREA, temperaturaValida } from "@/lib/masa";
 const volver = (clave: "ok" | "error", texto: string) => redirect(`/checklists/masa?${clave}=${encodeURIComponent(texto)}`);
 
 export async function registrarLectura(formData: FormData) {
-  const { supabase, sucursal } = await obtenerContexto();
+  const { supabase, sucursal } = await obtenerContextoParaEscribir("/checklists/masa");
   const [fecha, horaTexto] = String(formData.get("franja") ?? "").split("|");
   const hora = Number(horaTexto);
   const tempArea = Number(formData.get("temp_area"));

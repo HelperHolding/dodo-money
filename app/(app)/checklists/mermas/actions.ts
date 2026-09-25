@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
+import { obtenerContextoParaEscribir, puedeSupervisar } from "@/lib/contexto";
 import { decimal } from "@/lib/formato";
 import { NOMBRE_MOTIVO } from "@/lib/tipos";
 
 const volver = (clave: "ok" | "error", texto: string) => redirect(`/checklists/mermas?${clave}=${encodeURIComponent(texto)}`);
 
 export async function registrarMerma(formData: FormData) {
-  const { supabase, sucursal } = await obtenerContexto();
+  const { supabase, sucursal } = await obtenerContextoParaEscribir("/checklists/mermas");
   const productoId = String(formData.get("producto_id") ?? "");
   const cantidad = decimal(formData.get("cantidad"));
   const motivo = String(formData.get("motivo") ?? "");
@@ -30,7 +30,7 @@ export async function registrarMerma(formData: FormData) {
 }
 
 export async function cerrarMermas(formData: FormData) {
-  const { supabase, perfil, sucursal } = await obtenerContexto();
+  const { supabase, perfil, sucursal } = await obtenerContextoParaEscribir("/checklists/mermas");
   if (!puedeSupervisar(perfil.rol)) volver("error", "Solo un encargado o gerente cierra las mermas del día.");
   if (formData.get("capturado_dodo") !== "si") volver("error", "Marca que ya capturaste las mermas en Dodo IS.");
 

@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContexto } from "@/lib/contexto";
+import { obtenerContextoParaEscribir } from "@/lib/contexto";
 import { hoyMX, numero } from "@/lib/formato";
 import { BUCKET_FOTOS, rutaFoto, validarFoto } from "@/lib/fotos";
 
 const volver = (clave: "ok" | "error", texto: string) => redirect(`/caja-chica?${clave}=${encodeURIComponent(texto)}`);
 
 export async function registrarGasto(formData: FormData) {
-  const { supabase, sucursal } = await obtenerContexto();
+  const { supabase, sucursal } = await obtenerContextoParaEscribir("/caja-chica");
   const comprobante = String(formData.get("comprobante"));
   const uuid = String(formData.get("uuid_cfdi") ?? "").trim() || null;
   const monto = numero(formData.get("monto"));
@@ -49,7 +49,7 @@ export async function registrarGasto(formData: FormData) {
 }
 
 export async function solicitarReposicion(formData: FormData) {
-  const { supabase, sucursal, cajaPorTipo, turno } = await obtenerContexto();
+  const { supabase, sucursal, cajaPorTipo, turno } = await obtenerContextoParaEscribir("/caja-chica");
   const monto = numero(formData.get("monto"));
   if (monto <= 0) volver("error", "No hay gastos por reponer.");
   if (!cajaPorTipo.banco || !cajaPorTipo.caja_chica) volver("error", "Faltan las cajas de banco o caja chica en esta sucursal.");

@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContexto, puedeAbrirTurno } from "@/lib/contexto";
+import { obtenerContextoParaEscribir, puedeAbrirTurno } from "@/lib/contexto";
 import { hoyMX } from "@/lib/formato";
 
 export async function abrirTurno(formData: FormData) {
-  const { supabase, perfil, sucursal, turno } = await obtenerContexto();
+  const { supabase, perfil, sucursal, turno } = await obtenerContextoParaEscribir("/");
   if (!puedeAbrirTurno(perfil.rol)) redirect("/?error=" + encodeURIComponent("Solo un encargado o gerente abre el turno."));
   if (turno) redirect("/?error=" + encodeURIComponent("Ya hay un turno abierto. Ciérralo con su arqueo antes de abrir otro."));
 

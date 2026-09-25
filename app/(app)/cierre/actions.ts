@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContexto, puedeGestionar } from "@/lib/contexto";
+import { obtenerContextoParaEscribir, puedeGestionar } from "@/lib/contexto";
 import { hoyMX, numero } from "@/lib/formato";
 import { datosDelDia } from "./datos";
 
 const volver = (clave: "ok" | "error", texto: string) => redirect(`/cierre?${clave}=${encodeURIComponent(texto)}`);
 
 export async function cerrarDia(formData: FormData) {
-  const { supabase, perfil, sucursal, turno } = await obtenerContexto();
+  const { supabase, perfil, sucursal, turno } = await obtenerContextoParaEscribir("/cierre");
   if (!puedeGestionar(perfil.rol)) volver("error", "Solo el gerente cierra el día.");
   if (turno) volver("error", "Hay un turno abierto. Ciérralo con su arqueo antes de cerrar el día.");
 

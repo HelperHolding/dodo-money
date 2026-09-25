@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContexto } from "@/lib/contexto";
+import { obtenerContextoParaEscribir } from "@/lib/contexto";
 import { numero } from "@/lib/formato";
 import { RUTAS, type TipoCaja, type TipoMovimiento } from "@/lib/tipos";
 
@@ -10,7 +10,7 @@ const volverCon = (ruta: string, clave: "ok" | "error", texto: string) =>
   redirect(`${ruta}?${clave}=${encodeURIComponent(texto)}`);
 
 export async function registrarMovimiento(formData: FormData) {
-  const { supabase, sucursal, cajaPorTipo, turno } = await obtenerContexto();
+  const { supabase, sucursal, cajaPorTipo, turno } = await obtenerContextoParaEscribir("/movimientos");
   const tipo = String(formData.get("tipo")) as TipoMovimiento;
   const ruta = RUTAS[tipo];
   if (!ruta) volverCon("/movimientos", "error", "Elige el tipo de movimiento.");
@@ -45,7 +45,7 @@ export async function registrarMovimiento(formData: FormData) {
 }
 
 export async function confirmarMovimiento(formData: FormData) {
-  const { supabase } = await obtenerContexto();
+  const { supabase } = await obtenerContextoParaEscribir("/movimientos");
   const volver = String(formData.get("volver") ?? "/movimientos");
   const aceptar = formData.get("aceptar") === "si";
   const { error } = await supabase.rpc("confirmar_movimiento", {

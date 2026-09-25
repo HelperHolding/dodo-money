@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContexto } from "@/lib/contexto";
+import { obtenerContextoParaEscribir } from "@/lib/contexto";
 import { totalConteo } from "@/lib/denominaciones";
 import { numero, numeroOpcional } from "@/lib/formato";
 import type { MomentoArqueo } from "@/lib/tipos";
@@ -11,7 +11,7 @@ import { fondoYRetirosDelTurno } from "./datos";
 const error = (texto: string) => redirect("/arqueo?error=" + encodeURIComponent(texto));
 
 export async function registrarArqueo(formData: FormData) {
-  const { supabase, sucursal, turno } = await obtenerContexto();
+  const { supabase, sucursal, turno } = await obtenerContextoParaEscribir("/arqueo");
   if (!turno) error("No hay turno abierto. El encargado debe abrirlo desde Inicio.");
 
   let conteo: Record<string, number> = {};
@@ -51,7 +51,7 @@ export async function registrarArqueo(formData: FormData) {
 }
 
 export async function recibirArqueo(formData: FormData) {
-  const { supabase } = await obtenerContexto();
+  const { supabase } = await obtenerContextoParaEscribir("/arqueo");
   const { error: e } = await supabase.rpc("recibir_arqueo", { p_id: String(formData.get("id")) });
   if (e) error(e.message);
   revalidatePath("/arqueo");
