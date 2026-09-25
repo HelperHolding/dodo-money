@@ -40,6 +40,7 @@ Reemplazar el papel de tres registros del archivo `MX Checklists (base).xlsx` de
 - Entre `h:00` y `h:10` hay dos franjas abiertas (la anterior y la actual); la pantalla deja elegir entre ellas. Fuera de esa ventana solo existe la actual.
 - Una función SQL `franja_abierta(fecha date, hora int) returns boolean` valida esto con `now()`; los triggers de inserción la usan. Mensaje: *"La hora de las HH:00 cerró a las HH+1:10."*
 - Una franja sin registro cuya ventana ya cerró se muestra como **no registrada**.
+- **Día operativo:** cambia a las 04:00 de Ciudad de México (`dia_operativo()` en SQL, `diaOperativoMX()` en la app). Mermas, cierre de mermas y el resumen usan el día operativo, para que el cierre nocturno después de medianoche cuente para el día que termina.
 
 ## Modelo de datos (migración `0002_checklists.sql`)
 
@@ -62,7 +63,7 @@ cierres_merma    id uuid pk, sucursal_id, fecha, capturado_dodo bool not null,
                  unique (sucursal_id, fecha)
 ```
 
-- `fecha` de la merma se fija en el trigger con la fecha actual de Ciudad de México (no la elige el usuario).
+- `fecha` de la merma y del cierre se fija en el trigger con el día operativo (no la elige el usuario).
 - Trigger en `mermas`: rechaza si existe `cierres_merma` para `(sucursal_id, fecha)` → *"Las mermas de hoy ya se cerraron."*; rechaza producto inactivo.
 - Política de insert en `cierres_merma`: `mi_rol() in ('encargado','gerente','admin')`, sucursal propia, `capturado_dodo = true` (la casilla es obligatoria para cerrar).
 - Se puede cerrar un día con cero mermas.
