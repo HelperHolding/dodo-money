@@ -30,3 +30,14 @@ export function numeroOpcional(valor: FormDataEntryValue | null): number | null 
   const texto = String(valor ?? "").trim();
   return texto === "" ? null : numero(texto);
 }
+
+/** Número con punto o coma decimal ("0,5" o "0.5"). Devuelve NaN si no es número. */
+export function decimal(valor: FormDataEntryValue | null): number {
+  const texto = String(valor ?? "").replace(/\s/g, "").replace(",", ".");
+  return texto === "" ? Number.NaN : Number(texto);
+}
+
+const corto = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 3 });
+
+/** Cantidad con hasta tres decimales, para kilos y piezas. */
+export const numeroCorto = (n: number) => corto.format(n);

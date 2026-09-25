@@ -30,3 +30,4 @@ export async function obtenerContexto() {
 
 export const puedeGestionar = (rol: Perfil["rol"]) => rol === "gerente" || rol === "admin";
 export const puedeAbrirTurno = (rol: Perfil["rol"]) => rol !== "cajero";
+export const puedeSupervisar = (rol: Perfil["rol"]) => rol !== "cajero";

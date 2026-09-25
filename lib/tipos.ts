@@ -90,3 +90,77 @@ export const NOMBRE_MOMENTO: Record<MomentoArqueo, string> = {
   traspaso: "Traspaso de turno",
   cierre: "Cierre de turno",
 };
+
+// ─── Checklists ─────────────────────────────────────────────────────────────
+export type MotivoMerma = "caducidad" | "empaque_danado" | "mal_estado" | "error_humano";
+export type TempArea = 25 | 30 | 35;
+
+export const NOMBRE_MOTIVO: Record<MotivoMerma, string> = {
+  caducidad: "Caducidad",
+  empaque_danado: "Empaque dañado",
+  mal_estado: "Producto en mal estado",
+  error_humano: "Error humano",
+};
+
+export interface ProductoMerma {
+  id: string;
+  categoria: string;
+  nombre: string;
+  unidad: string;
+  orden: number;
+  activo: boolean;
+}
+
+export interface Merma {
+  id: string;
+  fecha: string;
+  producto_id: string;
+  cantidad: number;
+  motivo: MotivoMerma;
+  empleado: string;
+  registrado_por: string;
+  creado_en: string;
+}
+
+export interface CierreMerma {
+  fecha: string;
+  capturado_dodo: boolean;
+  cerrado_por: string;
+  cerrado_en: string;
+}
+
+export interface NormaMasa {
+  hora: number;
+  bolas_25: number;
+  bolas_30: number;
+  bolas_35: number;
+}
+
+export interface LecturaMasa {
+  id: string;
+  fecha: string;
+  hora: number;
+  temp_area: TempArea;
+  bolas: number;
+  temperatura: number;
+  en_norma: boolean;
+  comentario: string | null;
+  registrado_por: string;
+  creado_en: string;
+}
+
+export interface Checklist {
+  id: string;
+  clave: string;
+  nombre: string;
+  horas: number[];
+  roles: Rol[];
+}
+
+export interface PuntoChecklist {
+  id: string;
+  checklist_id: string;
+  orden: number;
+  texto: string;
+  detalle_por_hora: Record<string, string> | null;
+}
