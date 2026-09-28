@@ -232,6 +232,10 @@ fieldset.zona legend { padding: 0 6px; font-family: var(--display); font-weight:
 .estado-lista[data-estado="hecho"] { background: var(--papel-2); }
 .estado-lista[data-estado="revisado"] { background: var(--cuadra-fondo); color: var(--cuadra-texto); border-color: var(--cuadra-borde); }
 
+input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo); }
+.alerta-texto { color: var(--alerta-texto); font-weight: 700; }
+.tarjeta.zona[data-alerta] { border-top-color: var(--alerta); }
+
 /* ─── Corporativo ─── */
 .franja-lectura {
   margin: 0; padding: 10px clamp(16px, 4vw, 40px);
