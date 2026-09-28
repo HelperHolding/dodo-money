@@ -34,8 +34,8 @@ export function FormAmasado() {
         <div className="campo"><label htmlFor="minutos_amasado">Minutos de amasado</label>
           <input id="minutos_amasado" name="minutos_amasado" inputMode="decimal" required autoComplete="off" />
           <small>Lento 3 min · rápido 5 min</small></div>
-        <div className="campo"><label htmlFor="plan_bolas">Bolas planeadas</label><input id="plan_bolas" name="plan_bolas" type="number" min="0" step="1" required /></div>
-        <div className="campo"><label htmlFor="bolas_resultado">Bolas que salieron</label><input id="bolas_resultado" name="bolas_resultado" type="number" min="0" step="1" required /></div>
+        <div className="campo"><label htmlFor="plan_bolas">Bolas planeadas</label><input id="plan_bolas" name="plan_bolas" type="number" inputMode="numeric" min="0" step="1" required /></div>
+        <div className="campo"><label htmlFor="bolas_resultado">Bolas que salieron</label><input id="bolas_resultado" name="bolas_resultado" type="number" inputMode="numeric" min="0" step="1" required /></div>
       </div>
       <fieldset className="campo">
         <legend className="etiqueta">Temperatura del área (norma de bolas)</legend>
@@ -43,7 +43,7 @@ export function FormAmasado() {
           {TEMPS_AREA.map((t) => <label key={t}><input type="radio" name="temp_area" value={t} required /><span>{t} °C</span></label>)}
         </div>
       </fieldset>
-      <div className="rejilla">
+      <div className="rejilla rejilla-corta">
         {TEMPS.map((t) => (
           <div key={t.k} className="campo">
             <label htmlFor={t.k}>{t.texto} (°C)</label>
@@ -54,7 +54,7 @@ export function FormAmasado() {
           </div>
         ))}
       </div>
-      <div className="rejilla">
+      <div className="rejilla rejilla-corta">
         {GRAMOS.map((g) => (
           <div key={g.k} className="campo">
             <label htmlFor={g.k}>{g.texto} (g)</label>

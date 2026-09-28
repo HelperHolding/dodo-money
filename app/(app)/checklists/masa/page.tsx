@@ -48,21 +48,21 @@ export default async function Masa({ searchParams }: { searchParams: Promise<{ o
         <h2 id="t-lecturas">Lecturas de hoy</h2>
         {!lecturas?.length ? <p className="vacio">Todavía no hay lecturas hoy.</p> : (
           <div className="tabla-contenedor">
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead><tr><th>Hora</th><th>Área</th><th>Bolas / norma</th><th>Masa</th><th>Comentario</th><th>Registró</th></tr></thead>
               <tbody>
                 {lecturas.map((l) => {
                   const n = normaPorHora.get(l.hora);
                   return (
                     <tr key={l.id}>
-                      <td>{etiquetaHora(l.hora)}</td>
-                      <td>{l.temp_area} °C</td>
-                      <td>{l.bolas} / {n ? bolasNorma(n, l.temp_area) : "—"}</td>
-                      <td>
+                      <td data-label="Hora">{etiquetaHora(l.hora)}</td>
+                      <td data-label="Área">{l.temp_area} °C</td>
+                      <td data-label="Bolas / norma">{l.bolas} / {n ? bolasNorma(n, l.temp_area) : "—"}</td>
+                      <td data-label="Masa">
                         <span className={`estado ${l.en_norma ? "estado-confirmado" : "estado-pendiente"}`}>{Number(l.temperatura)} °C</span>
                       </td>
-                      <td>{l.comentario ?? ""}</td>
-                      <td>{persona.get(l.registrado_por)} · {hora(l.creado_en)}</td>
+                      <td data-label="Comentario">{l.comentario ?? ""}</td>
+                      <td data-label="Registró">{persona.get(l.registrado_por)} · {hora(l.creado_en)}</td>
                     </tr>
                   );
                 })}

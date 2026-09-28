@@ -62,7 +62,7 @@ a { color: var(--accion-oscuro); }
 .barra-usuario { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 0.95rem; }
 .barra-usuario button {
   background: transparent; color: var(--blanco); border: 1px solid #6b6b6b;
-  border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; min-height: 40px;
+  border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; min-height: 44px;
 }
 
 .nav {
@@ -92,7 +92,9 @@ a { color: var(--accion-oscuro); }
   padding: 22px;
   display: flex; flex-direction: column; gap: 16px;
 }
-.rejilla { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.rejilla { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.rejilla-corta { grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); }
+.pagina > * { min-width: 0; }
 
 /* ─── Saldos ─── */
 .saldo { border-left: 4px solid var(--accion); padding: 4px 0 4px 14px; display: flex; flex-direction: column; gap: 2px; }
@@ -133,7 +135,7 @@ input[type="number"] { text-align: right; }
 .aviso-info { background: var(--papel-2); color: var(--tinta); border: 1px solid var(--linea); }
 
 /* ─── Conteo de denominaciones ─── */
-.conteo { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.conteo { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
 .conteo table { width: 100%; border-collapse: collapse; }
 .conteo th { text-align: left; font-size: 0.85rem; color: var(--tinta-2); font-weight: 700; padding: 0 0 6px; }
 .conteo td { padding: 4px 0; border-top: 1px solid var(--papel-2); }
@@ -145,7 +147,7 @@ input[type="number"] { text-align: right; }
 .resultado {
   border-radius: 12px; padding: 22px 24px;
   display: grid; gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   align-items: end;
   background: var(--papel-2);
   border: 2px solid var(--linea);
@@ -221,7 +223,7 @@ input[type="checkbox"], input[type="radio"] { min-height: auto; width: 22px; hei
 .zona { gap: 10px; }
 .zona h3 { font-size: 1.1rem; }
 fieldset.zona { border: 1px solid var(--linea); border-radius: 10px; padding: 16px; margin: 0; background: var(--blanco); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-fieldset.zona legend { padding: 0 6px; font-family: var(--display); font-weight: 700; font-size: 1.15rem; }
+fieldset.zona > legend { padding: 0 6px; font-family: var(--display); font-weight: 700; font-size: 1.15rem; }
 .estados-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .estados-lista li { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .estado-lista {
@@ -258,6 +260,58 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .tarjeta-datos .celda-alerta { padding: 0 6px; border-radius: 4px; }
 .celda-alerta { background: var(--alerta-fondo); color: var(--alerta-texto); font-weight: 700; }
 .celda-alerta::before { content: "⚠ "; }
+
+/* ─── Plegables (ronda y resumen) ─── */
+.zona-plegable { border: 1px solid var(--linea); border-radius: 10px; background: var(--blanco); }
+.zona-plegable > summary, .plegable > details > summary {
+  list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  min-height: 52px; padding: 10px 16px;
+}
+.zona-plegable > summary::-webkit-details-marker, .plegable > details > summary::-webkit-details-marker { display: none; }
+.zona-plegable > summary::after, .plegable > details > summary::after { content: "▾"; color: var(--tinta-2); transition: transform 150ms ease; }
+.zona-plegable[open] > summary::after, .plegable > details[open] > summary::after { transform: rotate(180deg); }
+.zona-plegable > summary:focus-visible, .plegable > details > summary:focus-visible { outline: 3px solid var(--accion-oscuro); outline-offset: 2px; }
+.zona-nombre { font-family: var(--display); font-weight: 700; font-size: 1.15rem; margin-right: auto; }
+.zona-cuerpo { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+.plegable { padding: 0; }
+.plegable > details > summary { padding: 16px 22px; }
+.plegable > details > summary h2 { margin-right: auto; }
+.plegable-resumen { font-size: 0.9rem; font-weight: 700; color: var(--tinta-2); text-align: right; }
+.plegable-resumen[data-alerta] { color: var(--alerta-texto); }
+.plegable-cuerpo { padding: 0 22px 22px; display: flex; flex-direction: column; gap: 16px; }
+
+/* ─── Celular ─── */
+@media (max-width: 640px) {
+  .barra { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding-block: 10px; }
+  .barra-marca { font-size: 1.05rem; }
+  .barra-turno { grid-column: 1 / -1; grid-row: 2; font-size: 0.85rem; }
+  .barra-usuario { margin-left: 0; gap: 10px; font-size: 0.85rem; }
+  .nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); overflow: visible; padding: 4px 12px; gap: 0; }
+  .nav a { padding: 8px 4px; min-height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: normal; font-size: 0.9rem; line-height: 1.2; }
+
+  .accesos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * clamp(16px, 4vw, 40px)); padding-inline: clamp(16px, 4vw, 40px); padding-block: 2px; }
+  .accesos::-webkit-scrollbar { display: none; }
+  .accesos a { min-height: 44px; white-space: nowrap; flex: none; }
+
+  .pagina { padding-top: 18px; gap: 22px; }
+  .seccion { padding: 16px; }
+  .plegable { padding: 0; }
+  .plegable > details > summary { padding: 14px 16px; }
+  .plegable-cuerpo { padding: 0 16px 16px; }
+  h1 { font-size: 1.7rem; }
+
+  /* Tablas como tarjetas: cada renglón es una tarjeta con "etiqueta: valor". */
+  .tabla-contenedor:has(.tabla-tarjetas) { overflow: visible; }
+  .tabla-tarjetas thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .tabla-tarjetas, .tabla-tarjetas tbody, .tabla-tarjetas tr, .tabla-tarjetas td { display: block; width: 100%; }
+  .tabla-tarjetas tr { border: 1px solid var(--linea); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; background: var(--blanco); }
+  .tabla-tarjetas td { border: 0; padding: 5px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; text-align: right; }
+  .tabla-tarjetas td::before { content: attr(data-label); font-weight: 700; font-size: 0.85rem; color: var(--tinta-2); text-align: left; flex: none; }
+  .tabla-tarjetas td[data-label=""] { display: block; text-align: left; }
+  .tabla-tarjetas td[data-label=""]::before { content: none; }
+  .tabla-tarjetas td:empty { display: none; }
+  .tabla-tarjetas td .acciones { justify-content: flex-end; }
+}
 
 /* ─── Login ─── */
 .login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }

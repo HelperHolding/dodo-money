@@ -35,19 +35,19 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
           <p className="vacio">Todavía no hay movimientos hoy. El primero suele ser el fondo inicial de la caja de venta.</p>
         ) : (
           <div className="tabla-contenedor">
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead>
                 <tr><th>Hora</th><th>Movimiento</th><th>De → a</th><th>Folio</th><th>Registró</th><th>Confirmó</th><th>Estado</th><th>Monto</th></tr>
               </thead>
               <tbody>
                 {movimientos.map((m) => (
                   <tr key={m.id}>
-                    <td>{hora(m.creado_en)}</td>
-                    <td>{NOMBRE_MOVIMIENTO[m.tipo]}</td>
-                    <td>{caja.get(m.caja_origen_id)} → {caja.get(m.caja_destino_id)}</td>
-                    <td>{m.folio ?? ""}</td>
-                    <td>{persona.get(m.registrado_por)}</td>
-                    <td>
+                    <td data-label="Hora">{hora(m.creado_en)}</td>
+                    <td data-label="Movimiento">{NOMBRE_MOVIMIENTO[m.tipo]}</td>
+                    <td data-label="De → a">{caja.get(m.caja_origen_id)} → {caja.get(m.caja_destino_id)}</td>
+                    <td data-label="Folio">{m.folio ?? ""}</td>
+                    <td data-label="Registró">{persona.get(m.registrado_por)}</td>
+                    <td data-label="Confirmó">
                       {m.estado === "pendiente" && m.registrado_por !== perfil.id && !soloLectura ? (
                         <form action={confirmarMovimiento} className="acciones">
                           <input type="hidden" name="id" value={m.id} />
@@ -58,8 +58,8 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
                         m.confirmado_por ? persona.get(m.confirmado_por) : ""
                       )}
                     </td>
-                    <td><span className={`estado estado-${m.estado}`}>{m.estado}</span></td>
-                    <td className="monto">{pesos(m.monto)}</td>
+                    <td data-label="Estado"><span className={`estado estado-${m.estado}`}>{m.estado}</span></td>
+                    <td data-label="Monto" className="monto">{pesos(m.monto)}</td>
                   </tr>
                 ))}
               </tbody>

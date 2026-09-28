@@ -90,15 +90,15 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
         <h2 id="t-gastos">Gastos desde la última reposición</h2>
         {!gastos?.length ? <p className="vacio">No hay gastos pendientes de reponer.</p> : (
           <div className="tabla-contenedor">
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Comprobante</th><th>Foto</th><th>Monto</th></tr></thead>
               <tbody>
                 {gastos.map((g) => (
                   <tr key={g.id}>
-                    <td>{g.fecha}</td><td>{g.concepto}</td><td>{g.proveedor ?? ""}</td>
-                    <td>{COMPROBANTE[g.comprobante]}</td>
-                    <td>{g.foto_path && urlFoto.get(g.foto_path) ? <a href={urlFoto.get(g.foto_path)} target="_blank" rel="noopener noreferrer">Ver foto</a> : ""}</td>
-                    <td className="monto">{pesos(g.monto)}</td>
+                    <td data-label="Fecha">{g.fecha}</td><td data-label="Concepto">{g.concepto}</td><td data-label="Proveedor">{g.proveedor ?? ""}</td>
+                    <td data-label="Comprobante">{COMPROBANTE[g.comprobante]}</td>
+                    <td data-label="Foto">{g.foto_path && urlFoto.get(g.foto_path) ? <a href={urlFoto.get(g.foto_path)} target="_blank" rel="noopener noreferrer">Ver foto</a> : ""}</td>
+                    <td data-label="Monto" className="monto">{pesos(g.monto)}</td>
                   </tr>
                 ))}
               </tbody>

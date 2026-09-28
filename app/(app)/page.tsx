@@ -32,6 +32,26 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       </div>
       <Aviso ok={ok} error={error} />
 
+      <section className="seccion" aria-labelledby="t-turno">
+        <h2 id="t-turno">Turno</h2>
+        {turno ? (
+          <div className="acciones">
+            <p>Turno {turno.tipo} abierto desde las {hora(turno.abierto_en)}.</p>
+            {!soloLectura && <Link className="boton" href="/arqueo">Registrar arqueo</Link>}
+          </div>
+        ) : puedeAbrirTurno(perfil.rol) ? (
+          <form action={abrirTurno} className="acciones">
+            <select name="tipo" aria-label="Turno" defaultValue="matutino">
+              <option value="matutino">Matutino</option>
+              <option value="vespertino">Vespertino</option>
+            </select>
+            <BotonEnviar pendiente="Abriendo…">Abrir turno</BotonEnviar>
+          </form>
+        ) : (
+          <p className="vacio">{soloLectura ? "No hay turno abierto." : "No hay turno abierto. Pide al encargado que lo abra."}</p>
+        )}
+      </section>
+
       <section className="seccion" aria-labelledby="t-saldos">
         <h2 id="t-saldos">Saldos</h2>
         <div className="rejilla">
@@ -57,43 +77,23 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         </div>
       </section>
 
-      <section className="seccion" aria-labelledby="t-turno">
-        <h2 id="t-turno">Turno</h2>
-        {turno ? (
-          <div className="acciones">
-            <p>Turno {turno.tipo} abierto desde las {hora(turno.abierto_en)}.</p>
-            {!soloLectura && <Link className="boton" href="/arqueo">Registrar arqueo</Link>}
-          </div>
-        ) : puedeAbrirTurno(perfil.rol) ? (
-          <form action={abrirTurno} className="acciones">
-            <select name="tipo" aria-label="Turno" defaultValue="matutino">
-              <option value="matutino">Matutino</option>
-              <option value="vespertino">Vespertino</option>
-            </select>
-            <BotonEnviar pendiente="Abriendo…">Abrir turno</BotonEnviar>
-          </form>
-        ) : (
-          <p className="vacio">{soloLectura ? "No hay turno abierto." : "No hay turno abierto. Pide al encargado que lo abra."}</p>
-        )}
-      </section>
-
       <section className="seccion" aria-labelledby="t-pendientes">
         <h2 id="t-pendientes">Por confirmar</h2>
         {!pendientes?.length ? (
           <p className="vacio">No hay movimientos esperando confirmación.</p>
         ) : (
           <div className="tabla-contenedor">
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead><tr><th>Hora</th><th>Movimiento</th><th>De → a</th><th>Registró</th><th>Monto</th><th></th></tr></thead>
               <tbody>
                 {pendientes.map((m) => (
                   <tr key={m.id}>
-                    <td>{hora(m.creado_en)}</td>
-                    <td>{NOMBRE_MOVIMIENTO[m.tipo]}</td>
-                    <td>{caja.get(m.caja_origen_id)} → {caja.get(m.caja_destino_id)}</td>
-                    <td>{persona.get(m.registrado_por)}</td>
-                    <td className="monto">{pesos(m.monto)}</td>
-                    <td>
+                    <td data-label="Hora">{hora(m.creado_en)}</td>
+                    <td data-label="Movimiento">{NOMBRE_MOVIMIENTO[m.tipo]}</td>
+                    <td data-label="De → a">{caja.get(m.caja_origen_id)} → {caja.get(m.caja_destino_id)}</td>
+                    <td data-label="Registró">{persona.get(m.registrado_por)}</td>
+                    <td data-label="Monto" className="monto">{pesos(m.monto)}</td>
+                    <td data-label="">
                       {soloLectura ? null : m.registrado_por === perfil.id ? (
                         <span className="saldo-nota">Lo confirma otra persona</span>
                       ) : (

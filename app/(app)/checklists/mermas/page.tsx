@@ -112,19 +112,19 @@ export default async function Mermas({ searchParams }: { searchParams: Promise<{
         <h2 id="t-lista">Mermas de hoy</h2>
         {!mermas?.length ? <p className="vacio">Todavía no hay mermas registradas.</p> : (
           <div className="tabla-contenedor">
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead><tr><th>Hora</th><th>Producto</th><th>Cantidad</th><th>Motivo</th><th>Quién</th><th>Sesión</th></tr></thead>
               <tbody>
                 {mermas.map((m) => {
                   const p = producto.get(m.producto_id);
                   return (
                     <tr key={m.id}>
-                      <td>{hora(m.creado_en)}</td>
-                      <td>{p?.nombre}</td>
-                      <td className="monto">{numeroCorto(Number(m.cantidad))} {p?.unidad}</td>
-                      <td>{NOMBRE_MOTIVO[m.motivo]}</td>
-                      <td>{m.empleado}</td>
-                      <td>{persona.get(m.registrado_por)}</td>
+                      <td data-label="Hora">{hora(m.creado_en)}</td>
+                      <td data-label="Producto">{p?.nombre}</td>
+                      <td data-label="Cantidad" className="monto">{numeroCorto(Number(m.cantidad))} {p?.unidad}</td>
+                      <td data-label="Motivo">{NOMBRE_MOTIVO[m.motivo]}</td>
+                      <td data-label="Quién">{m.empleado}</td>
+                      <td data-label="Sesión">{persona.get(m.registrado_por)}</td>
                     </tr>
                   );
                 })}

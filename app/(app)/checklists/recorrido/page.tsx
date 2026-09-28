@@ -63,16 +63,16 @@ export default async function Recorrido({ searchParams }: { searchParams: Promis
         <h2 id="t-hechos">Recorridos de hoy</h2>
         {!recorridos?.length ? <p className="vacio">Todavía no hay recorridos hoy.</p> : (
           <div className="tabla-contenedor">
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead><tr><th>Hora</th><th>Checklist</th><th>Resultado</th><th>Registró</th></tr></thead>
               <tbody>
                 {recorridos.map((r) => {
                   const fallas = r.recorrido_respuestas.filter((x) => !x.cumple);
                   return (
                     <tr key={r.id}>
-                      <td>{etiquetaHora(r.hora)}</td>
-                      <td>{nombreChecklist.get(r.checklist_id)}</td>
-                      <td>
+                      <td data-label="Hora">{etiquetaHora(r.hora)}</td>
+                      <td data-label="Checklist">{nombreChecklist.get(r.checklist_id)}</td>
+                      <td data-label="Resultado">
                         {fallas.length === 0 ? <span className="estado estado-confirmado">Todo cumple</span> : (
                           <ul className="fallas">
                             {fallas.map((x) => (
@@ -81,7 +81,7 @@ export default async function Recorrido({ searchParams }: { searchParams: Promis
                           </ul>
                         )}
                       </td>
-                      <td>{persona.get(r.registrado_por)} · {hora(r.creado_en)}</td>
+                      <td data-label="Registró">{persona.get(r.registrado_por)} · {hora(r.creado_en)}</td>
                     </tr>
                   );
                 })}

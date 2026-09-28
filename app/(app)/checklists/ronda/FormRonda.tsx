@@ -46,19 +46,21 @@ export function FormRonda({ franjas, zonas, registradas }: { franjas: Franja[]; 
       ) : (
         <p><strong>Ronda de las {etiquetaHora(franja.hora)}</strong></p>
       )}
-      <p className="saldo-nota">Cada zona se guarda por separado: llena solo la tuya si alguien más revisa otra.</p>
+      <p className="saldo-nota">Toca tu zona para abrirla. Cada zona se guarda por separado.</p>
       {!pendientes.length ? <p className="vacio">Todas las zonas de esta hora ya están registradas.</p> : pendientes.map((z) => (
-        <fieldset key={`${z.id}|${franja.hora}`} className="zona">
-          <legend>{z.nombre}</legend>
-          <div className="campo">
-            <label htmlFor={`empleado_${z.id}`}>¿Quién revisó?</label>
-            <input id={`empleado_${z.id}`} name={`empleado_${z.id}`} autoComplete="off" placeholder="Nombre y apellido" />
+        <details key={`${z.id}|${franja.hora}`} className="zona-plegable" open={pendientes.length === 1}>
+          <summary><span className="zona-nombre">{z.nombre}</span><span className="saldo-nota">{z.puntos.length} puntos</span></summary>
+          <div className="zona-cuerpo">
+            <div className="campo">
+              <label htmlFor={`empleado_${z.id}`}>¿Quién revisó?</label>
+              <input id={`empleado_${z.id}`} name={`empleado_${z.id}`} autoComplete="off" placeholder="Nombre y apellido" />
+            </div>
+            <FormPuntos puntos={z.puntos} prefijo={`${z.id}:`} requerido={false} />
+            <div className="acciones"><BotonEnviar>Guardar {z.nombre}</BotonEnviar></div>
           </div>
-          <FormPuntos puntos={z.puntos} prefijo={`${z.id}:`} requerido={false} />
-        </fieldset>
+        </details>
       ))}
       {aviso && <p className="aviso aviso-error" role="alert">{aviso}</p>}
-      {!!pendientes.length && <div className="acciones"><BotonEnviar>Guardar ronda</BotonEnviar></div>}
     </form>
   );
 }

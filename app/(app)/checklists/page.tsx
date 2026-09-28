@@ -8,6 +8,7 @@ import { fueraDeRango } from "@/lib/amasado";
 import { areaDelDia, diaSemanaISO } from "@/lib/limpiezaProfunda";
 import type { AreaLimpieza, Checklist, CierreMerma, LecturaMasa, Momento, NormaMasa } from "@/lib/tipos";
 import { contarListas, filasListas } from "@/lib/zonas";
+import { Plegable } from "./Plegable";
 import { TarjetasListas } from "./TarjetasListas";
 
 type LecturaResumen = Pick<LecturaMasa, "hora" | "temp_area" | "bolas" | "en_norma">;
@@ -75,6 +76,12 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
       return { hora: h, estado: estadoCasilla(registro, { fecha, hora: h }, ahora) };
     });
 
+  const rondasHechas = (registrosListas ?? []).filter((r) => r.momento === "hora");
+  const hechasRonda = rondasHechas.length;
+  const totalRonda = zonasRonda.reduce((s, c) => s + c.horas.length, 0);
+  const fallasRonda = rondasHechas.filter((r) => r.registro_respuestas.some((x) => !x.cumple)).length;
+  const masaFuera = casillasMasa.filter((c) => c.estado === "alerta").length;
+  const totalRecorrido = listas.reduce((s, c) => s + c.horas.length, 0);
   const esHoy = fecha === hoy;
   const totalMermas = mermas ?? 0;
 
@@ -95,29 +102,24 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
 
       {porRevisar > 0 && <p className="aviso aviso-info">{porRevisar} {porRevisar === 1 ? "registro espera" : "registros esperan"} "Revisado" del encargado.</p>}
 
-      <section className="seccion" aria-labelledby="t-ronda">
-        <div className="acciones">
-          <h2 id="t-ronda">Ronda de la hora</h2>
-          {esHoy && !soloLectura && <Link className="boton" href="/checklists/ronda">Registrar</Link>}
-        </div>
+      <Plegable id="t-ronda" titulo="Ronda de la hora" alerta={fallasRonda > 0}
+        resumen={`${hechasRonda} de ${totalRonda} horas${fallasRonda ? ` · ${fallasRonda} con fallas` : ""}`}>
+        {esHoy && !soloLectura && <Link className="boton" href="/checklists/ronda">Registrar ronda</Link>}
         {zonasRonda.map((c) => (
           <div key={c.id} className="formulario">
             <h3>{c.nombre}</h3>
             <Franjas titulo={c.nombre} casillas={casillasRonda(c)} />
           </div>
         ))}
-      </section>
+      </Plegable>
 
-      <section className="seccion" aria-labelledby="t-turno">
-        <div className="acciones">
-          <h2 id="t-turno">Listas del turno · {conteoListas.hechas} de {conteoListas.total}</h2>
-          {esHoy && !soloLectura && <Link className="boton" href="/checklists/turno">Abrir</Link>}
-        </div>
+      <Plegable id="t-turno" titulo="Listas del turno" resumen={`${conteoListas.hechas} de ${conteoListas.total} hechas`}>
+        {esHoy && !soloLectura && <Link className="boton" href="/checklists/turno">Abrir listas</Link>}
         <TarjetasListas filas={filas} enlace={esHoy} />
-      </section>
+      </Plegable>
 
-      <section className="seccion" aria-labelledby="t-otros">
-        <h2 id="t-otros">Amasado y limpieza profunda</h2>
+      <Plegable id="t-otros" titulo="Amasado y limpieza profunda" alerta={lotesFuera > 0}
+        resumen={`${(lotes ?? []).length} ${(lotes ?? []).length === 1 ? "lote" : "lotes"}${lotesFuera ? ` · ${lotesFuera} fuera de rango` : ""} · limpieza ${limpieza ? "hecha" : "pendiente"}`}>
         <p>
           {(lotes ?? []).length} {(lotes ?? []).length === 1 ? "lote de amasado" : "lotes de amasado"}
           {lotesFuera ? <>, <span className="alerta-texto">{lotesFuera} fuera de rango</span></> : ""}.
@@ -126,39 +128,31 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
           Limpieza profunda ({areaDelDia(areas ?? [], fecha) ?? "sin área"}):{" "}
           {limpieza ? `hecha por ${limpieza.empleado}${limpieza.revisado_por ? " y revisada" : ", falta revisar"}.` : "pendiente."}
         </p>
-      </section>
+      </Plegable>
 
-      <section className="seccion" aria-labelledby="t-masa">
-        <div className="acciones">
-          <h2 id="t-masa">Temperatura de masa</h2>
-          {esHoy && !soloLectura && <Link className="boton" href="/checklists/masa">Registrar</Link>}
-        </div>
+      <Plegable id="t-masa" titulo="Temperatura de masa" alerta={masaFuera > 0}
+        resumen={`${(lecturas ?? []).length} de ${(normas ?? []).length} horas${masaFuera ? ` · ${masaFuera} por revisar` : ""}`}>
+        {esHoy && !soloLectura && <Link className="boton" href="/checklists/masa">Registrar masa</Link>}
         <Franjas titulo="Horas de temperatura de masa" casillas={casillasMasa} />
-      </section>
+      </Plegable>
 
-      <section className="seccion" aria-labelledby="t-recorrido">
-        <div className="acciones">
-          <h2 id="t-recorrido">Recorrido de supervisor</h2>
-          {esHoy && !soloLectura && <Link className="boton" href="/checklists/recorrido">Registrar</Link>}
-        </div>
+      <Plegable id="t-recorrido" titulo="Recorrido de supervisor" resumen={`${(recorridos ?? []).length} de ${totalRecorrido} horas`}>
+        {esHoy && !soloLectura && <Link className="boton" href="/checklists/recorrido">Registrar recorrido</Link>}
         {listas.map((c) => (
           <div key={c.id} className="formulario">
             <h3>{c.nombre}</h3>
             <Franjas titulo={c.nombre} casillas={casillasRecorrido(c)} />
           </div>
         ))}
-      </section>
+      </Plegable>
 
-      <section className="seccion" aria-labelledby="t-mermas">
-        <div className="acciones">
-          <h2 id="t-mermas">Mermas</h2>
-          {esHoy && !soloLectura && <Link className="boton" href="/checklists/mermas">Registrar</Link>}
-        </div>
+      <Plegable id="t-mermas" titulo="Mermas" resumen={`${totalMermas} · ${cierre ? "cerradas" : "sin cerrar"}`}>
+        {esHoy && !soloLectura && <Link className="boton" href="/checklists/mermas">Registrar mermas</Link>}
         <p>
           {totalMermas} {totalMermas === 1 ? "merma registrada" : "mermas registradas"}.{" "}
           {cierre ? `Cerradas a las ${hora(cierre.cerrado_en)} y capturadas en Dodo IS.` : "Falta cerrarlas."}
         </p>
-      </section>
+      </Plegable>
     </>
   );
 }

@@ -50,15 +50,15 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
         <section className="seccion" aria-labelledby="t-turno">
           <h2 id="t-turno">Arqueos de este turno</h2>
           <div className="tabla-contenedor">
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead><tr><th>Hora</th><th>Momento</th><th>Entregó</th><th>Recibió</th><th>Esperado</th><th>Contado</th><th>Diferencia</th></tr></thead>
               <tbody>
                 {arqueos.map((a) => (
                   <tr key={a.id}>
-                    <td>{hora(a.creado_en)}</td>
-                    <td>{NOMBRE_MOMENTO[a.momento]}</td>
-                    <td>{persona.get(a.entrega_id)}</td>
-                    <td>
+                    <td data-label="Hora">{hora(a.creado_en)}</td>
+                    <td data-label="Momento">{NOMBRE_MOMENTO[a.momento]}</td>
+                    <td data-label="Entregó">{persona.get(a.entrega_id)}</td>
+                    <td data-label="Recibió">
                       {a.recibe_id ? persona.get(a.recibe_id) : soloLectura || a.entrega_id === perfil.id ? (
                         <span className="saldo-nota">Pendiente</span>
                       ) : (
@@ -68,9 +68,9 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
                         </form>
                       )}
                     </td>
-                    <td className="monto">{pesos(a.esperado)}</td>
-                    <td className="monto">{pesos(a.total_contado)}</td>
-                    <td className="monto" style={{ color: Number(a.diferencia) === 0 ? "var(--cuadra)" : "var(--alerta)" }}>{pesos(a.diferencia)}</td>
+                    <td data-label="Esperado" className="monto">{pesos(a.esperado)}</td>
+                    <td data-label="Contado" className="monto">{pesos(a.total_contado)}</td>
+                    <td data-label="Diferencia" className="monto" style={{ color: Number(a.diferencia) === 0 ? "var(--cuadra)" : "var(--alerta)" }}>{pesos(a.diferencia)}</td>
                   </tr>
                 ))}
               </tbody>

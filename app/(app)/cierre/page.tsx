@@ -82,7 +82,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
       <form action={cerrarDia} className="pagina" style={{ padding: 0 }}>
         <section className="seccion" aria-labelledby="t-ventas">
           <h2 id="t-ventas">Ventas según Dodo IS</h2>
-          <div className="rejilla">
+          <div className="rejilla rejilla-corta">
             {campo("efectivo", "Efectivo")}
             {campo("tarjeta", "Tarjeta")}
             {campo("app", "App o pago en línea")}
@@ -106,7 +106,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="= Debe haber en bóveda" valor={pesos(esperado)} fuerte />
             <Fila texto="Diferencia de los arqueos de turno" valor={pesos(d.diferenciaTurnos)} />
           </tbody></table>
-          <div className="rejilla">
+          <div className="rejilla rejilla-corta">
             {campo("boveda_contado", "Efectivo contado en bóveda")}
             {campo("cambios_contado", "Fondo de cambios contado", `Debe sumar ${pesos(sucursal.fondo_cambios)}`)}
           </div>

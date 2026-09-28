@@ -8,6 +8,14 @@ export function FormPuntos({
 }: { puntos: { id: string; orden: number; texto: string }[]; prefijo?: string; requerido: boolean }) {
   const [valores, setValores] = useState<Record<string, "si" | "no">>({});
   return (
+    <>
+    <div className="acciones">
+      <button type="button" className="boton boton-secundario"
+        onClick={() => setValores(Object.fromEntries(puntos.map((p) => [p.id, "si" as const])))}>
+        Todo cumple
+      </button>
+      <span className="saldo-nota">Luego cambia solo lo que no cumple.</span>
+    </div>
     <ol className="puntos">
       {puntos.map((p) => (
         <li key={p.id} className="punto">
@@ -35,5 +43,6 @@ export function FormPuntos({
         </li>
       ))}
     </ol>
+    </>
   );
 }
