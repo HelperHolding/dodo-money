@@ -4,6 +4,7 @@ import {
   buscarSucursal, extraerProductos, extraerVentas, revisarPar,
   type Desglose, type Montos, type ProductoVendido,
 } from "@/lib/ventas/extraer";
+import { leerTodo } from "@/lib/ventas/paginar";
 import { leerPrimeraHoja } from "@/lib/ventas/xlsx";
 
 export type Revision = {
@@ -51,13 +52,15 @@ export async function prepararImportacion(supabase: SupabaseClient, fd: FormData
   const [previo, catalogo, costos] = await Promise.all([
     supabase.from("ventas_dia").select("total").eq("sucursal_id", sucursal.id).eq("fecha", ventas.fecha).maybeSingle<{ total: number }>(),
     supabase.from("productos_venta").select("dodo_id, categoria").in("dodo_id", ids).returns<{ dodo_id: number; categoria: string | null }[]>(),
-    supabase.from("costos_producto").select("dodo_id").in("dodo_id", ids).lte("vigente_desde", ventas.fecha).returns<{ dodo_id: number }[]>(),
+    leerTodo<{ dodo_id: number }>((desde, hasta) => supabase.from("costos_producto").select("dodo_id")
+      .in("dodo_id", ids).lte("vigente_desde", ventas.fecha).order("dodo_id").order("vigente_desde").range(desde, hasta)
+      .returns<{ dodo_id: number }[]>()),
   ]);
-  const fallo = previo.error ?? catalogo.error ?? costos.error;
+  const fallo = previo.error ?? catalogo.error;
   if (fallo) throw new Error(`No se pudo revisar el catálogo: ${fallo.message}`);
 
   const categoria = new Map((catalogo.data ?? []).map((c) => [c.dodo_id, c.categoria]));
-  const conCosto = new Set((costos.data ?? []).map((c) => c.dodo_id));
+  const conCosto = new Set(costos.map((c) => c.dodo_id));
   const nombres = (cumple: (p: ProductoVendido) => boolean) => productos.productos.filter(cumple).map((p) => p.nombre);
 
   return {

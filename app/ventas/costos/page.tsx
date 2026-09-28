@@ -4,9 +4,9 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyMX, pesos } from "@/lib/formato";
-import { primerError } from "@/lib/corporativo";
 import { puedeImportarVentas } from "@/lib/roles";
 import { CATEGORIAS, costoVigente, NOMBRE_CATEGORIA, type Categoria, type Tamano } from "@/lib/ventas/calculos";
+import { leerTodo } from "@/lib/ventas/paginar";
 import { asignarCategoria, registrarCosto } from "./acciones";
 
 type Producto = { dodo_id: number; nombre: string; categoria: Categoria | null; tamano: Tamano | null };
@@ -23,18 +23,18 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
   const filtro: Filtro | undefined = ver === "sin-costo" || ver === "sin-categoria" ? ver : undefined;
   const hoy = hoyMX();
 
-  const resultados = await Promise.all([
-    supabase.from("productos_venta").select("dodo_id, nombre, categoria, tamano").order("nombre").returns<Producto[]>(),
-    supabase.from("costos_producto").select("dodo_id, costo, vigente_desde, fuente, nota").order("vigente_desde", { ascending: false }).returns<Costo[]>(),
+  // Todas las páginas: con cada recarga de costos la tabla crece y Supabase corta en 1000 sin avisar.
+  const [productos, costos] = await Promise.all([
+    leerTodo<Producto>((desde, hasta) => supabase.from("productos_venta").select("dodo_id, nombre, categoria, tamano")
+      .order("nombre").order("dodo_id").range(desde, hasta).returns<Producto[]>()),
+    leerTodo<Costo>((desde, hasta) => supabase.from("costos_producto").select("dodo_id, costo, vigente_desde, fuente, nota")
+      .order("dodo_id").order("vigente_desde", { ascending: false }).range(desde, hasta).returns<Costo[]>()),
   ]);
-  const fallo = primerError(resultados);
-  if (fallo) throw new Error(`No se pudo cargar el catálogo: ${fallo}`);
-  const [{ data: productos }, { data: costos }] = resultados;
 
   const costosDe = new Map<number, Costo[]>();
-  for (const c of costos ?? []) costosDe.set(c.dodo_id, [...(costosDe.get(c.dodo_id) ?? []), c]);
+  for (const c of costos) costosDe.set(c.dodo_id, [...(costosDe.get(c.dodo_id) ?? []), c]);
   const vigente = (p: Producto) => costoVigente(costosDe.get(p.dodo_id) ?? [], hoy);
-  const visibles = (productos ?? []).filter((p) =>
+  const visibles = productos.filter((p) =>
     filtro === "sin-costo" ? !vigente(p) : filtro === "sin-categoria" ? !p.categoria : true);
   const grupos = ([null, ...CATEGORIAS] as (Categoria | null)[])
     .map((c) => ({ categoria: c, productos: visibles.filter((p) => p.categoria === c) }))

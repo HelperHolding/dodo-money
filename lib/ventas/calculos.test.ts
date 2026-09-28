@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { leerPrimeraHoja } from "./xlsx.ts";
 import { extraerProductos, extraerVentas } from "./extraer.ts";
 import {
-  compararConCierre, costeo, costoVigente, descuentos, diasConCierre, errorDeCosto, separarDesglose, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido, periodoPorDefecto,
+  compararConCierre, costearProductos, costeo, costoVigente, descuentos, diasConCierre, errorDeCosto, separarDesglose, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido, periodoPorDefecto,
   porProducto, resumenVentas, tamanoPorNombre, topProductos, type Categoria, type RenglonCosteo, type VentaDia,
 } from "./calculos.ts";
 
@@ -175,4 +175,29 @@ test("separarDesglose: el tipo de servicio suma el total; el origen es otra form
   assert.deepEqual(servicio.map((t) => t.tipo), ["entrega", "restaurante"]);
   assert.equal(servicio.reduce((s, t) => s + t.total, 0), 150);
   assert.deepEqual(origen, [{ tipo: "app", pedidos: 2, total: 100 }]);
+});
+
+test("costearProductos da lo mismo que la vista ventas_producto_costeo", () => {
+  const ventasProducto = productos.productos.map((p) => ({ sucursal_id: "s", fecha: productos.fecha, ...p }));
+  const catalogo = Object.entries(SEED).map(([id, [categoria]]) => ({ dodo_id: Number(id), categoria }));
+  const costos = Object.entries(SEED).filter(([, [, c]]) => c !== null)
+    .map(([id, [, costo]]) => ({ dodo_id: Number(id), costo: costo as number, vigente_desde: "2026-08-09" }));
+  const calculados = costearProductos(ventasProducto, [dia], catalogo, costos);
+  assert.equal(calculados.length, 31);
+  assert.equal(costeo(calculados).total.costo, 2187.19);
+  assert.equal(costeo(calculados).total.ventaNetaConCosto, 6463.77);
+  const margarita = calculados.find((r) => r.dodo_id === 27)!;
+  assert.equal(margarita.categoria, "pizza");
+  assert.equal(margarita.costo_unitario, 26.74);
+  assert.equal(margarita.importe_neto.toFixed(4), (143.4 * factor).toFixed(4));
+});
+
+test("costearProductos: sin día importado no prorratea; costo futuro o producto fuera del catálogo quedan sin costo", () => {
+  const venta = { sucursal_id: "s", fecha: "2026-08-01", dodo_id: 27, nombre: "Margarita Mediano", cantidad: 1, importe: 100, importe_sin_descuento: 100 };
+  const [r] = costearProductos([venta], [], [{ dodo_id: 27, categoria: "pizza" }], [{ dodo_id: 27, costo: 26.74, vigente_desde: "2026-08-09" }]);
+  assert.equal(r.importe_neto, 100);
+  assert.equal(r.costo_unitario, null);
+  const [s] = costearProductos([{ ...venta, dodo_id: 5 }], [{ ...dia, fecha: "2026-08-01", total: 0, iva: 0 }], [], []);
+  assert.equal(s.categoria, null);
+  assert.equal(s.importe_neto, 100);
 });

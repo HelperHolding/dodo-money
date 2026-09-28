@@ -50,6 +50,39 @@ export type RenglonCosteo = {
   cantidad: number; importe: number; importe_sin_descuento: number; importe_neto: number; costo_unitario: number | null;
 };
 
+/** Un renglón de ventas_producto. */
+export type VentaProducto = {
+  sucursal_id: string; fecha: string; dodo_id: number; nombre: string;
+  cantidad: number; importe: number; importe_sin_descuento: number;
+};
+
+/**
+ * Lo mismo que la vista ventas_producto_costeo, calculado aquí: la vista recalcula el costo vigente de cada renglón
+ * en cada página, y en periodos largos de todas las sucursales eso se vuelve lento.
+ */
+export function costearProductos(
+  ventas: readonly VentaProducto[],
+  dias: readonly VentaDia[],
+  catalogo: readonly { dodo_id: number; categoria: Categoria | null }[],
+  costos: readonly (Costo & { dodo_id: number })[],
+): RenglonCosteo[] {
+  const dia = new Map(dias.map((d) => [`${d.sucursal_id}|${d.fecha}`, d]));
+  const categoria = new Map(catalogo.map((p) => [p.dodo_id, p.categoria]));
+  const costosDe = new Map<number, (Costo & { dodo_id: number })[]>();
+  for (const c of costos) costosDe.set(c.dodo_id, [...(costosDe.get(c.dodo_id) ?? []), c]);
+  return ventas.map((v) => {
+    const d = dia.get(`${v.sucursal_id}|${v.fecha}`);
+    const total = Number(d?.total ?? 0);
+    const costo = costoVigente(costosDe.get(v.dodo_id) ?? [], v.fecha);
+    return {
+      fecha: v.fecha, dodo_id: v.dodo_id, nombre: v.nombre, categoria: categoria.get(v.dodo_id) ?? null,
+      cantidad: Number(v.cantidad), importe: Number(v.importe), importe_sin_descuento: Number(v.importe_sin_descuento),
+      importe_neto: total > 0 ? (Number(v.importe) * (total - Number(d!.iva))) / total : Number(v.importe),
+      costo_unitario: costo ? Number(costo.costo) : null,
+    };
+  });
+}
+
 export type ProductoPeriodo = {
   dodo_id: number; nombre: string; categoria: Categoria | null;
   piezas: number; importe: number; sinDescuento: number; descuento: number; ventaNeta: number;
