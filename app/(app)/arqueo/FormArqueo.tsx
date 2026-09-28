@@ -98,25 +98,26 @@ export function FormArqueo({
 
       <section className="seccion" aria-labelledby="t-otros">
         <h2 id="t-otros">Otros métodos de pago</h2>
-        <div className="tabla-contenedor">
-          <table className="tabla">
-            <thead><tr><th>Método</th><th>Real</th><th>Dodo IS</th></tr></thead>
-            <tbody>
-              {[
-                ["tarjeta", "Tarjeta (cierre de terminal)"],
-                ["app", "App o pago en línea"],
-                ["rappi", "Rappi"],
-              ].map(([clave, texto]) => (
-                <tr key={clave}>
-                  <td>{texto}</td>
-                  <td><input name={`${clave}_real`} type="number" inputMode="decimal" min="0" step="0.01" aria-label={`${texto}, real`} /></td>
-                  <td><input name={`${clave}_sistema`} type="number" inputMode="decimal" min="0" step="0.01" aria-label={`${texto}, Dodo IS`} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="rejilla">
+        {[
+          ["tarjeta", "Tarjeta (cierre de terminal)"],
+          ["app", "App o pago en línea"],
+          ["rappi", "Rappi"],
+        ].map(([clave, texto]) => (
+          <fieldset key={clave} className="campo metodo-pago">
+            <legend className="etiqueta">{texto}</legend>
+            <div className="rejilla rejilla-corta">
+              <div className="campo">
+                <label htmlFor={`${clave}_real`}>Real</label>
+                <input id={`${clave}_real`} name={`${clave}_real`} type="number" inputMode="decimal" min="0" step="0.01" />
+              </div>
+              <div className="campo">
+                <label htmlFor={`${clave}_sistema`}>Dodo IS</label>
+                <input id={`${clave}_sistema`} name={`${clave}_sistema`} type="number" inputMode="decimal" min="0" step="0.01" />
+              </div>
+            </div>
+          </fieldset>
+        ))}
+        <div className="rejilla rejilla-corta">
           <div className="campo">
             <label htmlFor="transacciones">Transacciones</label>
             <input id="transacciones" name="transacciones" type="number" inputMode="numeric" min="0" step="1" />

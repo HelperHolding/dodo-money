@@ -97,6 +97,8 @@ a { color: var(--accion-oscuro); }
 .pagina > * { min-width: 0; }
 /* Formularios largos (arqueo, cierre): columna a lo ancho de la página, sin el margen automático de .pagina. */
 .formulario-pagina { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.metodo-pago { padding-bottom: 14px; border-bottom: 1px solid var(--papel-2); }
+.metodo-pago .campo label { font-weight: 400; color: var(--tinta-2); }
 
 /* ─── Saldos ─── */
 .saldo { border-left: 4px solid var(--accion); padding: 4px 0 4px 14px; display: flex; flex-direction: column; gap: 2px; }
