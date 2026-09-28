@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { leerPrimeraHoja } from "./xlsx.ts";
 import { extraerProductos, extraerVentas } from "./extraer.ts";
 import {
-  compararConCierre, costeo, costoVigente, descuentos, diasConCierre, errorDeCosto, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido, periodoPorDefecto,
+  compararConCierre, costeo, costoVigente, descuentos, diasConCierre, errorDeCosto, separarDesglose, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido, periodoPorDefecto,
   porProducto, resumenVentas, tamanoPorNombre, topProductos, type Categoria, type RenglonCosteo, type VentaDia,
 } from "./calculos.ts";
 
@@ -163,4 +163,16 @@ test("errorDeCosto", () => {
   assert.match(errorDeCosto(Number.NaN, "2026-10-01") ?? "", /costo válido/);
   assert.match(errorDeCosto(10, "2026-02-30") ?? "", /fecha/);
   assert.match(errorDeCosto(10, "") ?? "", /fecha/);
+});
+
+test("separarDesglose: el tipo de servicio suma el total; el origen es otra forma de partirlo", () => {
+  const filas = [
+    { tipo: "entrega" as const, pedidos: 2, total: 100 },
+    { tipo: "app" as const, pedidos: 2, total: 100 },
+    { tipo: "restaurante" as const, pedidos: 1, total: 50 },
+  ];
+  const { servicio, origen } = separarDesglose(filas);
+  assert.deepEqual(servicio.map((t) => t.tipo), ["entrega", "restaurante"]);
+  assert.equal(servicio.reduce((s, t) => s + t.total, 0), 150);
+  assert.deepEqual(origen, [{ tipo: "app", pedidos: 2, total: 100 }]);
 });

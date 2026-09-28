@@ -6,7 +6,7 @@ import { fechaTexto, pesos, porcentaje } from "@/lib/formato";
 import { puedeImportarVentas, veVentasDeTodas } from "@/lib/roles";
 import {
   costeo, descuentos, diasConCierre, NOMBRE_CATEGORIA, NOMBRE_TIPO, periodoAnterior, periodoElegido,
-  periodoPorDefecto, porProducto, resumenVentas, sumarDesglose, topProductos, ventaPorDia, type Categoria,
+  periodoPorDefecto, porProducto, resumenVentas, separarDesglose, topProductos, ventaPorDia, type Categoria,
 } from "@/lib/ventas/calculos";
 import { datosVentas, ultimoDiaConDatos } from "./datos";
 
@@ -42,7 +42,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const desc = descuentos(productos);
   const top = topProductos(productos, d.anterior);
   const porDia = ventaPorDia(d.dias);
-  const tipos = sumarDesglose(d.dias.flatMap((x) => x.ventas_dia_desglose));
+  const tipos = separarDesglose(d.dias.flatMap((x) => x.ventas_dia_desglose));
   const cierre = diasConCierre(d.dias, d.cierres);
   const conDiferencia = cierre.comparados.filter((c) => c.alerta);
   const m2 = sucursal ? d.dias.filter((x) => x.venta_m2 !== null) : [];
@@ -90,10 +90,18 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         <Grafica titulo="Venta por día" barras={porDia.map((x) => ({
           clave: x.fecha, etiqueta: fechaTexto(x.fecha), valor: x.total, texto: `${pesos(x.total)} · ${x.pedidos} ped.`,
         }))} />
-        <h3>Por tipo</h3>
-        <Grafica titulo="Venta por tipo" barras={tipos.map((t) => ({
+        <h3>Por tipo de servicio</h3>
+        <Grafica titulo="Venta por tipo de servicio" barras={tipos.servicio.map((t) => ({
           clave: t.tipo, etiqueta: NOMBRE_TIPO[t.tipo], valor: t.total, texto: `${pesos(t.total)} · ${t.pedidos} ped.`,
         }))} />
+        {tipos.origen.length > 0 && (
+          <>
+            <h3>Por origen del pedido</h3>
+            <Grafica titulo="Venta por origen del pedido" barras={tipos.origen.map((t) => ({
+              clave: t.tipo, etiqueta: NOMBRE_TIPO[t.tipo], valor: t.total, texto: `${pesos(t.total)} · ${t.pedidos} ped.`,
+            }))} />
+          </>
+        )}
         <h3>Por forma de pago</h3>
         <Grafica titulo="Venta por forma de pago" barras={[
           { clave: "efectivo", etiqueta: "Efectivo", valor: resumen.efectivo, texto: pesos(resumen.efectivo) },

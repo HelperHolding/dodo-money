@@ -217,6 +217,20 @@ export function sumarDesglose(filas: readonly { tipo: TipoDesglose; pedidos: num
   return [...mapa.values()].filter((t) => t.total || t.pedidos).sort((a, b) => b.total - a.total);
 }
 
+/**
+ * Entrega, llevadera y restaurante reparten el total por tipo de servicio; centro de llamadas, sitio, app y agregador
+ * lo reparten por origen del pedido. Un mismo pedido está en los dos, así que no se suman juntos.
+ */
+const TIPOS_SERVICIO: readonly TipoDesglose[] = ["entrega", "llevadera", "restaurante"];
+
+export function separarDesglose(filas: readonly { tipo: TipoDesglose; pedidos: number; total: number }[]) {
+  const todos = sumarDesglose(filas);
+  return {
+    servicio: todos.filter((t) => TIPOS_SERVICIO.includes(t.tipo)),
+    origen: todos.filter((t) => !TIPOS_SERVICIO.includes(t.tipo)),
+  };
+}
+
 /** Cada día importado que tiene cierre del gerente, con su comparación; y cuántos días no tienen cierre. */
 export function diasConCierre(dias: readonly VentaDia[], cierres: readonly CierreDia[]) {
   const porClave = new Map(cierres.map((c) => [`${c.sucursal_id}|${c.fecha}`, c]));
