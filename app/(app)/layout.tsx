@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { obtenerContexto } from "@/lib/contexto";
+import { enlacesSucursal } from "@/lib/roles";
 import { hora } from "@/lib/formato";
 import { cerrarSesion } from "@/app/login/actions";
 
@@ -27,7 +28,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
           Viendo {sucursal.nombre} · Solo lectura · <Link href="/corporativo">Volver a corporativo</Link>
         </p>
       )}
-      <Nav corporativo={soloLectura} />
+      <Nav enlaces={enlacesSucursal(perfil.rol)} />
       <main className="pagina">{children}</main>
     </>
   );
