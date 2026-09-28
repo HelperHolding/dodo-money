@@ -41,7 +41,7 @@ export function FormArqueo({
   );
 
   return (
-    <form action={registrarArqueo} className="pagina" style={{ padding: 0 }}>
+    <form action={registrarArqueo} className="formulario-pagina">
       <input type="hidden" name="conteo" value={JSON.stringify(conteo)} />
 
       <section className="seccion" aria-labelledby="t-momento">

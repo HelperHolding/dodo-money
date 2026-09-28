@@ -95,6 +95,8 @@ a { color: var(--accion-oscuro); }
 .rejilla { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .rejilla-corta { grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); }
 .pagina > * { min-width: 0; }
+/* Formularios largos (arqueo, cierre): columna a lo ancho de la página, sin el margen automático de .pagina. */
+.formulario-pagina { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
 
 /* ─── Saldos ─── */
 .saldo { border-left: 4px solid var(--accion); padding: 4px 0 4px 14px; display: flex; flex-direction: column; gap: 2px; }
@@ -301,6 +303,9 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   h1 { font-size: 1.7rem; }
 
   /* Tablas como tarjetas: cada renglón es una tarjeta con "etiqueta: valor". */
+  .conteo td:first-child { width: 72px; }
+  .conteo td:last-child { width: 88px; }
+
   .tabla-contenedor:has(.tabla-tarjetas) { overflow: visible; }
   .tabla-tarjetas thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .tabla-tarjetas, .tabla-tarjetas tbody, .tabla-tarjetas tr, .tabla-tarjetas td { display: block; width: 100%; }

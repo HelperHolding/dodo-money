@@ -79,7 +79,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
       {turno && <p className="aviso aviso-error">Hay un turno abierto. Ciérralo con su <Link href="/arqueo">arqueo de cierre</Link> primero.</p>}
       {d.pendientes > 0 && <p className="aviso aviso-error">Hay {d.pendientes} movimientos sin confirmar en <Link href="/movimientos">Movimientos</Link>.</p>}
 
-      <form action={cerrarDia} className="pagina" style={{ padding: 0 }}>
+      <form action={cerrarDia} className="formulario-pagina">
         <section className="seccion" aria-labelledby="t-ventas">
           <h2 id="t-ventas">Ventas según Dodo IS</h2>
           <div className="rejilla rejilla-corta">
