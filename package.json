@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test lib/franjas.test.ts lib/masa.test.ts lib/formato.test.ts lib/fotos.test.ts lib/roles.test.ts lib/corporativo.test.ts lib/limpiezaProfunda.test.ts lib/amasado.test.ts lib/zonas.test.ts lib/arqueo.test.ts lib/ventas/extraer.test.ts"
+    "test": "node --experimental-strip-types --test lib/franjas.test.ts lib/masa.test.ts lib/formato.test.ts lib/fotos.test.ts lib/roles.test.ts lib/corporativo.test.ts lib/limpiezaProfunda.test.ts lib/amasado.test.ts lib/zonas.test.ts lib/arqueo.test.ts lib/ventas/extraer.test.ts lib/ventas/calculos.test.ts lib/ventas/paginar.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
