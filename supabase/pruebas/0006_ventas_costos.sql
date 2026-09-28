@@ -50,6 +50,13 @@ begin
     if sqlerrm like 'FALLÓ%' then raise; end if;
     if sqlerrm not like 'Solo un administrador asigna%' then raise exception 'FALLÓ: mensaje inesperado (gerente categoría): %', sqlerrm; end if;
   end;
+  begin
+    perform corregir_costo((select id from costos_producto where dodo_id = 27 limit 1), 1);
+    raise exception 'FALLÓ: gerente no debe corregir costos';
+  exception when others then
+    if sqlerrm like 'FALLÓ%' then raise; end if;
+    if sqlerrm not like 'Solo un administrador corrige%' then raise exception 'FALLÓ: mensaje inesperado (gerente corrige): %', sqlerrm; end if;
+  end;
   v_ok := array_append(v_ok, 'gerente no importa ni maneja costos');
 
   -- ── Admin: importa, reimporta, costos y categorías ────────────────────────
@@ -101,7 +108,7 @@ begin
   v_ok := array_append(v_ok, 'día sin ventas se importa en ceros');
 
   -- Costos por fecha de vigencia.
-  insert into costos_producto (dodo_id, costo, vigente_desde, fuente) values (999001, 10, '2000-01-01', 'prueba'), (999001, 12, '2000-01-05', 'prueba');
+  insert into costos_producto (dodo_id, costo, vigente_desde, fuente, nota) values (999001, 10, '2000-01-01', 'prueba', null), (999001, 12, '2000-01-05', 'prueba', 'dudoso');
   if costo_vigente(999001, '1999-12-31') is not null then raise exception 'FALLÓ: antes de la vigencia no hay costo'; end if;
   if costo_vigente(999001, '2000-01-02') <> 10 then raise exception 'FALLÓ: el 2 de enero aplica el costo de 10'; end if;
   if costo_vigente(999001, '2000-01-05') <> 12 then raise exception 'FALLÓ: desde el 5 de enero aplica el costo de 12'; end if;
@@ -115,6 +122,23 @@ begin
     if sqlerrm not like '%row-level security%' then raise exception 'FALLÓ: mensaje inesperado (costo a nombre de otro): %', sqlerrm; end if;
   end;
   v_ok := array_append(v_ok, 'costo vigente por fecha');
+
+  -- Corregir un error de captura: cambia el renglón, quita la nota y deja bitácora.
+  perform corregir_costo((select id from costos_producto where dodo_id = 999001 and vigente_desde = '2000-01-05'), 12.5);
+  if costo_vigente(999001, '2000-01-05') <> 12.5 then raise exception 'FALLÓ: la corrección debe cambiar el costo'; end if;
+  select count(*) into v_n from costos_producto where dodo_id = 999001 and vigente_desde = '2000-01-05' and nota is null;
+  if v_n <> 1 then raise exception 'FALLÓ: la corrección debe quitar la nota'; end if;
+  select count(*) into v_n from correcciones_costo k join costos_producto c on c.id = k.costo_id
+   where c.dodo_id = 999001 and k.costo_anterior = 12 and k.costo_nuevo = 12.5 and k.nota_anterior = 'dudoso' and k.corregido_por = v_a;
+  if v_n <> 1 then raise exception 'FALLÓ: la corrección debe quedar en la bitácora con el valor y la nota anteriores'; end if;
+  begin
+    perform corregir_costo((select id from costos_producto where dodo_id = 999001 and vigente_desde = '2000-01-05'), -1);
+    raise exception 'FALLÓ: un costo negativo no se acepta';
+  exception when others then
+    if sqlerrm like 'FALLÓ%' then raise; end if;
+    if sqlerrm not like 'Escribe un costo válido%' then raise exception 'FALLÓ: mensaje inesperado (costo negativo): %', sqlerrm; end if;
+  end;
+  v_ok := array_append(v_ok, 'admin corrige un costo con bitácora');
 
   -- La vista: costo teórico e importe neto (sin IVA, prorrateado).
   select costo_teorico into v_num from ventas_producto_costeo where sucursal_id = v_suc_b and fecha = '2000-01-02' and dodo_id = 999001;
@@ -158,6 +182,7 @@ begin
     execute 'set local role authenticated';
     select (select count(*) from ventas_dia) + (select count(*) from ventas_producto) + (select count(*) from productos_venta)
          + (select count(*) from costos_producto) + (select count(*) from importaciones_ventas) + (select count(*) from ventas_dia_desglose)
+         + (select count(*) from correcciones_costo)
       into v_n;
     if v_n <> 0 then raise exception 'FALLÓ: % no debe ver ventas ni costos (ve % renglones)', v_txt, v_n; end if;
   end loop;
@@ -192,6 +217,13 @@ begin
   exception when others then
     if sqlerrm like 'FALLÓ%' then raise; end if;
     if sqlerrm not like 'Solo un administrador asigna%' then raise exception 'FALLÓ: mensaje inesperado (corporativo categoría): %', sqlerrm; end if;
+  end;
+  begin
+    perform corregir_costo((select id from costos_producto where dodo_id = 27 limit 1), 1);
+    raise exception 'FALLÓ: corporativo no debe corregir costos';
+  exception when others then
+    if sqlerrm like 'FALLÓ%' then raise; end if;
+    if sqlerrm not like 'Solo un administrador corrige%' then raise exception 'FALLÓ: mensaje inesperado (corporativo corrige): %', sqlerrm; end if;
   end;
   update ventas_dia set total = 1 where fecha = '2000-01-02';
   get diagnostics v_n = row_count;

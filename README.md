@@ -207,6 +207,7 @@ ponderado por categoría y las diferencias entre el cierre del gerente y Dodo IS
   importado (**Reimportar**), hay que marcar la casilla de confirmación. Los archivos no se guardan.
 - **Costos** (solo admin): categoría y costo por pieza de cada producto, con la fecha desde la que aplica.
   Un costo nuevo no borra el anterior; los días previos se siguen costeando con el que estaba vigente.
+  Un error de captura se arregla con **Corregir** en el historial: el valor anterior queda registrado.
 - **Reportes**: admin y corporativo ven todas las sucursales o una; el gerente, la suya. Encargado y cajero no ven ventas.
   El costo % se calcula solo sobre los productos con costo; los que no tienen se listan aparte.
 - Dodo IS cuenta el día de 0:00 a 23:59 y el cierre de la app hasta las 4:00: ventas después de medianoche pueden
@@ -228,6 +229,7 @@ En Supabase → **SQL Editor**:
 3. Sube Ventas de un día y Productos de otro: debe decir que las fechas no coinciden.
 4. En **Reportes**, el 25/09/2026: costo teórico $2,187.19 (33.8 %); pizzas $43.66 por pieza; Coca-Cola sin costo.
 5. En **Costos**, "Sin costo" muestra las Coca-Cola; Hawaiana Mediano tiene el aviso de costo dudoso.
+   Corrige su costo: el aviso desaparece y el historial dice "corregido (antes $44.09)".
 6. Como gerente solo aparece su sucursal y no hay Importar ni Costos; como encargado no aparece Ventas en el menú.
 
 ## Siguiente paso: conectar con Dodo IS

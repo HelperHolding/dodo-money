@@ -278,10 +278,14 @@ export function diasConCierre(dias: readonly VentaDia[], cierres: readonly Cierr
   return { comparados, sinCierre };
 }
 
-/** Mensaje de error de un costo capturado, o null si está bien. */
-export function errorDeCosto(costo: number, vigenteDesde: string): string | null {
+/** Mensaje de error de un monto de costo, o null si está bien. */
+export function errorDeMonto(costo: number): string | null {
   if (!Number.isFinite(costo) || costo < 0) return "Escribe un costo válido (0 o más).";
   if (costo >= 100_000_000) return "El costo es demasiado grande.";
-  if (!fechaReal(vigenteDesde)) return "Elige desde qué fecha aplica el costo.";
   return null;
+}
+
+/** Mensaje de error de un costo nuevo (monto y fecha de vigencia), o null si está bien. */
+export function errorDeCosto(costo: number, vigenteDesde: string): string | null {
+  return errorDeMonto(costo) ?? (fechaReal(vigenteDesde) ? null : "Elige desde qué fecha aplica el costo.");
 }

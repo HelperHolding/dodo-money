@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { leerPrimeraHoja } from "./xlsx.ts";
 import { extraerProductos, extraerVentas } from "./extraer.ts";
 import {
-  compararConCierre, costearProductos, costeo, costoVigente, descuentos, diasConCierre, errorDeCosto, separarDesglose, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido, periodoPorDefecto,
+  compararConCierre, costearProductos, costeo, costoVigente, descuentos, diasConCierre, errorDeCosto, errorDeMonto, separarDesglose, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido, periodoPorDefecto,
   porProducto, resumenVentas, tamanoPorNombre, topProductos, type Categoria, type RenglonCosteo, type VentaDia,
 } from "./calculos.ts";
 
@@ -200,4 +200,12 @@ test("costearProductos: sin día importado no prorratea; costo futuro o producto
   const [s] = costearProductos([{ ...venta, dodo_id: 5 }], [{ ...dia, fecha: "2026-08-01", total: 0, iva: 0 }], [], []);
   assert.equal(s.categoria, null);
   assert.equal(s.importe_neto, 100);
+});
+
+test("errorDeMonto valida solo el monto (para corregir un costo)", () => {
+  assert.equal(errorDeMonto(26.74), null);
+  assert.equal(errorDeMonto(0), null);
+  assert.match(errorDeMonto(-0.01) ?? "", /costo válido/);
+  assert.match(errorDeMonto(Number.NaN) ?? "", /costo válido/);
+  assert.match(errorDeMonto(100_000_000) ?? "", /demasiado grande/);
 });

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { decimal } from "@/lib/formato";
 import { puedeImportarVentas } from "@/lib/roles";
-import { CATEGORIAS, errorDeCosto, type Categoria } from "@/lib/ventas/calculos";
+import { CATEGORIAS, errorDeCosto, errorDeMonto, type Categoria } from "@/lib/ventas/calculos";
 
 /** Regresa a la tarjeta del producto, conservando el filtro. */
 function volver(fd: FormData, clave: "ok" | "error", texto: string): never {
@@ -46,4 +46,16 @@ export async function registrarCosto(fd: FormData) {
   if (error) volver(fd, "error", error.code === "23505" ? "Ese producto ya tiene un costo con esa fecha; usa otra fecha." : error.message);
   revalidatePath("/ventas", "layout");
   volver(fd, "ok", "Costo guardado.");
+}
+
+/** Corrige un error de captura; el valor anterior queda en la bitácora de correcciones. */
+export async function corregirCosto(fd: FormData) {
+  const supabase = await clienteAdmin(fd);
+  const costo = decimal(fd.get("costo"));
+  const problema = errorDeMonto(costo);
+  if (problema) volver(fd, "error", problema);
+  const { error } = await supabase.rpc("corregir_costo", { p_id: String(fd.get("costo_id") ?? ""), p_costo: Math.round(costo * 100) / 100 });
+  if (error) volver(fd, "error", error.message);
+  revalidatePath("/ventas", "layout");
+  volver(fd, "ok", "Costo corregido.");
 }

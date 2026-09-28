@@ -88,6 +88,7 @@ importaciones_ventas id, sucursal_id, fecha, archivo_ventas text, archivo_produc
 - **Importar/Reimportar:** función `importar_ventas_dia(p_sucursal uuid, p_fecha date, p_resumen jsonb, p_desglose jsonb, p_productos jsonb, p_archivos jsonb, p_reemplazar boolean) returns uuid` (`security definer`, solo `admin`). En una transacción: registra la importación, crea productos nuevos en el catálogo (nombre, tamaño detectado), y si `p_reemplazar` borra y vuelve a insertar el día (única excepción a "nada se borra"; la bitácora conserva el total anterior). Sin `p_reemplazar` y con el día existente → "Ese día ya se importó".
 - **Costo vigente:** función `costo_vigente(p_dodo_id int, p_fecha date) returns numeric` = costo con el `vigente_desde` más reciente ≤ fecha.
 - **Vista `ventas_producto_costeo`** (`security_invoker`): cada renglón de `ventas_producto` con categoría, costo vigente, costo teórico (cantidad × costo, null sin costo) e importe neto (importe × (total − iva) / total del día).
+- **Corregir un costo** (error de captura): función `corregir_costo(p_id uuid, p_costo numeric)` solo admin; cambia el renglón, quita su nota y guarda costo y nota anteriores en `correcciones_costo` (quién y cuándo). Un cambio real de costo se registra como costo nuevo con su fecha.
 - Sin políticas de update/delete fuera de las funciones.
 
 ### Reglas de cálculo

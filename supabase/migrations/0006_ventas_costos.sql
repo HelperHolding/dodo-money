@@ -129,6 +129,35 @@ begin
   if not found then raise exception 'Producto no encontrado.'; end if;
 end $$;
 
+-- Corrección de un error de captura en un costo: el renglón cambia, y el valor y la nota anteriores
+-- quedan en esta bitácora. Solo por la función corregir_costo.
+create table correcciones_costo (
+  id               uuid primary key default gen_random_uuid(),
+  costo_id         uuid not null references costos_producto(id),
+  costo_anterior   numeric(10,2) not null,
+  costo_nuevo      numeric(10,2) not null,
+  nota_anterior    text,
+  corregido_por    uuid not null references perfiles(id),
+  corregido_en     timestamptz not null default now()
+);
+alter table correcciones_costo enable row level security;
+create policy ver_correcciones_costo on correcciones_costo for select using (ve_catalogo_ventas());
+
+create or replace function corregir_costo(p_id uuid, p_costo numeric) returns void
+language plpgsql security definer set search_path = public as $$
+declare c costos_producto;
+begin
+  if coalesce(mi_rol()::text, '') <> 'admin' then raise exception 'Solo un administrador corrige costos.'; end if;
+  if p_costo is null or p_costo < 0 then raise exception 'Escribe un costo válido (0 o más).'; end if;
+  select * into c from costos_producto where id = p_id for update;
+  if not found then raise exception 'Costo no encontrado.'; end if;
+  if c.costo = round(p_costo, 2) then raise exception 'El costo ya es ese.'; end if;
+  insert into correcciones_costo (costo_id, costo_anterior, costo_nuevo, nota_anterior, corregido_por)
+  values (p_id, c.costo, round(p_costo, 2), c.nota, auth.uid());
+  -- La nota (p. ej. "Dudoso en el modelo") ya no aplica al costo corregido; queda en la bitácora.
+  update costos_producto set costo = round(p_costo, 2), nota = null where id = p_id;
+end $$;
+
 -- Guarda un día de una sucursal. Con p_reemplazar borra el día y lo vuelve a insertar
 -- (única excepción a "nada se borra"; la bitácora conserva el total anterior).
 create or replace function importar_ventas_dia(

@@ -7,10 +7,11 @@ import { fechaTexto, hoyMX, pesos } from "@/lib/formato";
 import { puedeImportarVentas } from "@/lib/roles";
 import { CATEGORIAS, costoVigente, NOMBRE_CATEGORIA, type Categoria, type Tamano } from "@/lib/ventas/calculos";
 import { leerTodo } from "@/lib/ventas/paginar";
-import { asignarCategoria, registrarCosto } from "./acciones";
+import { asignarCategoria, corregirCosto, registrarCosto } from "./acciones";
 
 type Producto = { dodo_id: number; nombre: string; categoria: Categoria | null; tamano: Tamano | null };
-type Costo = { dodo_id: number; costo: number; vigente_desde: string; fuente: string | null; nota: string | null };
+type Correccion = { costo_id: string; costo_anterior: number; corregido_en: string };
+type Costo = { id: string; dodo_id: number; costo: number; vigente_desde: string; fuente: string | null; nota: string | null };
 
 const TAMANO: Record<Tamano, string> = { pequeno: "Pequeña", mediano: "Mediana", grande: "Grande" };
 const FILTROS = { "sin-costo": "Sin costo", "sin-categoria": "Sin categoría" } as const;
@@ -24,12 +25,16 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
   const hoy = hoyMX();
 
   // Todas las páginas: con cada recarga de costos la tabla crece y Supabase corta en 1000 sin avisar.
-  const [productos, costos] = await Promise.all([
+  const [productos, costos, correcciones] = await Promise.all([
     leerTodo<Producto>((desde, hasta) => supabase.from("productos_venta").select("dodo_id, nombre, categoria, tamano")
       .order("nombre").order("dodo_id").range(desde, hasta).returns<Producto[]>()),
-    leerTodo<Costo>((desde, hasta) => supabase.from("costos_producto").select("dodo_id, costo, vigente_desde, fuente, nota")
+    leerTodo<Costo>((desde, hasta) => supabase.from("costos_producto").select("id, dodo_id, costo, vigente_desde, fuente, nota")
       .order("dodo_id").order("vigente_desde", { ascending: false }).range(desde, hasta).returns<Costo[]>()),
+    leerTodo<Correccion>((desde, hasta) => supabase.from("correcciones_costo").select("costo_id, costo_anterior, corregido_en")
+      .order("corregido_en").order("id").range(desde, hasta).returns<Correccion[]>()),
   ]);
+  const correccionesDe = new Map<string, Correccion[]>();
+  for (const k of correcciones) correccionesDe.set(k.costo_id, [...(correccionesDe.get(k.costo_id) ?? []), k]);
 
   const costosDe = new Map<number, Costo[]>();
   for (const c of costos) costosDe.set(c.dodo_id, [...(costosDe.get(c.dodo_id) ?? []), c]);
@@ -113,9 +118,24 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
                     {historial.length > 0 && (
                       <ul className="fallas">
                         {historial.map((c) => (
-                          <li key={c.vigente_desde}>
+                          <li key={c.id}>
                             {pesos(c.costo)} desde {fechaTexto(c.vigente_desde)}
                             {c.vigente_desde > hoy ? " (programado)" : ""}{c.fuente ? ` · ${c.fuente}` : ""}
+                            {(correccionesDe.get(c.id) ?? []).map((k) => (
+                              <span key={k.corregido_en} className="saldo-nota"> · corregido (antes {pesos(k.costo_anterior)})</span>
+                            ))}
+                            <details className="corregir">
+                              <summary>Corregir</summary>
+                              <form action={corregirCosto} className="acciones">
+                                <input type="hidden" name="costo_id" value={c.id} />
+                                <input type="hidden" name="dodo_id" value={p.dodo_id} />
+                                <input type="hidden" name="ver" value={filtro ?? ""} />
+                                <label className="etiqueta" htmlFor={`corr-${c.id}`}>Costo correcto</label>
+                                <input id={`corr-${c.id}`} name="costo" inputMode="decimal" defaultValue={c.costo} required size={8} />
+                                <BotonEnviar className="boton boton-secundario">Corregir</BotonEnviar>
+                              </form>
+                              <small>Solo para errores de captura. Si el costo cambió de verdad, usa &quot;Nuevo costo&quot; con su fecha.</small>
+                            </details>
                           </li>
                         ))}
                       </ul>

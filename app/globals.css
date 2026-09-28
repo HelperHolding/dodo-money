@@ -337,3 +337,6 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .grafica-fondo { fill: var(--papel-2); }
 .grafica-rect { fill: var(--accion); }
 .grafica-rect-alerta { fill: var(--alerta); }
+.corregir { margin-top: 4px; }
+.corregir > summary { cursor: pointer; color: var(--accion-oscuro); font-size: 0.9rem; }
+.corregir small { color: var(--tinta-2); font-size: 0.85rem; }
