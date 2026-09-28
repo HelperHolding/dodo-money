@@ -75,6 +75,12 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
                       Recorrido {f.recorrido.hechos}/{f.recorrido.total}{f.recorrido.conFallas ? ` · ${f.recorrido.conFallas} con fallas` : ""}
                     </span>
                     <span className={clases(alerta(f, "mermas"))}>Mermas cerradas: {f.mermasCerradas ? "sí" : "no"}</span>
+                    <span className={clases(alerta(f, "rondas"))}>
+                      Rondas {f.rondas.hechas}/{f.rondas.total}{f.rondas.conFallas ? ` · ${f.rondas.conFallas} con fallas` : ""}
+                    </span>
+                    <span className={clases(alerta(f, "listas"))}>Listas del turno {f.listas.hechas}/{f.listas.total}</span>
+                    {f.amasadoFuera > 0 && <span className={clases(alerta(f, "amasado"))}>Amasado: {f.amasadoFuera} fuera de rango</span>}
+                    <span className={clases(alerta(f, "limpieza"))}>Limpieza profunda: {f.limpiezaProfunda ? "sí" : "no"}</span>
                   </dd>
                   <dt>Caja chica</dt>
                   <dd>

@@ -1,9 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fueraDeRango } from "@/lib/amasado";
 import { primerError, type DatosSucursal } from "@/lib/corporativo";
 import { estadoFranja } from "@/lib/franjas";
 import { rangoDiaMX } from "@/lib/formato";
+import { diaSemanaISO } from "@/lib/limpiezaProfunda";
 import { bolasNorma } from "@/lib/masa";
-import type { Checklist, NormaMasa, TempArea } from "@/lib/tipos";
+import type { Checklist, Momento, NormaMasa, TempArea } from "@/lib/tipos";
+import { contarListas, filasListas } from "@/lib/zonas";
 
 /** Todas las sucursales en un día: una consulta por tabla, no una por sucursal. */
 export async function datosCorporativo(supabase: SupabaseClient, fecha: string, ahora: Date): Promise<DatosSucursal[]> {
@@ -19,13 +22,20 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
     supabase.from("normas_masa").select("hora, bolas_25, bolas_30, bolas_35").returns<NormaMasa[]>(),
     supabase.from("lecturas_masa").select("sucursal_id, hora, temp_area, bolas, en_norma").eq("fecha", fecha)
       .returns<{ sucursal_id: string; hora: number; temp_area: TempArea; bolas: number; en_norma: boolean }[]>(),
-    supabase.from("checklists").select("id, clave, nombre, horas, roles").returns<Checklist[]>(),
+    supabase.from("checklists").select("id, clave, nombre, horas, roles, tipo, en_ronda, orden").returns<Checklist[]>(),
     supabase.from("recorridos").select("sucursal_id, checklist_id, hora, recorrido_respuestas(cumple)").eq("fecha", fecha)
       .returns<{ sucursal_id: string; checklist_id: string; hora: number; recorrido_respuestas: { cumple: boolean }[] }[]>(),
     supabase.from("cierres_merma").select("sucursal_id").eq("fecha", fecha).returns<{ sucursal_id: string }[]>(),
     supabase.from("mermas").select("sucursal_id").eq("fecha", fecha).returns<{ sucursal_id: string }[]>(),
     supabase.from("gastos_caja_chica").select("sucursal_id, monto, comprobante").eq("fecha", fecha)
       .returns<{ sucursal_id: string; monto: number; comprobante: string }[]>(),
+    supabase.from("checklist_puntos").select("checklist_id, momento, dia_semana")
+      .returns<{ checklist_id: string; momento: Momento; dia_semana: number | null }[]>(),
+    supabase.from("registros_checklist").select("sucursal_id, checklist_id, momento, hora, revisado_por, registro_respuestas(cumple)").eq("fecha", fecha)
+      .returns<{ sucursal_id: string; checklist_id: string; momento: Momento; hora: number | null; revisado_por: string | null; registro_respuestas: { cumple: boolean }[] }[]>(),
+    supabase.from("lotes_amasado").select("sucursal_id, temp_masa, temp_sala, temp_harina, temp_agua").eq("fecha", fecha)
+      .returns<{ sucursal_id: string; temp_masa: number; temp_sala: number; temp_harina: number; temp_agua: number }[]>(),
+    supabase.from("limpiezas_profundas").select("sucursal_id").eq("fecha", fecha).returns<{ sucursal_id: string }[]>(),
   ]);
   const errorCarga = primerError(resultados);
   if (errorCarga) throw new Error(`No se pudieron cargar los datos: ${errorCarga}`);
@@ -33,6 +43,7 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
     { data: sucursales }, { data: turnos }, { data: movimientos }, { data: cierres },
     { data: normas }, { data: lecturas }, { data: checklists }, { data: recorridos },
     { data: cierresMerma }, { data: mermas }, { data: gastos },
+    { data: puntosListas }, { data: registrosListas }, { data: lotes }, { data: limpiezas },
   ] = resultados;
 
   const idsTurnos = (turnos ?? []).map((t) => t.id);
@@ -45,7 +56,11 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
   const sucursalDeTurno = new Map((turnos ?? []).map((t) => [t.id, t.sucursal_id]));
   const normaPorHora = new Map((normas ?? []).map((n) => [n.hora, n]));
   const horasMasa = [...normaPorHora.keys()];
-  const horasRecorrido = (checklists ?? []).flatMap((c) => c.horas.map((h) => ({ checklistId: c.id, hora: h })));
+  const recorridos_ = (checklists ?? []).filter((c) => c.tipo === "recorrido");
+  const horasRecorrido = recorridos_.flatMap((c) => c.horas.map((h) => ({ checklistId: c.id, hora: h })));
+  const listasCl = (checklists ?? []).filter((c) => c.tipo === "lista");
+  const horasRonda = listasCl.filter((c) => c.en_ronda).flatMap((c) => c.horas.map((h) => ({ checklistId: c.id, hora: h })));
+  const diaSemana = diaSemanaISO(fecha);
   const cerrada = (h: number) => estadoFranja({ fecha, hora: h }, ahora) === "cerrada";
   const de = <T extends { sucursal_id: string }>(filas: T[] | null, id: string) => (filas ?? []).filter((f) => f.sucursal_id === id);
 
@@ -59,6 +74,10 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
     const horasConLectura = new Set(ls.map((l) => l.hora));
     const recorridosHechos = new Set(rs.map((r) => `${r.checklist_id}|${r.hora}`));
     const arqueosDeSucursal = (arqueos ?? []).filter((a) => sucursalDeTurno.get(a.turno_id) === s.id);
+    const rl = de(registrosListas, s.id);
+    const rondasHechas = rl.filter((r) => r.momento === "hora");
+    const hechasRonda = new Set(rondasHechas.map((r) => `${r.checklist_id}|${r.hora}`));
+    const conteoListas = contarListas(filasListas(listasCl, puntosListas ?? [], rl.filter((r) => r.momento !== "hora"), diaSemana));
 
     return {
       id: s.id,
@@ -92,8 +111,15 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
       mermas: de(mermas, s.id).length,
       gastos: gs.reduce((suma, g) => suma + Number(g.monto), 0),
       sinComprobante: gs.filter((g) => g.comprobante === "sin_comprobante").length,
-      // Temporal (Task 2): Task 8 calcula estos valores.
-      rondas: { total: 0, hechas: 0, faltantes: 0, conFallas: 0 }, listas: { total: 0, hechas: 0 }, amasadoFuera: 0, limpiezaProfunda: true,
+      rondas: {
+        total: horasRonda.length,
+        hechas: rondasHechas.length,
+        faltantes: horasRonda.filter((x) => !hechasRonda.has(`${x.checklistId}|${x.hora}`) && cerrada(x.hora)).length,
+        conFallas: rondasHechas.filter((r) => r.registro_respuestas.some((x) => !x.cumple)).length,
+      },
+      listas: conteoListas,
+      amasadoFuera: de(lotes, s.id).filter((l) => fueraDeRango({ masa: Number(l.temp_masa), sala: Number(l.temp_sala), harina: Number(l.temp_harina), agua: Number(l.temp_agua) }).length).length,
+      limpiezaProfunda: de(limpiezas, s.id).length > 0,
     };
   });
 }
