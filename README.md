@@ -125,6 +125,36 @@ Con una ventana de incógnito por usuario:
 6. **Encargado** → Mermas: marca "Ya capturé…" y cierra. El formulario desaparece y el cajero ya no puede agregar mermas.
 7. **Gerente** → Checklists: el resumen muestra las horas en Listo, Revisar, Ahora o Falta, y al elegir el día anterior se ve su historial.
 
+## Checklists de zonas
+
+Las demás hojas del Excel, en **Checklists** (barra de accesos arriba):
+
+| Pantalla | Qué se registra | Quién |
+|---|---|---|
+| Ronda de la hora | Cada hora: limpieza, zona caliente y caja y sala (8:00–23:00), baño (11:00–23:00). Cada zona se guarda por separado | Cualquiera con el nombre de quien revisó; el encargado marca Revisado |
+| Listas del turno | Apertura, cambio de turno, durante el turno, cierre y tareas semanales del encargado y de cada zona | Zonas: cualquiera; encargado: encargado o gerente |
+| Amasado | Un lote: horas, bolas, temperaturas (masa 24–26 °C), gramos, minutos | Cualquiera; comentario si algo sale de norma |
+| Limpieza profunda | El área del día (ciclo de 14 días) | Cualquiera; el encargado la revisa |
+| Objetivos | Empleado y objetivo por turno | Encargado o gerente |
+
+Nada frena el efectivo: lo incompleto se ve en el resumen y en corporativo.
+
+### Puesta en marcha
+
+En Supabase → **SQL Editor**:
+
+1. `supabase/migrations/0005_checklists_zonas.sql`
+2. `supabase/seed_checklists_zonas.sql`
+3. `supabase/pruebas/0005_checklists_zonas.sql`: debe terminar con el error `PRUEBAS OK — …`.
+
+### Prueba manual
+
+1. **Ronda de la hora:** llena solo Caja y sala con un nombre y guarda; aparece en "Rondas de hoy" y las demás zonas siguen pendientes. Empieza Limpieza sin nombre: la app pide completarla antes de enviar.
+2. **Listas del turno:** abre Encargado · Mañana · Apertura como encargado y guárdala; la tarjeta cambia a "Hecho". Toca "Revisado": cambia a "Revisado". Como cajero, la lista del encargado dice que la registra el encargado.
+3. **Amasado:** escribe 28 °C en la masa: el campo se marca y el comentario se vuelve obligatorio.
+4. **Limpieza profunda:** dice qué área toca hoy; regístrala y revísala.
+5. **Resumen y corporativo:** aparecen rondas, listas del turno, amasado y limpieza profunda.
+
 ## Foto del ticket en caja chica
 
 Al registrar un gasto se puede adjuntar la foto del ticket o recibo (opcional). En tablet y celular abre la cámara;
