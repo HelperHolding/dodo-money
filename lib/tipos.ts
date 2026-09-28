@@ -155,6 +155,9 @@ export interface Checklist {
   nombre: string;
   horas: number[];
   roles: Rol[];
+  tipo: "recorrido" | "lista";
+  en_ronda: boolean;
+  orden: number;
 }
 
 export interface PuntoChecklist {
@@ -163,4 +166,44 @@ export interface PuntoChecklist {
   orden: number;
   texto: string;
   detalle_por_hora: Record<string, string> | null;
+  momento: Momento;
+  dia_semana: number | null;
+}
+
+// ─── Checklists de zonas ────────────────────────────────────────────────────
+export type Momento = "apertura" | "cambio" | "durante_manana" | "durante_tarde" | "cierre" | "hora" | "semanal";
+
+export interface RegistroChecklist {
+  id: string;
+  checklist_id: string;
+  fecha: string;
+  momento: Momento;
+  hora: number | null;
+  empleado: string;
+  registrado_por: string;
+  creado_en: string;
+  revisado_por: string | null;
+  revisado_en: string | null;
+  registro_respuestas: { punto_id: string; cumple: boolean; comentario: string | null }[];
+}
+
+export interface LoteAmasado {
+  id: string; fecha: string; inicio: string; fin: string; temp_area: TempArea;
+  plan_bolas: number; bolas_resultado: number;
+  temp_sala: number; temp_harina: number; temp_agua: number; temp_masa: number;
+  g_agua: number; g_sal: number; g_azucar: number; g_aceite: number; g_harina: number; g_levadura: number;
+  minutos_amasado: number; empleado: string; comentario: string | null;
+  registrado_por: string; creado_en: string; revisado_por: string | null; revisado_en: string | null;
+}
+
+export interface AreaLimpieza { semana: 1 | 2; dia_semana: number; area: string }
+
+export interface LimpiezaProfunda {
+  id: string; fecha: string; area: string; empleado: string;
+  registrado_por: string; creado_en: string; revisado_por: string | null; revisado_en: string | null;
+}
+
+export interface ObjetivoTurno {
+  id: string; fecha: string; turno: "manana" | "tarde"; empleado: string; objetivo: string;
+  registrado_por: string; creado_en: string;
 }

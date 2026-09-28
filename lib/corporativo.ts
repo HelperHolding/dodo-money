@@ -18,11 +18,18 @@ export type DatosSucursal = {
   mermas: number;
   gastos: number;
   sinComprobante: number;
+  /** Ronda de la hora de las zonas: faltantes = horas ya cerradas sin registro. */
+  rondas: { total: number; hechas: number; faltantes: number; conFallas: number };
+  /** Listas del turno que aplican hoy y cuántas ya se registraron. */
+  listas: { total: number; hechas: number };
+  amasadoFuera: number;
+  limpiezaProfunda: boolean;
 };
 
 export type Alerta =
   | "arqueos" | "pendientes" | "deposito" | "cierre" | "boveda"
-  | "masa" | "recorrido" | "mermas" | "comprobantes";
+  | "masa" | "recorrido" | "mermas" | "comprobantes"
+  | "rondas" | "listas" | "amasado" | "limpieza";
 
 /** Una diferencia cuenta si no es cero al redondear a centavos. */
 const hayDiferencia = (n: number) => Math.round(n * 100) !== 0;
@@ -38,6 +45,10 @@ export function alertasDeSucursal(d: DatosSucursal, diaTerminado: boolean): Aler
   if (d.recorrido.faltantes > 0 || d.recorrido.conFallas > 0) alertas.push("recorrido");
   if (!d.mermasCerradas && diaTerminado) alertas.push("mermas");
   if (d.sinComprobante > 0) alertas.push("comprobantes");
+  if (d.rondas.faltantes > 0 || d.rondas.conFallas > 0) alertas.push("rondas");
+  if (d.listas.hechas < d.listas.total && diaTerminado) alertas.push("listas");
+  if (d.amasadoFuera > 0) alertas.push("amasado");
+  if (!d.limpiezaProfunda && diaTerminado) alertas.push("limpieza");
   return alertas;
 }
 

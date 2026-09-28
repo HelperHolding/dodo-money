@@ -10,6 +10,9 @@ const base: DatosSucursal = {
   masa: { total: 13, registradas: 13, faltantes: 0, fueraDeNorma: 0 },
   recorrido: { total: 12, hechos: 12, faltantes: 0, conFallas: 0 },
   mermasCerradas: true, mermas: 3, gastos: 250, sinComprobante: 0,
+  rondas: { total: 61, hechas: 61, faltantes: 0, conFallas: 0 },
+  listas: { total: 12, hechas: 12 },
+  amasadoFuera: 0, limpiezaProfunda: true,
 };
 
 test("una sucursal en orden no tiene alertas", () => {
@@ -45,6 +48,7 @@ test("una sucursal nueva sin actividad a media tarde no marca nada que aún no t
     ...base, turnosCerrados: 0, deposito: 0, cierre: null, mermasCerradas: false, mermas: 0, gastos: 0,
     masa: { total: 13, registradas: 0, faltantes: 0, fueraDeNorma: 0 },
     recorrido: { total: 12, hechos: 0, faltantes: 0, conFallas: 0 },
+    rondas: { total: 61, hechas: 0, faltantes: 0, conFallas: 0 }, listas: { total: 12, hechas: 0 }, amasadoFuera: 0, limpiezaProfunda: false,
   };
   assert.deepEqual(alertasDeSucursal(nueva, false), []);
 });
@@ -80,4 +84,14 @@ test("fechaElegida rechaza fechas que no existen", () => {
 test("primerError devuelve el primer mensaje de error o null si todo cargó", () => {
   assert.equal(primerError([{ error: null }, { error: null }]), null);
   assert.equal(primerError([{ error: null }, { error: { message: "timeout" } }, { error: { message: "otro" } }]), "timeout");
+});
+
+test("rondas con horas faltantes o fallas, listas y limpieza incompletas al terminar el día, amasado fuera de rango", () => {
+  assert.deepEqual(alertasDeSucursal({ ...base, rondas: { ...base.rondas, faltantes: 2 } }, false), ["rondas"]);
+  assert.deepEqual(alertasDeSucursal({ ...base, rondas: { ...base.rondas, conFallas: 1 } }, true), ["rondas"]);
+  assert.deepEqual(alertasDeSucursal({ ...base, listas: { total: 12, hechas: 9 } }, false), []);
+  assert.deepEqual(alertasDeSucursal({ ...base, listas: { total: 12, hechas: 9 } }, true), ["listas"]);
+  assert.deepEqual(alertasDeSucursal({ ...base, amasadoFuera: 1 }, false), ["amasado"]);
+  assert.deepEqual(alertasDeSucursal({ ...base, limpiezaProfunda: false }, false), []);
+  assert.deepEqual(alertasDeSucursal({ ...base, limpiezaProfunda: false }, true), ["limpieza"]);
 });

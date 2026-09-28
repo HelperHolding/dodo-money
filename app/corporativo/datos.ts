@@ -92,6 +92,8 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
       mermas: de(mermas, s.id).length,
       gastos: gs.reduce((suma, g) => suma + Number(g.monto), 0),
       sinComprobante: gs.filter((g) => g.comprobante === "sin_comprobante").length,
+      // Temporal (Task 2): Task 8 calcula estos valores.
+      rondas: { total: 0, hechas: 0, faltantes: 0, conFallas: 0 }, listas: { total: 0, hechas: 0 }, amasadoFuera: 0, limpiezaProfunda: true,
     };
   });
 }
