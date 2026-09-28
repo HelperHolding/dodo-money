@@ -17,8 +17,8 @@ export default async function Recorrido({ searchParams }: { searchParams: Promis
   const fecha = diaOperativoMX(ahora);
 
   const [{ data: checklists }, { data: puntos }, { data: recorridos }, { data: nombres }] = await Promise.all([
-    supabase.from("checklists").select("id, clave, nombre, horas, roles").returns<Checklist[]>(),
-    supabase.from("checklist_puntos").select("id, checklist_id, orden, texto, detalle_por_hora").order("orden").returns<PuntoChecklist[]>(),
+    supabase.from("checklists").select("id, clave, nombre, horas, roles, tipo, en_ronda, orden").eq("tipo", "recorrido").returns<Checklist[]>(),
+    supabase.from("checklist_puntos").select("id, checklist_id, orden, texto, detalle_por_hora, momento, dia_semana").eq("momento", "hora").order("orden").returns<PuntoChecklist[]>(),
     supabase.from("recorridos")
       .select("id, checklist_id, fecha, hora, registrado_por, creado_en, recorrido_respuestas(punto_id, cumple, comentario)")
       .eq("sucursal_id", sucursal.id).eq("fecha", fecha).order("hora").returns<RecorridoDia[]>(),

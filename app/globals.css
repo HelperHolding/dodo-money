@@ -210,6 +210,28 @@ input[type="checkbox"], input[type="radio"] { min-height: auto; width: 22px; hei
 .casilla { display: flex; align-items: center; gap: 10px; font-weight: 700; }
 .fallas { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 
+/* ─── Checklists de zonas ─── */
+.accesos { display: flex; flex-wrap: wrap; gap: 8px; }
+.accesos a {
+  padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--linea);
+  background: var(--blanco); color: var(--tinta); text-decoration: none; font-size: 0.9rem; min-height: 36px;
+  display: inline-flex; align-items: center;
+}
+.accesos a[aria-current="page"] { border-color: var(--accion); background: var(--accion); color: var(--accion-texto); font-weight: 700; }
+.zona { gap: 10px; }
+.zona h3 { font-size: 1.1rem; }
+fieldset.zona { border: 1px solid var(--linea); border-radius: 10px; padding: 16px; margin: 0; background: var(--blanco); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+fieldset.zona legend { padding: 0 6px; font-family: var(--display); font-weight: 700; font-size: 1.15rem; }
+.estados-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.estados-lista li { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.estado-lista {
+  display: inline-block; min-width: 96px; text-align: center; padding: 4px 10px; border-radius: 999px;
+  font-size: 0.85rem; font-weight: 700; text-decoration: none; border: 1.5px solid var(--linea); color: var(--tinta);
+}
+.estado-lista[data-estado="pendiente"] { background: var(--alerta-fondo); color: var(--alerta-texto); border-color: var(--alerta-borde); }
+.estado-lista[data-estado="hecho"] { background: var(--papel-2); }
+.estado-lista[data-estado="revisado"] { background: var(--cuadra-fondo); color: var(--cuadra-texto); border-color: var(--cuadra-borde); }
+
 /* ─── Corporativo ─── */
 .franja-lectura {
   margin: 0; padding: 10px clamp(16px, 4vw, 40px);

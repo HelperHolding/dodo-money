@@ -21,7 +21,7 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
       supabase.from("normas_masa").select("hora, bolas_25, bolas_30, bolas_35").order("hora").returns<NormaMasa[]>(),
       supabase.from("lecturas_masa").select("hora, temp_area, bolas, en_norma")
         .eq("sucursal_id", sucursal.id).eq("fecha", fecha).returns<LecturaResumen[]>(),
-      supabase.from("checklists").select("id, clave, nombre, horas, roles").returns<Checklist[]>(),
+      supabase.from("checklists").select("id, clave, nombre, horas, roles, tipo, en_ronda, orden").eq("tipo", "recorrido").returns<Checklist[]>(),
       supabase.from("recorridos").select("checklist_id, hora, recorrido_respuestas(cumple)")
         .eq("sucursal_id", sucursal.id).eq("fecha", fecha).returns<RecorridoResumen[]>(),
       supabase.from("mermas").select("id", { count: "exact", head: true }).eq("sucursal_id", sucursal.id).eq("fecha", fecha),
