@@ -1,6 +1,6 @@
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { hora } from "@/lib/formato";
-import { revisarRegistro } from "./revisar";
+import { revisarRegistro } from "./acciones-revisar";
 
 export function Revisar({
   tipo, id, volver, revisadoPor, revisadoEn, puede,
