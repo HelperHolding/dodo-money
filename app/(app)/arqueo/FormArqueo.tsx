@@ -2,25 +2,26 @@
 
 import { useMemo, useState } from "react";
 import { BotonEnviar } from "@/components/BotonEnviar";
+import { cuadre, pideVentas } from "@/lib/arqueo";
 import { BILLETES, MONEDAS, claveBillete, claveMoneda, totalConteo } from "@/lib/denominaciones";
 import { pesos } from "@/lib/formato";
 import { NOMBRE_MOMENTO, type MomentoArqueo } from "@/lib/tipos";
 import { registrarArqueo } from "./actions";
 
 export function FormArqueo({
-  fondoInicial, retirosBoveda, momentoSugerido,
-}: { fondoInicial: number; retirosBoveda: number; momentoSugerido: MomentoArqueo }) {
+  fondoInicial, fondoDeMovimientos, retirosBoveda, momentoSugerido,
+}: { fondoInicial: number; fondoDeMovimientos: boolean; retirosBoveda: number; momentoSugerido: MomentoArqueo }) {
   const [conteo, setConteo] = useState<Record<string, number>>({});
   const [ventas, setVentas] = useState("");
+  const [momento, setMomento] = useState<MomentoArqueo>(momentoSugerido);
 
   const contado = useMemo(() => totalConteo(conteo), [conteo]);
-  const ventasNum = Number(ventas) || 0;
-  const esperado = fondoInicial + ventasNum - retirosBoveda;
-  const diferencia = Math.round((contado - esperado) * 100) / 100;
-  const listo = ventas !== "" && contado > 0;
-  const estado = !listo ? "pendiente" : diferencia === 0 ? "cuadra" : diferencia < 0 ? "faltante" : "sobrante";
+  const conVentas = pideVentas(momento);
+  const { ventas: ventasNum, esperado, diferencia, estado } = cuadre({
+    momento, fondo: fondoInicial, ventas: ventas === "" ? null : Number(ventas) || 0, retiros: retirosBoveda, contado,
+  });
   const veredicto =
-    estado === "pendiente" ? "Cuenta el efectivo y escribe las ventas"
+    estado === "pendiente" ? (conVentas ? "Cuenta el efectivo y escribe las ventas" : "Cuenta el efectivo del cajón")
     : estado === "cuadra" ? "La caja cuadra"
     : estado === "faltante" ? `Faltan ${pesos(-diferencia)}`
     : `Sobran ${pesos(diferencia)}`;
@@ -49,7 +50,7 @@ export function FormArqueo({
         <div className="acciones" role="radiogroup" aria-labelledby="t-momento">
           {(Object.keys(NOMBRE_MOMENTO) as MomentoArqueo[]).map((m) => (
             <label key={m} className="acciones" style={{ gap: 8, minHeight: 48 }}>
-              <input type="radio" name="momento" value={m} defaultChecked={m === momentoSugerido} style={{ minHeight: 0, width: 20, height: 20 }} />
+              <input type="radio" name="momento" value={m} checked={m === momento} onChange={() => setMomento(m)} style={{ minHeight: 0, width: 20, height: 20 }} />
               {NOMBRE_MOMENTO[m]}
             </label>
           ))}
@@ -72,15 +73,22 @@ export function FormArqueo({
 
       <section className="seccion" aria-labelledby="t-cuadre">
         <h2 id="t-cuadre">Cuadre del efectivo</h2>
-        <div className="campo" style={{ maxWidth: 320 }}>
-          <label htmlFor="ventas_efectivo">Ventas en efectivo según Dodo IS</label>
-          <input id="ventas_efectivo" name="ventas_efectivo" type="number" inputMode="decimal" min="0" step="0.01"
-            required value={ventas} onChange={(e) => setVentas(e.target.value)} />
-          <small>Reporte de ventas del turno, columna Efectivo.</small>
-        </div>
+        {conVentas ? (
+          <div className="campo" style={{ maxWidth: 320 }}>
+            <label htmlFor="ventas_efectivo">Ventas en efectivo del turno según Dodo IS</label>
+            <input id="ventas_efectivo" name="ventas_efectivo" type="number" inputMode="decimal" min="0" step="0.01"
+              required value={ventas} onChange={(e) => setVentas(e.target.value)} />
+            <small>Reporte de ventas del turno, columna Efectivo.</small>
+          </div>
+        ) : (
+          <p className="saldo-nota">Al inicio del turno todavía no hay ventas: en el cajón debe estar solo el fondo.</p>
+        )}
         <div className="resultado" data-estado={estado} aria-live="polite">
-          <div className="resultado-dato"><span>Fondo inicial</span><strong>{pesos(fondoInicial)}</strong></div>
-          <div className="resultado-dato"><span>+ Ventas en efectivo</span><strong>{pesos(ventasNum)}</strong></div>
+          <div className="resultado-dato">
+            <span>Fondo inicial {fondoDeMovimientos ? "(entregado desde la bóveda)" : "(fijo de la sucursal)"}</span>
+            <strong>{pesos(fondoInicial)}</strong>
+          </div>
+          {conVentas && <div className="resultado-dato"><span>+ Ventas en efectivo</span><strong>{pesos(ventasNum)}</strong></div>}
           <div className="resultado-dato"><span>− Retiros a bóveda</span><strong>{pesos(retirosBoveda)}</strong></div>
           <div className="resultado-dato"><span>= Esperado</span><strong>{pesos(esperado)}</strong></div>
           <div className="resultado-dato"><span>Contado</span><strong>{pesos(contado)}</strong></div>

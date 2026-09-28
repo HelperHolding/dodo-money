@@ -6,6 +6,7 @@ import { obtenerContextoParaEscribir } from "@/lib/contexto";
 import { totalConteo } from "@/lib/denominaciones";
 import { numero, numeroOpcional } from "@/lib/formato";
 import type { MomentoArqueo } from "@/lib/tipos";
+import { pideVentas } from "@/lib/arqueo";
 import { fondoYRetirosDelTurno } from "./datos";
 
 const error = (texto: string) => redirect("/arqueo?error=" + encodeURIComponent(texto));
@@ -29,7 +30,8 @@ export async function registrarArqueo(formData: FormData) {
     conteo,
     total_contado: total,
     fondo_inicial: fondo,
-    ventas_efectivo: numero(formData.get("ventas_efectivo")),
+    // Al inicio de turno no hay ventas: se guarda 0 aunque llegue algo en el campo.
+    ventas_efectivo: pideVentas(momento) ? numero(formData.get("ventas_efectivo")) : 0,
     retiros_boveda: retiros,
     tarjeta_real: numeroOpcional(formData.get("tarjeta_real")),
     tarjeta_sistema: numeroOpcional(formData.get("tarjeta_sistema")),
