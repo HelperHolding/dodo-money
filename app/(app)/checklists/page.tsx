@@ -8,7 +8,7 @@ import { fueraDeRango } from "@/lib/amasado";
 import { areaDelDia, diaSemanaISO } from "@/lib/limpiezaProfunda";
 import type { AreaLimpieza, Checklist, CierreMerma, LecturaMasa, Momento, NormaMasa } from "@/lib/tipos";
 import { contarListas, filasListas } from "@/lib/zonas";
-import { Plegable } from "./Plegable";
+import { Plegable } from "@/components/Plegable";
 import { TarjetasListas } from "./TarjetasListas";
 
 type LecturaResumen = Pick<LecturaMasa, "hora" | "temp_area" | "bolas" | "en_norma">;

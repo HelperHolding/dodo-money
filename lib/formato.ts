@@ -42,3 +42,11 @@ const corto = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 3 });
 
 /** Cantidad con hasta tres decimales, para kilos y piezas. */
 export const numeroCorto = (n: number) => corto.format(n);
+
+const diaCorto = new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
+/** "2026-09-25" → "vie 25 de sep". */
+export const fechaTexto = (fecha: string) => diaCorto.format(new Date(`${fecha}T00:00:00Z`));
+
+/** Fracción como porcentaje con un decimal: 0.3421 → "34.2 %"; null → "—". */
+export const porcentaje = (fraccion: number | null) => (fraccion === null ? "—" : `${(fraccion * 100).toFixed(1)} %`);

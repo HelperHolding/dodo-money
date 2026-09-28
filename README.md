@@ -195,8 +195,45 @@ En Supabase → **SQL Editor**:
    Caja chica, Cierre ni Checklists. "Ver foto" en Caja chica sí abre.
 4. "Volver a corporativo" regresa a la tabla. "Salir" cierra la sesión.
 
+## Ventas y costos (importados de Dodo IS)
+
+Mientras la API de Dodo IS no está disponible, un **admin** importa cada día los dos reportes de Dodo IS de cada
+sucursal: **Ventas** y **Productos** (ProductsSales, método de cálculo "Con descuentos"), de un solo día.
+Con eso, en **Ventas** se ven la venta diaria, los productos, los descuentos, el costo teórico con costo promedio
+ponderado por categoría y las diferencias entre el cierre del gerente y Dodo IS.
+
+- **Importar** (solo admin): se suben los dos archivos → **Revisar** muestra sucursal, fecha, totales, si cuadran
+  y qué productos no tienen categoría o costo → **Guardar**. Si no cuadran por más de $1, o si el día ya estaba
+  importado (**Reimportar**), hay que marcar la casilla de confirmación. Los archivos no se guardan.
+- **Costos** (solo admin): categoría y costo por pieza de cada producto, con la fecha desde la que aplica.
+  Un costo nuevo no borra el anterior; los días previos se siguen costeando con el que estaba vigente.
+  Un error de captura se arregla con **Corregir** en el historial: el valor anterior queda registrado.
+- **Reportes**: admin y corporativo ven todas las sucursales o una; el gerente, la suya. Encargado y cajero no ven ventas.
+  El costo % se calcula solo sobre los productos con costo; los que no tienen se listan aparte.
+- Dodo IS cuenta el día de 0:00 a 23:59 y el cierre de la app hasta las 4:00: ventas después de medianoche pueden
+  explicar una diferencia en "Cierre contra Dodo IS".
+
+### Puesta en marcha
+
+En Supabase → **SQL Editor**:
+
+1. `supabase/migrations/0006_ventas_costos.sql`
+2. `supabase/seed_ventas_costos.sql`
+3. `supabase/pruebas/0006_ventas_costos.sql`: debe terminar con el error `PRUEBAS OK — …`.
+
+### Prueba manual
+
+1. Como admin, en **Ventas → Importar**, sube los reportes de Zapopan-1 del 25/09/2026: debe decir total $7,736.00,
+   39 pedidos, ✅ cuadra. Guardar.
+2. Súbelos otra vez: el botón dice **Reimportar** y pide la casilla.
+3. Sube Ventas de un día y Productos de otro: debe decir que las fechas no coinciden.
+4. En **Reportes**, el 25/09/2026: costo teórico $2,187.19 (33.8 %); pizzas $43.66 por pieza; Coca-Cola sin costo.
+5. En **Costos**, "Sin costo" muestra las Coca-Cola; Hawaiana Mediano tiene el aviso de costo dudoso.
+   Corrige su costo: el aviso desaparece y el historial dice "corregido (antes $44.09)".
+6. Como gerente solo aparece su sucursal y no hay Importar ni Costos; como encargado no aparece Ventas en el menú.
+
 ## Siguiente paso: conectar con Dodo IS
 
-Hoy las ventas en efectivo se copian del reporte de Dodo IS. Cuando esté el acceso a la API,
-`/accounting/sales` con `paymentMethod = Cash`, agrupado por `cashBoxSessionId`, puede llenar ese dato
-automáticamente en el arqueo y en el cierre del día.
+Hoy las ventas se importan a mano desde los reportes de Dodo IS (ver "Ventas y costos"). Cuando vuelva el acceso a
+la API, `/accounting/sales` puede llenar `ventas_dia` y `ventas_producto` automáticamente, y con `paymentMethod = Cash`,
+agrupado por `cashBoxSessionId`, el efectivo del arqueo y del cierre del día.
