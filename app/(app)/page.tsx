@@ -36,7 +36,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         <h2 id="t-turno">Turno</h2>
         {turno ? (
           <div className="acciones">
-            <p>Turno {turno.tipo} abierto desde las {hora(turno.abierto_en)}.</p>
+            <p>Turno {turno.tipo} abierto desde las {hora(turno.abierto_en)}</p>
             {!soloLectura && <Link className="boton" href="/arqueo">Registrar arqueo</Link>}
           </div>
         ) : puedeAbrirTurno(perfil.rol) ? (

@@ -125,6 +125,7 @@ input[type="number"] { text-align: right; }
   padding: 12px 22px; min-height: 48px; cursor: pointer;
 }
 .boton:hover { background: var(--accion-2); }
+a.boton { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .boton:disabled { opacity: 0.5; cursor: not-allowed; }
 .boton-secundario { background: var(--blanco); color: var(--accion-oscuro); border: 1.5px solid var(--accion-oscuro); }
 .boton-secundario:hover { background: var(--papel-2); }
