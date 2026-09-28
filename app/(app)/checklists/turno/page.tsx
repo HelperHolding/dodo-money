@@ -70,7 +70,7 @@ export default async function ListasDelTurno({
                 puede={puedeSupervisar(perfil.rol)} />
             </>
           ) : !puntosElegidos.length ? <p className="vacio">Esta lista no tiene nada que hacer en este momento hoy.</p>
-            : puedeRegistrar ? <FormLista checklistId={elegida.id} momento={columna.momento} puntos={puntosElegidos} />
+            : puedeRegistrar ? <FormLista key={`${elegida.id}|${columna.momento}`} checklistId={elegida.id} momento={columna.momento} puntos={puntosElegidos} />
             : <p className="vacio">{soloLectura ? "Corporativo solo puede consultar." : "Esta lista la registra el encargado o el gerente."}</p>}
         </section>
       )}

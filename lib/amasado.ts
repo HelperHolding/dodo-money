@@ -17,3 +17,11 @@ export function motivoAmasado(t: TempsAmasado): string | null {
   const [min, max] = RANGOS_AMASADO[k];
   return `${NOMBRE[k]} está a ${t[k]} °C, fuera de ${min} a ${max} °C`;
 }
+
+/** Gramos escritos como en México: coma = miles ("1,500" = 1500), punto = decimal. Algo ambiguo como "1,5" da NaN. */
+export function gramos(texto: string): number {
+  const t = texto.replace(/\s/g, "");
+  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) return Number(t.replace(/,/g, ""));
+  if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
+  return Number.NaN;
+}

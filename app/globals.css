@@ -228,7 +228,8 @@ fieldset.zona legend { padding: 0 6px; font-family: var(--display); font-weight:
   display: inline-block; min-width: 96px; text-align: center; padding: 4px 10px; border-radius: 999px;
   font-size: 0.85rem; font-weight: 700; text-decoration: none; border: 1.5px solid var(--linea); color: var(--tinta);
 }
-.estado-lista[data-estado="pendiente"] { background: var(--alerta-fondo); color: var(--alerta-texto); border-color: var(--alerta-borde); }
+/* Pendiente es neutro: el rojo queda para lo que ya faltó (resumen de horas, corporativo). */
+.estado-lista[data-estado="pendiente"] { background: var(--blanco); color: var(--tinta-2); border-style: dashed; }
 .estado-lista[data-estado="hecho"] { background: var(--papel-2); }
 .estado-lista[data-estado="revisado"] { background: var(--cuadra-fondo); color: var(--cuadra-texto); border-color: var(--cuadra-borde); }
 

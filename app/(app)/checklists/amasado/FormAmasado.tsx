@@ -58,7 +58,7 @@ export function FormAmasado() {
         {GRAMOS.map((g) => (
           <div key={g.k} className="campo">
             <label htmlFor={g.k}>{g.texto} (g)</label>
-            <input id={g.k} name={g.k} inputMode="decimal" required autoComplete="off" />
+            <input id={g.k} name={g.k} inputMode="decimal" required autoComplete="off" placeholder="Ej. 1500" />
           </div>
         ))}
       </div>
