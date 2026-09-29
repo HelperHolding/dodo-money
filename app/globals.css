@@ -387,10 +387,19 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .dona-rebanada { stroke: var(--cat); }
 .dona-centro { font-size: 7px; font-weight: 800; fill: var(--tinta); }
 .dona-centro-sub { font-size: 3.6px; font-weight: 600; fill: var(--tinta-2); }
-.dona-leyenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; flex: 1 1 160px; min-width: 0; }
-.dona-leyenda li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 0.95rem; }
+.dona-leyenda {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;
+  flex: 1 1 160px; min-width: 0; container-type: inline-size;
+}
+.dona-leyenda li { display: grid; grid-template-columns: 12px auto 1fr; align-items: center; gap: 2px 8px; font-size: 0.95rem; }
+.dona-leyenda-nombre { white-space: nowrap; }
+/* Leyenda angosta (al lado de la dona): el valor va debajo del nombre, alineado con él; el nombre nunca se parte. */
+@container (max-width: 250px) {
+  .dona-leyenda li { grid-template-columns: 12px 1fr; }
+  .dona-leyenda .dona-leyenda-valor { grid-column: 2; justify-self: start; font-size: 0.9rem; }
+}
 .dona-punto { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--cat); }
-.dona-leyenda-valor { font-weight: 700; text-align: right; white-space: nowrap; }
+.dona-leyenda-valor { justify-self: end; font-weight: 700; white-space: nowrap; }
 
 .costos-categorias { display: grid; gap: 8px; }
 .costo-categoria { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 10px; }
