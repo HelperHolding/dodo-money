@@ -13,7 +13,10 @@ export default async function LayoutVentas({ children }: { children: React.React
   return (
     <>
       <header className="barra">
-        <span className="barra-marca">Ventas</span>
+        <span className="barra-identidad">
+          <img className="barra-logo" src="/logo-dodo.png" alt="Dodo Pizza" width={32} height={32} />
+          <span className="barra-marca">Ventas</span>
+        </span>
         <span className="barra-turno">Importadas de Dodo IS</span>
         <div className="barra-usuario">
           <span>{perfil.nombre}</span>

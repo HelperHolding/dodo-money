@@ -6,7 +6,8 @@ export const metadata: Metadata = {
   description: "Arqueos, movimientos entre cajas y cierre del día",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1 };
+// themeColor: la barra del navegador en celular, del mismo negro que el encabezado.
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#000000" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

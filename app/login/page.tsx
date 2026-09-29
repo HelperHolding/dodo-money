@@ -11,6 +11,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   return (
     <main className="login">
       <form action={iniciarSesion}>
+        <img className="login-logo" src="/logo-dodo.png" alt="Dodo Pizza" width={72} height={72} />
         <div className="encabezado">
           <h1>Control de efectivo</h1>
           <p>Entra con el usuario que te dio tu gerente.</p>
