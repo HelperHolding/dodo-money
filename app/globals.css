@@ -1,7 +1,7 @@
 /* Paleta de Dodo: naranja de marca para acciones, negro del contorno del logo, fondo blanco cálido.
    Verde para lo que cuadra y rojo para lo que no (el naranja queda solo para la marca).
    Naranja brillante solo en rellenos y líneas: como texto se usa --accion-oscuro (contraste 5.5:1).
-   Tipografía legible con números tabulares para leer montos de pie. */
+   Tipografía neutral (Manrope) con números tabulares para leer montos de pie. */
 :root {
   --papel: #fffaf5;
   --papel-2: #f5ece3;
@@ -21,8 +21,8 @@
   --alerta-fondo: #fdecea;
   --alerta-texto: #8e1c1c;
   --alerta-borde: #f2b8b5;
-  --display: "Bricolage Grotesque", "Segoe UI", sans-serif;
-  --texto: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+  --display: "Manrope", "Segoe UI", sans-serif;
+  --texto: "Manrope", "Segoe UI", sans-serif;
   color-scheme: light;
 }
 
