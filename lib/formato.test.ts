@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decimal, diaYNumero, fechaTexto, hoyMX, numeroCorto, pesosRedondos, porcentaje, rangoDiaMX } from "./formato.ts";
+import { decimal, diaYNumero, fechaTexto, hoyMX, numeroCorto, pesosCortos, pesosRedondos, porcentaje, rangoDiaMX } from "./formato.ts";
 
 test("decimal acepta punto o coma", () => {
   assert.equal(decimal("0,5"), 0.5);
@@ -53,4 +53,12 @@ test("pesosRedondos: sin centavos, para los indicadores", () => {
 
 test("diaYNumero: rótulo corto para las barras", () => {
   assert.equal(diaYNumero("2026-09-25"), "vie 25");
+});
+
+test("pesosCortos: venta de un día en poco espacio", () => {
+  assert.equal(pesosCortos(9649), "$9.6k");
+  assert.equal(pesosCortos(12825), "$12.8k");
+  assert.equal(pesosCortos(10000), "$10k");
+  assert.equal(pesosCortos(950), "$950");
+  assert.equal(pesosCortos(1250000), "$1.3M");
 });

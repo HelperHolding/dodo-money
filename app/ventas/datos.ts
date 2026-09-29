@@ -26,6 +26,18 @@ export async function ultimoDiaConDatos(supabase: SupabaseClient, sucursal: stri
   return data?.fecha ?? null;
 }
 
+/** Venta por día desde una fecha (sumando sucursales si sucursal es null), para el calendario. */
+export async function ventaDiariaDesde(supabase: SupabaseClient, sucursal: string | null, desde: string): Promise<Record<string, number>> {
+  const filas = await leerTodo<{ fecha: string; total: number }>((inicio, fin) => {
+    let q = supabase.from("ventas_dia").select("fecha, total").gte("fecha", desde);
+    if (sucursal) q = q.eq("sucursal_id", sucursal);
+    return q.order("sucursal_id").order("fecha").range(inicio, fin).returns<{ fecha: string; total: number }[]>();
+  });
+  const venta: Record<string, number> = {};
+  for (const f of filas) venta[f.fecha] = Math.round(((venta[f.fecha] ?? 0) + Number(f.total)) * 100) / 100;
+  return venta;
+}
+
 /** Días de un periodo con su desglose, en páginas ordenadas por la llave primaria. */
 function leerDias(supabase: SupabaseClient, sucursal: string | null, p: Periodo) {
   return leerTodo<DiaConDesglose>((desde, hasta) => {

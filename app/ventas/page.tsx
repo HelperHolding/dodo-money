@@ -1,18 +1,20 @@
 import Link from "next/link";
 import { BarrasVerticales } from "@/components/BarrasVerticales";
+import { CalendarioVentas } from "@/components/CalendarioVentas";
 import { Dona } from "@/components/Dona";
 import { Grafica } from "@/components/Grafica";
 import { Indicadores } from "@/components/Indicadores";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
-import { diaYNumero, fechaTexto, pesos, pesosRedondos, porcentaje } from "@/lib/formato";
+import { diaYNumero, fechaTexto, hoyMX, pesos, pesosRedondos, porcentaje } from "@/lib/formato";
 import { puedeImportarVentas, veVentasDeTodas } from "@/lib/roles";
 import {
-  costeo, descuentos, diasConCierre, NOMBRE_CATEGORIA, NOMBRE_TIPO, periodoAnterior, periodoElegido,
+  costeo, descuentos, diasConCierre, MAX_DIAS, NOMBRE_CATEGORIA, NOMBRE_TIPO, periodoAnterior, periodoElegido,
   periodoPorDefecto, porProducto, resumenVentas, separarDesglose, topProductos, ventaPorDia, type Categoria,
 } from "@/lib/ventas/calculos";
 import { indicadores } from "@/lib/ventas/tablero";
-import { datosVentas, ultimoDiaConDatos } from "./datos";
+import { moverMes } from "@/lib/ventas/calendario";
+import { datosVentas, ultimoDiaConDatos, ventaDiariaDesde } from "./datos";
 
 const categoria = (c: Categoria | null) => (c ? NOMBRE_CATEGORIA[c] : "Sin categoría");
 const cambio = (f: number | null) => (f === null ? "nuevo" : `${f >= 0 ? "▲" : "▼"} ${porcentaje(Math.abs(f))}`);
@@ -39,7 +41,13 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   }
 
   const periodo = periodoElegido(q.desde, q.hasta, periodoPorDefecto(ultimo));
-  const d = await datosVentas(supabase, sucursal, periodo, periodoAnterior(periodo));
+  const hoy = hoyMX();
+  // El calendario trae 13 meses de venta diaria de una vez: cambiar de mes no vuelve a consultar.
+  const inicioCalendario = moverMes({ anio: Number(hoy.slice(0, 4)), mes: Number(hoy.slice(5, 7)) }, -12);
+  const [d, ventaDiaria] = await Promise.all([
+    datosVentas(supabase, sucursal, periodo, periodoAnterior(periodo)),
+    ventaDiariaDesde(supabase, sucursal, `${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`),
+  ]);
   const resumen = resumenVentas(d.dias);
   const productos = porProducto(d.renglones);
   const costos = costeo(d.renglones);
@@ -66,22 +74,8 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         <p>{titulo} · {fechaTexto(periodo.desde)} a {fechaTexto(periodo.hasta)} · {resumen.dias} {resumen.dias === 1 ? "día" : "días"} con datos</p>
       </div>
 
-      <form className="acciones" method="get">
-        {todas && (
-          <>
-            <label htmlFor="sucursal" className="etiqueta">Sucursal</label>
-            <select id="sucursal" name="sucursal" defaultValue={sucursal ?? ""}>
-              <option value="">Todas</option>
-              {(sucursales ?? []).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-            </select>
-          </>
-        )}
-        <label htmlFor="desde" className="etiqueta">Desde</label>
-        <input id="desde" name="desde" type="date" defaultValue={periodo.desde} />
-        <label htmlFor="hasta" className="etiqueta">Hasta</label>
-        <input id="hasta" name="hasta" type="date" defaultValue={periodo.hasta} />
-        <button className="boton boton-secundario" type="submit">Ver</button>
-      </form>
+      <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
+        maxDias={MAX_DIAS} sucursal={sucursal} sucursales={todas ? sucursales ?? [] : null} />
 
       <Indicadores lista={kpis} detalle={{
         venta: `Neta ${pesosRedondos(resumen.neta)} · IVA ${pesosRedondos(resumen.iva)}`,
