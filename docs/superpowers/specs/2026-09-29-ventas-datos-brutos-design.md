@@ -8,6 +8,8 @@ Reemplazar la importación diaria de dos archivos (Ventas + ProductsSales) por *
 
 **Éxito:** el admin importa una semana con un archivo; los reportes actuales (tablero, costos, calendario, cierre contra Dodo IS) siguen igual, y los nuevos muestran la operación por hora y canal.
 
+**Puente hacia la API:** Dodo IS ya dio acceso a su API (`accounting/sales`, `cancelled-sales`, `staff-meals`, `incoming-stock-items`…). Mientras se aprueban la URL de regreso y los scopes (hasta 4 días hábiles), esta etapa importa el archivo. La sincronización por API, en un diseño aparte, llenará **las mismas tablas** (`pedidos`, `pedido_productos`), así que los reportes no cambian; la importación de archivo queda como respaldo. Por eso los campos que la API podría no traer (tiempos, cliente, promoción) son opcionales.
+
 **Fuera de esta etapa:** costos por receta con recepciones (siguiente diseño, que usará `unitCost` guardado aquí para comparar), recompra de clientes, venta por agregador (no hay pedidos de agregador todavía).
 
 ## Decisiones tomadas
