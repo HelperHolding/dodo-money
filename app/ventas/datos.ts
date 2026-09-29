@@ -12,8 +12,8 @@ export type DiaConDesglose = VentaDia & { ventas_dia_desglose: FilaDesglose[] };
 export type DatosVentas = {
   dias: DiaConDesglose[];
   renglones: RenglonCosteo[];
-  /** Importe por producto del periodo anterior, para el cambio del top 10. */
-  anterior: { dodo_id: number; importe: number }[];
+  /** El periodo anterior del mismo largo, para comparar indicadores y productos. */
+  anterior: { dias: VentaDia[]; renglones: RenglonCosteo[] };
   cierres: CierreDia[];
 };
 
@@ -26,38 +26,44 @@ export async function ultimoDiaConDatos(supabase: SupabaseClient, sucursal: stri
   return data?.fecha ?? null;
 }
 
+/** Días de un periodo con su desglose, en páginas ordenadas por la llave primaria. */
+function leerDias(supabase: SupabaseClient, sucursal: string | null, p: Periodo) {
+  return leerTodo<DiaConDesglose>((desde, hasta) => {
+    let q = supabase.from("ventas_dia")
+      .select("sucursal_id, fecha, pedidos, total, efectivo, tarjeta, en_linea, iva, venta_m2, ventas_dia_desglose(tipo, pedidos, total)")
+      .gte("fecha", p.desde).lte("fecha", p.hasta);
+    if (sucursal) q = q.eq("sucursal_id", sucursal);
+    return q.order("sucursal_id").order("fecha").range(desde, hasta).returns<DiaConDesglose[]>();
+  });
+}
+
+/** Productos vendidos en un periodo, en páginas ordenadas por la llave primaria. */
+function leerProductos(supabase: SupabaseClient, sucursal: string | null, p: Periodo) {
+  return leerTodo<VentaProducto>((desde, hasta) => {
+    let q = supabase.from("ventas_producto")
+      .select("sucursal_id, fecha, dodo_id, nombre, cantidad, importe, importe_sin_descuento")
+      .gte("fecha", p.desde).lte("fecha", p.hasta);
+    if (sucursal) q = q.eq("sucursal_id", sucursal);
+    return q.order("sucursal_id").order("fecha").order("dodo_id").range(desde, hasta).returns<VentaProducto[]>();
+  });
+}
+
 /**
- * Todo lo del periodo, en páginas de 1000 (Supabase corta ahí sin avisar), ordenado por la llave primaria para que
- * cada página sea barata. El costeo se calcula aquí con el catálogo y los costos, que son tablas chicas.
- * sucursal null = todas las sucursales visibles.
+ * Todo lo del periodo y del anterior, en páginas de 1000 (Supabase corta ahí sin avisar). El costeo se calcula
+ * aquí con el catálogo y los costos, que son tablas chicas. sucursal null = todas las sucursales visibles.
  */
 export async function datosVentas(supabase: SupabaseClient, sucursal: string | null, p: Periodo, anterior: Periodo): Promise<DatosVentas> {
-  const [dias, ventas, catalogo, costos, previos, cierres] = await Promise.all([
-    leerTodo<DiaConDesglose>((desde, hasta) => {
-      let q = supabase.from("ventas_dia")
-        .select("sucursal_id, fecha, pedidos, total, efectivo, tarjeta, en_linea, iva, venta_m2, ventas_dia_desglose(tipo, pedidos, total)")
-        .gte("fecha", p.desde).lte("fecha", p.hasta);
-      if (sucursal) q = q.eq("sucursal_id", sucursal);
-      return q.order("sucursal_id").order("fecha").range(desde, hasta).returns<DiaConDesglose[]>();
-    }),
-    leerTodo<VentaProducto>((desde, hasta) => {
-      let q = supabase.from("ventas_producto")
-        .select("sucursal_id, fecha, dodo_id, nombre, cantidad, importe, importe_sin_descuento")
-        .gte("fecha", p.desde).lte("fecha", p.hasta);
-      if (sucursal) q = q.eq("sucursal_id", sucursal);
-      return q.order("sucursal_id").order("fecha").order("dodo_id").range(desde, hasta).returns<VentaProducto[]>();
-    }),
+  const [dias, ventas, diasAnteriores, ventasAnteriores, catalogo, costos, cierres] = await Promise.all([
+    leerDias(supabase, sucursal, p),
+    leerProductos(supabase, sucursal, p),
+    leerDias(supabase, sucursal, anterior),
+    leerProductos(supabase, sucursal, anterior),
     leerTodo<{ dodo_id: number; categoria: Categoria | null }>((desde, hasta) =>
       supabase.from("productos_venta").select("dodo_id, categoria").order("dodo_id").range(desde, hasta)
         .returns<{ dodo_id: number; categoria: Categoria | null }[]>()),
     leerTodo<Costo & { dodo_id: number }>((desde, hasta) =>
       supabase.from("costos_producto").select("dodo_id, costo, vigente_desde").lte("vigente_desde", p.hasta)
         .order("dodo_id").order("vigente_desde").range(desde, hasta).returns<(Costo & { dodo_id: number })[]>()),
-    leerTodo<{ dodo_id: number; importe: number }>((desde, hasta) => {
-      let q = supabase.from("ventas_producto").select("dodo_id, importe").gte("fecha", anterior.desde).lte("fecha", anterior.hasta);
-      if (sucursal) q = q.eq("sucursal_id", sucursal);
-      return q.order("sucursal_id").order("fecha").order("dodo_id").range(desde, hasta).returns<{ dodo_id: number; importe: number }[]>();
-    }),
     leerTodo<CierreDia>((desde, hasta) => {
       let q = supabase.from("cierres_dia").select("sucursal_id, fecha, efectivo, tarjeta, app, rappi, iva, transacciones")
         .gte("fecha", p.desde).lte("fecha", p.hasta);
@@ -65,5 +71,10 @@ export async function datosVentas(supabase: SupabaseClient, sucursal: string | n
       return q.order("sucursal_id").order("fecha").range(desde, hasta).returns<CierreDia[]>();
     }),
   ]);
-  return { dias, renglones: costearProductos(ventas, dias, catalogo, costos), anterior: previos, cierres };
+  return {
+    dias,
+    renglones: costearProductos(ventas, dias, catalogo, costos),
+    anterior: { dias: diasAnteriores, renglones: costearProductos(ventasAnteriores, diasAnteriores, catalogo, costos) },
+    cierres,
+  };
 }

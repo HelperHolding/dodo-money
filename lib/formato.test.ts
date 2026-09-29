@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decimal, fechaTexto, hoyMX, numeroCorto, porcentaje, rangoDiaMX } from "./formato.ts";
+import { decimal, diaYNumero, fechaTexto, hoyMX, numeroCorto, pesosRedondos, porcentaje, rangoDiaMX } from "./formato.ts";
 
 test("decimal acepta punto o coma", () => {
   assert.equal(decimal("0,5"), 0.5);
@@ -44,4 +44,13 @@ test("porcentaje", () => {
   assert.equal(porcentaje(0.3421), "34.2 %");
   assert.equal(porcentaje(0), "0.0 %");
   assert.equal(porcentaje(null), "—");
+});
+
+test("pesosRedondos: sin centavos, para los indicadores", () => {
+  assert.equal(pesosRedondos(53454.4), "$53,454");
+  assert.equal(pesosRedondos(232.6), "$233");
+});
+
+test("diaYNumero: rótulo corto para las barras", () => {
+  assert.equal(diaYNumero("2026-09-25"), "vie 25");
 });

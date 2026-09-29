@@ -1,7 +1,7 @@
 /* Paleta de Dodo: naranja de marca para acciones, negro del contorno del logo, fondo blanco cálido.
    Verde para lo que cuadra y rojo para lo que no (el naranja queda solo para la marca).
    Naranja brillante solo en rellenos y líneas: como texto se usa --accion-oscuro (contraste 5.5:1).
-   Tipografía legible con números tabulares para leer montos de pie. */
+   Tipografía neutral (Manrope) con números tabulares para leer montos de pie. */
 :root {
   --papel: #fffaf5;
   --papel-2: #f5ece3;
@@ -21,8 +21,8 @@
   --alerta-fondo: #fdecea;
   --alerta-texto: #8e1c1c;
   --alerta-borde: #f2b8b5;
-  --display: "Bricolage Grotesque", "Segoe UI", sans-serif;
-  --texto: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+  --display: "Manrope", "Segoe UI", sans-serif;
+  --texto: "Manrope", "Segoe UI", sans-serif;
   color-scheme: light;
 }
 
@@ -340,3 +340,58 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .corregir { margin-top: 4px; }
 .corregir > summary { cursor: pointer; color: var(--accion-oscuro); font-size: 0.9rem; }
 .corregir small { color: var(--tinta-2); font-size: 0.85rem; }
+
+/* ─── Tablero de Ventas ─── */
+.cat-pizza { --cat: var(--accion); }
+.cat-snack { --cat: #1f6b4f; }
+.cat-postre { --cat: #993556; }
+.cat-bebida { --cat: #185fa5; }
+.cat-otro { --cat: #888780; }
+.cat-sin { --cat: #b4b2a9; }
+
+.indicadores { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 760px) { .indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.indicador {
+  background: var(--blanco); border: 1px solid var(--linea); border-radius: 12px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.indicador-etiqueta { font-size: 0.85rem; font-weight: 600; color: var(--tinta-2); }
+.indicador-valor { font-size: clamp(1.35rem, 3.4vw, 1.9rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; overflow-wrap: anywhere; }
+.indicador-cambio { font-size: 0.85rem; font-weight: 700; color: var(--tinta-2); }
+.indicador-cambio[data-favorable="si"] { color: var(--cuadra); }
+.indicador-cambio[data-favorable="no"] { color: var(--alerta); }
+.indicador-detalle { font-size: 0.8rem; color: var(--tinta-2); }
+
+.tablero-fila { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 900px) {
+  .tablero-fila { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tablero-fila-ancha { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+}
+
+.barras-v-contenedor { display: flex; flex-direction: column; gap: 8px; }
+.barras-v-detalle { font-weight: 700; min-height: 1.5em; }
+.barras-v { display: flex; align-items: flex-end; height: 190px; border-bottom: 1px solid var(--linea); }
+.barras-v button {
+  flex: 1 1 0; min-width: 0; height: 100%; padding: 0; border: 0; background: none; cursor: pointer;
+  display: flex; align-items: flex-end;
+}
+.barras-v button span { display: block; width: 100%; min-height: 2px; border-radius: 6px 6px 2px 2px; background: var(--accion); opacity: 0.55; transition: opacity 120ms ease; }
+.barras-v button span[data-max] { opacity: 0.85; }
+.barras-v button[aria-pressed="true"] span { opacity: 1; background: var(--accion-oscuro); }
+.barras-v-rotulos { display: flex; }
+.barras-v-rotulos span { flex: 1 1 0; min-width: 0; text-align: center; font-size: 0.75rem; color: var(--tinta-2); white-space: nowrap; overflow: visible; }
+
+.dona { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
+.dona-svg { width: 150px; height: 150px; flex: none; transform: rotate(0deg); }
+.dona-fondo { stroke: var(--papel-2); }
+.dona-rebanada { stroke: var(--cat); }
+.dona-centro { font-size: 7px; font-weight: 800; fill: var(--tinta); }
+.dona-centro-sub { font-size: 3.6px; font-weight: 600; fill: var(--tinta-2); }
+.dona-leyenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; flex: 1 1 160px; min-width: 0; }
+.dona-leyenda li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 0.95rem; }
+.dona-punto { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--cat); }
+.dona-leyenda-valor { font-weight: 700; text-align: right; white-space: nowrap; }
+
+.costos-categorias { display: grid; gap: 8px; }
+.costo-categoria { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 10px; }
+.costo-categoria .saldo-nota { grid-column: 2 / -1; }
