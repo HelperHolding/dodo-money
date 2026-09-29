@@ -18,12 +18,13 @@ begin
   if v_a is null then raise exception 'FALTAN DATOS: se necesitan dos usuarios activos con sucursal.'; end if;
   select id into v_suc_b from sucursales where id <> v_suc_a limit 1;
   if v_suc_b is null then insert into sucursales (nombre) values ('Prueba datos brutos') returning id into v_suc_b; end if;
-  if not exists (select 1 from productos_venta where dodo_id = 27 and dodo_uuid is null) then
-    raise exception 'FALTAN DATOS: se necesita la Margarita Mediano (27) del seed, sin código de Datos brutos.';
+  if not exists (select 1 from productos_venta where dodo_id = 27) then
+    raise exception 'FALTAN DATOS: se necesita la Margarita Mediano (27) del seed.';
   end if;
 
   -- Un día (2000-01-02) de la sucursal B: una venta en efectivo con Margarita Mediano (existe) y un producto nuevo,
-  -- una comida del personal y un cancelado.
+  -- una comida del personal y un cancelado. Como en Dodo IS (versión normal y "T"), un mismo nombre llega con dos
+  -- códigos: Margarita Mediano (UUID-MARGARITA-M y -M2) y el producto nuevo (UUID-NUEVO y UUID-NUEVO-2).
   v_dias := jsonb_build_array(jsonb_build_object('sucursal_id', v_suc_b, 'fecha', '2000-01-02',
     'resumen', jsonb_build_object('pedidos', 1, 'total', 243.4, 'efectivo', 243.4, 'tarjeta', 0, 'en_linea', 0, 'iva', 33.57,
                                   'venta_m2', 4, 'suma_productos', 243.4, 'productos', 2),
@@ -45,9 +46,9 @@ begin
       'tamano', 'mediano', 'precio', 143.4, 'precio_sin_descuento', 169, 'costo_dodo', 2280, 'combo', 'El de Siempre'),
     jsonb_build_object('pedido_id', 'PRUEBA-VENTA', 'renglon', 2, 'dodo_uuid', 'UUID-NUEVO', 'nombre', 'Prueba Nueva Grande',
       'tamano', 'grande', 'precio', 100, 'precio_sin_descuento', 100, 'combo', 'El de Siempre'),
-    jsonb_build_object('pedido_id', 'PRUEBA-PERSONAL', 'renglon', 1, 'dodo_uuid', 'UUID-NUEVO', 'nombre', 'Prueba Nueva Grande',
+    jsonb_build_object('pedido_id', 'PRUEBA-PERSONAL', 'renglon', 1, 'dodo_uuid', 'UUID-NUEVO-2', 'nombre', 'Prueba Nueva Grande',
       'tamano', 'grande', 'precio', 100, 'precio_sin_descuento', 100),
-    jsonb_build_object('pedido_id', 'PRUEBA-CANCELADO', 'renglon', 1, 'dodo_uuid', 'UUID-MARGARITA-M', 'nombre', 'Margarita Mediano',
+    jsonb_build_object('pedido_id', 'PRUEBA-CANCELADO', 'renglon', 1, 'dodo_uuid', 'UUID-MARGARITA-M2', 'nombre', 'Margarita Mediano',
       'tamano', 'mediano', 'precio', 95, 'precio_sin_descuento', 95));
   -- El mismo día en la sucursal A, con un solo pedido.
   v_dias_a := jsonb_set(v_dias, '{0,sucursal_id}', to_jsonb(v_suc_a));
@@ -98,11 +99,15 @@ begin
   if v_txt is distinct from 'datos_brutos|1|null' then raise exception 'FALLÓ: la bitácora debe decir datos_brutos, 1 pedido y sin archivo de productos (dice %)', v_txt; end if;
   v_ok := array_append(v_ok, 'admin importa pedidos, venta y bitácora');
 
-  -- Catálogo: la Margarita (27) se empata por nombre sin distinguir mayúsculas y recibe su código; el nuevo entra con número interno.
-  select dodo_uuid into v_txt from productos_venta where dodo_id = 27;
-  if v_txt is distinct from 'UUID-MARGARITA-M' then raise exception 'FALLÓ: la Margarita Mediano debe recibir su código (tiene %)', v_txt; end if;
-  select count(*) into v_n from productos_venta where dodo_uuid = 'UUID-NUEVO' and dodo_id >= 1000000 and categoria is null and tamano = 'grande';
-  if v_n <> 1 then raise exception 'FALLÓ: el producto nuevo debe entrar con número interno, sin categoría y grande'; end if;
+  -- Catálogo: los dos códigos de la Margarita se ligan a la 27 (por nombre, sin distinguir mayúsculas); los dos del
+  -- producto nuevo, a un solo producto nuevo con número interno.
+  select count(*) into v_n from productos_codigos where dodo_id = 27 and dodo_uuid in ('UUID-MARGARITA-M', 'UUID-MARGARITA-M2');
+  if v_n <> 2 then raise exception 'FALLÓ: los dos códigos de Margarita Mediano deben ligarse a la 27 (ligados: %)', v_n; end if;
+  select count(*), count(distinct c.dodo_id) into v_n, v_num from productos_codigos c join productos_venta pv on pv.dodo_id = c.dodo_id
+   where c.dodo_uuid in ('UUID-NUEVO', 'UUID-NUEVO-2') and pv.dodo_id >= 1000000 and pv.categoria is null and pv.tamano = 'grande';
+  if v_n <> 2 or v_num <> 1 then raise exception 'FALLÓ: los dos códigos nuevos deben ir a un solo producto nuevo, interno, sin categoría y grande (% códigos, % productos)', v_n, v_num; end if;
+  select count(*) into v_n from productos_venta where nombre = 'Prueba Nueva Grande';
+  if v_n <> 1 then raise exception 'FALLÓ: el producto nuevo no debe duplicarse (hay %)', v_n; end if;
   select dodo_id into v_n from pedido_productos where pedido_id = 'PRUEBA-VENTA' and renglon = 1;
   if v_n <> 27 then raise exception 'FALLÓ: el producto del pedido debe apuntar a la Margarita (27), apunta a %', v_n; end if;
   v_ok := array_append(v_ok, 'empate con el catálogo');

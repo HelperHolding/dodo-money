@@ -57,13 +57,16 @@ export async function prepararImportacion(supabase: SupabaseClient, fd: FormData
   const periodo = { desde: fechas[0], hasta: fechas[fechas.length - 1] };
   const ids = [...new Set([...sucursalDe.values()].map((s) => s.id))];
 
-  const [previos, catalogo, costos] = await Promise.all([
+  const [previos, catalogo, codigos, costos] = await Promise.all([
     supabase.from("ventas_dia").select("sucursal_id, fecha, total").in("sucursal_id", ids)
       .gte("fecha", periodo.desde).lte("fecha", periodo.hasta)
       .returns<{ sucursal_id: string; fecha: string; total: number }[]>(),
-    leerTodo<{ dodo_id: number; nombre: string; categoria: string | null; dodo_uuid: string | null }>((desde, hasta) =>
-      supabase.from("productos_venta").select("dodo_id, nombre, categoria, dodo_uuid").order("dodo_id").range(desde, hasta)
-        .returns<{ dodo_id: number; nombre: string; categoria: string | null; dodo_uuid: string | null }[]>()),
+    leerTodo<{ dodo_id: number; nombre: string; categoria: string | null }>((desde, hasta) =>
+      supabase.from("productos_venta").select("dodo_id, nombre, categoria").order("dodo_id").range(desde, hasta)
+        .returns<{ dodo_id: number; nombre: string; categoria: string | null }[]>()),
+    leerTodo<{ dodo_uuid: string; dodo_id: number }>((desde, hasta) =>
+      supabase.from("productos_codigos").select("dodo_uuid, dodo_id").order("dodo_uuid").range(desde, hasta)
+        .returns<{ dodo_uuid: string; dodo_id: number }[]>()),
     leerTodo<{ dodo_id: number }>((desde, hasta) =>
       supabase.from("costos_producto").select("dodo_id").lte("vigente_desde", periodo.hasta)
         .order("dodo_id").order("vigente_desde").range(desde, hasta).returns<{ dodo_id: number }[]>()),
@@ -71,9 +74,12 @@ export async function prepararImportacion(supabase: SupabaseClient, fd: FormData
   if (previos.error) throw new Error(`No se pudo revisar qué días ya estaban importados: ${previos.error.message}`);
   const previo = new Map((previos.data ?? []).map((v) => [`${v.sucursal_id}|${v.fecha}`, Number(v.total)]));
 
-  // Empate con el catálogo igual que en la base de datos: por código, si no por nombre.
-  const porCodigo = new Map(catalogo.filter((c) => c.dodo_uuid).map((c) => [c.dodo_uuid!, c]));
-  const porNombre = new Map(catalogo.filter((c) => !c.dodo_uuid).map((c) => [c.nombre.toLowerCase(), c]));
+  // Empate con el catálogo igual que en la base de datos: por código; si no, por nombre (el de menor número si se
+  // repite). Todos los códigos de un mismo nombre van al mismo producto (versión normal y "T").
+  const porId = new Map(catalogo.map((c) => [c.dodo_id, c]));
+  const porCodigo = new Map(codigos.flatMap((k) => (porId.has(k.dodo_id) ? [[k.dodo_uuid, porId.get(k.dodo_id)!] as const] : [])));
+  const porNombre = new Map<string, (typeof catalogo)[number]>();
+  for (const c of catalogo) if (!porNombre.has(c.nombre.toLowerCase())) porNombre.set(c.nombre.toLowerCase(), c);
   const conCosto = new Set(costos.map((c) => c.dodo_id));
   const nuevos = new Set<string>(), sinCategoria = new Set<string>(), sinCosto = new Set<string>();
   for (const x of archivo.productos) {

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { leerHojas, type Hoja } from "./xlsx.ts";
-import { extraerDatosBrutos, HOJAS_NO_COINCIDEN, NO_ES_DATOS_BRUTOS, SIN_PEDIDOS } from "./datosBrutos.ts";
+import { ARCHIVO_MUY_GRANDE, extraerDatosBrutos, HOJAS_NO_COINCIDEN, mensajeAlGuardar, NO_ES_DATOS_BRUTOS, SIN_PEDIDOS } from "./datosBrutos.ts";
 import { canales, combos, cuentaComoVenta, diaSemana, ivaDe, personalYCancelados, resumirDias, tiempos, tiposDesglose, ventaPorHora } from "./pedidos.ts";
 
 const leer = (n: string) => leerHojas(readFileSync(new URL(`./__fixtures__/${n}`, import.meta.url)));
@@ -158,4 +158,10 @@ test("hojas que no coinciden", () => {
 
 test("archivo de más de 92 días", () => {
   assert.throws(() => extraerDatosBrutos(con("RawData", { E2: "01.01.2026" })), /más de 92 días/);
+});
+
+test("mensajeAlGuardar: si Supabase corta por tiempo, pide importar por semanas; lo demás pasa igual", () => {
+  assert.equal(mensajeAlGuardar("canceling statement due to statement timeout"), ARCHIVO_MUY_GRANDE);
+  assert.match(ARCHIVO_MUY_GRANDE, /por semanas/);
+  assert.equal(mensajeAlGuardar("Estos días ya se importaron: 2026-09-25."), "Estos días ya se importaron: 2026-09-25.");
 });

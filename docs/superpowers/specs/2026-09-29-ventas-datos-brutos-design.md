@@ -75,7 +75,7 @@ pedido_productos      pedido_id → pedidos on delete cascade, renglon int, dodo
                       nombre text, precio, precio_sin_descuento numeric(12,2), costo_dodo numeric(12,4),
                       combo text, primary key (pedido_id, renglon)
 
-productos_venta       + dodo_uuid text unique (se llena al empatar)
+productos_codigos     dodo_uuid text pk, dodo_id → productos_venta (varios códigos por producto)
                       nuevos productos sin número de ProductsSales: dodo_id de la secuencia productos_venta_interno (desde 1,000,000)
 
 importaciones_ventas  + formato text check in ('ventas_productos','datos_brutos') default 'ventas_productos'
@@ -93,7 +93,7 @@ sucursales            + m2_comedor numeric(8,2) (para venta por m²)
 - `p_dias`: `[{sucursal_id, fecha, resumen: {pedidos, total, efectivo, tarjeta, en_linea, iva, venta_m2}, desglose: [...]}]`, calculado en la app (probado en node).
 - `p_pedidos` y `p_productos`: los renglones ya normalizados.
 - Por cada día: si ya existe y no se pide reemplazar → error "Estos días ya se importaron: …". Con reemplazar, borra `ventas_producto`, `ventas_dia` (el desglose se va en cascada) y `pedidos` de ese día y sucursal (los productos se van en cascada), y registra la importación con el total anterior.
-- Catálogo: cada producto se empata por `dodo_uuid`; si no, por nombre sin distinguir mayúsculas entre los que aún no tienen código (y se le guarda); si no, entra nuevo, sin categoría, con `dodo_id` de la secuencia interna y el tamaño detectado por nombre.
+- Catálogo: cada código se busca en `productos_codigos`; si no está, se liga al producto con el mismo nombre (sin distinguir mayúsculas; el de menor número si se repite); si el nombre no existe, entra un producto nuevo por nombre, sin categoría, con `dodo_id` de la secuencia interna y el tamaño detectado por nombre. **Todos los códigos de un nombre van al mismo producto:** en el archivo real, 12 nombres traen dos códigos (la versión normal y la "T" de Dodo IS, que Datos brutos no distingue; el 25/09 Pepperoni Grande trae 21 y 1 piezas, igual que "Pepperoni Grande" y "Pepperoni Grande T" en ProductsSales), así que se cuentan juntas con el costo de la normal.
 - `ventas_producto` se calcula en SQL agrupando `pedido_productos` de los pedidos que cuentan como venta.
 - Devuelve el número de días guardados.
 

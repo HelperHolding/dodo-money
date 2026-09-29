@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, pesos } from "@/lib/formato";
 import { puedeImportarVentas } from "@/lib/roles";
+import { mensajeAlGuardar } from "@/lib/ventas/datosBrutos";
 import { prepararImportacion, type Revision } from "./preparar";
 
 export type ResultadoImportacion =
@@ -50,7 +51,7 @@ export async function guardarImportacion(fd: FormData): Promise<ResultadoImporta
     p_productos: carga.productos,
     p_reemplazar: revision.diasYaImportados > 0,
   });
-  if (error) return { tipo: "error", mensaje: error.message, revision };
+  if (error) return { tipo: "error", mensaje: mensajeAlGuardar(error.message), revision };
 
   revalidatePath("/ventas", "layout");
   const { desde, hasta } = revision.periodo;

@@ -50,6 +50,10 @@ export const NO_ES_DATOS_BRUTOS = "Este archivo no parece un Datos brutos de Dod
 export const SIN_PEDIDOS = "El archivo no trae pedidos.";
 export const HOJAS_NO_COINCIDEN = "Hay productos de pedidos que no están en OrderPositions, o productos sin su pedido.";
 export const MAX_DIAS_ARCHIVO = 92;
+export const ARCHIVO_MUY_GRANDE = "El archivo es muy grande para guardarlo de una vez; expórtalo e impórtalo por semanas.";
+
+/** Mensaje para el admin cuando falla el guardado: si Supabase cortó por tiempo, qué hacer; si no, el error tal cual. */
+export const mensajeAlGuardar = (mensaje: string) => (/statement timeout/i.test(mensaje) ? ARCHIVO_MUY_GRANDE : mensaje);
 
 const COLUMNAS_PEDIDOS = [
   "OrderId", "Store", "Date", "Time", "Price", "PriceWithoutDiscount", "ProductsCount", "PaymentType", "Type",
