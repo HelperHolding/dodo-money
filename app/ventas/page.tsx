@@ -15,7 +15,8 @@ import {
 } from "@/lib/ventas/calculos";
 import { indicadores } from "@/lib/ventas/tablero";
 import { moverMes } from "@/lib/ventas/calendario";
-import { datosVentas, ultimoDiaConDatos, ventaDiariaDesde } from "./datos";
+import { datosPedidos, datosVentas, ultimoDiaConDatos, ventaDiariaDesde } from "./datos";
+import { SeccionesPedidos } from "./SeccionesPedidos";
 
 const categoria = (c: Categoria | null) => (c ? NOMBRE_CATEGORIA[c] : "Sin categoría");
 const cambio = (f: number | null) => (f === null ? "nuevo" : `${f >= 0 ? "▲" : "▼"} ${porcentaje(Math.abs(f))}`);
@@ -48,9 +49,10 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const hoy = hoyMX();
   // El calendario trae 13 meses de venta diaria de una vez: cambiar de mes no vuelve a consultar.
   const inicioCalendario = moverMes({ anio: Number(hoy.slice(0, 4)), mes: Number(hoy.slice(5, 7)) }, -12);
-  const [d, ventaDiaria] = await Promise.all([
+  const [d, ventaDiaria, detalle] = await Promise.all([
     datosVentas(supabase, sucursal, periodo, periodoAnterior(periodo)),
     ventaDiariaDesde(supabase, sucursal, `${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`),
+    datosPedidos(supabase, sucursal, periodo),
   ]);
   const resumen = resumenVentas(d.dias);
   const productos = porProducto(d.renglones);
@@ -70,6 +72,9 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const m2 = sucursal ? d.dias.filter((x) => x.venta_m2 !== null) : [];
   const mayorCosto = productos.filter((p) => p.costoPct !== null).sort((a, b) => (b.costoPct ?? 0) - (a.costoPct ?? 0)).slice(0, 5);
   const titulo = sucursal ? nombreDe.get(sucursal) : "Todas las sucursales";
+  // Días importados con el formato anterior: tienen venta pero no pedidos.
+  const conDetalle = new Set(detalle.pedidos.map((p) => `${p.sucursal_id}|${p.fecha}`));
+  const diasSinDetalle = d.dias.filter((x) => !conDetalle.has(`${x.sucursal_id}|${x.fecha}`)).length;
 
   return (
     <>
@@ -206,6 +211,8 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
           pueden explicar una diferencia.
         </p>
       </Plegable>
+
+      <SeccionesPedidos pedidos={detalle.pedidos} lineas={detalle.lineas} diasSinDetalle={diasSinDetalle} />
     </>
   );
 }
