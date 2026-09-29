@@ -60,3 +60,11 @@ const diaNumero = new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "num
 
 /** "2026-09-25" → "vie 25". */
 export const diaYNumero = (fecha: string) => diaNumero.format(new Date(`${fecha}T00:00:00Z`)).replace(",", "");
+
+/** Pesos en poco espacio, para el calendario: 9649 → "$9.6k", 1250000 → "$1.3M". */
+export function pesosCortos(n: number): string {
+  const corto = (valor: number, sufijo: string) => `$${Number(valor.toFixed(1)).toString()}${sufijo}`;
+  if (Math.abs(n) >= 1_000_000) return corto(n / 1_000_000, "M");
+  if (Math.abs(n) >= 1_000) return corto(n / 1_000, "k");
+  return `$${Math.round(n)}`;
+}
