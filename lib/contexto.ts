@@ -9,16 +9,20 @@ export { puedeAbrirTurno, puedeGestionar, puedeSupervisar } from "@/lib/roles";
 /** Sucursal que corporativo eligió en la vista general. */
 export const COOKIE_SUCURSAL = "sucursal_vista";
 
-/** Sesión y perfil, sin sucursal. Redirige a /login si falta algo. */
-export async function obtenerPerfil() {
+/**
+ * Sesión y perfil, sin sucursal. Redirige a /login si falta algo, y a /cuenta si tiene que cambiar su contraseña
+ * temporal (salvo en la propia pantalla de /cuenta).
+ */
+export async function obtenerPerfil({ permitirCambioPendiente = false }: { permitirCambioPendiente?: boolean } = {}) {
   const supabase = await crearClienteServidor();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const { data: perfil } = await supabase
-    .from("perfiles").select("id, nombre, rol, sucursal_id, activo").eq("id", user.id).single<Perfil>();
+    .from("perfiles").select("id, nombre, rol, sucursal_id, activo, debe_cambiar_contrasena").eq("id", user.id).single<Perfil>();
   if (!perfil) redirect("/login?error=sin-perfil");
   if (!puedeEntrar(perfil)) redirect("/login?error=inactivo");
+  if (perfil.debe_cambiar_contrasena && !permitirCambioPendiente) redirect("/cuenta");
 
   return { supabase, user, perfil };
 }

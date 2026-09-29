@@ -22,6 +22,7 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
         </span>
         <div className="barra-usuario">
           <span>{perfil.nombre}, {NOMBRE_ROL[perfil.rol]}</span>
+          <Link href="/cuenta">Mi contraseña</Link>
           <form action={cerrarSesion}><button type="submit">Salir</button></form>
         </div>
       </header>

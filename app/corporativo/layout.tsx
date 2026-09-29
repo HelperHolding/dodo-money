@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { cerrarSesion } from "@/app/login/actions";
@@ -19,6 +20,7 @@ export default async function LayoutCorporativo({ children }: { children: React.
         <span className="barra-turno">Todas las sucursales · solo lectura</span>
         <div className="barra-usuario">
           <span>{perfil.nombre}</span>
+          <Link href="/cuenta">Mi contraseña</Link>
           <form action={cerrarSesion}><button type="submit">Salir</button></form>
         </div>
       </header>

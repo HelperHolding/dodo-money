@@ -17,6 +17,8 @@ export interface Perfil {
   rol: Rol;
   sucursal_id: string | null;
   activo: boolean;
+  /** Contraseña temporal: la app lo manda a /cuenta hasta que la cambie. */
+  debe_cambiar_contrasena: boolean;
 }
 
 export interface Sucursal {
