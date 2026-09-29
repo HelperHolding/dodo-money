@@ -8,7 +8,7 @@ import { Indicadores } from "@/components/Indicadores";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { diaYNumero, fechaTexto, hoyMX, pesos, pesosRedondos, porcentaje } from "@/lib/formato";
-import { puedeImportarVentas, veVentasDeTodas } from "@/lib/roles";
+import { puedeImportarVentas, veAvisoSinCosto, veVentasDeTodas } from "@/lib/roles";
 import {
   costeo, descuentos, diasConCierre, MAX_DIAS, resumenSinCosto, NOMBRE_CATEGORIA, NOMBRE_TIPO, periodoAnterior, periodoElegido,
   periodoPorDefecto, porProducto, resumenVentas, separarDesglose, topProductos, ventaPorDia, type Categoria,
@@ -24,7 +24,8 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const q = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
   const todas = veVentasDeTodas(perfil.rol);
-  // Lo que sirve para depurar datos (productos sin costo) solo lo ve el admin.
+  // El aviso de productos sin costo lo ven admin y corporativo; asignar costos, solo el admin.
+  const veAviso = veAvisoSinCosto(perfil.rol);
   const esAdmin = puedeImportarVentas(perfil.rol);
 
   const { data: sucursales, error } = await supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>();
@@ -117,7 +118,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         </Plegable>
 
         <Plegable id="costos" titulo="Costos" resumen={porcentaje(costos.total.costoPct)}
-          insignia={esAdmin && <AvisoSinCosto productos={costos.sinCosto} piezas={resumenSinCosto(costos.sinCosto).piezas} />}>
+          insignia={veAviso && <AvisoSinCosto key="sin-costo" productos={costos.sinCosto} piezas={resumenSinCosto(costos.sinCosto).piezas} puedeAsignar={esAdmin} />}>
           <div className="costos-categorias">
             {costos.categorias.map((g) => (
               <div key={g.categoria ?? "sin"} className="costo-categoria">

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   enlaceActivo, enlacesSucursal, enlacesVentas, esCorporativo, puedeAbrirTurno, puedeGestionar, puedeImportarVentas,
-  puedeSupervisar, puedeVerVentas, veVentasDeTodas,
+  puedeSupervisar, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
 } from "./roles.ts";
 
 test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () => {
@@ -58,4 +58,9 @@ test("enlaceActivo elige la ruta más larga", () => {
   assert.equal(enlaceActivo("/", enlaces), "/");
   assert.equal(enlaceActivo("/checklists/ronda", enlacesSucursal("gerente")), "/checklists");
   assert.equal(enlaceActivo("/otra", enlaces), undefined);
+});
+
+test("aviso de productos sin costo: admin y corporativo lo ven; gerente, encargado y cajero no", () => {
+  for (const rol of ["admin", "corporativo"] as const) assert.equal(veAvisoSinCosto(rol), true);
+  for (const rol of ["gerente", "encargado", "cajero"] as const) assert.equal(veAvisoSinCosto(rol), false);
 });

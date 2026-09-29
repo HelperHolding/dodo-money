@@ -4,12 +4,21 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Aviso discreto para el admin: "! 62" junto al título de Costos. Al pasar el mouse o tocarlo abre la lista
- * de productos sin costo del periodo. Va dentro del <summary> de un Plegable: los clics no deben plegarlo.
+ * Aviso discreto (admin y corporativo): "! 62" junto al título de Costos. Al pasar el mouse o tocarlo abre la
+ * lista de productos sin costo del periodo; el enlace a Costos solo sale a quien puede asignarlos.
+ * Va dentro del <summary> de un Plegable: los clics no deben plegarlo.
  */
-export function AvisoSinCosto({ productos, piezas }: { productos: readonly { dodo_id: number; nombre: string; piezas: number }[]; piezas: number }) {
+export function AvisoSinCosto({ productos, piezas, puedeAsignar }: {
+  productos: readonly { dodo_id: number; nombre: string; piezas: number }[];
+  piezas: number;
+  puedeAsignar: boolean;
+}) {
   const [abierto, setAbierto] = useState(false);
   const caja = useRef<HTMLSpanElement>(null);
+  // Al salir con el mouse se espera un momento antes de cerrar: así da tiempo de cruzar el hueco hasta el recuadro.
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelarCierre = () => { if (temporizador.current) clearTimeout(temporizador.current); temporizador.current = null; };
+  useEffect(() => cancelarCierre, []);
 
   useEffect(() => {
     if (!abierto) return;
@@ -30,8 +39,8 @@ export function AvisoSinCosto({ productos, piezas }: { productos: readonly { dod
 
   return (
     <span ref={caja} className="aviso-sin-costo" 
-      onPointerEnter={(e) => { if (e.pointerType === "mouse") setAbierto(true); }}
-      onPointerLeave={(e) => { if (e.pointerType === "mouse") setAbierto(false); }}>
+      onPointerEnter={(e) => { if (e.pointerType === "mouse") { cancelarCierre(); setAbierto(true); } }}
+      onPointerLeave={(e) => { if (e.pointerType === "mouse") { cancelarCierre(); temporizador.current = setTimeout(() => setAbierto(false), 400); } }}>
       <button type="button" className="aviso-sin-costo-boton" aria-expanded={abierto}
         aria-label={`${productos.length} productos sin costo`}
         onClick={(e) => { detener(e); setAbierto(!abierto); }} onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") e.stopPropagation(); }}>
@@ -50,7 +59,7 @@ export function AvisoSinCosto({ productos, piezas }: { productos: readonly { dod
               </span>
             ))}
           </span>
-          <Link href="/ventas/costos?ver=sin-costo" className="aviso-sin-costo-enlace">Asignar costos →</Link>
+          {puedeAsignar && <Link href="/ventas/costos?ver=sin-costo" className="aviso-sin-costo-enlace">Asignar costos →</Link>}
         </span>
       )}
     </span>
