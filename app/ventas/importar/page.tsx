@@ -11,8 +11,8 @@ export default async function PaginaImportar() {
       <div className="encabezado">
         <h1>Importar ventas</h1>
         <p>
-          Sube los dos reportes de Dodo IS de un día de una sucursal: Ventas y Productos (ProductsSales).
-          Primero se revisan; nada se guarda hasta que presiones Guardar.
+          Sube el archivo Datos brutos de Dodo IS: trae cada pedido del periodo, de una o varias sucursales.
+          Primero se revisa; nada se guarda hasta que presiones Guardar.
         </p>
       </div>
       <FormImportar />

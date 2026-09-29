@@ -57,15 +57,22 @@ function textos(xml: string): string {
 
 /** Lee la primera hoja de un .xlsx: celdas con valor, con cadenas compartidas y en línea resueltas. */
 export function leerPrimeraHoja(datos: Uint8Array): Hoja {
+  return leerHojas(datos)[0];
+}
+
+/** Lee todas las hojas de un .xlsx, en el orden del libro. */
+export function leerHojas(datos: Uint8Array): Hoja[] {
   try {
-    return leerHoja(datos);
+    const hojas = leerLibro(datos);
+    if (!hojas.length) throw new Error(NO_ES_XLSX);
+    return hojas;
   } catch {
     // ZIP truncado, XML roto o archivo de otro tipo: un solo mensaje entendible.
     throw new Error(NO_ES_XLSX);
   }
 }
 
-function leerHoja(datos: Uint8Array): Hoja {
+function leerLibro(datos: Uint8Array): Hoja[] {
   const archivos = archivosZip(datos);
   const leer = (ruta: string) => {
     const f = archivos.get(ruta.replace(/^\//, ""));
@@ -74,35 +81,34 @@ function leerHoja(datos: Uint8Array): Hoja {
   };
 
   const libro = leer("xl/workbook.xml");
-  const hoja = /<(?:\w+:)?sheet\s[^>]*>/.exec(libro)?.[0];
-  if (!hoja) throw new Error(NO_ES_XLSX);
-  const nombre = desescapar(atributo(hoja, "name") ?? "");
-  const idRel = atributo(hoja, "r:id");
-
-  const relaciones = leer("xl/_rels/workbook.xml.rels");
-  const rel = [...relaciones.matchAll(/<Relationship\s[^>]*>/g)].map((m) => m[0]).find((r) => atributo(r, "Id") === idRel);
-  const destino = rel && atributo(rel, "Target");
-  if (!destino) throw new Error(NO_ES_XLSX);
-  const rutaHoja = destino.startsWith("/") ? destino.slice(1) : `xl/${destino}`;
-
+  const relaciones = [...leer("xl/_rels/workbook.xml.rels").matchAll(/<Relationship\s[^>]*>/g)].map((m) => m[0]);
   const compartidas = archivos.has("xl/sharedStrings.xml")
     ? [...leer("xl/sharedStrings.xml").matchAll(/<(?:\w+:)?si>([\s\S]*?)<\/(?:\w+:)?si>/g)].map((m) => textos(m[1]))
     : [];
 
-  const celdas = new Map<string, string | number>();
-  for (const m of leer(rutaHoja).matchAll(/<(?:\w+:)?c(\s[^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g)) {
-    const [, attrs, cuerpo] = m;
-    const ref = atributo(attrs, "r");
-    if (!ref || cuerpo === undefined) continue;
-    const tipo = atributo(attrs, "t");
-    if (tipo === "inlineStr") { celdas.set(ref, textos(cuerpo)); continue; }
-    const v = /<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/.exec(cuerpo)?.[1];
-    if (v === undefined) continue;
-    if (tipo === "s") celdas.set(ref, compartidas[Number(v)] ?? "");
-    else if (tipo === "str" || tipo === "e") celdas.set(ref, desescapar(v));
-    else celdas.set(ref, Number(v));
-  }
-  return { nombre, celdas };
+  return [...libro.matchAll(/<(?:\w+:)?sheet\s[^>]*>/g)].map(([hoja]) => {
+    const nombre = desescapar(atributo(hoja, "name") ?? "");
+    const idRel = atributo(hoja, "r:id");
+    const rel = relaciones.find((r) => atributo(r, "Id") === idRel);
+    const destino = rel && atributo(rel, "Target");
+    if (!destino) throw new Error(NO_ES_XLSX);
+    const rutaHoja = destino.startsWith("/") ? destino.slice(1) : `xl/${destino}`;
+
+    const celdas = new Map<string, string | number>();
+    for (const m of leer(rutaHoja).matchAll(/<(?:\w+:)?c(\s[^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g)) {
+      const [, attrs, cuerpo] = m;
+      const ref = atributo(attrs, "r");
+      if (!ref || cuerpo === undefined) continue;
+      const tipo = atributo(attrs, "t");
+      if (tipo === "inlineStr") { celdas.set(ref, textos(cuerpo)); continue; }
+      const v = /<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/.exec(cuerpo)?.[1];
+      if (v === undefined) continue;
+      if (tipo === "s") celdas.set(ref, compartidas[Number(v)] ?? "");
+      else if (tipo === "str" || tipo === "e") celdas.set(ref, desescapar(v));
+      else celdas.set(ref, Number(v));
+    }
+    return { nombre, celdas };
+  });
 }
 
 /** Número serial de Excel (sistema 1900) → "YYYY-MM-DD". */

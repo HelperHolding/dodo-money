@@ -1,80 +1,143 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { tamanoPorNombre, type Tamano } from "@/lib/ventas/calculos";
-import {
-  buscarSucursal, extraerProductos, extraerVentas, revisarPar,
-  type Desglose, type Montos, type ProductoVendido,
-} from "@/lib/ventas/extraer";
+import { tamanoPorNombre } from "@/lib/ventas/calculos";
+import { extraerDatosBrutos } from "@/lib/ventas/datosBrutos";
+import { buscarSucursal, type Desglose, type Montos } from "@/lib/ventas/extraer";
 import { leerTodo } from "@/lib/ventas/paginar";
-import { leerPrimeraHoja } from "@/lib/ventas/xlsx";
+import { ivaDe, resumirDias } from "@/lib/ventas/pedidos";
+import { leerHojas } from "@/lib/ventas/xlsx";
 
+/** Lo que ve el admin antes de guardar. Sin los pedidos: esos se quedan en el servidor. */
 export type Revision = {
-  sucursal: { id: string; nombre: string };
-  fecha: string;
-  resumen: Montos & { venta_m2: number | null };
-  desglose: Desglose[];
-  productos: (ProductoVendido & { tamano: Tamano | null })[];
-  archivos: { ventas: string; productos: string };
-  sumaProductos: number;
-  diferencia: number;
-  cuadra: boolean;
-  ticket: number | null;
-  yaImportado: { total: number } | null;
-  /** Nombres de productos que no están en el catálogo (entran sin categoría ni costo). */
+  archivo: string;
+  periodo: { desde: string; hasta: string };
+  dias: {
+    sucursal: { id: string; nombre: string };
+    fecha: string;
+    resumen: Montos;
+    ticket: number | null;
+    personal: { pedidos: number; monto: number };
+    cancelados: { pedidos: number; monto: number };
+    yaImportado: { total: number } | null;
+  }[];
+  totales: { pedidos: number; total: number; personal: number; cancelados: number };
+  /** Productos que no están en el catálogo (entran sin categoría ni costo). */
   nuevos: string[];
   sinCategoria: string[];
   sinCosto: string[];
+  diasYaImportados: number;
 };
 
-/** Un reporte diario pesa unos KB; más de 2 MB no es un reporte de un día. */
-const MAX_BYTES = 2 * 1024 * 1024;
+/** Lo que se manda a importar_datos_brutos. */
+export type Carga = { dias: unknown[]; pedidos: unknown[]; productos: unknown[] };
 
-async function archivo(fd: FormData, campo: string, etiqueta: string) {
-  const f = fd.get(campo);
-  if (!(f instanceof File) || f.size === 0) throw new Error(`Falta el archivo de ${etiqueta}.`);
-  if (f.size > MAX_BYTES) throw new Error(`El archivo de ${etiqueta} pesa más de 2 MB; no parece un reporte de un día.`);
-  return { nombre: f.name, datos: new Uint8Array(await f.arrayBuffer()) };
-}
+/** Un Datos brutos de una semana pesa ~120 KB; 4 MB alcanza para varios meses de varias sucursales. */
+const MAX_BYTES = 4 * 1024 * 1024;
 
-/** Lee y valida los dos archivos sin guardar nada. Lanza Error con un mensaje para el admin. */
-export async function prepararImportacion(supabase: SupabaseClient, fd: FormData): Promise<Revision> {
-  const av = await archivo(fd, "ventas", "Ventas");
-  const ap = await archivo(fd, "productos", "Productos");
-  const ventas = extraerVentas(leerPrimeraHoja(av.datos));
-  const productos = extraerProductos(leerPrimeraHoja(ap.datos));
-  const par = revisarPar(ventas, productos);
+const redondear = (n: number) => Math.round(n * 100) / 100;
 
-  const { data: sucursales, error } = await supabase.from("sucursales").select("id, nombre").returns<{ id: string; nombre: string }[]>();
+/** Lee y valida el archivo sin guardar nada. Lanza Error con un mensaje para el admin. */
+export async function prepararImportacion(supabase: SupabaseClient, fd: FormData): Promise<{ revision: Revision; carga: Carga }> {
+  const f = fd.get("archivo");
+  if (!(f instanceof File) || f.size === 0) throw new Error("Falta el archivo de Datos brutos.");
+  if (f.size > MAX_BYTES) throw new Error("El archivo pesa más de 4 MB; exporta un periodo más corto.");
+  const archivo = extraerDatosBrutos(leerHojas(new Uint8Array(await f.arrayBuffer())));
+
+  const { data: sucursales, error } = await supabase.from("sucursales").select("id, nombre, m2_comedor")
+    .returns<{ id: string; nombre: string; m2_comedor: number | null }[]>();
   if (error) throw new Error(`No se pudieron cargar las sucursales: ${error.message}`);
-  const sucursal = buscarSucursal(ventas.sucursal, sucursales ?? []);
-  if (!sucursal) throw new Error(`El reporte es de la sucursal ${ventas.sucursal} y no existe en la app.`);
+  const sucursalDe = new Map<string, { id: string; nombre: string; m2_comedor: number | null }>();
+  for (const nombre of new Set(archivo.pedidos.map((p) => p.sucursal))) {
+    const s = buscarSucursal(nombre, sucursales ?? []);
+    if (!s) throw new Error(`La sucursal ${nombre} del archivo no existe en la app.`);
+    sucursalDe.set(nombre, s);
+  }
 
-  const ids = productos.productos.map((p) => p.dodo_id);
-  const [previo, catalogo, costos] = await Promise.all([
-    supabase.from("ventas_dia").select("total").eq("sucursal_id", sucursal.id).eq("fecha", ventas.fecha).maybeSingle<{ total: number }>(),
-    supabase.from("productos_venta").select("dodo_id, categoria").in("dodo_id", ids).returns<{ dodo_id: number; categoria: string | null }[]>(),
-    leerTodo<{ dodo_id: number }>((desde, hasta) => supabase.from("costos_producto").select("dodo_id")
-      .in("dodo_id", ids).lte("vigente_desde", ventas.fecha).order("dodo_id").order("vigente_desde").range(desde, hasta)
-      .returns<{ dodo_id: number }[]>()),
+  const resumen = resumirDias(archivo.pedidos, archivo.productos);
+  const fechas = resumen.map((d) => d.fecha).sort();
+  const periodo = { desde: fechas[0], hasta: fechas[fechas.length - 1] };
+  const ids = [...new Set([...sucursalDe.values()].map((s) => s.id))];
+
+  const [previos, catalogo, codigos, costos] = await Promise.all([
+    supabase.from("ventas_dia").select("sucursal_id, fecha, total").in("sucursal_id", ids)
+      .gte("fecha", periodo.desde).lte("fecha", periodo.hasta)
+      .returns<{ sucursal_id: string; fecha: string; total: number }[]>(),
+    leerTodo<{ dodo_id: number; nombre: string; categoria: string | null }>((desde, hasta) =>
+      supabase.from("productos_venta").select("dodo_id, nombre, categoria").order("dodo_id").range(desde, hasta)
+        .returns<{ dodo_id: number; nombre: string; categoria: string | null }[]>()),
+    leerTodo<{ dodo_uuid: string; dodo_id: number }>((desde, hasta) =>
+      supabase.from("productos_codigos").select("dodo_uuid, dodo_id").order("dodo_uuid").range(desde, hasta)
+        .returns<{ dodo_uuid: string; dodo_id: number }[]>()),
+    leerTodo<{ dodo_id: number }>((desde, hasta) =>
+      supabase.from("costos_producto").select("dodo_id").lte("vigente_desde", periodo.hasta)
+        .order("dodo_id").order("vigente_desde").range(desde, hasta).returns<{ dodo_id: number }[]>()),
   ]);
-  const fallo = previo.error ?? catalogo.error;
-  if (fallo) throw new Error(`No se pudo revisar el catálogo: ${fallo.message}`);
+  if (previos.error) throw new Error(`No se pudo revisar qué días ya estaban importados: ${previos.error.message}`);
+  const previo = new Map((previos.data ?? []).map((v) => [`${v.sucursal_id}|${v.fecha}`, Number(v.total)]));
 
-  const categoria = new Map((catalogo.data ?? []).map((c) => [c.dodo_id, c.categoria]));
+  // Empate con el catálogo igual que en la base de datos: por código; si no, por nombre (el de menor número si se
+  // repite). Todos los códigos de un mismo nombre van al mismo producto (versión normal y "T").
+  const porId = new Map(catalogo.map((c) => [c.dodo_id, c]));
+  const porCodigo = new Map(codigos.flatMap((k) => (porId.has(k.dodo_id) ? [[k.dodo_uuid, porId.get(k.dodo_id)!] as const] : [])));
+  const porNombre = new Map<string, (typeof catalogo)[number]>();
+  for (const c of catalogo) if (!porNombre.has(c.nombre.toLowerCase())) porNombre.set(c.nombre.toLowerCase(), c);
   const conCosto = new Set(costos.map((c) => c.dodo_id));
-  const nombres = (cumple: (p: ProductoVendido) => boolean) => productos.productos.filter(cumple).map((p) => p.nombre);
+  const nuevos = new Set<string>(), sinCategoria = new Set<string>(), sinCosto = new Set<string>();
+  for (const x of archivo.productos) {
+    const c = porCodigo.get(x.dodo_uuid) ?? porNombre.get(x.nombre.toLowerCase());
+    if (!c) { nuevos.add(x.nombre); continue; }
+    if (!c.categoria) sinCategoria.add(c.nombre);
+    if (!conCosto.has(c.dodo_id)) sinCosto.add(c.nombre);
+  }
 
-  return {
-    sucursal,
-    fecha: ventas.fecha,
-    resumen: ventas.resumen,
-    desglose: ventas.desglose,
-    productos: productos.productos.map((p) => ({ ...p, tamano: tamanoPorNombre(p.nombre) })),
-    archivos: { ventas: av.nombre, productos: ap.nombre },
-    ...par,
-    ticket: ventas.resumen.pedidos ? ventas.resumen.total / ventas.resumen.pedidos : null,
-    yaImportado: previo.data ? { total: Number(previo.data.total) } : null,
-    nuevos: nombres((p) => !categoria.has(p.dodo_id)),
-    sinCategoria: nombres((p) => categoria.has(p.dodo_id) && !categoria.get(p.dodo_id)),
-    sinCosto: nombres((p) => categoria.has(p.dodo_id) && !conCosto.has(p.dodo_id)),
+  const dias = resumen.map((d) => {
+    const s = sucursalDe.get(d.sucursal)!;
+    return { d, s, anterior: previo.get(`${s.id}|${d.fecha}`) };
+  });
+  const lineasDe = new Map<string, number[]>();
+  for (const x of archivo.productos) lineasDe.set(x.pedido_id, [...(lineasDe.get(x.pedido_id) ?? []), x.precio]);
+
+  const revision: Revision = {
+    archivo: f.name,
+    periodo,
+    dias: dias.map(({ d, s, anterior }) => ({
+      sucursal: { id: s.id, nombre: s.nombre },
+      fecha: d.fecha,
+      resumen: d.resumen,
+      ticket: d.resumen.pedidos ? d.resumen.total / d.resumen.pedidos : null,
+      personal: d.personal,
+      cancelados: d.cancelados,
+      yaImportado: anterior === undefined ? null : { total: anterior },
+    })),
+    totales: {
+      pedidos: resumen.reduce((s, d) => s + d.resumen.pedidos, 0),
+      total: redondear(resumen.reduce((s, d) => s + d.resumen.total, 0)),
+      personal: resumen.reduce((s, d) => s + d.personal.pedidos, 0),
+      cancelados: resumen.reduce((s, d) => s + d.cancelados.pedidos, 0),
+    },
+    nuevos: [...nuevos].sort(),
+    sinCategoria: [...sinCategoria].sort(),
+    sinCosto: [...sinCosto].filter((n) => !nuevos.has(n)).sort(),
+    diasYaImportados: dias.filter((x) => x.anterior !== undefined).length,
   };
+
+  const carga: Carga = {
+    dias: dias.map(({ d, s }) => ({
+      sucursal_id: s.id,
+      fecha: d.fecha,
+      resumen: {
+        ...d.resumen,
+        venta_m2: s.m2_comedor ? redondear(d.resumen.total / Number(s.m2_comedor)) : null,
+        suma_productos: d.productos.suma,
+        productos: d.productos.piezas,
+      },
+      desglose: d.desglose satisfies Desglose[],
+    })),
+    pedidos: archivo.pedidos.map(({ sucursal, ...p }) => ({
+      ...p,
+      sucursal_id: sucursalDe.get(sucursal)!.id,
+      iva: ivaDe(lineasDe.get(p.dodo_id) ?? []),
+    })),
+    productos: archivo.productos.map((x) => ({ ...x, tamano: tamanoPorNombre(x.nombre) })),
+  };
+  return { revision, carga };
 }

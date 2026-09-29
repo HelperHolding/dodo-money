@@ -5,6 +5,7 @@ import {
 } from "@/lib/ventas/calculos";
 import type { TipoDesglose } from "@/lib/ventas/extraer";
 import { leerTodo } from "@/lib/ventas/paginar";
+import type { LineaPedido, Pedido } from "@/lib/ventas/pedidos";
 
 export type FilaDesglose = { tipo: TipoDesglose; pedidos: number; total: number };
 export type DiaConDesglose = VentaDia & { ventas_dia_desglose: FilaDesglose[] };
@@ -88,5 +89,30 @@ export async function datosVentas(supabase: SupabaseClient, sucursal: string | n
     renglones: costearProductos(ventas, dias, catalogo, costos),
     anterior: { dias: diasAnteriores, renglones: costearProductos(ventasAnteriores, diasAnteriores, catalogo, costos) },
     cierres,
+  };
+}
+
+/** Pedidos del periodo y sus productos (solo existen para días importados con Datos brutos), en páginas. */
+export async function datosPedidos(supabase: SupabaseClient, sucursal: string | null, p: Periodo): Promise<{ pedidos: (Pedido & { sucursal_id: string })[]; lineas: LineaPedido[] }> {
+  const [pedidos, lineas] = await Promise.all([
+    leerTodo<Pedido & { sucursal_id: string }>((desde, hasta) => {
+      let q = supabase.from("pedidos")
+        .select("dodo_id, sucursal_id, fecha, hora, pago, tipo, origen, para_llevar, estado, total, total_sin_descuento, agregador, inicio_coccion, listo, entregado")
+        .gte("fecha", p.desde).lte("fecha", p.hasta);
+      if (sucursal) q = q.eq("sucursal_id", sucursal);
+      return q.order("dodo_id").range(desde, hasta).returns<(Pedido & { sucursal_id: string })[]>();
+    }),
+    leerTodo<LineaPedido>((desde, hasta) => {
+      let q = supabase.from("pedido_productos")
+        .select("pedido_id, nombre, precio, combo, pedidos!inner(fecha, sucursal_id)")
+        .gte("pedidos.fecha", p.desde).lte("pedidos.fecha", p.hasta);
+      if (sucursal) q = q.eq("pedidos.sucursal_id", sucursal);
+      return q.order("pedido_id").order("renglon").range(desde, hasta).returns<LineaPedido[]>();
+    }),
+  ]);
+  return {
+    // Postgres devuelve la hora como "13:05:00" y los montos pueden llegar como texto.
+    pedidos: pedidos.map((x) => ({ ...x, hora: x.hora.slice(0, 5), total: Number(x.total), total_sin_descuento: Number(x.total_sin_descuento) })),
+    lineas: lineas.map((l) => ({ pedido_id: l.pedido_id, nombre: l.nombre, precio: Number(l.precio), combo: l.combo })),
   };
 }
