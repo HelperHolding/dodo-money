@@ -19,7 +19,7 @@ export function Plegable({
         <summary>
           <span className="plegable-titulo">
             <h2 id={id}>{titulo}</h2>
-            {insignia}
+            {insignia && <span className="plegable-insignia">{insignia}</span>}
           </span>
           <span className="plegable-resumen" data-alerta={alerta ? "si" : undefined}>{resumen}</span>
         </summary>

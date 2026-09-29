@@ -14,6 +14,8 @@ export const puedeVerVentas = (rol: Rol) => rol === "gerente" || rol === "admin"
 export const veVentasDeTodas = (rol: Rol) => rol === "admin" || rol === "corporativo";
 /** Importar ventas y manejar categorías y costos. */
 export const puedeImportarVentas = (rol: Rol) => rol === "admin";
+/** Aviso de productos sin costo en el tablero de Ventas (para revisar datos; el gerente no lo ve). */
+export const veAvisoSinCosto = (rol: Rol) => rol === "admin" || rol === "corporativo";
 
 export type Enlace = { href: string; texto: string };
 
