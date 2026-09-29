@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AvisoSinCosto } from "@/components/AvisoSinCosto";
 import { BarrasVerticales } from "@/components/BarrasVerticales";
 import { CalendarioVentas } from "@/components/CalendarioVentas";
 import { Dona } from "@/components/Dona";
@@ -9,7 +10,7 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { diaYNumero, fechaTexto, hoyMX, pesos, pesosRedondos, porcentaje } from "@/lib/formato";
 import { puedeImportarVentas, veVentasDeTodas } from "@/lib/roles";
 import {
-  costeo, descuentos, diasConCierre, MAX_DIAS, NOMBRE_CATEGORIA, NOMBRE_TIPO, periodoAnterior, periodoElegido,
+  costeo, descuentos, diasConCierre, MAX_DIAS, resumenSinCosto, NOMBRE_CATEGORIA, NOMBRE_TIPO, periodoAnterior, periodoElegido,
   periodoPorDefecto, porProducto, resumenVentas, separarDesglose, topProductos, ventaPorDia, type Categoria,
 } from "@/lib/ventas/calculos";
 import { indicadores } from "@/lib/ventas/tablero";
@@ -23,6 +24,8 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const q = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
   const todas = veVentasDeTodas(perfil.rol);
+  // Lo que sirve para depurar datos (productos sin costo) solo lo ve el admin.
+  const esAdmin = puedeImportarVentas(perfil.rol);
 
   const { data: sucursales, error } = await supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>();
   if (error) throw new Error(`No se pudieron cargar las sucursales: ${error.message}`);
@@ -113,7 +116,8 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
           <p className="saldo-nota">El cambio es contra los mismos días justo antes del periodo.</p>
         </Plegable>
 
-        <Plegable id="costos" titulo="Costos" resumen={porcentaje(costos.total.costoPct)} alerta={costos.sinCosto.length > 0}>
+        <Plegable id="costos" titulo="Costos" resumen={porcentaje(costos.total.costoPct)}
+          insignia={esAdmin && <AvisoSinCosto productos={costos.sinCosto} piezas={resumenSinCosto(costos.sinCosto).piezas} />}>
           <div className="costos-categorias">
             {costos.categorias.map((g) => (
               <div key={g.categoria ?? "sin"} className="costo-categoria">
@@ -131,12 +135,6 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
                 clave: String(p.dodo_id), etiqueta: p.nombre, valor: p.costoPct ?? 0, texto: porcentaje(p.costoPct),
               }))} />
             </>
-          )}
-          {costos.sinCosto.length > 0 && (
-            <p className="aviso aviso-info">
-              Sin costo (no cuentan en el costo %): {costos.sinCosto.map((s) => `${s.nombre} (${s.piezas} pzs)`).join(", ")}.
-              {puedeImportarVentas(perfil.rol) && <> <Link href="/ventas/costos?ver=sin-costo">Asignar costos</Link></>}
-            </p>
           )}
         </Plegable>
       </div>
