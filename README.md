@@ -46,7 +46,7 @@ Reglas que aplica la base de datos, no solo la pantalla:
            (select id from sucursales where nombre = 'Zapopan-1'));
    ```
 
-   Roles: `cajero`, `encargado`, `gerente`, `admin` (ve todas las sucursales).
+   Roles: `operacion` (cocina y caja; antes `cajero`), `encargado`, `gerente`, `admin` (ve todas las sucursales).
 
 ### 2. Local
 
@@ -104,7 +104,7 @@ En Supabase → **SQL Editor**, corre en orden:
 
 1. `supabase/migrations/0002_checklists.sql`
 2. `supabase/seed_checklists.sql`
-3. `supabase/pruebas/0002_checklists.sql`: debe terminar con el error `PRUEBAS OK — …` (es a propósito, para no dejar datos). Necesita un encargado y otro usuario activos en la misma sucursal (si no hay cajero, el otro usuario actúa como cajero solo durante la prueba).
+3. `supabase/pruebas/0002_checklists.sql`: debe terminar con el error `PRUEBAS OK — …` (es a propósito, para no dejar datos). Necesita un encargado y otro usuario activos en la misma sucursal (si no hay alguien de operación, el otro usuario actúa como operación solo durante la prueba).
 
 Para cambiar el catálogo de mermas:
 
@@ -117,12 +117,12 @@ update productos_merma set activo = false where nombre = 'Refresco';   -- quitar
 
 Con una ventana de incógnito por usuario:
 
-1. **Cajero** → Checklists → Temperatura de masa: registra la hora actual con la norma exacta y 18 °C. Debe guardarse sin comentario.
+1. **Operación** → Checklists → Temperatura de masa: registra la hora actual con la norma exacta y 18 °C. Debe guardarse sin comentario.
 2. En la siguiente hora abierta, escribe 25 °C sin comentario: el formulario pide comentario; si lo quitas, la app responde "Escribe qué pasó: …".
-3. **Cajero** → Recorrido: debe decir que lo registra el encargado o el gerente.
+3. **Operación** → Recorrido: debe decir que lo registra el encargado o el gerente.
 4. **Encargado** → Recorrido: marca un punto como "No cumple"; sin comentario no se guarda. Con comentario, aparece en "Recorridos de hoy".
-5. **Cajero** → Mermas: registra "0,5" kg de Mozzarella con nombre de empleado. En totales aparece 0.5 kg.
-6. **Encargado** → Mermas: marca "Ya capturé…" y cierra. El formulario desaparece y el cajero ya no puede agregar mermas.
+5. **Operación** → Mermas: registra "0,5" kg de Mozzarella con nombre de empleado. En totales aparece 0.5 kg.
+6. **Encargado** → Mermas: marca "Ya capturé…" y cierra. El formulario desaparece y operación ya no puede agregar mermas.
 7. **Gerente** → Checklists: el resumen muestra las horas en Listo, Revisar, Ahora o Falta, y al elegir el día anterior se ve su historial.
 
 ## Checklists de zonas
@@ -150,7 +150,7 @@ En Supabase → **SQL Editor**:
 ### Prueba manual
 
 1. **Ronda de la hora:** llena solo Caja y sala con un nombre y guarda; aparece en "Rondas de hoy" y las demás zonas siguen pendientes. Empieza Limpieza sin nombre: la app pide completarla antes de enviar.
-2. **Listas del turno:** abre Encargado · Mañana · Apertura como encargado y guárdala; la tarjeta cambia a "Hecho". Toca "Revisado": cambia a "Revisado". Como cajero, la lista del encargado dice que la registra el encargado.
+2. **Listas del turno:** abre Encargado · Mañana · Apertura como encargado y guárdala; la tarjeta cambia a "Hecho". Toca "Revisado": cambia a "Revisado". Como operación, la lista del encargado dice que la registra el encargado.
 3. **Amasado:** escribe 28 °C en la masa: el campo se marca y el comentario se vuelve obligatorio.
 4. **Limpieza profunda:** dice qué área toca hoy; regístrala y revísala.
 5. **Resumen y corporativo:** aparecen rondas, listas del turno, amasado y limpieza profunda.
@@ -212,7 +212,7 @@ ponderado por categoría y las diferencias entre el cierre del gerente y Dodo IS
 - **Costos** (solo admin): categoría y costo por pieza de cada producto, con la fecha desde la que aplica.
   Un costo nuevo no borra el anterior; los días previos se siguen costeando con el que estaba vigente.
   Un error de captura se arregla con **Corregir** en el historial: el valor anterior queda registrado.
-- **Reportes**: admin y corporativo ven todas las sucursales o una; el gerente, la suya. Encargado y cajero no ven ventas.
+- **Reportes**: admin y corporativo ven todas las sucursales o una; el gerente, la suya. Encargado y operación no ven ventas.
   El costo % se calcula solo sobre los productos con costo; los que no tienen se listan aparte.
 - Dodo IS cuenta el día de 0:00 a 23:59 y el cierre de la app hasta las 4:00: ventas después de medianoche pueden
   explicar una diferencia en "Cierre contra Dodo IS".
@@ -227,6 +227,7 @@ En Supabase → **SQL Editor**:
 4. `supabase/migrations/0007_datos_brutos.sql`
 5. `supabase/pruebas/0007_datos_brutos.sql`: debe terminar con el error `PRUEBAS OK — …`.
 6. `update sucursales set m2_comedor = 61 where nombre = 'Zapopan-1';` (para la venta por m²).
+7. `supabase/migrations/0008_puesto_operacion.sql` (el puesto `cajero` pasa a `operacion`) y `supabase/pruebas/0008_puesto_operacion.sql` → `PRUEBAS OK`.
 
 ### Prueba manual
 

@@ -2,13 +2,21 @@ import type { Rol } from "./tipos";
 
 export const SOLO_CONSULTA = "Corporativo solo puede consultar.";
 
+/** Cómo se muestra cada puesto. Operación es el puesto base: cocina y caja, sin abrir turno. */
+export const NOMBRE_ROL: Record<Rol, string> = {
+  operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo",
+};
+
+/** Un usuario desactivado (baja) no entra a la app; la base de datos ya le rechaza todo. */
+export const puedeEntrar = (perfil: { activo: boolean }) => perfil.activo;
+
 export const esCorporativo = (rol: Rol) => rol === "corporativo";
 export const puedeAbrirTurno = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
 /** Recorrido de supervisor y cierre de mermas. */
 export const puedeSupervisar = puedeAbrirTurno;
 export const puedeGestionar = (rol: Rol) => rol === "gerente" || rol === "admin";
 
-/** Reportes de ventas importadas de Dodo IS. Encargado y cajero no ven ventas. */
+/** Reportes de ventas importadas de Dodo IS. Encargado y operación no ven ventas. */
 export const puedeVerVentas = (rol: Rol) => rol === "gerente" || rol === "admin" || rol === "corporativo";
 /** Ventas de todas las sucursales (el gerente solo ve la suya). */
 export const veVentasDeTodas = (rol: Rol) => rol === "admin" || rol === "corporativo";

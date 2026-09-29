@@ -42,10 +42,10 @@ begin
   select e.id, c.id, e.sucursal_id into v_enc, v_caj, v_suc
     from perfiles e join perfiles c on c.sucursal_id = e.sucursal_id and c.id <> e.id and c.activo
    where e.rol = 'encargado' and e.activo
-   order by (c.rol = 'cajero') desc
+   order by (c.rol = 'operacion') desc
    limit 1;
   if v_enc is null then raise exception 'FALTAN DATOS: se necesita un encargado activo y otro usuario activo en su sucursal.'; end if;
-  update perfiles set rol = 'cajero' where id = v_caj;
+  update perfiles set rol = 'operacion' where id = v_caj;
   select id into v_corpo from perfiles where activo and id not in (v_enc, v_caj) limit 1;
 
   -- ── Como cajero ────────────────────────────────────────────────────────
