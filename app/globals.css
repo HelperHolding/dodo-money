@@ -464,3 +464,10 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .aviso-sin-costo-fila { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--papel-2); }
 .aviso-sin-costo-fila span:last-child { font-weight: 700; white-space: nowrap; }
 .aviso-sin-costo-enlace { font-weight: 700; }
+
+/* ─── Importar Datos brutos ─── */
+.dias-importar { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.dias-importar li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid var(--papel-2); }
+.dias-importar li .saldo-nota { grid-column: 1 / -1; }
+.dias-importar li[data-repetido] .dias-importar-fecha::after { content: " ⚠"; color: var(--accion-oscuro); }
+.dias-importar-fecha { font-weight: 700; }

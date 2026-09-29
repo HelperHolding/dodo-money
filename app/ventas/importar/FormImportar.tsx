@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { fechaTexto, pesos } from "@/lib/formato";
-import { NOMBRE_TIPO } from "@/lib/ventas/calculos";
-import { necesitaConfirmacion } from "@/lib/ventas/extraer";
 import { guardarImportacion, revisarImportacion, type ResultadoImportacion } from "./acciones";
 import type { Revision } from "./preparar";
 
 /**
- * Dos archivos → Revisar (lee sin guardar) → vista previa → Guardar o Reimportar.
- * El envío es manual (no <form action>) para que React no vacíe los campos de archivo entre Revisar y Guardar.
+ * Un archivo de Datos brutos → Revisar (lee sin guardar) → vista previa por sucursal y día → Guardar o Reimportar.
+ * El envío es manual (no <form action>) para que React no vacíe el campo de archivo entre Revisar y Guardar.
  */
 export function FormImportar() {
   const [resultado, setResultado] = useState<ResultadoImportacion | null>(null);
@@ -32,14 +30,9 @@ export function FormImportar() {
   return (
     <form className="seccion formulario" onSubmit={enviar}>
       <div className="campo">
-        <label htmlFor="ventas">Reporte de Ventas</label>
-        <input id="ventas" name="ventas" type="file" accept=".xlsx" required onChange={() => setResultado(null)} />
-        <small>Dodo IS → Informes → Ventas, de un solo día.</small>
-      </div>
-      <div className="campo">
-        <label htmlFor="productos">Reporte de Productos</label>
-        <input id="productos" name="productos" type="file" accept=".xlsx" required onChange={() => setResultado(null)} />
-        <small>ProductsSales del mismo día, con método de cálculo &quot;Con descuentos&quot;.</small>
+        <label htmlFor="archivo">Datos brutos de Dodo IS</label>
+        <input id="archivo" name="archivo" type="file" accept=".xlsx" required onChange={() => setResultado(null)} />
+        <small>Dodo IS → Informes → Datos brutos, del periodo que quieras (hasta 92 días), de una o varias sucursales.</small>
       </div>
 
       {resultado?.tipo === "error" && <p className="aviso aviso-error" role="alert">{resultado.mensaje}</p>}
@@ -54,7 +47,7 @@ export function FormImportar() {
         </button>
         {revision && (
           <button className="boton" type="submit" value="guardar" disabled={pendiente}>
-            {revision.yaImportado ? "Reimportar" : "Guardar"}
+            {revision.diasYaImportados ? "Reimportar" : "Guardar"}
           </button>
         )}
       </div>
@@ -63,45 +56,38 @@ export function FormImportar() {
 }
 
 function VistaPrevia({ r }: { r: Revision }) {
-  const piezas = r.productos.reduce((s, p) => s + p.cantidad, 0);
-  const tipos = r.desglose.filter((d) => d.total || d.pedidos);
+  const periodo = r.periodo.desde === r.periodo.hasta ? fechaTexto(r.periodo.desde) : `${fechaTexto(r.periodo.desde)} al ${fechaTexto(r.periodo.hasta)}`;
   const faltan = r.nuevos.length + r.sinCategoria.length + r.sinCosto.length > 0;
   return (
     <div className="vista-previa" aria-live="polite">
-      <h2>{r.sucursal.nombre} · {fechaTexto(r.fecha)}</h2>
-      <dl className="tarjeta-datos">
-        <dt>Venta</dt>
-        <dd>
-          <span>Total {pesos(r.resumen.total)}</span>
-          <span>Neta {pesos(r.resumen.total - r.resumen.iva)}</span>
-          <span>IVA {pesos(r.resumen.iva)}</span>
-        </dd>
-        <dt>Pedidos</dt>
-        <dd>
-          <span>{r.resumen.pedidos}</span>
-          <span>Ticket promedio {r.ticket === null ? "—" : pesos(r.ticket)}</span>
-        </dd>
-        <dt>Pago</dt>
-        <dd>
-          <span>Efectivo {pesos(r.resumen.efectivo)}</span>
-          <span>Tarjeta {pesos(r.resumen.tarjeta)}</span>
-          <span>En línea {pesos(r.resumen.en_linea)}</span>
-        </dd>
-        {tipos.length > 0 && (
-          <>
-            <dt>Tipo</dt>
-            <dd>{tipos.map((d) => <span key={d.tipo}>{NOMBRE_TIPO[d.tipo]} {pesos(d.total)} · {d.pedidos}</span>)}</dd>
-          </>
-        )}
-        <dt>Productos</dt>
-        <dd><span>{r.productos.length} productos · {piezas} piezas</span></dd>
-      </dl>
-
-      {r.cuadra
-        ? <p className="aviso aviso-ok">✅ Cuadra: Ventas {pesos(r.resumen.total)} y Productos {pesos(r.sumaProductos)}.</p>
-        : <p className="aviso aviso-error">⚠ Los archivos no cuadran por {pesos(Math.abs(r.diferencia))}: Ventas {pesos(r.resumen.total)}, Productos {pesos(r.sumaProductos)}.</p>}
-      {r.yaImportado && (
-        <p className="aviso aviso-info">Ese día ya se importó con un total de {pesos(r.yaImportado.total)}. Reimportar lo reemplaza.</p>
+      <h2>{periodo}</h2>
+      <p>
+        {r.dias.length} {r.dias.length === 1 ? "día" : "días"} · {r.totales.pedidos} pedidos · {pesos(r.totales.total)} ·
+        {" "}{r.totales.personal} comidas del personal · {r.totales.cancelados} cancelados
+      </p>
+      <ul className="dias-importar">
+        {r.dias.map((d) => (
+          <li key={`${d.sucursal.id}|${d.fecha}`} data-repetido={d.yaImportado ? "si" : undefined}>
+            <span className="dias-importar-fecha">{fechaTexto(d.fecha)}{new Set(r.dias.map((x) => x.sucursal.id)).size > 1 ? ` · ${d.sucursal.nombre}` : ""}</span>
+            <span>{d.resumen.pedidos} ped. · <strong>{pesos(d.resumen.total)}</strong></span>
+            <span className="saldo-nota">
+              Ticket {d.ticket === null ? "—" : pesos(d.ticket)} · personal {d.personal.pedidos} · cancelados {d.cancelados.pedidos}
+              {d.yaImportado ? ` · ya importado (${pesos(d.yaImportado.total)})` : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {r.diasYaImportados > 0 && (
+        <>
+          <p className="aviso aviso-info">
+            {r.diasYaImportados} {r.diasYaImportados === 1 ? "día ya estaba importado" : "días ya estaban importados"}. Reimportar
+            los reemplaza completos con lo que trae este archivo.
+          </p>
+          <label className="casilla">
+            <input type="checkbox" name="confirmar" value="si" />
+            Sí, reemplazar los días ya importados
+          </label>
+        </>
       )}
       {faltan && (
         <div className="aviso aviso-info">
@@ -110,12 +96,6 @@ function VistaPrevia({ r }: { r: Revision }) {
           {r.sinCosto.length > 0 && <p>Sin costo: {r.sinCosto.join(", ")}.</p>}
           <p>Después de guardar, asígnalos en <Link href="/ventas/costos">Costos</Link>.</p>
         </div>
-      )}
-      {necesitaConfirmacion({ cuadra: r.cuadra, yaImportado: r.yaImportado !== null }) && (
-        <label className="casilla">
-          <input type="checkbox" name="confirmar" value="si" />
-          {r.yaImportado ? "Sí, reemplazar el día ya importado" : "Sí, guardar aunque no cuadren"}
-        </label>
       )}
     </div>
   );
