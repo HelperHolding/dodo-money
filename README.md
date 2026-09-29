@@ -234,7 +234,8 @@ En Supabase → **SQL Editor**:
    decir 39 pedidos y $7,736.00, y la semana 29 comidas del personal y 9 cancelados. Guardar.
 2. Súbelo otra vez: los días salen con ⚠, el botón dice **Reimportar** y pide la casilla.
 3. Sube el reporte de Ventas (no el Datos brutos): debe decir que no parece un Datos brutos.
-4. En **Reportes**, el 25/09/2026: costo teórico $2,187.19 (33.8 %); pizzas $43.66 por pieza; Coca-Cola sin costo.
+4. En **Reportes**, el 25/09/2026: costo teórico $2,188.87 (33.9 %); Coca-Cola sin costo. Datos brutos no distingue la
+   versión "T" de una pizza, así que la Pepperoni Grande T se cuenta como Pepperoni Grande (con los reportes viejos daba $2,187.19).
 5. En **Costos**, "Sin costo" muestra las Coca-Cola; Hawaiana Mediano tiene el aviso de costo dudoso.
    Corrige su costo: el aviso desaparece y el historial dice "corregido (antes $44.09)".
 6. Como gerente solo aparece su sucursal y no hay Importar ni Costos; como encargado no aparece Ventas en el menú.
