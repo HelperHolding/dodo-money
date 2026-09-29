@@ -1,4 +1,4 @@
-export type Rol = "cajero" | "encargado" | "gerente" | "admin" | "corporativo";
+export type Rol = "operacion" | "encargado" | "gerente" | "admin" | "corporativo";
 export type TipoCaja = "venta" | "cambios" | "boveda" | "caja_chica" | "banco";
 export type TipoTurno = "matutino" | "vespertino";
 export type MomentoArqueo = "inicio" | "traspaso" | "cierre";
@@ -16,6 +16,7 @@ export interface Perfil {
   nombre: string;
   rol: Rol;
   sucursal_id: string | null;
+  activo: boolean;
 }
 
 export interface Sucursal {

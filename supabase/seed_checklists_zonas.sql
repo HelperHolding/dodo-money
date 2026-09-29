@@ -5,11 +5,11 @@ insert into checklists (clave, nombre, tipo, en_ronda, orden, horas, roles) valu
   ('encargado_manana', 'Encargado · Mañana', 'lista', false, 10, '{}', '{encargado,gerente,admin}'),
   ('encargado_tarde',  'Encargado · Tarde',  'lista', false, 20, '{}', '{encargado,gerente,admin}'),
   ('tareas_semanales', 'Tareas semanales',   'lista', false, 30, '{}', '{encargado,gerente,admin}'),
-  ('limpieza',         'Limpieza',           'lista', true,  40, '{8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}', '{cajero,encargado,gerente,admin}'),
-  ('preparaciones',    'Zona de preparaciones', 'lista', false, 50, '{}', '{cajero,encargado,gerente,admin}'),
-  ('zona_caliente',    'Zona caliente',      'lista', true,  60, '{8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}', '{cajero,encargado,gerente,admin}'),
-  ('caja_sala',        'Caja y sala',        'lista', true,  70, '{8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}', '{cajero,encargado,gerente,admin}'),
-  ('bano',             'Baño',               'lista', true,  80, '{11,12,13,14,15,16,17,18,19,20,21,22,23}', '{cajero,encargado,gerente,admin}')
+  ('limpieza',         'Limpieza',           'lista', true,  40, '{8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}', '{operacion,encargado,gerente,admin}'),
+  ('preparaciones',    'Zona de preparaciones', 'lista', false, 50, '{}', '{operacion,encargado,gerente,admin}'),
+  ('zona_caliente',    'Zona caliente',      'lista', true,  60, '{8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}', '{operacion,encargado,gerente,admin}'),
+  ('caja_sala',        'Caja y sala',        'lista', true,  70, '{8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}', '{operacion,encargado,gerente,admin}'),
+  ('bano',             'Baño',               'lista', true,  80, '{11,12,13,14,15,16,17,18,19,20,21,22,23}', '{operacion,encargado,gerente,admin}')
 on conflict (clave) do nothing;
 
 insert into checklist_puntos (checklist_id, orden, momento, dia_semana, texto)

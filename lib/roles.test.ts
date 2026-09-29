@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  enlaceActivo, enlacesSucursal, enlacesVentas, esCorporativo, puedeAbrirTurno, puedeGestionar, puedeImportarVentas,
+  enlaceActivo, enlacesSucursal, enlacesVentas, esCorporativo, NOMBRE_ROL, puedeAbrirTurno, puedeEntrar, puedeGestionar, puedeImportarVentas,
   puedeSupervisar, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
 } from "./roles.ts";
 
@@ -13,8 +13,8 @@ test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () =
 });
 
 test("los roles de sucursal conservan sus permisos", () => {
-  assert.equal(puedeAbrirTurno("cajero"), false);
-  assert.equal(puedeSupervisar("cajero"), false);
+  assert.equal(puedeAbrirTurno("operacion"), false);
+  assert.equal(puedeSupervisar("operacion"), false);
   assert.equal(puedeAbrirTurno("encargado"), true);
   assert.equal(puedeSupervisar("encargado"), true);
   assert.equal(puedeGestionar("encargado"), false);
@@ -27,18 +27,18 @@ test("los roles de sucursal conservan sus permisos", () => {
 });
 
 test("ventas: gerente, admin y corporativo ven; solo admin importa", () => {
-  for (const rol of ["cajero", "encargado"] as const) assert.equal(puedeVerVentas(rol), false);
+  for (const rol of ["operacion", "encargado"] as const) assert.equal(puedeVerVentas(rol), false);
   for (const rol of ["gerente", "admin", "corporativo"] as const) assert.equal(puedeVerVentas(rol), true);
   assert.equal(veVentasDeTodas("gerente"), false);
   assert.equal(veVentasDeTodas("admin"), true);
   assert.equal(veVentasDeTodas("corporativo"), true);
-  for (const rol of ["cajero", "encargado", "gerente", "corporativo"] as const) assert.equal(puedeImportarVentas(rol), false);
+  for (const rol of ["operacion", "encargado", "gerente", "corporativo"] as const) assert.equal(puedeImportarVentas(rol), false);
   assert.equal(puedeImportarVentas("admin"), true);
 });
 
 test("menú de sucursal: Ventas solo para quien la ve; Corporativo solo para corporativo", () => {
   const hrefs = (rol: Parameters<typeof enlacesSucursal>[0]) => enlacesSucursal(rol).map((e) => e.href);
-  assert.ok(!hrefs("cajero").includes("/ventas"));
+  assert.ok(!hrefs("operacion").includes("/ventas"));
   assert.ok(!hrefs("encargado").includes("/ventas"));
   assert.ok(hrefs("gerente").includes("/ventas"));
   assert.equal(hrefs("corporativo")[0], "/corporativo");
@@ -60,7 +60,16 @@ test("enlaceActivo elige la ruta más larga", () => {
   assert.equal(enlaceActivo("/otra", enlaces), undefined);
 });
 
-test("aviso de productos sin costo: admin y corporativo lo ven; gerente, encargado y cajero no", () => {
+test("aviso de productos sin costo: admin y corporativo lo ven; gerente, encargado y operación no", () => {
   for (const rol of ["admin", "corporativo"] as const) assert.equal(veAvisoSinCosto(rol), true);
-  for (const rol of ["gerente", "encargado", "cajero"] as const) assert.equal(veAvisoSinCosto(rol), false);
+  for (const rol of ["gerente", "encargado", "operacion"] as const) assert.equal(veAvisoSinCosto(rol), false);
+});
+
+test("nombre de cada puesto como se muestra en la app", () => {
+  assert.deepEqual(NOMBRE_ROL, { operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo" });
+});
+
+test("un usuario desactivado no entra", () => {
+  assert.equal(puedeEntrar({ activo: true }), true);
+  assert.equal(puedeEntrar({ activo: false }), false);
 });

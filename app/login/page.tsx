@@ -4,6 +4,7 @@ const MENSAJES: Record<string, string> = {
   credenciales: "El correo o la contraseña no coinciden. Revísalos e intenta de nuevo.",
   "sin-perfil": "Tu usuario no tiene sucursal asignada. Pide al administrador que la agregue.",
   "sin-sucursal": "No encontramos tu sucursal. Pide al administrador que revise tu perfil.",
+  inactivo: "Tu usuario está desactivado. Habla con tu gerente.",
 };
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string }> }) {

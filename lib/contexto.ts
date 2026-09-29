@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { esCorporativo, SOLO_CONSULTA } from "@/lib/roles";
+import { esCorporativo, puedeEntrar, SOLO_CONSULTA } from "@/lib/roles";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import type { Caja, Perfil, Sucursal, Turno } from "@/lib/tipos";
 
@@ -16,8 +16,9 @@ export async function obtenerPerfil() {
   if (!user) redirect("/login");
 
   const { data: perfil } = await supabase
-    .from("perfiles").select("id, nombre, rol, sucursal_id").eq("id", user.id).single<Perfil>();
+    .from("perfiles").select("id, nombre, rol, sucursal_id, activo").eq("id", user.id).single<Perfil>();
   if (!perfil) redirect("/login?error=sin-perfil");
+  if (!puedeEntrar(perfil)) redirect("/login?error=inactivo");
 
   return { supabase, user, perfil };
 }

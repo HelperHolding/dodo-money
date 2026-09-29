@@ -168,7 +168,7 @@ begin
   v_ok := array_append(v_ok, 'gerente ve solo su sucursal');
 
   -- ── Encargado y cajero: no ven pedidos ───────────────────────────────────
-  foreach v_txt in array array['encargado', 'cajero'] loop
+  foreach v_txt in array array['encargado', 'operacion'] loop
     execute 'reset role';
     update perfiles set rol = v_txt::rol_usuario where id = v_a;
     perform set_config('request.jwt.claims', json_build_object('sub', v_a, 'role', 'authenticated')::text, true);

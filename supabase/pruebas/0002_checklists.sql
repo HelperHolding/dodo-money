@@ -30,7 +30,7 @@ begin
   select c.id, e.id, c.sucursal_id into v_cajero, v_enc, v_suc
     from perfiles c
     join perfiles e on e.sucursal_id = c.sucursal_id and e.rol = 'encargado' and e.activo
-   where c.rol = 'cajero' and c.activo
+   where c.rol = 'operacion' and c.activo
    limit 1;
   -- Sin cajero: otro perfil de la sucursal del encargado hace de cajero. Se deshace al final con todo lo demás.
   if v_cajero is null then
@@ -39,7 +39,7 @@ begin
       join perfiles c on c.sucursal_id = e.sucursal_id and c.id <> e.id and c.activo
      where e.rol = 'encargado' and e.activo
      limit 1;
-    update perfiles set rol = 'cajero' where id = v_cajero;
+    update perfiles set rol = 'operacion' where id = v_cajero;
   end if;
   if v_cajero is null then raise exception 'FALTAN DATOS: se necesita un encargado activo y otro usuario activo en la misma sucursal.'; end if;
   select id into v_prod from productos_merma where activo order by orden limit 1;
