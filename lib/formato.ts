@@ -50,3 +50,13 @@ export const fechaTexto = (fecha: string) => diaCorto.format(new Date(`${fecha}T
 
 /** Fracción como porcentaje con un decimal: 0.3421 → "34.2 %"; null → "—". */
 export const porcentaje = (fraccion: number | null) => (fraccion === null ? "—" : `${(fraccion * 100).toFixed(1)} %`);
+
+const mxnRedondo = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
+
+/** Pesos sin centavos, para números grandes de un vistazo: 53454.4 → "$53,454". */
+export const pesosRedondos = (n: number) => mxnRedondo.format(n);
+
+const diaNumero = new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", timeZone: "UTC" });
+
+/** "2026-09-25" → "vie 25". */
+export const diaYNumero = (fecha: string) => diaNumero.format(new Date(`${fecha}T00:00:00Z`)).replace(",", "");
