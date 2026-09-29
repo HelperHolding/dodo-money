@@ -241,6 +241,33 @@ En Supabase → **SQL Editor**:
    Corrige su costo: el aviso desaparece y el historial dice "corregido (antes $44.09)".
 6. Como gerente solo aparece su sucursal y no hay Importar ni Costos; como encargado no aparece Ventas en el menú.
 
+## Usuarios y contraseñas
+
+Cada persona tiene su propio usuario (nunca cuentas compartidas: nadie puede recibir su propio arqueo ni confirmar
+su propio movimiento). Puestos: operación, encargado, gerente, admin y corporativo.
+
+**Dar de alta** (lo hace un admin):
+
+1. Supabase → Authentication → Users → **Add user → Create new user**: correo, una contraseña temporal distinta para
+   cada quien y **Auto Confirm User**. La contraseña temporal se entrega en privado.
+2. En el SQL Editor, el perfil con nombre, puesto y sucursal, marcado para cambiar la contraseña al entrar:
+
+   ```sql
+   insert into perfiles (id, nombre, rol, sucursal_id, debe_cambiar_contrasena)
+   select u.id, 'Nombre Apellido', 'operacion', (select id from sucursales where nombre = 'Zapopan-1'), true
+   from auth.users u where u.email = 'correo@dodopizza.mx';
+   ```
+
+3. Al entrar por primera vez, la app lo lleva a **Mi cuenta** y no lo deja usar nada más hasta que elige su
+   contraseña. Después puede cambiarla cuando quiera desde **Mi contraseña**, en el encabezado.
+
+**Dar de baja:** `update perfiles set activo = false where id = (select id from auth.users where email = 'correo@dodopizza.mx');`
+El usuario ya no puede entrar; su historial se conserva.
+
+### Puesta en marcha
+
+`supabase/migrations/0009_cambiar_contrasena.sql` y `supabase/pruebas/0009_cambiar_contrasena.sql` → `PRUEBAS OK`.
+
 ## Siguiente paso: conectar con Dodo IS
 
 Hoy las ventas se importan a mano desde los reportes de Dodo IS (ver "Ventas y costos"). Cuando vuelva el acceso a

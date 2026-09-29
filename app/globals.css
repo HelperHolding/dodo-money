@@ -297,7 +297,8 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   .barra-marca { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .barra-turno { grid-column: 1 / -1; grid-row: 2; font-size: 0.85rem; }
   .barra-usuario { display: contents; }
-  .barra-usuario > span { grid-column: 1 / -1; grid-row: 3; font-size: 0.85rem; opacity: 0.85; }
+  .barra-usuario > span { grid-column: 1; grid-row: 3; font-size: 0.85rem; opacity: 0.85; }
+  .barra-usuario > a { grid-column: 2; grid-row: 3; justify-self: end; font-size: 0.85rem; }
   .barra-usuario > form { grid-column: 2; grid-row: 1; }
   .nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); overflow: visible; padding: 4px 12px; gap: 0; }
   .nav a { padding: 8px 4px; min-height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: normal; font-size: 0.9rem; line-height: 1.2; }
@@ -483,3 +484,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 }
 .mapa-calor-celda:disabled { background: transparent; cursor: default; }
 .mapa-calor-celda[aria-pressed="true"] { outline: 2px solid var(--tinta); outline-offset: 1px; }
+
+/* ─── Mi cuenta ─── */
+.barra-usuario a, .barra-enlace { color: var(--blanco); font-size: 0.95rem; }
+.formulario-corto { max-width: 480px; }
