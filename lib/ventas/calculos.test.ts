@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { leerPrimeraHoja } from "./xlsx.ts";
 import { extraerProductos, extraerVentas } from "./extraer.ts";
 import {
-  compararConCierre, costearProductos, costeo, costoVigente, descuentos, diasConCierre, errorDeCosto, errorDeMonto, separarDesglose, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido, periodoPorDefecto,
+  compararConCierre, costearProductos, costeo, resumenSinCosto, costoVigente, descuentos, diasConCierre, errorDeCosto, errorDeMonto, separarDesglose, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido, periodoPorDefecto,
   porProducto, resumenVentas, tamanoPorNombre, topProductos, type Categoria, type RenglonCosteo, type VentaDia,
 } from "./calculos.ts";
 
@@ -208,4 +208,9 @@ test("errorDeMonto valida solo el monto (para corregir un costo)", () => {
   assert.match(errorDeMonto(-0.01) ?? "", /costo válido/);
   assert.match(errorDeMonto(Number.NaN) ?? "", /costo válido/);
   assert.match(errorDeMonto(100_000_000) ?? "", /demasiado grande/);
+});
+
+test("resumenSinCosto: cuántos productos y piezas quedan fuera del costo %", () => {
+  assert.deepEqual(resumenSinCosto(costeo(renglones).sinCosto), { productos: 2, piezas: 6 });
+  assert.deepEqual(resumenSinCosto([]), { productos: 0, piezas: 0 });
 });

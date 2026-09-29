@@ -150,6 +150,11 @@ export function costeo(renglones: readonly RenglonCosteo[]) {
   return { categorias, total: grupo(null, renglones), sinCosto };
 }
 
+/** Cuántos productos y piezas del periodo no tienen costo (quedan fuera del costo %). */
+export function resumenSinCosto(sinCosto: readonly { piezas: number }[]) {
+  return { productos: sinCosto.length, piezas: sinCosto.reduce((s, p) => s + p.piezas, 0) };
+}
+
 /** Los n productos que más vendieron (importe), con su cambio contra el periodo anterior (fracción; null si no vendió). */
 export function topProductos(actual: readonly ProductoPeriodo[], anterior: readonly { dodo_id: number; importe: number }[], n = 10) {
   const previo = new Map<number, number>();
