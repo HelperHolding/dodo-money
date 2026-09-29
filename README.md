@@ -202,9 +202,13 @@ sucursal: **Ventas** y **Productos** (ProductsSales, método de cálculo "Con de
 Con eso, en **Ventas** se ven la venta diaria, los productos, los descuentos, el costo teórico con costo promedio
 ponderado por categoría y las diferencias entre el cierre del gerente y Dodo IS.
 
-- **Importar** (solo admin): se suben los dos archivos → **Revisar** muestra sucursal, fecha, totales, si cuadran
-  y qué productos no tienen categoría o costo → **Guardar**. Si no cuadran por más de $1, o si el día ya estaba
-  importado (**Reimportar**), hay que marcar la casilla de confirmación. Los archivos no se guardan.
+- **Importar** (solo admin): se sube el archivo **Datos brutos** de Dodo IS (Informes → Datos brutos), de cualquier
+  periodo de hasta 92 días y de una o varias sucursales → **Revisar** muestra cada día con pedidos, venta, comidas del
+  personal y cancelados, y qué productos no tienen categoría o costo → **Guardar**. Si trae días ya importados,
+  **Reimportar** los reemplaza completos (hay que marcar la casilla). El archivo no se guarda. Mientras se activa la API
+  de Dodo IS, esta es la forma de cargar ventas; la API llenará los mismos datos.
+- **Reportes por pedido:** venta por hora (mapa de calor), canales, comidas del personal y cancelados, tiempos de cocina
+  y combos. Los días importados con el formato anterior (Ventas + ProductsSales) no tienen este detalle hasta reimportarlos.
 - **Costos** (solo admin): categoría y costo por pieza de cada producto, con la fecha desde la que aplica.
   Un costo nuevo no borra el anterior; los días previos se siguen costeando con el que estaba vigente.
   Un error de captura se arregla con **Corregir** en el historial: el valor anterior queda registrado.
@@ -220,13 +224,16 @@ En Supabase → **SQL Editor**:
 1. `supabase/migrations/0006_ventas_costos.sql`
 2. `supabase/seed_ventas_costos.sql`
 3. `supabase/pruebas/0006_ventas_costos.sql`: debe terminar con el error `PRUEBAS OK — …`.
+4. `supabase/migrations/0007_datos_brutos.sql`
+5. `supabase/pruebas/0007_datos_brutos.sql`: debe terminar con el error `PRUEBAS OK — …`.
+6. `update sucursales set m2_comedor = 61 where nombre = 'Zapopan-1';` (para la venta por m²).
 
 ### Prueba manual
 
-1. Como admin, en **Ventas → Importar**, sube los reportes de Zapopan-1 del 25/09/2026: debe decir total $7,736.00,
-   39 pedidos, ✅ cuadra. Guardar.
-2. Súbelos otra vez: el botón dice **Reimportar** y pide la casilla.
-3. Sube Ventas de un día y Productos de otro: debe decir que las fechas no coinciden.
+1. Como admin, en **Ventas → Importar**, sube el Datos brutos de Zapopan-1 del 21 al 28/09/2026: el 25/09 debe
+   decir 39 pedidos y $7,736.00, y la semana 29 comidas del personal y 9 cancelados. Guardar.
+2. Súbelo otra vez: los días salen con ⚠, el botón dice **Reimportar** y pide la casilla.
+3. Sube el reporte de Ventas (no el Datos brutos): debe decir que no parece un Datos brutos.
 4. En **Reportes**, el 25/09/2026: costo teórico $2,187.19 (33.8 %); pizzas $43.66 por pieza; Coca-Cola sin costo.
 5. En **Costos**, "Sin costo" muestra las Coca-Cola; Hawaiana Mediano tiene el aviso de costo dudoso.
    Corrige su costo: el aviso desaparece y el historial dice "corregido (antes $44.09)".
