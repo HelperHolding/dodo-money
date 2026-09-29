@@ -1,22 +1,24 @@
-/* Paleta de Dodo: naranja de marca para acciones, negro del contorno del logo, fondo blanco cálido.
+/* Paleta del brandbook de Dodo: naranja #FF4E00 para acciones, negro para texto y encabezado, fondo blanco.
    Verde para lo que cuadra y rojo para lo que no (el naranja queda solo para la marca).
-   Naranja brillante solo en rellenos y líneas: como texto se usa --accion-oscuro (contraste 5.5:1).
+   Naranja de marca solo en rellenos y líneas: como texto se usa --accion-oscuro (contraste 5.8:1 sobre blanco).
    Tipografía neutral (Manrope) con números tabulares para leer montos de pie. */
 :root {
-  --papel: #fffaf5;
-  --papel-2: #f5ece3;
+  --papel: #ffffff;
+  --papel-2: #f4f4f4;
   --blanco: #ffffff;
-  --tinta: #1a1a1a;
-  --tinta-2: #5c534c;
-  --linea: #e3d6ca;
-  --accion: #ff6900;
-  --accion-2: #e55e00;
-  --accion-texto: #1a1a1a;
-  --accion-oscuro: #b34700;
+  --tinta: #000000;
+  --tinta-2: #595959;
+  --linea: #e3e3e3;
+  --accion: #ff4e00;
+  --accion-2: #e64600;
+  --accion-texto: #000000;
+  --accion-oscuro: #b83800;
+  --accion-suave: #ffe4d6;
+  --accion-suave-borde: #ffc7ad;
   --cuadra: #1f6b4f;
   --cuadra-fondo: #e2efe8;
   --cuadra-texto: #174d39;
-  --cuadra-borde: var(--cuadra-borde);
+  --cuadra-borde: #b7d8c8;
   --alerta: #c62828;
   --alerta-fondo: #fdecea;
   --alerta-texto: #8e1c1c;
@@ -58,6 +60,9 @@ a { color: var(--accion-oscuro); }
   gap: 12px 28px;
 }
 .barra-marca { font-family: var(--display); font-weight: 700; font-size: 1.15rem; }
+/* Logo y nombre van juntos, como un solo bloque, en computadora y en celular. */
+.barra-identidad { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.barra-logo { width: 32px; height: 32px; border-radius: 50%; flex: none; }
 .barra-turno { font-size: 0.95rem; opacity: 0.85; }
 .barra-usuario { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 0.95rem; }
 .barra-usuario button {
@@ -117,7 +122,7 @@ input, select, textarea {
   padding: 10px 12px;
   min-height: 48px;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--accion-oscuro); outline: none; box-shadow: 0 0 0 3px #ff690040; }
+input:focus, select:focus, textarea:focus { border-color: var(--accion-oscuro); outline: none; box-shadow: 0 0 0 3px #ff4e0040; }
 input[type="number"] { text-align: right; }
 
 .boton {
@@ -287,10 +292,13 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 
 /* ─── Celular ─── */
 @media (max-width: 640px) {
-  .barra { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding-block: 10px; }
-  .barra-marca { font-size: 1.05rem; }
+  /* Arriba logo, sucursal y Salir; debajo turno y usuario, para que el nombre de la sucursal no se parta. */
+  .barra { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; padding-block: 10px; }
+  .barra-marca { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .barra-turno { grid-column: 1 / -1; grid-row: 2; font-size: 0.85rem; }
-  .barra-usuario { margin-left: 0; gap: 10px; font-size: 0.85rem; }
+  .barra-usuario { display: contents; }
+  .barra-usuario > span { grid-column: 1 / -1; grid-row: 3; font-size: 0.85rem; opacity: 0.85; }
+  .barra-usuario > form { grid-column: 2; grid-row: 1; }
   .nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); overflow: visible; padding: 4px 12px; gap: 0; }
   .nav a { padding: 8px 4px; min-height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: normal; font-size: 0.9rem; line-height: 1.2; }
 
@@ -324,6 +332,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 /* ─── Login ─── */
 .login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
 .login form { width: min(400px, 100%); display: flex; flex-direction: column; gap: 18px; }
+.login-logo { width: 72px; height: 72px; border-radius: 50%; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
@@ -423,7 +432,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .calendario-dia:hover:not(:disabled) { border-color: var(--accion); }
 .calendario-dia[data-vacio] { background: transparent; }
 .calendario-dia:disabled { opacity: 0.35; cursor: not-allowed; }
-.calendario-dia[data-estado="dentro"] { background: #ffe3cf; border-color: #ffc9a3; }
+.calendario-dia[data-estado="dentro"] { background: var(--accion-suave); border-color: var(--accion-suave-borde); }
 .calendario-dia[data-estado="extremo"] { background: var(--accion-oscuro); border-color: var(--accion-oscuro); color: var(--blanco); }
 .calendario-numero { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
 .calendario-venta { font-size: 0.8rem; font-weight: 800; white-space: nowrap; }

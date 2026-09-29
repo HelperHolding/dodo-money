@@ -12,7 +12,10 @@ export default async function LayoutCorporativo({ children }: { children: React.
   return (
     <>
       <header className="barra">
-        <span className="barra-marca">Corporativo</span>
+        <span className="barra-identidad">
+          <img className="barra-logo" src="/logo-dodo.png" alt="Dodo Pizza" width={32} height={32} />
+          <span className="barra-marca">Corporativo</span>
+        </span>
         <span className="barra-turno">Todas las sucursales · solo lectura</span>
         <div className="barra-usuario">
           <span>{perfil.nombre}</span>

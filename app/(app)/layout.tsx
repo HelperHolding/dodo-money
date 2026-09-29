@@ -14,7 +14,10 @@ export default async function LayoutApp({ children }: { children: React.ReactNod
   return (
     <>
       <header className="barra">
-        <span className="barra-marca">{sucursal.nombre}</span>
+        <span className="barra-identidad">
+          <img className="barra-logo" src="/logo-dodo.png" alt="Dodo Pizza" width={32} height={32} />
+          <span className="barra-marca">{sucursal.nombre}</span>
+        </span>
         <span className="barra-turno">
           {turno ? `Turno ${turno.tipo} abierto desde las ${hora(turno.abierto_en)}` : "Sin turno abierto"}
         </span>
