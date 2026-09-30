@@ -3,6 +3,8 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto, puedeAbrirTurno } from "@/lib/contexto";
 import { hora, pesos } from "@/lib/formato";
+import { avanceRenglon } from "@/lib/compras/ordenes";
+import { puedeRecibirCompras } from "@/lib/roles";
 import { NOMBRE_MOVIMIENTO, type Movimiento } from "@/lib/tipos";
 import { abrirTurno } from "./actions";
 import { confirmarMovimiento, rechazarMovimiento } from "./movimientos/actions";
@@ -18,6 +20,9 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       .order("creado_en").returns<Movimiento[]>(),
     supabase.from("perfiles").select("id, nombre").returns<{ id: string; nombre: string }[]>(),
   ]);
+  const { data: porRecibir } = puedeRecibirCompras(perfil.rol) ? await supabase.rpc("ordenes_por_recibir") : { data: [] };
+  const ordenesPorRecibir = new Set(((porRecibir ?? []) as { orden_id: string; cantidad: number; recibido: number }[])
+    .filter((r) => avanceRenglon(Number(r.cantidad), Number(r.recibido)) !== "completa").map((r) => r.orden_id)).size;
 
   const persona = new Map((nombres ?? []).map((p) => [p.id, p.nombre]));
   const caja = new Map(cajas.map((c) => [c.id, c.nombre]));
@@ -76,6 +81,14 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
           </div>
         </div>
       </section>
+
+      {ordenesPorRecibir > 0 && (
+        <section className="seccion" aria-labelledby="t-por-recibir">
+          <h2 id="t-por-recibir">Por recibir</h2>
+          <p>{ordenesPorRecibir === 1 ? "Hay 1 orden de compra" : `Hay ${ordenesPorRecibir} órdenes de compra`} con equipo, servicios u otros por recibir.</p>
+          <Link className="boton" href="/recepciones">Registrar lo recibido</Link>
+        </section>
+      )}
 
       <section className="seccion" aria-labelledby="t-pendientes">
         <h2 id="t-pendientes">Por confirmar</h2>

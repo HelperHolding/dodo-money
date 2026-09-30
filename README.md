@@ -284,3 +284,8 @@ agrupado por `cashBoxSessionId`, el efectivo del arqueo y del cierre del día.
 
 Migración `0011_compras_proveedores.sql` y su prueba `supabase/pruebas/0011_compras_proveedores.sql`.
 Diseño completo (fases 2–4: órdenes, facturas XML, pagos y calendario): `docs/superpowers/specs/2026-09-30-compras-design.md`.
+
+- **Órdenes** (fase 2): cada documento empieza como cotización (borrador → enviada) y al confirmarlo es la orden de compra (folio OC-0001). "Pedir a otro proveedor" crea una cotización alternativa del mismo grupo; al confirmar una, las demás se cancelan solas. Confirmar actualiza el último precio de cada artículo con ese proveedor. PDF para mandar al proveedor en `/orden-compra/<id>`.
+- **Recepciones**: los consumibles llegan del *Incoming supplies* de Dodo IS (Compras → Recepciones) y se ligan solos al renglón de la orden confirmada de la misma sucursal y el mismo insumo, entre la confirmación y 7 días después; lo que no se liga queda "Por revisar". Activos fijos, servicios y otros los registra el gerente o encargado en **Recepciones** de su sucursal (sin ver precios), con foto opcional. Una orden con algo recibido ya no se cancela: se cierra con motivo.
+
+Migración `0012_compras_ordenes.sql` y su prueba `supabase/pruebas/0012_compras_ordenes.sql`.
