@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  enlaceActivo, enlacesCompras, enlacesSucursal, enlacesVentas, esCorporativo, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar,
+  enlaceActivo, enlacesCompras, enlacesSucursal, enlacesVentas, esCorporativo, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
 } from "./roles.ts";
 
@@ -65,10 +65,23 @@ test("compras: admin edita, corporativo consulta, sucursal no entra", () => {
 });
 
 test("menú de compras por rol", () => {
-  assert.deepEqual(enlacesCompras("admin").map((e) => e.href), ["/", "/compras", "/compras/articulos", "/compras/cargar"]);
-  assert.deepEqual(enlacesCompras("corporativo").map((e) => e.href), ["/corporativo", "/compras", "/compras/articulos"]);
+  assert.deepEqual(enlacesCompras("admin").map((e) => e.href),
+    ["/", "/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/cargar"]);
+  assert.deepEqual(enlacesCompras("corporativo").map((e) => e.href),
+    ["/corporativo", "/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones"]);
   assert.equal(enlaceActivo("/compras/proveedores/abc", enlacesCompras("admin")), "/compras");
-  assert.equal(enlaceActivo("/compras/articulos", enlacesCompras("admin")), "/compras/articulos");
+  assert.equal(enlaceActivo("/compras/ordenes/abc", enlacesCompras("admin")), "/compras/ordenes");
+});
+
+test("recepciones de compras: encargado, gerente y admin reciben; operación y corporativo no", () => {
+  for (const rol of ["encargado", "gerente", "admin"] as const) {
+    assert.equal(puedeRecibirCompras(rol), true);
+    assert.ok(enlacesSucursal(rol).some((e) => e.href === "/recepciones"));
+  }
+  for (const rol of ["operacion", "corporativo"] as const) {
+    assert.equal(puedeRecibirCompras(rol), false);
+    assert.ok(!enlacesSucursal(rol).some((e) => e.href === "/recepciones"));
+  }
 });
 
 test("enlaceActivo elige la ruta más larga", () => {

@@ -30,6 +30,8 @@ export type Enlace = { href: string; texto: string };
 /** Compras (proveedores, órdenes, facturas, pagos): oficina central. Admin edita; corporativo consulta. */
 export const puedeVerCompras = (rol: Rol) => rol === "admin" || rol === "corporativo";
 export const puedeEditarCompras = (rol: Rol) => rol === "admin";
+/** Confirmar lo recibido de activos fijos, servicios y otros (los consumibles se reciben en Dodo IS). */
+export const puedeRecibirCompras = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
 const ENLACE_COMPRAS: Enlace = { href: "/compras", texto: "Compras" };
 
 const ENLACES_SUCURSAL: readonly Enlace[] = [
@@ -46,6 +48,7 @@ export function enlacesSucursal(rol: Rol): Enlace[] {
   return [
     ...(esCorporativo(rol) ? [{ href: "/corporativo", texto: "Corporativo" }] : []),
     ...ENLACES_SUCURSAL,
+    ...(puedeRecibirCompras(rol) ? [{ href: "/recepciones", texto: "Recepciones" }] : []),
     ...(puedeVerVentas(rol) ? [{ href: "/ventas", texto: "Ventas" }] : []),
     ...(puedeVerCompras(rol) ? [ENLACE_COMPRAS] : []),
   ];
@@ -67,6 +70,8 @@ export function enlacesCompras(rol: Rol): Enlace[] {
     esCorporativo(rol) ? { href: "/corporativo", texto: "Vista general" } : { href: "/", texto: "Inicio" },
     { href: "/compras", texto: "Proveedores" },
     { href: "/compras/articulos", texto: "Artículos" },
+    { href: "/compras/ordenes", texto: "Órdenes" },
+    { href: "/compras/recepciones", texto: "Recepciones" },
     ...(puedeEditarCompras(rol) ? [{ href: "/compras/cargar", texto: "Cargar Excel" }] : []),
   ];
 }
