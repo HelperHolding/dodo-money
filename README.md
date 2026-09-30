@@ -273,3 +273,14 @@ El usuario ya no puede entrar; su historial se conserva.
 Hoy las ventas se importan a mano desde los reportes de Dodo IS (ver "Ventas y costos"). Cuando vuelva el acceso a
 la API, `/accounting/sales` puede llenar `ventas_dia` y `ventas_producto` automáticamente, y con `paymentMethod = Cash`,
 agrupado por `cashBoxSessionId`, el efectivo del arqueo y del cierre del día.
+
+## Compras (oficina central)
+
+`/compras` es de oficina central: el **admin** edita y **corporativo** consulta. La sucursal no ve el catálogo.
+
+- **Proveedores**: razón social, RFC (único; reconoce sus facturas), régimen fiscal del SAT, contacto, banco y CLABE (se valida el dígito verificador), días de crédito, forma de pago y qué surte. Nunca se borran: se desactivan.
+- **Artículos**: nombre, unidad, tipo (consumible, activo fijo, servicio, otro), IVA y, en consumibles, el ID de insumo de Dodo IS. El último precio por proveedor se llena al confirmar órdenes de compra (fase 2).
+- **Cargar Excel**: alta masiva de proveedores; los encabezados se reconocen sin importar mayúsculas, acentos u orden. Si un renglón falla no se guarda ninguno.
+
+Migración `0011_compras_proveedores.sql` y su prueba `supabase/pruebas/0011_compras_proveedores.sql`.
+Diseño completo (fases 2–4: órdenes, facturas XML, pagos y calendario): `docs/superpowers/specs/2026-09-30-compras-design.md`.
