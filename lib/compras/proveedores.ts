@@ -152,7 +152,8 @@ export const ENCABEZADOS = [
   { texto: "Notas", campo: "notas", obligatorio: false },
 ] as const;
 
-const CAMPO_POR_CLAVE = new Map<string, string>(ENCABEZADOS.map((e) => [clave(e.texto), e.campo]));
+type Encabezado = { texto: string; campo: string; obligatorio: boolean };
+type Renglon = { n: number; crudo: (campo: string) => string | number | undefined };
 
 /** "AB12" → { columna: "AB", fila: 12 }. */
 function partirReferencia(ref: string) {
@@ -160,7 +161,12 @@ function partirReferencia(ref: string) {
   return m ? { columna: m[1], fila: Number(m[2]) } : null;
 }
 
-export function leerCargaProveedores(hoja: Hoja, rfcsExistentes: ReadonlySet<string>): { proveedores: DatosProveedor[]; errores: string[] } {
+/**
+ * Renglones con datos de una hoja cuya primera fila son encabezados (reconocidos sin importar mayúsculas, acentos ni orden).
+ * Devuelve el error de columnas faltantes, de hoja vacía o de demasiados renglones.
+ */
+function renglonesDeHoja(hoja: Hoja, encabezados: readonly Encabezado[], vacia: string, max: number, plural: string): { renglones: Renglon[] } | { errores: string[] } {
+  const campoPorClave = new Map<string, string>(encabezados.map((e) => [clave(e.texto), e.campo]));
   const filas = new Map<number, Map<string, string | number>>();
   for (const [ref, valor] of hoja.celdas) {
     const p = partirReferencia(ref);
@@ -169,28 +175,34 @@ export function leerCargaProveedores(hoja: Hoja, rfcsExistentes: ReadonlySet<str
     filas.get(p.fila)!.set(p.columna, valor);
   }
 
-  // Encabezados: columna → campo.
   const columnaDe = new Map<string, string>();
   for (const [columna, valor] of filas.get(1) ?? []) {
-    const campo = CAMPO_POR_CLAVE.get(clave(String(valor)));
+    const campo = campoPorClave.get(clave(String(valor)));
     if (campo && !columnaDe.has(campo)) columnaDe.set(campo, columna);
   }
-  const faltan = ENCABEZADOS.filter((e) => e.obligatorio && !columnaDe.has(e.campo));
-  if (faltan.length) return { proveedores: [], errores: faltan.map((e) => `Falta la columna "${e.texto}" en la primera fila.`) };
+  const faltan = encabezados.filter((e) => e.obligatorio && !columnaDe.has(e.campo));
+  if (faltan.length) return { errores: faltan.map((e) => `Falta la columna "${e.texto}" en la primera fila.`) };
 
   const numeros = [...filas.keys()].filter((n) => n > 1 && [...filas.get(n)!.values()].some((v) => String(v).trim() !== "")).sort((a, b) => a - b);
-  if (!numeros.length) return { proveedores: [], errores: [SIN_RENGLONES] };
-  if (numeros.length > MAX_PROVEEDORES) return { proveedores: [], errores: [`El archivo trae más de ${MAX_PROVEEDORES} proveedores; divídelo en varios.`] };
+  if (!numeros.length) return { errores: [vacia] };
+  if (numeros.length > max) return { errores: [`El archivo trae más de ${max} ${plural}; divídelo en varios.`] };
+
+  return {
+    renglones: numeros.map((n) => {
+      const fila = filas.get(n)!;
+      return { n, crudo: (campo: string) => { const c = columnaDe.get(campo); return c === undefined ? undefined : fila.get(c); } };
+    }),
+  };
+}
+
+export function leerCargaProveedores(hoja: Hoja, rfcsExistentes: ReadonlySet<string>): { proveedores: DatosProveedor[]; errores: string[] } {
+  const leidos = renglonesDeHoja(hoja, ENCABEZADOS, SIN_RENGLONES, MAX_PROVEEDORES, "proveedores");
+  if ("errores" in leidos) return { proveedores: [], errores: leidos.errores };
 
   const proveedores: DatosProveedor[] = [];
   const errores: string[] = [];
   const renglonDeRfc = new Map<string, number>();
-  for (const n of numeros) {
-    const fila = filas.get(n)!;
-    const crudo = (campo: string) => {
-      const columna = columnaDe.get(campo);
-      return columna === undefined ? undefined : fila.get(columna);
-    };
+  for (const { n, crudo } of leidos.renglones) {
     if (typeof crudo("clabe") === "number") {
       errores.push(`Renglón ${n}: la CLABE llegó como número y Excel pudo cambiarla; dale formato de texto a esa columna.`);
       continue;
@@ -208,6 +220,68 @@ export function leerCargaProveedores(hoja: Hoja, rfcsExistentes: ReadonlySet<str
     proveedores.push(r.datos);
   }
   return errores.length ? { proveedores: [], errores } : { proveedores, errores };
+}
+
+export const SIN_ARTICULOS = "El archivo no trae artículos (la primera fila son los encabezados).";
+export const MAX_ARTICULOS = 1000;
+
+export const ENCABEZADOS_ARTICULOS = [
+  { texto: "Nombre", campo: "nombre", obligatorio: true },
+  { texto: "Unidad", campo: "unidad", obligatorio: true },
+  { texto: "Tipo", campo: "tipo", obligatorio: true },
+  { texto: "IVA", campo: "tasa_iva", obligatorio: false },
+  { texto: "ID de insumo Dodo IS", campo: "dodo_insumo_id", obligatorio: false },
+] as const;
+
+/** IVA como lo escriben: 16, "16 %", 0.16 (Excel con formato de porcentaje), 0, "Exento". Vacío = 16. */
+function tasaDeCelda(valor: string | number | undefined): string | null {
+  if (valor === undefined || String(valor).trim() === "") return "16";
+  if (typeof valor === "number") return valor === 16 || valor === 0.16 ? "16" : valor === 0 ? "0" : null;
+  const t = clave(valor).replace(/[%_]/g, "");
+  return t === "16" || t === "0" || t === "exento" ? t : null;
+}
+
+/**
+ * Lee la hoja de artículos. `existentes`: nombres del catálogo en minúsculas e IDs de Dodo IS ya usados.
+ * Si un renglón falla no devuelve ninguno.
+ */
+export function leerCargaArticulos(
+  hoja: Hoja, existentes: { nombres: ReadonlySet<string>; ids: ReadonlySet<string> },
+): { articulos: DatosArticulo[]; errores: string[] } {
+  const leidos = renglonesDeHoja(hoja, ENCABEZADOS_ARTICULOS, SIN_ARTICULOS, MAX_ARTICULOS, "artículos");
+  if ("errores" in leidos) return { articulos: [], errores: leidos.errores };
+
+  const articulos: DatosArticulo[] = [];
+  const errores: string[] = [];
+  const renglonDeNombre = new Map<string, number>();
+  const renglonDeId = new Map<string, number>();
+  for (const { n, crudo } of leidos.renglones) {
+    const textoTipo = String(crudo("tipo") ?? "").trim();
+    const tipo = clave(textoTipo);
+    if (!(CATEGORIAS_COMPRA as readonly string[]).includes(tipo)) {
+      errores.push(`Renglón ${n}: Tipo no reconocido: ${textoTipo || "(vacío)"} (Consumible, Activo fijo, Servicio u Otro).`);
+      continue;
+    }
+    const tasa = tasaDeCelda(crudo("tasa_iva"));
+    if (tasa === null) { errores.push(`Renglón ${n}: IVA no reconocido: ${crudo("tasa_iva")} (16, 0 o Exento).`); continue; }
+
+    const r = leerArticulo((campo) => (campo === "tipo" ? tipo : campo === "tasa_iva" ? tasa : String(crudo(campo) ?? "")));
+    if ("error" in r) { errores.push(`Renglón ${n}: ${r.error}`); continue; }
+    const { nombre, dodo_insumo_id: id } = r.datos;
+
+    const previo = renglonDeNombre.get(nombre.toLowerCase());
+    if (previo !== undefined) { errores.push(`Renglón ${n}: el artículo ${nombre} está repetido en el archivo (renglón ${previo}).`); continue; }
+    renglonDeNombre.set(nombre.toLowerCase(), n);
+    if (id) {
+      const previoId = renglonDeId.get(id);
+      if (previoId !== undefined) { errores.push(`Renglón ${n}: el ID de Dodo IS ${id} está repetido en el archivo (renglón ${previoId}).`); continue; }
+      renglonDeId.set(id, n);
+    }
+    if (existentes.nombres.has(nombre.toLowerCase())) { errores.push(`Renglón ${n}: ya hay un artículo llamado ${nombre}.`); continue; }
+    if (id && existentes.ids.has(id)) { errores.push(`Renglón ${n}: el ID de Dodo IS ${id} ya está en otro artículo.`); continue; }
+    articulos.push(r.datos);
+  }
+  return errores.length ? { articulos: [], errores } : { articulos, errores };
 }
 
 /** Desactivar exige motivo (quién y cuándo los pone la base); reactivar lo borra. `activo` = "si" o "no" del formulario. */

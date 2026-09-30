@@ -280,7 +280,7 @@ agrupado por `cashBoxSessionId`, el efectivo del arqueo y del cierre del día.
 
 - **Proveedores**: razón social, RFC (único; reconoce sus facturas), régimen fiscal del SAT, contacto, banco y CLABE (se valida el dígito verificador), días de crédito, forma de pago y qué surte. Nunca se borran: se desactivan.
 - **Artículos**: nombre, unidad, tipo (consumible, activo fijo, servicio, otro), IVA y, en consumibles, el ID de insumo de Dodo IS. El último precio por proveedor se llena al confirmar órdenes de compra (fase 2).
-- **Cargar Excel**: alta masiva de proveedores; los encabezados se reconocen sin importar mayúsculas, acentos u orden. Si un renglón falla no se guarda ninguno.
+- **Cargar Excel**: alta masiva de proveedores (Razón social, RFC, Régimen fiscal…) y de artículos (Nombre, Unidad, Tipo, IVA, ID de insumo Dodo IS); los encabezados se reconocen sin importar mayúsculas, acentos u orden. Si un renglón falla no se guarda ninguno.
 
 Migración `0011_compras_proveedores.sql` y su prueba `supabase/pruebas/0011_compras_proveedores.sql`.
 Diseño completo (fases 2–4: órdenes, facturas XML, pagos y calendario): `docs/superpowers/specs/2026-09-30-compras-design.md`.
