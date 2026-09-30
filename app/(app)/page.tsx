@@ -5,7 +5,7 @@ import { obtenerContexto, puedeAbrirTurno } from "@/lib/contexto";
 import { hora, pesos } from "@/lib/formato";
 import { NOMBRE_MOVIMIENTO, type Movimiento } from "@/lib/tipos";
 import { abrirTurno } from "./actions";
-import { confirmarMovimiento } from "./movimientos/actions";
+import { confirmarMovimiento, rechazarMovimiento } from "./movimientos/actions";
 
 export default async function Inicio({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
@@ -97,12 +97,18 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
                       {soloLectura ? null : m.registrado_por === perfil.id ? (
                         <span className="saldo-nota">Lo confirma otra persona</span>
                       ) : (
-                        <form action={confirmarMovimiento} className="acciones">
-                          <input type="hidden" name="id" value={m.id} />
-                          <input type="hidden" name="volver" value="/" />
-                          <BotonEnviar name="aceptar" value="si" pendiente="…">Recibí el efectivo</BotonEnviar>
-                          <BotonEnviar name="aceptar" value="no" className="boton boton-alerta" pendiente="…">Rechazar</BotonEnviar>
-                        </form>
+                        <div className="acciones">
+                          <form action={confirmarMovimiento}>
+                            <input type="hidden" name="id" value={m.id} />
+                            <input type="hidden" name="volver" value="/" />
+                            <BotonEnviar pendiente="…">Recibí el efectivo</BotonEnviar>
+                          </form>
+                          <form action={rechazarMovimiento}>
+                            <input type="hidden" name="id" value={m.id} />
+                            <input type="hidden" name="volver" value="/" />
+                            <BotonEnviar className="boton boton-alerta" pendiente="…" confirmar="¿Rechazar este movimiento? No se puede deshacer; habría que registrarlo de nuevo.">Rechazar</BotonEnviar>
+                          </form>
+                        </div>
                       )}
                     </td>
                   </tr>

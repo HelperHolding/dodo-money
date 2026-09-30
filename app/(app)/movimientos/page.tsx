@@ -3,7 +3,7 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto } from "@/lib/contexto";
 import { hora, hoyMX, pesos, rangoDiaMX } from "@/lib/formato";
 import { NOMBRE_MOVIMIENTO, type Movimiento } from "@/lib/tipos";
-import { confirmarMovimiento } from "./actions";
+import { confirmarMovimiento, rechazarMovimiento } from "./actions";
 import { FormMovimiento } from "./FormMovimiento";
 
 export default async function Movimientos({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
@@ -49,11 +49,18 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
                     <td data-label="Registró">{persona.get(m.registrado_por)}</td>
                     <td data-label="Confirmó">
                       {m.estado === "pendiente" && m.registrado_por !== perfil.id && !soloLectura ? (
-                        <form action={confirmarMovimiento} className="acciones">
-                          <input type="hidden" name="id" value={m.id} />
-                          <BotonEnviar name="aceptar" value="si" className="boton boton-secundario" pendiente="…">Confirmar</BotonEnviar>
-                          <BotonEnviar name="aceptar" value="no" className="boton boton-alerta" pendiente="…">Rechazar</BotonEnviar>
-                        </form>
+                        <div className="acciones">
+                          <form action={confirmarMovimiento}>
+                            <input type="hidden" name="id" value={m.id} />
+                            <input type="hidden" name="volver" value="/movimientos" />
+                            <BotonEnviar className="boton boton-secundario" pendiente="…">Confirmar</BotonEnviar>
+                          </form>
+                          <form action={rechazarMovimiento}>
+                            <input type="hidden" name="id" value={m.id} />
+                            <input type="hidden" name="volver" value="/movimientos" />
+                            <BotonEnviar className="boton boton-alerta" pendiente="…" confirmar="¿Rechazar este movimiento? No se puede deshacer; habría que registrarlo de nuevo.">Rechazar</BotonEnviar>
+                          </form>
+                        </div>
                       ) : (
                         m.confirmado_por ? persona.get(m.confirmado_por) : ""
                       )}

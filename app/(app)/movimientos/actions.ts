@@ -44,15 +44,22 @@ export async function registrarMovimiento(formData: FormData) {
   volverCon("/movimientos", "ok", "Movimiento registrado. Falta que otra persona confirme que recibió el efectivo.");
 }
 
-export async function confirmarMovimiento(formData: FormData) {
+/** Confirmar y Rechazar van en formularios separados: la decisión no depende de qué botón envió el formulario. */
+async function resolverMovimiento(formData: FormData, aceptar: boolean) {
   const { supabase } = await obtenerContextoParaEscribir("/movimientos");
   const volver = String(formData.get("volver") ?? "/movimientos");
-  const aceptar = formData.get("aceptar") === "si";
-  const { error } = await supabase.rpc("confirmar_movimiento", {
-    p_id: String(formData.get("id")),
-    p_aceptar: aceptar,
-  });
+  const id = String(formData.get("id") ?? "");
+  if (!id) volverCon(volver, "error", "No se identificó el movimiento. Recarga la página e intenta de nuevo.");
+  const { error } = await supabase.rpc("confirmar_movimiento", { p_id: id, p_aceptar: aceptar });
   if (error) volverCon(volver, "error", error.message);
   revalidatePath("/", "layout");
   volverCon(volver, "ok", aceptar ? "Movimiento confirmado." : "Movimiento rechazado. No afecta ningún saldo.");
+}
+
+export async function confirmarMovimiento(formData: FormData) {
+  await resolverMovimiento(formData, true);
+}
+
+export async function rechazarMovimiento(formData: FormData) {
+  await resolverMovimiento(formData, false);
 }
