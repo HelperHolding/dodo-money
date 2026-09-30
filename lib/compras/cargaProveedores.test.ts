@@ -55,6 +55,11 @@ test("errores por renglón: inválido, repetido en el archivo y ya existente; no
   assert.equal(r.proveedores.length, 0);
 });
 
+test("Cuenta que Excel convirtió en número se rechaza (perdería ceros a la izquierda)", () => {
+  const r = leerCargaProveedores(hoja([["Razón social", "RFC", "Régimen fiscal", "Cuenta"], ["A", "LBA010203AB1", "601", 123456789]]), new Set());
+  assert.deepEqual(r.errores, ["Renglón 2: la cuenta llegó como número y Excel pudo quitarle ceros; dale formato de texto a esa columna."]);
+});
+
 test("CLABE que Excel convirtió en número se rechaza pidiendo formato texto", () => {
   const r = leerCargaProveedores(hoja([ENC, ["A", "LBA010203AB1", "601", 32180000118359720]]), new Set());
   assert.deepEqual(r.errores, ["Renglón 2: la CLABE llegó como número y Excel pudo cambiarla; dale formato de texto a esa columna."]);

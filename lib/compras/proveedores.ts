@@ -195,6 +195,10 @@ export function leerCargaProveedores(hoja: Hoja, rfcsExistentes: ReadonlySet<str
       errores.push(`Renglón ${n}: la CLABE llegó como número y Excel pudo cambiarla; dale formato de texto a esa columna.`);
       continue;
     }
+    if (typeof crudo("cuenta") === "number") {
+      errores.push(`Renglón ${n}: la cuenta llegó como número y Excel pudo quitarle ceros; dale formato de texto a esa columna.`);
+      continue;
+    }
     const r = leerProveedor((campo) => String(crudo(campo) ?? ""));
     if ("error" in r) { errores.push(`Renglón ${n}: ${r.error}`); continue; }
     const previo = renglonDeRfc.get(r.datos.rfc);
@@ -204,4 +208,12 @@ export function leerCargaProveedores(hoja: Hoja, rfcsExistentes: ReadonlySet<str
     proveedores.push(r.datos);
   }
   return errores.length ? { proveedores: [], errores } : { proveedores, errores };
+}
+
+/** Desactivar exige motivo (quién y cuándo los pone la base); reactivar lo borra. `activo` = "si" o "no" del formulario. */
+export function leerDesactivacion(activo: string, motivo: string): Resultado<{ activo: boolean; motivo_desactivacion: string | null }> {
+  if (activo === "si") return { datos: { activo: true, motivo_desactivacion: null } };
+  const texto = motivo.trim();
+  if (!texto) return { error: "Escribe por qué se desactiva." };
+  return { datos: { activo: false, motivo_desactivacion: texto } };
 }

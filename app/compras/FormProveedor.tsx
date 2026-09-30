@@ -1,7 +1,7 @@
 import { BotonEnviar } from "@/components/BotonEnviar";
-import { REGIMENES } from "@/lib/compras/proveedores";
-import { CATEGORIAS_COMPRA, FORMAS_PAGO, NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, type DatosProveedor } from "@/lib/compras/proveedores";
+import { CATEGORIAS_COMPRA, FORMAS_PAGO, NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, REGIMENES, type DatosProveedor } from "@/lib/compras/proveedores";
 import { guardarProveedor } from "./acciones";
+import { FormValidado } from "./FormValidado";
 
 export function FormProveedor({ id, inicial }: { id?: string; inicial?: DatosProveedor }) {
   const v = (c: keyof DatosProveedor) => (inicial?.[c] ?? "") as string;
@@ -12,7 +12,7 @@ export function FormProveedor({ id, inicial }: { id?: string; inicial?: DatosPro
     </div>
   );
   return (
-    <form action={guardarProveedor} className="seccion formulario">
+    <FormValidado tipo="proveedor" action={guardarProveedor} className="seccion formulario">
       {id && <input type="hidden" name="id" value={id} />}
       <h2>Datos fiscales</h2>
       <div className="rejilla">
@@ -59,6 +59,6 @@ export function FormProveedor({ id, inicial }: { id?: string; inicial?: DatosPro
         <textarea id="notas" name="notas" defaultValue={v("notas")} rows={3} />
       </div>
       <BotonEnviar>{id ? "Guardar cambios" : "Dar de alta"}</BotonEnviar>
-    </form>
+    </FormValidado>
   );
 }

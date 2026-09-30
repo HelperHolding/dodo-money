@@ -266,7 +266,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .tarjeta[data-alerta] .tarjeta-estado { color: var(--alerta-texto); }
 .tarjeta-datos { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 10px 14px; font-size: 0.95rem; }
 .tarjeta-datos dt { font-weight: 700; color: var(--tinta-2); }
-.tarjeta-datos dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.tarjeta-datos dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; min-width: 0; overflow-wrap: anywhere; }
 .tarjeta-datos .celda-alerta { padding: 0 6px; border-radius: 4px; }
 .celda-alerta { background: var(--alerta-fondo); color: var(--alerta-texto); font-weight: 700; }
 .celda-alerta::before { content: "⚠ "; }

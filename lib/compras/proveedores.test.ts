@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clabeValida, leerArticulo, leerProveedor, nombreRegimen, normalizarRfc, REGIMENES, rfcValido } from "./proveedores.ts";
+import { clabeValida, leerArticulo, leerDesactivacion, leerProveedor, nombreRegimen, normalizarRfc, REGIMENES, rfcValido } from "./proveedores.ts";
 
 const campos = (o: Record<string, string>) => (c: string) => o[c] ?? "";
 const base = { razon_social: "Lácteos del Bajío SA de CV", rfc: "LBA010203AB1", regimen_fiscal: "601" };
@@ -87,4 +87,10 @@ test("artículo: consumible con ID de Dodo IS; los demás sin él", () => {
   assert.equal(error({ tasa_iva: "8" }), "Elige la tasa de IVA.");
   assert.equal(error({ dodo_insumo_id: "11F19A2E8EBB9F693A4A16E21FDBFD00" }), "Solo los consumibles llevan ID de insumo de Dodo IS.");
   assert.equal(error({ tipo: "consumible", dodo_insumo_id: "123" }), "El ID de insumo de Dodo IS son 32 caracteres (0-9 y A-F).");
+});
+
+test("desactivar pide motivo; reactivar lo borra", () => {
+  assert.deepEqual(leerDesactivacion("no", " Cerró el negocio "), { datos: { activo: false, motivo_desactivacion: "Cerró el negocio" } });
+  assert.deepEqual(leerDesactivacion("no", "  "), { error: "Escribe por qué se desactiva." });
+  assert.deepEqual(leerDesactivacion("si", "lo que sea"), { datos: { activo: true, motivo_desactivacion: null } });
 });

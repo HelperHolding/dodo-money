@@ -31,6 +31,20 @@ begin
   update proveedores set dias_credito = 30 where id = v_prov;
   if (select dias_credito from proveedores where id = v_prov) <> 30 then raise exception 'FALLÓ: admin no pudo editar'; end if;
 
+  -- Desactivar exige motivo; la base registra quién y cuándo; reactivar lo borra.
+  begin
+    update proveedores set activo = false where id = v_prov;
+    raise exception 'FALLÓ: desactivar sin motivo';
+  exception when check_violation then null; end;
+  update proveedores set activo = false, motivo_desactivacion = 'Prueba', desactivado_por = v_b where id = v_prov;
+  if (select desactivado_por from proveedores where id = v_prov) is distinct from v_a
+     or (select desactivado_en from proveedores where id = v_prov) is null then
+    raise exception 'FALLÓ: la desactivación debe registrar quién (la sesión, no lo que mande la pantalla) y cuándo';
+  end if;
+  update proveedores set activo = true where id = v_prov;
+  if (select motivo_desactivacion from proveedores where id = v_prov) is not null then raise exception 'FALLÓ: reactivar debe borrar el motivo'; end if;
+  v_ok := array_append(v_ok, 'desactivar con motivo, quién y cuándo');
+
   begin
     insert into proveedores (razon_social, rfc, regimen_fiscal) values ('Otro', 'PLA010203AB1', '601');
     raise exception 'FALLÓ: RFC repetido';

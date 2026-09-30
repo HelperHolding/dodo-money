@@ -44,8 +44,12 @@ create table proveedores (
   categorias           categoria_compra[] not null default '{}',
   notas                text,
   activo               boolean not null default true,
+  motivo_desactivacion text,
+  desactivado_por      uuid references perfiles(id),
+  desactivado_en       timestamptz,
   creado_por           uuid references perfiles(id) default auth.uid(),
-  creado_en            timestamptz not null default now()
+  creado_en            timestamptz not null default now(),
+  check (activo or coalesce(trim(motivo_desactivacion), '') <> '')
 );
 
 create table articulos (
@@ -56,11 +60,38 @@ create table articulos (
   tasa_iva        text not null default '16' check (tasa_iva in ('16', '0', 'exento')),
   dodo_insumo_id  text unique,
   activo          boolean not null default true,
+  motivo_desactivacion text,
+  desactivado_por uuid references perfiles(id),
+  desactivado_en  timestamptz,
   creado_por      uuid references perfiles(id) default auth.uid(),
   creado_en       timestamptz not null default now(),
-  check (dodo_insumo_id is null or (tipo = 'consumible' and dodo_insumo_id ~ '^[0-9A-F]{32}$'))
+  check (dodo_insumo_id is null or (tipo = 'consumible' and dodo_insumo_id ~ '^[0-9A-F]{32}$')),
+  check (activo or coalesce(trim(motivo_desactivacion), '') <> '')
 );
 create unique index articulos_nombre_unico on articulos (lower(nombre));
+
+-- Quién y cuándo desactivó lo pone la base, no la pantalla; reactivar borra el motivo.
+create or replace function registrar_desactivacion() returns trigger
+language plpgsql as $$
+begin
+  if new.activo is distinct from old.activo then
+    if new.activo then
+      new.motivo_desactivacion := null; new.desactivado_por := null; new.desactivado_en := null;
+    else
+      new.desactivado_por := auth.uid(); new.desactivado_en := now();
+    end if;
+  else
+    new.motivo_desactivacion := old.motivo_desactivacion;
+    new.desactivado_por := old.desactivado_por;
+    new.desactivado_en := old.desactivado_en;
+  end if;
+  return new;
+end $$;
+
+create trigger proveedores_desactivacion before update on proveedores
+  for each row execute function registrar_desactivacion();
+create trigger articulos_desactivacion before update on articulos
+  for each row execute function registrar_desactivacion();
 
 -- Último precio (sin IVA) por proveedor y artículo. Se llena al confirmar órdenes (fase 2).
 create table precios_proveedor (

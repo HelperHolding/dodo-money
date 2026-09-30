@@ -7,8 +7,9 @@ import { CATEGORIAS_COMPRA, NOMBRE_CATEGORIA_COMPRA, NOMBRE_TASA_IVA, TASAS_IVA,
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { cambiarActivoArticulo, guardarArticulo } from "../acciones";
+import { FormValidado } from "../FormValidado";
 
-type Articulo = { id: string; nombre: string; unidad: string; tipo: CategoriaCompra; tasa_iva: TasaIva; dodo_insumo_id: string | null; activo: boolean };
+type Articulo = { id: string; nombre: string; unidad: string; tipo: CategoriaCompra; tasa_iva: TasaIva; dodo_insumo_id: string | null; activo: boolean; motivo_desactivacion: string | null };
 type Precio = { articulo_id: string; precio: number; fecha: string; proveedores: { razon_social: string; nombre_comercial: string | null } | null };
 
 function CamposArticulo({ a }: { a?: Articulo }) {
@@ -43,7 +44,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
   const { supabase, perfil } = await obtenerPerfil();
   const edita = puedeEditarCompras(perfil.rol);
   const [articulos, precios] = await Promise.all([
-    leerTodo<Articulo>((d, h) => supabase.from("articulos").select("id, nombre, unidad, tipo, tasa_iva, dodo_insumo_id, activo")
+    leerTodo<Articulo>((d, h) => supabase.from("articulos").select("id, nombre, unidad, tipo, tasa_iva, dodo_insumo_id, activo, motivo_desactivacion")
       .order("nombre").order("id").range(d, h).returns<Articulo[]>()),
     leerTodo<Precio>((d, h) => supabase.from("precios_proveedor").select("articulo_id, precio, fecha, proveedores(razon_social, nombre_comercial)")
       .order("articulo_id").order("proveedor_id").range(d, h).returns<Precio[]>()),
@@ -61,10 +62,10 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
       {edita && (
         <details className="seccion">
           <summary>Nuevo artículo</summary>
-          <form action={guardarArticulo} className="formulario">
+          <FormValidado tipo="articulo" action={guardarArticulo} className="formulario">
             <CamposArticulo />
             <BotonEnviar>Dar de alta</BotonEnviar>
-          </form>
+          </FormValidado>
         </details>
       )}
       {!articulos.length && <p className="vacio">Aún no hay artículos.</p>}
@@ -85,7 +86,8 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                       </div>
                     </div>
                     <dl className="tarjeta-datos">
-                      {a.dodo_insumo_id && <><dt>Dodo IS</dt><dd style={{ overflowWrap: "anywhere" }}>{a.dodo_insumo_id}</dd></>}
+                      {a.dodo_insumo_id && <><dt>Dodo IS</dt><dd>{a.dodo_insumo_id}</dd></>}
+                      {!a.activo && <><dt>Desactivado</dt><dd>{a.motivo_desactivacion}</dd></>}
                       <dt>Precios</dt>
                       <dd>{ps.length ? ps.map((p, i) => (
                         <span key={i}>{p.proveedores?.nombre_comercial ?? p.proveedores?.razon_social}: {pesos(p.precio)} ({fechaTexto(p.fecha)})</span>
@@ -94,14 +96,15 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                     {edita && (
                       <details>
                         <summary>Editar</summary>
-                        <form action={guardarArticulo} className="formulario">
+                        <FormValidado tipo="articulo" action={guardarArticulo} className="formulario">
                           <input type="hidden" name="id" value={a.id} />
                           <CamposArticulo a={a} />
                           <BotonEnviar>Guardar</BotonEnviar>
-                        </form>
+                        </FormValidado>
                         <form action={cambiarActivoArticulo} className="acciones">
                           <input type="hidden" name="id" value={a.id} />
                           <input type="hidden" name="activo" value={a.activo ? "no" : "si"} />
+                          {a.activo && <div className="campo"><label htmlFor={`motivo-${a.id}`}>Motivo para desactivar</label><input id={`motivo-${a.id}`} name="motivo" required /></div>}
                           <BotonEnviar className="boton boton-secundario">{a.activo ? "Desactivar" : "Reactivar"}</BotonEnviar>
                         </form>
                       </details>
