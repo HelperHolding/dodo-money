@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
-import { leerProveedor, type DatosProveedor } from "@/lib/compras/proveedores";
+import { leerArticulo, leerProveedor, type DatosArticulo, type DatosProveedor } from "@/lib/compras/proveedores";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
 
 const volver = (ruta: string, clave: "ok" | "error", texto: string): never =>
@@ -42,4 +42,35 @@ export async function cambiarActivoProveedor(fd: FormData) {
   if (error) volver(ruta, "error", error.message);
   revalidatePath("/compras", "layout");
   volver(ruta, "ok", activo ? "Proveedor reactivado." : "Proveedor desactivado. Su historial se conserva.");
+}
+
+/** Alta (sin id) o edición (con id) de un artículo; regresa a su tarjeta. */
+export async function guardarArticulo(fd: FormData) {
+  const id = String(fd.get("id") ?? "");
+  const ruta = "/compras/articulos";
+  const supabase = await clienteAdmin(ruta);
+  const r = leerArticulo((c) => String(fd.get(c) ?? ""));
+  if ("error" in r) volver(ruta, "error", r.error);
+  const { datos } = r as { datos: DatosArticulo };
+  const { data, error } = id
+    ? await supabase.from("articulos").update(datos).eq("id", id).select("id").single()
+    : await supabase.from("articulos").insert(datos).select("id").single();
+  if (error) {
+    volver(ruta, "error", error.code === "23505"
+      ? (error.message.includes("dodo_insumo_id") ? "Ese ID de insumo de Dodo IS ya está en otro artículo." : `Ya hay un artículo llamado ${datos.nombre}.`)
+      : error.message);
+  }
+  revalidatePath("/compras", "layout");
+  redirect(`${ruta}?ok=${encodeURIComponent(id ? "Artículo actualizado." : "Artículo dado de alta.")}#a-${data!.id}`);
+}
+
+export async function cambiarActivoArticulo(fd: FormData) {
+  const ruta = "/compras/articulos";
+  const supabase = await clienteAdmin(ruta);
+  const id = String(fd.get("id") ?? "");
+  const activo = fd.get("activo") === "si";
+  const { error } = await supabase.from("articulos").update({ activo }).eq("id", id);
+  if (error) volver(ruta, "error", error.message);
+  revalidatePath("/compras", "layout");
+  redirect(`${ruta}?ok=${encodeURIComponent(activo ? "Artículo reactivado." : "Artículo desactivado.")}#a-${id}`);
 }
