@@ -1,0 +1,45 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { obtenerPerfil } from "@/lib/contexto";
+import { leerProveedor, type DatosProveedor } from "@/lib/compras/proveedores";
+import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
+
+const volver = (ruta: string, clave: "ok" | "error", texto: string): never =>
+  redirect(`${ruta}${ruta.includes("?") ? "&" : "?"}${clave}=${encodeURIComponent(texto)}`);
+
+async function clienteAdmin(ruta: string) {
+  const { supabase, perfil } = await obtenerPerfil();
+  if (!puedeEditarCompras(perfil.rol)) volver(ruta, "error", SOLO_CONSULTA);
+  return supabase;
+}
+
+/** Alta (sin id) o edición (con id) de un proveedor. */
+export async function guardarProveedor(fd: FormData) {
+  const id = String(fd.get("id") ?? "");
+  const ruta = id ? `/compras/proveedores/${id}` : "/compras/proveedores/nuevo";
+  const supabase = await clienteAdmin(ruta);
+  const r = leerProveedor((c) => (c === "categorias" ? fd.getAll("categorias").join(",") : String(fd.get(c) ?? "")));
+  if ("error" in r) volver(ruta, "error", r.error);
+  const { datos } = r as { datos: DatosProveedor };
+
+  const { data, error } = id
+    ? await supabase.from("proveedores").update(datos).eq("id", id).select("id").single()
+    : await supabase.from("proveedores").insert(datos).select("id").single();
+  if (error) volver(ruta, "error", error.code === "23505" ? `Ya hay un proveedor con el RFC ${datos.rfc}.` : error.message);
+
+  revalidatePath("/compras", "layout");
+  volver(`/compras/proveedores/${data!.id}`, "ok", id ? "Proveedor actualizado." : "Proveedor dado de alta.");
+}
+
+export async function cambiarActivoProveedor(fd: FormData) {
+  const id = String(fd.get("id") ?? "");
+  const ruta = `/compras/proveedores/${id}`;
+  const supabase = await clienteAdmin(ruta);
+  const activo = fd.get("activo") === "si";
+  const { error } = await supabase.from("proveedores").update({ activo }).eq("id", id);
+  if (error) volver(ruta, "error", error.message);
+  revalidatePath("/compras", "layout");
+  volver(ruta, "ok", activo ? "Proveedor reactivado." : "Proveedor desactivado. Su historial se conserva.");
+}
