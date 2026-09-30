@@ -1,3 +1,5 @@
+import type { Hoja } from "../ventas/xlsx";
+
 /** Catálogo c_RegimenFiscal del SAT (CFDI 4.0). */
 export const REGIMENES: Record<string, string> = {
   "601": "General de Ley Personas Morales",
@@ -126,4 +128,80 @@ export function leerArticulo(valor: (campo: string) => string): Resultado<DatosA
   if (dodo_insumo_id && tipo !== "consumible") return { error: "Solo los consumibles llevan ID de insumo de Dodo IS." };
   if (dodo_insumo_id && !/^[0-9A-F]{32}$/.test(dodo_insumo_id)) return { error: "El ID de insumo de Dodo IS son 32 caracteres (0-9 y A-F)." };
   return { datos: { nombre, unidad, tipo: tipo as CategoriaCompra, tasa_iva: tasa_iva as TasaIva, dodo_insumo_id } };
+}
+
+
+export const SIN_RENGLONES = "El archivo no trae proveedores (la primera fila son los encabezados).";
+export const MAX_PROVEEDORES = 500;
+
+/** Columnas que se reconocen en la primera fila (sin importar mayúsculas, acentos ni orden). */
+export const ENCABEZADOS = [
+  { texto: "Razón social", campo: "razon_social", obligatorio: true },
+  { texto: "Nombre comercial", campo: "nombre_comercial", obligatorio: false },
+  { texto: "RFC", campo: "rfc", obligatorio: true },
+  { texto: "Régimen fiscal", campo: "regimen_fiscal", obligatorio: true },
+  { texto: "Contacto", campo: "contacto_nombre", obligatorio: false },
+  { texto: "Teléfono", campo: "telefono", obligatorio: false },
+  { texto: "Correo", campo: "correo", obligatorio: false },
+  { texto: "Banco", campo: "banco", obligatorio: false },
+  { texto: "CLABE", campo: "clabe", obligatorio: false },
+  { texto: "Cuenta", campo: "cuenta", obligatorio: false },
+  { texto: "Días de crédito", campo: "dias_credito", obligatorio: false },
+  { texto: "Forma de pago", campo: "forma_pago_habitual", obligatorio: false },
+  { texto: "Categorías", campo: "categorias", obligatorio: false },
+  { texto: "Notas", campo: "notas", obligatorio: false },
+] as const;
+
+const CAMPO_POR_CLAVE = new Map<string, string>(ENCABEZADOS.map((e) => [clave(e.texto), e.campo]));
+
+/** "AB12" → { columna: "AB", fila: 12 }. */
+function partirReferencia(ref: string) {
+  const m = /^([A-Z]+)(\d+)$/.exec(ref);
+  return m ? { columna: m[1], fila: Number(m[2]) } : null;
+}
+
+export function leerCargaProveedores(hoja: Hoja, rfcsExistentes: ReadonlySet<string>): { proveedores: DatosProveedor[]; errores: string[] } {
+  const filas = new Map<number, Map<string, string | number>>();
+  for (const [ref, valor] of hoja.celdas) {
+    const p = partirReferencia(ref);
+    if (!p) continue;
+    if (!filas.has(p.fila)) filas.set(p.fila, new Map());
+    filas.get(p.fila)!.set(p.columna, valor);
+  }
+
+  // Encabezados: columna → campo.
+  const columnaDe = new Map<string, string>();
+  for (const [columna, valor] of filas.get(1) ?? []) {
+    const campo = CAMPO_POR_CLAVE.get(clave(String(valor)));
+    if (campo && !columnaDe.has(campo)) columnaDe.set(campo, columna);
+  }
+  const faltan = ENCABEZADOS.filter((e) => e.obligatorio && !columnaDe.has(e.campo));
+  if (faltan.length) return { proveedores: [], errores: faltan.map((e) => `Falta la columna "${e.texto}" en la primera fila.`) };
+
+  const numeros = [...filas.keys()].filter((n) => n > 1 && [...filas.get(n)!.values()].some((v) => String(v).trim() !== "")).sort((a, b) => a - b);
+  if (!numeros.length) return { proveedores: [], errores: [SIN_RENGLONES] };
+  if (numeros.length > MAX_PROVEEDORES) return { proveedores: [], errores: [`El archivo trae más de ${MAX_PROVEEDORES} proveedores; divídelo en varios.`] };
+
+  const proveedores: DatosProveedor[] = [];
+  const errores: string[] = [];
+  const renglonDeRfc = new Map<string, number>();
+  for (const n of numeros) {
+    const fila = filas.get(n)!;
+    const crudo = (campo: string) => {
+      const columna = columnaDe.get(campo);
+      return columna === undefined ? undefined : fila.get(columna);
+    };
+    if (typeof crudo("clabe") === "number") {
+      errores.push(`Renglón ${n}: la CLABE llegó como número y Excel pudo cambiarla; dale formato de texto a esa columna.`);
+      continue;
+    }
+    const r = leerProveedor((campo) => String(crudo(campo) ?? ""));
+    if ("error" in r) { errores.push(`Renglón ${n}: ${r.error}`); continue; }
+    const previo = renglonDeRfc.get(r.datos.rfc);
+    if (previo !== undefined) { errores.push(`Renglón ${n}: el RFC ${r.datos.rfc} está repetido en el archivo (renglón ${previo}).`); continue; }
+    renglonDeRfc.set(r.datos.rfc, n);
+    if (rfcsExistentes.has(r.datos.rfc)) { errores.push(`Renglón ${n}: el RFC ${r.datos.rfc} ya está en la cartera.`); continue; }
+    proveedores.push(r.datos);
+  }
+  return errores.length ? { proveedores: [], errores } : { proveedores, errores };
 }
