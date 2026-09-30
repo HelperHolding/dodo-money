@@ -1,12 +1,12 @@
 export type Rol = "operacion" | "encargado" | "gerente" | "admin" | "corporativo";
-export type TipoCaja = "venta" | "cambios" | "boveda" | "caja_chica" | "banco";
+export type TipoCaja = "venta" | "cambios" | "boveda" | "caja_chica" | "corporativo";
 export type TipoTurno = "matutino" | "vespertino";
 export type MomentoArqueo = "inicio" | "traspaso" | "cierre";
 export type TipoMovimiento =
   | "apertura"
   | "retiro_boveda"
   | "cambio_morralla"
-  | "deposito_banco"
+  | "salida_corporativo"
   | "reposicion_caja_chica";
 export type EstadoMovimiento = "pendiente" | "confirmado" | "rechazado";
 export type Comprobante = "cfdi" | "nota" | "sin_comprobante";
@@ -76,15 +76,15 @@ export const RUTAS: Record<TipoMovimiento, { origen: TipoCaja[]; destino: TipoCa
   apertura: { origen: ["boveda"], destino: ["venta"] },
   retiro_boveda: { origen: ["venta"], destino: ["boveda"] },
   cambio_morralla: { origen: ["venta", "cambios"], destino: ["venta", "cambios"] },
-  deposito_banco: { origen: ["boveda"], destino: ["banco"] },
-  reposicion_caja_chica: { origen: ["banco"], destino: ["caja_chica"] },
+  salida_corporativo: { origen: ["boveda"], destino: ["corporativo"] },
+  reposicion_caja_chica: { origen: ["corporativo"], destino: ["caja_chica"] },
 };
 
 export const NOMBRE_MOVIMIENTO: Record<TipoMovimiento, string> = {
   apertura: "Fondo inicial a caja de venta",
   retiro_boveda: "Retiro a bóveda",
   cambio_morralla: "Cambio de morralla",
-  deposito_banco: "Depósito al banco",
+  salida_corporativo: "Salida a corporativo",
   reposicion_caja_chica: "Reposición de caja chica",
 };
 

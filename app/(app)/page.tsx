@@ -58,7 +58,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
           <div className="saldo">
             <span>Bóveda</span>
             <span className="saldo-monto">{pesos(saldo("boveda"))}</span>
-            <span className="saldo-nota">Efectivo de ventas por depositar</span>
+            <span className="saldo-nota">Efectivo de ventas por entregar a corporativo</span>
           </div>
           <div className="saldo">
             <span>Caja chica</span>

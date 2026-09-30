@@ -6,15 +6,15 @@ import { NOMBRE_MOVIMIENTO, RUTAS, type TipoCaja, type TipoMovimiento } from "@/
 import { registrarMovimiento } from "./actions";
 
 const NOMBRE_CAJA: Record<TipoCaja, string> = {
-  venta: "Caja de venta", cambios: "Fondo de cambios", boveda: "Bóveda", caja_chica: "Caja chica", banco: "Banco",
+  venta: "Caja de venta", cambios: "Fondo de cambios", boveda: "Bóveda", caja_chica: "Caja chica", corporativo: "Corporativo",
 };
 
 const AYUDA: Record<TipoMovimiento, string> = {
   apertura: "El fondo con el que arranca la caja de venta sale de la bóveda.",
   retiro_boveda: "Cuando el cajón pasa del límite o al cerrar el turno, el excedente va a la bóveda.",
   cambio_morralla: "Billetes por monedas: ninguna caja cambia su total. Registra el monto intercambiado.",
-  deposito_banco: "Todo lo que sale de la bóveda va al banco con su ficha. Lo confirma el gerente.",
-  reposicion_caja_chica: "La caja chica se repone desde la cuenta de la empresa, nunca con efectivo de ventas.",
+  salida_corporativo: "Todo lo que sale de la bóveda se entrega a corporativo con su recibo. Lo confirma el gerente.",
+  reposicion_caja_chica: "La caja chica se repone con dinero de corporativo, nunca con efectivo de ventas.",
 };
 
 export function FormMovimiento({ limiteRetiro }: { limiteRetiro: number }) {
@@ -63,8 +63,8 @@ export function FormMovimiento({ limiteRetiro }: { limiteRetiro: number }) {
       </p>
       <div className="rejilla">
         <div className="campo">
-          <label htmlFor="folio">{tipo === "deposito_banco" ? "Número de ficha" : "Folio o referencia"}</label>
-          <input id="folio" name="folio" required={tipo === "deposito_banco"} />
+          <label htmlFor="folio">{tipo === "salida_corporativo" ? "Folio o recibo" : "Folio o referencia"}</label>
+          <input id="folio" name="folio" required={tipo === "salida_corporativo"} />
         </div>
         <div className="campo">
           <label htmlFor="nota">Nota</label>

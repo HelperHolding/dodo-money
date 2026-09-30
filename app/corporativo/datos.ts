@@ -87,7 +87,7 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
       diferenciaArqueos: arqueosDeSucursal.reduce((suma, a) => suma + Number(a.diferencia), 0),
       arqueosDescuadrados: arqueosDeSucursal.filter((a) => Math.round(Number(a.diferencia) * 100) !== 0).length,
       pendientes: ms.filter((m) => m.estado === "pendiente").length,
-      deposito: ms.filter((m) => m.tipo === "deposito_banco" && m.estado === "confirmado")
+      deposito: ms.filter((m) => m.tipo === "salida_corporativo" && m.estado === "confirmado")
         .reduce((suma, m) => suma + Number(m.monto), 0),
       cierre: cierre
         ? { cerradoEn: cierre.cerrado_en, ventaTotal: Number(cierre.venta_total), bovedaDiferencia: Number(cierre.boveda_diferencia) }

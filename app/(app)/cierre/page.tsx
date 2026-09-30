@@ -41,7 +41,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="Bóveda contada" valor={pesos(cierre.boveda_contado)} />
             <Fila texto="Diferencia de bóveda" valor={pesos(cierre.boveda_diferencia)} fuerte />
             <Fila texto="Diferencia del fondo de cambios" valor={pesos(cierre.cambios_diferencia)} />
-            <Fila texto="Ficha de depósito" valor={cierre.deposito_ficha ?? "Sin depósito"} />
+            <Fila texto="Folio de la salida a corporativo" valor={cierre.deposito_ficha ?? "Sin salida"} />
           </tbody></table>
         </section>
       </>
@@ -102,7 +102,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="Saldo del cierre anterior" valor={pesos(d.bovedaInicial)} />
             <Fila texto="+ Retiros a bóveda de hoy" valor={pesos(d.retiros)} />
             <Fila texto="− Fondos entregados a caja de venta" valor={pesos(d.aperturas)} />
-            <Fila texto="− Depósitos al banco de hoy" valor={pesos(d.depositos)} />
+            <Fila texto="− Salidas a corporativo de hoy" valor={pesos(d.depositos)} />
             <Fila texto="= Debe haber en bóveda" valor={pesos(esperado)} fuerte />
             <Fila texto="Diferencia de los arqueos de turno" valor={pesos(d.diferenciaTurnos)} />
           </tbody></table>
@@ -113,11 +113,11 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
         </section>
 
         <section className="seccion" aria-labelledby="t-deposito">
-          <h2 id="t-deposito">Depósito al banco</h2>
-          <p className="saldo-nota">Si hoy se depositó, el movimiento ya debe estar registrado y confirmado. Aquí queda el dato de la ficha.</p>
+          <h2 id="t-deposito">Salida a corporativo</h2>
+          <p className="saldo-nota">Si hoy salió efectivo a corporativo, el movimiento ya debe estar registrado y confirmado. Aquí quedan los datos de la entrega.</p>
           <div className="rejilla">
-            <div className="campo"><label htmlFor="deposito_banco">Banco y cuenta</label><input id="deposito_banco" name="deposito_banco" /></div>
-            <div className="campo"><label htmlFor="deposito_ficha">Número de ficha</label><input id="deposito_ficha" name="deposito_ficha" /></div>
+            <div className="campo"><label htmlFor="deposito_banco">Quién la recibió</label><input id="deposito_banco" name="deposito_banco" /></div>
+            <div className="campo"><label htmlFor="deposito_ficha">Folio o recibo</label><input id="deposito_ficha" name="deposito_ficha" /></div>
             <div className="campo"><label htmlFor="deposito_fecha">Fecha y hora</label><input id="deposito_fecha" name="deposito_fecha" type="datetime-local" /></div>
           </div>
         </section>

@@ -26,7 +26,7 @@ export async function registrarMovimiento(formData: FormData) {
   if (!ruta.origen.includes(origenTipo) || !ruta.destino.includes(destinoTipo))
     volverCon("/movimientos", "error", "Esa ruta no está permitida para este tipo de movimiento.");
   if (monto <= 0) volverCon("/movimientos", "error", "Escribe un monto mayor a cero.");
-  if (tipo === "deposito_banco" && !folio) volverCon("/movimientos", "error", "Escribe el número de ficha del depósito.");
+  if (tipo === "salida_corporativo" && !folio) volverCon("/movimientos", "error", "Escribe el folio o recibo de la salida a corporativo.");
 
   const { error } = await supabase.from("movimientos").insert({
     sucursal_id: sucursal.id,

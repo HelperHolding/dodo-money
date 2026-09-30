@@ -58,7 +58,7 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
                     <span>Turnos {f.turnosAbiertos} abiertos · {f.turnosCerrados} cerrados</span>
                     <span className={clases(alerta(f, "arqueos"))}>Arqueos {pesos(f.diferenciaArqueos)}</span>
                     <span className={clases(alerta(f, "pendientes"))}>Pendientes {f.pendientes}</span>
-                    <span className={clases(alerta(f, "deposito"))}>Depósito {pesos(f.deposito)}</span>
+                    <span className={clases(alerta(f, "deposito"))}>Salida {pesos(f.deposito)}</span>
                   </dd>
                   <dt>Cierre</dt>
                   <dd>

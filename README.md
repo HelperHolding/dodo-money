@@ -7,20 +7,20 @@ Next.js 15 (TypeScript) + Supabase (Postgres, autenticación y seguridad por ren
 
 ## Cómo funciona
 
-Cada sucursal tiene cuatro cajas y el banco como destino:
+Cada sucursal tiene cuatro cajas y corporativo como destino:
 
 | Caja | Qué guarda | De dónde entra | A dónde sale |
 |---|---|---|---|
 | Caja de venta | El cajón del POS | Fondo inicial desde bóveda, ventas | Retiros a bóveda |
 | Fondo de cambios | Morralla | — | Solo cambios con la caja de venta (el total no cambia) |
-| Bóveda | Efectivo de ventas por depositar | Retiros de la caja de venta | Fondo inicial y depósitos al banco |
-| Caja chica | Fondo fijo para gastos menores | Reposiciones desde el banco | Gastos con comprobante |
+| Bóveda | Efectivo de ventas por entregar | Retiros de la caja de venta | Fondo inicial y salidas a corporativo |
+| Caja chica | Fondo fijo para gastos menores | Reposiciones desde corporativo | Gastos con comprobante |
 
 Reglas que aplica la base de datos, no solo la pantalla:
 
 - Cada tipo de movimiento solo puede ir por su ruta (un retiro a bóveda siempre va de caja de venta a bóveda).
 - Todo movimiento queda pendiente hasta que **otra persona** lo confirma con su usuario. Nadie confirma lo que registró.
-- Depósitos al banco y reposiciones de caja chica solo los confirma un gerente. El depósito exige número de ficha.
+- Salidas a corporativo y reposiciones de caja chica solo las confirma un gerente. La salida exige folio o recibo (migración 0010: la caja "banco" pasó a "corporativo").
 - Nada se edita ni se borra. Un error se corrige con un movimiento nuevo o rechazando el pendiente.
 - El arqueo calcula en el servidor el fondo inicial y los retiros confirmados del turno:
   esperado = fondo + ventas en efectivo según Dodo IS − retiros a bóveda. Diferencia = contado − esperado.

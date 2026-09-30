@@ -30,7 +30,7 @@ export async function datosDelDia(supabase: SupabaseClient, sucursalId: string, 
     bovedaInicial: Number(anterior?.boveda_contado ?? caja?.saldo_inicial ?? 0),
     retiros: suma("retiro_boveda"),
     aperturas: suma("apertura"),
-    depositos: suma("deposito_banco"),
+    depositos: suma("salida_corporativo"),
     pendientes: (movs ?? []).filter((m) => m.estado === "pendiente").length,
     diferenciaTurnos,
   };

@@ -52,13 +52,13 @@ export async function solicitarReposicion(formData: FormData) {
   const { supabase, sucursal, cajaPorTipo, turno } = await obtenerContextoParaEscribir("/caja-chica");
   const monto = numero(formData.get("monto"));
   if (monto <= 0) volver("error", "No hay gastos por reponer.");
-  if (!cajaPorTipo.banco || !cajaPorTipo.caja_chica) volver("error", "Faltan las cajas de banco o caja chica en esta sucursal.");
+  if (!cajaPorTipo.corporativo || !cajaPorTipo.caja_chica) volver("error", "Faltan las cajas de corporativo o caja chica en esta sucursal.");
 
   const { error } = await supabase.from("movimientos").insert({
     sucursal_id: sucursal.id,
     turno_id: turno?.id ?? null,
     tipo: "reposicion_caja_chica",
-    caja_origen_id: cajaPorTipo.banco!.id,
+    caja_origen_id: cajaPorTipo.corporativo!.id,
     caja_destino_id: cajaPorTipo.caja_chica!.id,
     monto,
     nota: "Reposición por gastos comprobados",

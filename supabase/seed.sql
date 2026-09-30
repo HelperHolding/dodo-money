@@ -11,7 +11,7 @@ from s, (values
   ('cambios',    'Fondo de cambios',  2000),
   ('boveda',     'Bóveda',            0),
   ('caja_chica', 'Caja chica',        3000),
-  ('banco',      'Banco',             0)
+  ('corporativo', 'Corporativo',      0)
 ) as c(tipo, nombre, saldo_inicial);
 
 -- Después de crear cada usuario en Authentication → Users, dale su perfil:
