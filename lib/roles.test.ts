@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  enlaceActivo, enlacesSucursal, enlacesVentas, esCorporativo, NOMBRE_ROL, puedeAbrirTurno, puedeEntrar, puedeGestionar, puedeImportarVentas,
-  puedeSupervisar, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
+  enlaceActivo, enlacesCompras, enlacesSucursal, enlacesVentas, esCorporativo, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar,
+  puedeGestionar, puedeImportarVentas, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
 } from "./roles.ts";
 
 test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () => {
@@ -46,9 +46,29 @@ test("menú de sucursal: Ventas solo para quien la ve; Corporativo solo para cor
 });
 
 test("menú de ventas por rol", () => {
-  assert.deepEqual(enlacesVentas("admin").map((e) => e.href), ["/", "/ventas", "/ventas/importar", "/ventas/costos"]);
+  assert.deepEqual(enlacesVentas("admin").map((e) => e.href), ["/", "/ventas", "/ventas/importar", "/ventas/costos", "/compras"]);
   assert.deepEqual(enlacesVentas("gerente").map((e) => e.href), ["/", "/ventas"]);
-  assert.deepEqual(enlacesVentas("corporativo").map((e) => e.href), ["/corporativo", "/ventas"]);
+  assert.deepEqual(enlacesVentas("corporativo").map((e) => e.href), ["/corporativo", "/ventas", "/compras"]);
+});
+
+test("compras: admin edita, corporativo consulta, sucursal no entra", () => {
+  assert.equal(puedeEditarCompras("admin"), true);
+  assert.equal(puedeVerCompras("admin"), true);
+  assert.equal(puedeVerCompras("corporativo"), true);
+  assert.equal(puedeEditarCompras("corporativo"), false);
+  for (const rol of ["operacion", "encargado", "gerente"] as const) {
+    assert.equal(puedeVerCompras(rol), false);
+    assert.equal(puedeEditarCompras(rol), false);
+  }
+  assert.ok(enlacesSucursal("admin").some((e) => e.href === "/compras"));
+  assert.ok(!enlacesSucursal("gerente").some((e) => e.href === "/compras"));
+});
+
+test("menú de compras por rol", () => {
+  assert.deepEqual(enlacesCompras("admin").map((e) => e.href), ["/", "/compras", "/compras/articulos", "/compras/cargar"]);
+  assert.deepEqual(enlacesCompras("corporativo").map((e) => e.href), ["/corporativo", "/compras", "/compras/articulos"]);
+  assert.equal(enlaceActivo("/compras/proveedores/abc", enlacesCompras("admin")), "/compras");
+  assert.equal(enlaceActivo("/compras/articulos", enlacesCompras("admin")), "/compras/articulos");
 });
 
 test("enlaceActivo elige la ruta más larga", () => {

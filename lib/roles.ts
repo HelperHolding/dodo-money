@@ -27,6 +27,11 @@ export const veAvisoSinCosto = (rol: Rol) => rol === "admin" || rol === "corpora
 
 export type Enlace = { href: string; texto: string };
 
+/** Compras (proveedores, órdenes, facturas, pagos): oficina central. Admin edita; corporativo consulta. */
+export const puedeVerCompras = (rol: Rol) => rol === "admin" || rol === "corporativo";
+export const puedeEditarCompras = (rol: Rol) => rol === "admin";
+const ENLACE_COMPRAS: Enlace = { href: "/compras", texto: "Compras" };
+
 const ENLACES_SUCURSAL: readonly Enlace[] = [
   { href: "/", texto: "Inicio" },
   { href: "/arqueo", texto: "Arqueo de turno" },
@@ -42,6 +47,7 @@ export function enlacesSucursal(rol: Rol): Enlace[] {
     ...(esCorporativo(rol) ? [{ href: "/corporativo", texto: "Corporativo" }] : []),
     ...ENLACES_SUCURSAL,
     ...(puedeVerVentas(rol) ? [{ href: "/ventas", texto: "Ventas" }] : []),
+    ...(puedeVerCompras(rol) ? [ENLACE_COMPRAS] : []),
   ];
 }
 
@@ -51,6 +57,17 @@ export function enlacesVentas(rol: Rol): Enlace[] {
     esCorporativo(rol) ? { href: "/corporativo", texto: "Vista general" } : { href: "/", texto: "Inicio" },
     { href: "/ventas", texto: "Ventas" },
     ...(puedeImportarVentas(rol) ? [{ href: "/ventas/importar", texto: "Importar" }, { href: "/ventas/costos", texto: "Costos" }] : []),
+    ...(puedeVerCompras(rol) ? [ENLACE_COMPRAS] : []),
+  ];
+}
+
+/** Menú de Compras. */
+export function enlacesCompras(rol: Rol): Enlace[] {
+  return [
+    esCorporativo(rol) ? { href: "/corporativo", texto: "Vista general" } : { href: "/", texto: "Inicio" },
+    { href: "/compras", texto: "Proveedores" },
+    { href: "/compras/articulos", texto: "Artículos" },
+    ...(puedeEditarCompras(rol) ? [{ href: "/compras/cargar", texto: "Cargar Excel" }] : []),
   ];
 }
 
