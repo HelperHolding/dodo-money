@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  enlaceActivo, enlacesCompras, enlacesSucursal, enlacesVentas, esCorporativo, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
+  enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
 } from "./roles.ts";
 
@@ -36,21 +36,6 @@ test("ventas: gerente, admin y corporativo ven; solo admin importa", () => {
   assert.equal(puedeImportarVentas("admin"), true);
 });
 
-test("menú de sucursal: Ventas solo para quien la ve; Corporativo solo para corporativo", () => {
-  const hrefs = (rol: Parameters<typeof enlacesSucursal>[0]) => enlacesSucursal(rol).map((e) => e.href);
-  assert.ok(!hrefs("operacion").includes("/ventas"));
-  assert.ok(!hrefs("encargado").includes("/ventas"));
-  assert.ok(hrefs("gerente").includes("/ventas"));
-  assert.equal(hrefs("corporativo")[0], "/corporativo");
-  assert.ok(!hrefs("admin").includes("/corporativo"));
-});
-
-test("menú de ventas por rol", () => {
-  assert.deepEqual(enlacesVentas("admin").map((e) => e.href), ["/", "/ventas", "/ventas/importar", "/ventas/costos", "/compras"]);
-  assert.deepEqual(enlacesVentas("gerente").map((e) => e.href), ["/", "/ventas"]);
-  assert.deepEqual(enlacesVentas("corporativo").map((e) => e.href), ["/corporativo", "/ventas", "/compras"]);
-});
-
 test("compras: admin edita, corporativo consulta, sucursal no entra", () => {
   assert.equal(puedeEditarCompras("admin"), true);
   assert.equal(puedeVerCompras("admin"), true);
@@ -60,37 +45,72 @@ test("compras: admin edita, corporativo consulta, sucursal no entra", () => {
     assert.equal(puedeVerCompras(rol), false);
     assert.equal(puedeEditarCompras(rol), false);
   }
-  assert.ok(enlacesSucursal("admin").some((e) => e.href === "/compras"));
-  assert.ok(!enlacesSucursal("gerente").some((e) => e.href === "/compras"));
-});
-
-test("menú de compras por rol", () => {
-  assert.deepEqual(enlacesCompras("admin").map((e) => e.href),
-    ["/", "/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos", "/compras/cargar"]);
-  assert.deepEqual(enlacesCompras("corporativo").map((e) => e.href),
-    ["/corporativo", "/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos"]);
-  assert.equal(enlaceActivo("/compras/proveedores/abc", enlacesCompras("admin")), "/compras");
-  assert.equal(enlaceActivo("/compras/ordenes/abc", enlacesCompras("admin")), "/compras/ordenes");
 });
 
 test("recepciones de compras: encargado, gerente y admin reciben; operación y corporativo no", () => {
   for (const rol of ["encargado", "gerente", "admin"] as const) {
     assert.equal(puedeRecibirCompras(rol), true);
-    assert.ok(enlacesSucursal(rol).some((e) => e.href === "/recepciones"));
   }
   for (const rol of ["operacion", "corporativo"] as const) {
     assert.equal(puedeRecibirCompras(rol), false);
-    assert.ok(!enlacesSucursal(rol).some((e) => e.href === "/recepciones"));
   }
 });
 
-test("enlaceActivo elige la ruta más larga", () => {
-  const enlaces = enlacesVentas("admin");
-  assert.equal(enlaceActivo("/ventas", enlaces), "/ventas");
-  assert.equal(enlaceActivo("/ventas/costos", enlaces), "/ventas/costos");
-  assert.equal(enlaceActivo("/", enlaces), "/");
-  assert.equal(enlaceActivo("/checklists/ronda", enlacesSucursal("gerente")), "/checklists");
-  assert.equal(enlaceActivo("/otra", enlaces), undefined);
+type R = Parameters<typeof menuLateral>[0];
+const grupos = (rol: R) => menuLateral(rol).grupos.map((g) => g.titulo);
+const grupo = (rol: R, titulo: string) => menuLateral(rol).grupos.find((g) => g.titulo === titulo)?.enlaces.map((e) => e.href);
+
+test("menú lateral: cada puesto ve solo sus grupos", () => {
+  assert.deepEqual(grupos("operacion"), ["Sucursal"]);
+  assert.deepEqual(grupos("encargado"), ["Sucursal"]);
+  assert.deepEqual(grupos("gerente"), ["Sucursal", "Ventas"]);
+  assert.deepEqual(grupos("admin"), ["Sucursal", "Ventas", "Compras"]);
+  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Ventas", "Compras"]);
+});
+
+test("menú lateral: Inicio arriba; corporativo empieza en la vista general", () => {
+  assert.deepEqual(menuLateral("admin").inicio, { href: "/", texto: "Inicio" });
+  assert.deepEqual(menuLateral("operacion").inicio, { href: "/", texto: "Inicio" });
+  assert.deepEqual(menuLateral("corporativo").inicio, { href: "/corporativo", texto: "Vista general" });
+});
+
+test("menú lateral: grupo Sucursal por puesto (Recepciones solo para quien recibe)", () => {
+  assert.deepEqual(grupo("operacion", "Sucursal"), ["/arqueo", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
+  for (const rol of ["encargado", "gerente", "admin"] as const) {
+    assert.deepEqual(grupo(rol, "Sucursal"), ["/arqueo", "/movimientos", "/caja-chica", "/cierre", "/checklists", "/recepciones"]);
+  }
+  assert.deepEqual(grupo("corporativo", "Sucursal"), ["/", "/arqueo", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
+});
+
+test("menú lateral: Ventas y Compras por puesto", () => {
+  assert.deepEqual(grupo("admin", "Ventas"), ["/ventas", "/ventas/importar", "/ventas/costos"]);
+  assert.deepEqual(grupo("gerente", "Ventas"), ["/ventas"]);
+  assert.deepEqual(grupo("corporativo", "Ventas"), ["/ventas"]);
+  assert.deepEqual(grupo("admin", "Compras"),
+    ["/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos", "/compras/cargar"]);
+  assert.deepEqual(grupo("corporativo", "Compras"),
+    ["/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos"]);
+});
+
+test("enlaceActivo elige la ruta más larga de todo el menú", () => {
+  const todos = enlacesDelMenu(menuLateral("admin"));
+  assert.equal(enlaceActivo("/ventas", todos), "/ventas");
+  assert.equal(enlaceActivo("/ventas/costos", todos), "/ventas/costos");
+  assert.equal(enlaceActivo("/", todos), "/");
+  assert.equal(enlaceActivo("/checklists/ronda", todos), "/checklists");
+  assert.equal(enlaceActivo("/compras/proveedores/abc", todos), "/compras");
+  assert.equal(enlaceActivo("/compras/ordenes/abc", todos), "/compras/ordenes");
+  assert.equal(enlaceActivo("/otra", todos), undefined);
+});
+
+test("grupoAbierto: se abre el grupo de la página actual", () => {
+  const admin = menuLateral("admin");
+  assert.equal(grupoAbierto(admin, "/compras/ordenes/abc"), "Compras");
+  assert.equal(grupoAbierto(admin, "/ventas/costos"), "Ventas");
+  assert.equal(grupoAbierto(admin, "/cierre"), "Sucursal");
+  assert.equal(grupoAbierto(admin, "/"), undefined);
+  assert.equal(grupoAbierto(menuLateral("corporativo"), "/"), "Sucursal");
+  assert.equal(grupoAbierto(menuLateral("corporativo"), "/corporativo"), undefined);
 });
 
 test("aviso de productos sin costo: admin y corporativo lo ven; gerente, encargado y operación no", () => {

@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Nav } from "@/components/Nav";
-import { cerrarSesion } from "@/app/login/actions";
+import { Marco } from "@/components/Marco";
 import { obtenerPerfil } from "@/lib/contexto";
-import { enlacesCompras, puedeEditarCompras, puedeVerCompras } from "@/lib/roles";
+import { puedeEditarCompras, puedeVerCompras } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -12,21 +10,8 @@ export default async function LayoutCompras({ children }: { children: React.Reac
   const { perfil } = await obtenerPerfil();
   if (!puedeVerCompras(perfil.rol)) redirect("/");
   return (
-    <>
-      <header className="barra">
-        <span className="barra-identidad">
-          <img className="barra-logo" src="/logo-dodo.png" alt="Dodo Pizza" width={32} height={32} />
-          <span className="barra-marca">Compras</span>
-        </span>
-        <span className="barra-turno">{puedeEditarCompras(perfil.rol) ? "Oficina central" : "Oficina central · solo lectura"}</span>
-        <div className="barra-usuario">
-          <span>{perfil.nombre}</span>
-          <Link href="/cuenta">Mi contraseña</Link>
-          <form action={cerrarSesion}><button type="submit">Salir</button></form>
-        </div>
-      </header>
-      <Nav enlaces={enlacesCompras(perfil.rol)} />
-      <main className="pagina">{children}</main>
-    </>
+    <Marco perfil={perfil} titulo="Compras" detalle={puedeEditarCompras(perfil.rol) ? "Oficina central" : "Oficina central · solo lectura"}>
+      {children}
+    </Marco>
   );
 }

@@ -70,17 +70,73 @@ a { color: var(--accion-oscuro); }
   border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; min-height: 44px;
 }
 
-.nav {
-  display: flex; gap: 4px; overflow-x: auto;
-  padding: 0 clamp(16px, 4vw, 40px);
-  background: var(--papel-2);
-  border-bottom: 1px solid var(--linea);
+/* Menú lateral: negro como la barra de marca, con el naranja solo en la marca de la página activa. */
+.marco { display: grid; grid-template-columns: 264px minmax(0, 1fr); min-height: 100vh; }
+.marco-contenido { min-width: 0; }
+.lateral {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  background: var(--tinta); color: var(--blanco);
+  display: flex; flex-direction: column; border-right: 4px solid var(--accion);
 }
-.nav a {
-  padding: 14px 16px; text-decoration: none; color: var(--tinta-2);
-  white-space: nowrap; border-bottom: 3px solid transparent; min-height: 48px;
+.lateral-cabecera { display: flex; align-items: flex-start; gap: 8px; padding: 20px 18px 16px; border-bottom: 1px solid #2b2b2b; }
+.lateral-identidad { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.lateral-logo { width: 36px; height: 36px; border-radius: 50%; flex: none; }
+.lateral-marca { font-family: var(--display); font-weight: 700; font-size: 1.1rem; line-height: 1.2; overflow-wrap: anywhere; }
+.lateral-detalle { font-size: 0.85rem; opacity: 0.75; line-height: 1.3; margin-top: 2px; }
+.lateral-cerrar { display: none; }
+.lateral-nav { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+.lateral-nav ul { list-style: none; margin: 0 0 6px; padding: 0 0 0 14px; display: flex; flex-direction: column; gap: 2px; }
+.lateral-enlace {
+  display: flex; align-items: center; min-height: 42px; padding: 8px 12px; border-radius: 8px;
+  color: #d6d6d6; text-decoration: none; border-left: 3px solid transparent;
 }
-.nav a[aria-current="page"] { color: var(--tinta); border-bottom-color: var(--accion); font-weight: 700; }
+.lateral-enlace:hover { background: #1c1c1c; color: var(--blanco); }
+.lateral-enlace[aria-current="page"] { background: #262626; color: var(--blanco); font-weight: 700; border-left-color: var(--accion); }
+.lateral-grupo > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  min-height: 42px; padding: 8px 12px; border-radius: 8px;
+  color: #9a9a9a; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.lateral-grupo > summary::-webkit-details-marker { display: none; }
+.lateral-grupo > summary::before { content: "▸"; font-size: 0.85rem; transition: transform 150ms ease; }
+.lateral-grupo[open] > summary::before { transform: rotate(90deg); }
+.lateral-grupo > summary:hover { color: var(--blanco); }
+.lateral-pie { padding: 14px 18px 20px; border-top: 1px solid #2b2b2b; display: flex; flex-direction: column; gap: 10px; font-size: 0.92rem; }
+.lateral-usuario { font-weight: 700; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.lateral-usuario span { font-weight: 400; font-size: 0.85rem; opacity: 0.75; }
+.lateral-acciones { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lateral-acciones a { color: var(--blanco); }
+.lateral-acciones button {
+  background: transparent; color: var(--blanco); border: 1px solid #6b6b6b;
+  border-radius: 6px; padding: 6px 14px; font: inherit; cursor: pointer; min-height: 40px;
+}
+.franja-movil, .lateral-velo { display: none; }
+.solo-lector { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Celular y tableta: el menú es un cajón que sale de la izquierda. */
+@media (max-width: 900px) {
+  .marco { display: block; }
+  .franja-movil {
+    display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 20;
+    background: var(--tinta); color: var(--blanco); border-bottom: 4px solid var(--accion); padding: 6px 12px;
+  }
+  .franja-movil .lateral-logo { width: 28px; height: 28px; }
+  .franja-movil-boton {
+    background: transparent; color: var(--blanco); border: 0; font-size: 1.5rem; line-height: 1;
+    min-width: 44px; min-height: 44px; cursor: pointer; border-radius: 6px;
+  }
+  .franja-movil-titulo { font-family: var(--display); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .lateral {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 40; width: min(300px, 85vw); height: auto;
+    transform: translateX(-105%); transition: transform 200ms ease; visibility: hidden;
+  }
+  .lateral[data-abierto] { transform: none; visibility: visible; }
+  .lateral-velo { display: block; position: fixed; inset: 0; z-index: 30; border: 0; padding: 0; background: rgb(0 0 0 / 0.5); cursor: pointer; }
+  .lateral-cerrar {
+    display: block; background: transparent; color: var(--blanco); border: 0; font-size: 1.8rem; line-height: 1;
+    min-width: 44px; min-height: 44px; margin: -8px -8px 0 0; cursor: pointer;
+  }
+}
 
 .pagina {
   max-width: 1080px; margin: 0 auto;
@@ -300,8 +356,6 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   .barra-usuario > span { grid-column: 1; grid-row: 3; font-size: 0.85rem; opacity: 0.85; }
   .barra-usuario > a { grid-column: 2; grid-row: 3; justify-self: end; font-size: 0.85rem; }
   .barra-usuario > form { grid-column: 2; grid-row: 1; }
-  .nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); overflow: visible; padding: 4px 12px; gap: 0; }
-  .nav a { padding: 8px 4px; min-height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: normal; font-size: 0.9rem; line-height: 1.2; }
 
   .accesos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * clamp(16px, 4vw, 40px)); padding-inline: clamp(16px, 4vw, 40px); padding-block: 2px; }
   .accesos::-webkit-scrollbar { display: none; }
@@ -488,3 +542,9 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 /* ─── Mi cuenta ─── */
 .barra-usuario a, .barra-enlace { color: var(--blanco); font-size: 0.95rem; }
 .formulario-corto { max-width: 480px; }
+
+/* Al imprimir no sale el menú. */
+@media print {
+  .marco { display: block; }
+  .lateral, .franja-movil, .lateral-velo { display: none; }
+}
