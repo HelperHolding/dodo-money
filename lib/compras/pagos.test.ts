@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fechaDePago, finDeSemana, grupoPorPagar, repartirPago, resumenPagos, revisarPago, type PorPagar } from "./pagos.ts";
+import { fechaDePago, finDeSemana, grupoPorPagar, repartirConAjustes, repartirPago, resumenPagos, revisarPago, type PorPagar } from "./pagos.ts";
 
 const f = (id: string, saldo: number, vence_el: string, pago_programado_el: string | null = null): PorPagar =>
   ({ id, saldo, vence_el, pago_programado_el, estado: "por_pagar" });
@@ -50,4 +50,16 @@ test("agrupar por pagar e indicadores", () => {
     { fecha: "2026-10-01", monto: 999, anulado: true },
     { fecha: "2026-09-30", monto: 5, anulado: false },
   ], hoy), { vencido: 150, semana: 200, treinta: 500, pagadoMes: 1000 });
+});
+
+test("ajuste a mano: las demás facturas se reparten el resto", () => {
+  const facturas = [f("a", 300, "2026-10-01"), f("b", 400, "2026-10-02"), f("c", 500, "2026-10-03")];
+  // El proveedor pide pagar C completa: con $1,000, el resto ($500) va a A y B por fecha.
+  assert.deepEqual(repartirConAjustes(1000, facturas, { c: 500 }), {
+    aplicaciones: [{ factura_id: "c", monto: 500 }, { factura_id: "a", monto: 300 }, { factura_id: "b", monto: 200 }], sobrante: 0,
+  });
+  // Ajustes que ya pasan del monto: no se reparte nada más.
+  assert.deepEqual(repartirConAjustes(400, facturas, { c: 500 }).aplicaciones, [{ factura_id: "c", monto: 500 }]);
+  // Sin ajustes, igual que repartirPago.
+  assert.deepEqual(repartirConAjustes(1000, facturas, {}), repartirPago(1000, facturas));
 });

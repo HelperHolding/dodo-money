@@ -71,3 +71,15 @@ export function resumenPagos(facturas: readonly PorPagar[], pagos: readonly { fe
   const pagadoMes = pagos.filter((p) => !p.anulado && p.fecha.slice(0, 7) === mes).reduce((s, p) => s + centavos(p.monto), 0);
   return { vencido: vencido / 100, semana: semana / 100, treinta: treinta / 100, pagadoMes: pagadoMes / 100 };
 }
+
+/**
+ * Montos escritos a mano en algunas facturas; el resto del pago se reparte entre las demás por fecha.
+ * Las facturas ajustadas van primero, en el orden de `manual`.
+ */
+export function repartirConAjustes(monto: number, facturas: readonly PorPagar[], manual: Readonly<Record<string, number>>) {
+  const ajustadas = Object.entries(manual).filter(([id]) => facturas.some((f) => f.id === id))
+    .map(([factura_id, m]) => ({ factura_id, monto: Math.round(Number(m) * 100) / 100 }));
+  const usado = ajustadas.reduce((s, a) => s + centavos(a.monto), 0);
+  const resto = repartirPago(Math.max(centavos(monto) - usado, 0) / 100, facturas.filter((f) => !(f.id in manual)));
+  return { aplicaciones: [...ajustadas, ...resto.aplicaciones], sobrante: resto.sobrante };
+}

@@ -116,6 +116,21 @@ begin
    where f.id = p_id and f.tipo = 'ingreso' and f.estado <> 'cancelada';
 end $$;
 
+-- Una nota de crédito (al registrarse o cancelarse) recalcula el estado de la factura que corrige; una factura que llega
+-- después de su nota también se recalcula. Sin esto, una factura "pagada" con saldo nuevo desaparecería de Pagos.
+create or replace function recalcular_por_nota() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.tipo = 'egreso' and new.uuid_relacionado is not null then
+    perform actualizar_estado_factura(f.id) from facturas f where f.uuid = new.uuid_relacionado;
+  elsif new.tipo = 'ingreso' and tg_op = 'INSERT' then
+    perform actualizar_estado_factura(new.id);
+  end if;
+  return null;
+end $$;
+create trigger facturas_nota_credito after insert or update of estado on facturas
+  for each row execute function recalcular_por_nota();
+
 revoke execute on function pagado_factura(uuid), saldo_factura(uuid), cubierto_por_complementos(uuid), falta_complemento(uuid), cotejo_factura(uuid) from public, anon;
 grant execute on function pagado_factura(uuid), saldo_factura(uuid), cubierto_por_complementos(uuid), falta_complemento(uuid), cotejo_factura(uuid) to authenticated;
 revoke execute on function actualizar_estado_factura(uuid) from public, anon, authenticated;

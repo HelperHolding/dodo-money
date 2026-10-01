@@ -32,7 +32,10 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
     leerTodo<Liga>((d, h) => supabase.from("factura_ordenes").select("factura_id, ordenes_compra(sucursal_id)").order("factura_id").range(d, h).returns<Liga[]>()),
     supabase.from("proveedores").select("id, razon_social, nombre_comercial").order("razon_social").returns<{ id: string; razon_social: string; nombre_comercial: string | null }[]>(),
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
-    supabase.from("facturas_saldo").select("id").eq("falta_complemento", true).returns<{ id: string }[]>(),
+    // Falta complemento: cualquier estado (lo normal es una PPD ya pagada completa).
+    supabase.from("facturas_saldo")
+      .select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
+      .eq("falta_complemento", true).order("vence_el").returns<Factura[]>(),
   ]);
 
   // Sucursal de una factura: la de sus órdenes o, sin orden, su destino ("oficina" = sin sucursal).
@@ -46,6 +49,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
     && (!proveedor || f.proveedor_id === proveedor)
     && (!sucursal || deSucursal(f, sucursal))
     && (complemento !== "si" || f.falta_complemento));
+  const sinComplemento = (conComplemento ?? []).filter((f) => (!proveedor || f.proveedor_id === proveedor) && (!sucursal || deSucursal(f, sucursal)));
 
   const r = resumenPagos(visibles, pagos.map((p) => ({ fecha: p.fecha, monto: Number(p.monto), anulado: !!p.anulado_en })), hoy);
   const nombre = (f: Factura) => `${f.serie ?? ""}${f.folio ?? f.uuid.slice(0, 8)}`;
@@ -74,7 +78,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
             {f.pago_programado_el && <><dt>Programada</dt><dd>{fechaTexto(f.pago_programado_el)}</dd></>}
             {f.falta_complemento && <><dt>Aviso</dt><dd>Falta complemento de pago</dd></>}
           </dl>
-          {edita && <Link className="boton boton-secundario" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}
+          {edita && Number(f.saldo) > 0 && <Link className="boton boton-secundario" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}
         </article>
       ))}
     </div>
@@ -123,7 +127,13 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
 
       <CalendarioPagos hoy={hoy} porDia={porDia} />
 
-      {!visibles.length && <p className="vacio">No hay nada por pagar con ese filtro.</p>}
+      {complemento === "si" && sinComplemento.length > 0 && (
+        <Plegable id="t-sin-complemento" titulo="Falta complemento de pago" resumen={`${sinComplemento.length} facturas`} alerta>
+          <p className="saldo-nota">Facturas PPD con pagos que el proveedor aún no ampara con su complemento. Pídeselo y súbelo abajo.</p>
+          <Tarjetas lista={sinComplemento} />
+        </Plegable>
+      )}
+      {!visibles.length && !(complemento === "si" && sinComplemento.length) && <p className="vacio">No hay nada por pagar con ese filtro.</p>}
       {grupos.vencidas.length > 0 && <Plegable id="t-vencidas" titulo="Vencidas" resumen={pesos(r.vencido)} alerta><Tarjetas lista={grupos.vencidas} /></Plegable>}
       {grupos.semana.length > 0 && <Plegable id="t-semana" titulo="Esta semana" resumen={pesos(r.semana)}><Tarjetas lista={grupos.semana} /></Plegable>}
       {grupos.despues.length > 0 && <Plegable id="t-despues" titulo="Después" resumen={`${grupos.despues.length} facturas`}><Tarjetas lista={grupos.despues} /></Plegable>}

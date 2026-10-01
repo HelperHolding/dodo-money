@@ -6,6 +6,7 @@
 do $$
 declare
   v_a uuid; v_b uuid; v_suc uuid; v_prov uuid; v_prov2 uuid; v_f1 uuid; v_f2 uuid; v_fx uuid; v_pago uuid; v_pago2 uuid; v_n int;
+  v_f9 uuid; v_f10 uuid; v_nc10 uuid; v_p3 uuid;
   v_hoy date := (now() at time zone 'America/Mexico_City')::date;
   v_base jsonb;
   v_ok text[] := '{}';
@@ -142,6 +143,29 @@ begin
     if v_pago2 is null then raise exception 'FALLÓ: pagar revisada'; end if;
   end;
   v_ok := array_append(v_ok, 'si no cuadra, se revisa antes de pagar');
+
+  -- El complemento subido antes ya cubre la factura que llega después (documento …0009)
+  v_f9 := registrar_factura(v_base || jsonb_build_object('uuid', 'bbbbbbbb-0000-0000-0000-000000000009', 'folio', '9', 'subtotal', 200, 'total', 200), false, 'x.xml', null);
+  perform registrar_pago(v_prov, v_hoy, 200, 'transferencia', null, null, null, jsonb_build_array(jsonb_build_object('factura_id', v_f9, 'monto', 200)));
+  if falta_complemento(v_f9) then raise exception 'FALLÓ: el complemento subido antes cubre la factura que llegó después'; end if;
+
+  -- Anular uno de dos pagos deja la factura en parcial (f2 ya tiene un pago de $100)
+  v_p3 := registrar_pago(v_prov, v_hoy, 100, 'efectivo', null, null, null, jsonb_build_array(jsonb_build_object('factura_id', v_f2, 'monto', 100)));
+  perform anular_pago(v_p3, 'Prueba');
+  if (select estado::text from facturas where id = v_f2) <> 'parcial' then raise exception 'FALLÓ: con otro pago vigente, anular deja la factura en parcial'; end if;
+
+  -- Cancelar la nota de crédito de una factura pagada: vuelve a tener saldo y aparece por pagar
+  v_f10 := registrar_factura(v_base || jsonb_build_object('uuid', 'bbbbbbbb-0000-0000-0000-000000000010', 'folio', '10', 'subtotal', 1000, 'total', 1000), false, 'x.xml', null);
+  v_nc10 := registrar_factura(v_base || jsonb_build_object('uuid', 'bbbbbbbb-0000-0000-0000-000000000011', 'folio', 'NC1', 'tipo', 'egreso', 'subtotal', 100, 'total', 100,
+                              'uuid_relacionado', 'BBBBBBBB-0000-0000-0000-000000000010'), false, 'x.xml', null);
+  if saldo_factura(v_f10) <> 900 then raise exception 'FALLÓ: la nota resta del saldo'; end if;
+  perform registrar_pago(v_prov, v_hoy, 900, 'transferencia', null, null, null, jsonb_build_array(jsonb_build_object('factura_id', v_f10, 'monto', 900)));
+  if (select estado::text from facturas where id = v_f10) <> 'pagada' then raise exception 'FALLÓ: pagada con la nota'; end if;
+  perform cancelar_factura(v_nc10, 'La nota no procedía');
+  if (select estado::text from facturas where id = v_f10) <> 'parcial' or saldo_factura(v_f10) <> 100 then
+    raise exception 'FALLÓ: al cancelar la nota la factura vuelve a parcial con $100 (estado %, saldo %)', (select estado from facturas where id = v_f10), saldo_factura(v_f10);
+  end if;
+  v_ok := array_append(v_ok, 'complemento antes de la factura, anular a parcial y nota de crédito cancelada');
 
   -- Gerente no ve pagos; corporativo consulta y no paga
   perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
