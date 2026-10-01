@@ -1,10 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { leerComplementoPago } from "@/lib/compras/cfdi";
 import { archivoYaSubido } from "@/lib/compras/facturas";
+import { revisarPago } from "@/lib/compras/pagos";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
+import { clienteAdmin, volver } from "../servidor";
 
 const BUCKET = "facturas";
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -37,4 +40,55 @@ export async function subirComplementos(_previo: ResultadoComplementos | null, f
   }
   revalidatePath("/compras", "layout");
   return { resultados };
+}
+
+const COMPROBANTE: Record<string, string> = {
+  "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "image/heif": "heif",
+};
+
+/** Las aplicaciones llegan como campos `aplicar_<factura_id>`; se revisan aquí y otra vez en la base. */
+export async function registrarPago(fd: FormData) {
+  const proveedor = String(fd.get("proveedor_id") ?? "");
+  const ruta = `/compras/pagos/nuevo?proveedor=${proveedor}`;
+  const supabase = await clienteAdmin(ruta);
+  const monto = Number(String(fd.get("monto") ?? "").replace(/[$\s,]/g, ""));
+  const aplicaciones = [...fd.entries()]
+    .filter(([k]) => k.startsWith("aplicar_"))
+    .map(([k, v]) => ({ factura_id: k.slice(8), monto: Math.round(Number(String(v).replace(/[$\s,]/g, "")) * 100) / 100 }))
+    .filter((a) => a.monto > 0);
+  const { data: saldos } = await supabase.from("facturas_saldo").select("id, saldo").in("id", aplicaciones.map((a) => a.factura_id).concat("00000000-0000-0000-0000-000000000000"))
+    .returns<{ id: string; saldo: number }[]>();
+  const problema = revisarPago(monto, aplicaciones, new Map((saldos ?? []).map((s) => [s.id, Number(s.saldo)])));
+  if (problema) volver(ruta, "error", problema);
+
+  const archivo = fd.get("comprobante");
+  const comprobante = archivo instanceof File && archivo.size > 0 ? archivo : null;
+  let rutaComprobante: string | null = null;
+  if (comprobante) {
+    const ext = COMPROBANTE[comprobante.type];
+    if (!ext) volver(ruta, "error", "El comprobante debe ser PDF o foto (JPG, PNG o HEIC).");
+    if (comprobante.size > 5 * 1024 * 1024) volver(ruta, "error", "El comprobante pesa más de 5 MB.");
+    rutaComprobante = `pagos/${crypto.randomUUID()}.${ext}`;
+    const { error: errorArchivo } = await supabase.storage.from(BUCKET).upload(rutaComprobante, comprobante, { contentType: comprobante.type, upsert: false });
+    if (errorArchivo) volver(ruta, "error", `No se pudo subir el comprobante: ${errorArchivo.message}`);
+  }
+
+  const { data: id, error } = await supabase.rpc("registrar_pago", {
+    p_proveedor: proveedor, p_fecha: String(fd.get("fecha") ?? ""), p_monto: monto, p_forma: String(fd.get("forma") ?? "transferencia"),
+    p_cuenta: String(fd.get("cuenta_origen") ?? ""), p_referencia: String(fd.get("referencia") ?? ""), p_comprobante: rutaComprobante,
+    p_aplicaciones: aplicaciones,
+  });
+  if (error) volver(ruta, "error", error.message);
+  revalidatePath("/compras", "layout");
+  redirect(`/compras/pagos/${id as string}?ok=${encodeURIComponent("Pago registrado.")}`);
+}
+
+export async function anularPago(fd: FormData) {
+  const id = String(fd.get("id") ?? "");
+  const ruta = `/compras/pagos/${id}`;
+  const supabase = await clienteAdmin(ruta);
+  const { error } = await supabase.rpc("anular_pago", { p_id: id, p_motivo: String(fd.get("motivo") ?? "") });
+  if (error) volver(ruta, "error", error.message);
+  revalidatePath("/compras", "layout");
+  volver(ruta, "ok", "Pago anulado. Las facturas recuperaron su saldo.");
 }
