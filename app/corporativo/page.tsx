@@ -4,7 +4,7 @@ import { resumenPagos, type PorPagar } from "@/lib/compras/pagos";
 import { obtenerPerfil } from "@/lib/contexto";
 import { alertasDeSucursal, fechaElegida, ordenarSucursales, type Alerta } from "@/lib/corporativo";
 import { diaOperativoMX } from "@/lib/franjas";
-import { hora, hoyMX, pesos } from "@/lib/formato";
+import { hora, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { verSucursal } from "./actions";
 import { datosCorporativo } from "./datos";
 
@@ -18,7 +18,7 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
   const { supabase } = await obtenerPerfil();
 
   const datos = await datosCorporativo(supabase, fecha, ahora);
-  const hoyCalendario = hoyMX();
+  const hoyCalendario = hoyCalendarioMX();
   const [{ data: porPagar }, { data: pagosMes }] = await Promise.all([
     supabase.from("facturas_saldo").select("id, saldo, vence_el, pago_programado_el, estado").eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).returns<PorPagar[]>(),
     supabase.from("pagos").select("fecha, monto, anulado_en").gte("fecha", `${hoyCalendario.slice(0, 7)}-01`).returns<{ fecha: string; monto: number; anulado_en: string | null }[]>(),

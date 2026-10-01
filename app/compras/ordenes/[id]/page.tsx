@@ -7,7 +7,7 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { BUCKET_FOTOS } from "@/lib/fotos";
-import { fechaTexto, pesos } from "@/lib/formato";
+import { fechaTexto, pesos, fechaMX } from "@/lib/formato";
 import {
   accionesDe, avanceOrden, avanceRenglon, NOMBRE_AVANCE, NOMBRE_ESTADO_ORDEN, precioDistinto, recibidoDeMas, totalesOrden, type EstadoOrden,
 } from "@/lib/compras/ordenes";
@@ -31,6 +31,7 @@ type Evento = { id: number; evento: string; nota: string | null; en: string; per
 const CLAVE_EVENTO: Record<string, string> = {
   creada: "Creada", editada: "Editada", enviada: "Enviada al proveedor", confirmada: "Confirmada como orden de compra", copiada: "Creada como alternativa",
   cancelada: "Cancelada", cerrada: "Cerrada", recibido: "Recibido en sucursal", "recepción anulada": "Recepción anulada",
+  facturada: "Factura ligada", reabierta: "Reabierta",
 };
 
 const NOMBRE_AVANCE_FACTURA = { nada: "Sin facturar", parcial: "Facturada en parte", completa: "Facturada completa" } as const;
@@ -256,7 +257,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
       <Plegable id="t-historial" titulo="Historial" resumen={`${historial?.length ?? 0} eventos`}>
         <dl className="tarjeta-datos">
           {(historial ?? []).map((h) => (
-            <Fragment key={h.id}><dt>{fechaTexto(h.en.slice(0, 10))}</dt><dd>{CLAVE_EVENTO[h.evento] ?? h.evento}{h.nota ? ` · ${h.nota}` : ""}{h.perfiles ? ` · ${h.perfiles.nombre}` : ""}</dd></Fragment>
+            <Fragment key={h.id}><dt>{fechaTexto(fechaMX(h.en))}</dt><dd>{CLAVE_EVENTO[h.evento] ?? h.evento}{h.nota ? ` · ${h.nota}` : ""}{h.perfiles ? ` · ${h.perfiles.nombre}` : ""}</dd></Fragment>
           ))}
         </dl>
       </Plegable>

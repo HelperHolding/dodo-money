@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { archivoYaSubido, avanceFacturacion, baseArchivo, cotejar, rutaArchivoFactura, valorRecibido, venceEl, vencida } from "./facturas.ts";
+import { archivoYaSubido, avanceFacturacion, baseArchivo, cotejar, nombreEstadoFactura, rutaArchivoFactura, valorRecibido, venceEl, vencida } from "./facturas.ts";
 
 test("vencimiento: PUE vence el mismo día; PPD y sin método suman los días de crédito", () => {
   assert.equal(venceEl("2026-09-25", 15, "PUE"), "2026-09-25");
@@ -56,4 +56,11 @@ test("un archivo que ya estaba en el almacenamiento (intento anterior) se reutil
   assert.equal(archivoYaSubido("The resource already exists"), true);
   assert.equal(archivoYaSubido("Duplicate"), true);
   assert.equal(archivoYaSubido("new row violates row-level security policy"), false);
+});
+
+test("una nota de crédito vigente dice Aplicada, no Pagada", () => {
+  assert.equal(nombreEstadoFactura("egreso", "pagada"), "Aplicada");
+  assert.equal(nombreEstadoFactura("egreso", "cancelada"), "Cancelada");
+  assert.equal(nombreEstadoFactura("ingreso", "pagada"), "Pagada");
+  assert.equal(nombreEstadoFactura("ingreso", "parcial"), "Pagada en parte");
 });

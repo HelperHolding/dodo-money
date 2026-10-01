@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { obtenerPerfil } from "@/lib/contexto";
-import { fechaTexto, pesos } from "@/lib/formato";
+import { fechaTexto, pesos, fechaMX } from "@/lib/formato";
 import { avanceOrden, ESTADOS_ORDEN, filtrarOrdenes, NOMBRE_AVANCE, NOMBRE_ESTADO_ORDEN, totalesOrden, type EstadoOrden } from "@/lib/compras/ordenes";
 import type { TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
@@ -89,7 +89,7 @@ export default async function Ordenes({ searchParams }: {
                 <dt>Para</dt><dd>{o.sucursales?.nombre ?? "Oficina"}</dd>
                 <dt>Total</dt><dd>{pesos(totalesOrden(rs).total)} · {rs.length} renglones</dd>
                 {o.estado === "confirmada" && <><dt>Recepción</dt><dd>{NOMBRE_AVANCE[avance]}</dd></>}
-                <dt>Creada</dt><dd>{fechaTexto(o.creado_en.slice(0, 10))}</dd>
+                <dt>Creada</dt><dd>{fechaTexto(fechaMX(o.creado_en))}</dd>
                 {(porGrupo.get(o.grupo_id) ?? 0) > 1 && <><dt>Alternativas</dt><dd><Link href={`/compras/ordenes/${o.id}/comparar`}>Comparar {porGrupo.get(o.grupo_id)}</Link></dd></>}
               </dl>
             </article>

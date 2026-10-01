@@ -83,3 +83,9 @@ export function repartirConAjustes(monto: number, facturas: readonly PorPagar[],
   const resto = repartirPago(Math.max(centavos(monto) - usado, 0) / 100, facturas.filter((f) => !(f.id in manual)));
   return { aplicaciones: [...ajustadas, ...resto.aplicaciones], sobrante: resto.sobrante };
 }
+
+/** Lo pagado en el mes de `hoy` a partir de lo aplicado a cada factura (así respeta filtros por proveedor o sucursal). */
+export function pagadoDelMes(aplicaciones: readonly { pago_id: string; fecha: string; monto: number; anulado: boolean }[], hoy: string) {
+  const delMes = aplicaciones.filter((a) => !a.anulado && a.fecha.slice(0, 7) === hoy.slice(0, 7));
+  return { monto: delMes.reduce((s, a) => s + centavos(a.monto), 0) / 100, pagos: new Set(delMes.map((a) => a.pago_id)).size };
+}

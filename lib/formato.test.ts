@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decimal, diaYNumero, fechaTexto, hoyMX, numeroCorto, pesosCortos, pesosRedondos, porcentaje, rangoDiaMX } from "./formato.ts";
+import { decimal, diaYNumero, fechaMX, fechaTexto, hoyCalendarioMX, hoyMX, numeroCorto, pesosCortos, pesosRedondos, porcentaje, rangoDiaMX } from "./formato.ts";
 
 test("decimal acepta punto o coma", () => {
   assert.equal(decimal("0,5"), 0.5);
@@ -61,4 +61,18 @@ test("pesosCortos: venta de un día en poco espacio", () => {
   assert.equal(pesosCortos(10000), "$10k");
   assert.equal(pesosCortos(950), "$950");
   assert.equal(pesosCortos(1250000), "$1.3M");
+});
+
+test("fecha de calendario en México: cambia a medianoche, no a las 4:00", () => {
+  // 1 oct 02:30 en México = 1 oct 08:30 UTC: ya es 1 de octubre (el día operativo sigue siendo el 30).
+  assert.equal(hoyCalendarioMX(new Date("2026-10-01T08:30:00Z")), "2026-10-01");
+  assert.equal(hoyMX(new Date("2026-10-01T08:30:00Z")), "2026-09-30");
+  // 30 sep 23:59 en México = 1 oct 05:59 UTC.
+  assert.equal(hoyCalendarioMX(new Date("2026-10-01T05:59:00Z")), "2026-09-30");
+});
+
+test("fecha en México de un registro con hora (después de las 18:00 en UTC ya es otro día)", () => {
+  assert.equal(fechaMX("2026-10-01T01:30:00+00:00"), "2026-09-30");
+  assert.equal(fechaMX("2026-10-01T12:00:00Z"), "2026-10-01");
+  assert.equal(fechaMX("2026-10-01T06:00:00.123456+00:00"), "2026-10-01");
 });

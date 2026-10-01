@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fechaDePago, finDeSemana, grupoPorPagar, repartirConAjustes, repartirPago, resumenPagos, revisarPago, type PorPagar } from "./pagos.ts";
+import { fechaDePago, finDeSemana, grupoPorPagar, pagadoDelMes, repartirConAjustes, repartirPago, resumenPagos, revisarPago, type PorPagar } from "./pagos.ts";
 
 const f = (id: string, saldo: number, vence_el: string, pago_programado_el: string | null = null): PorPagar =>
   ({ id, saldo, vence_el, pago_programado_el, estado: "por_pagar" });
@@ -62,4 +62,17 @@ test("ajuste a mano: las demás facturas se reparten el resto", () => {
   assert.deepEqual(repartirConAjustes(400, facturas, { c: 500 }).aplicaciones, [{ factura_id: "c", monto: 500 }]);
   // Sin ajustes, igual que repartirPago.
   assert.deepEqual(repartirConAjustes(1000, facturas, {}), repartirPago(1000, facturas));
+});
+
+test("pagado del mes desde lo aplicado: respeta el filtro y cuenta pagos distintos", () => {
+  const aplicaciones = [
+    { pago_id: "p1", fecha: "2026-10-01", monto: 300, anulado: false },
+    { pago_id: "p1", fecha: "2026-10-01", monto: 200, anulado: false },
+    { pago_id: "p2", fecha: "2026-10-02", monto: 99, anulado: true },
+    { pago_id: "p3", fecha: "2026-09-30", monto: 50, anulado: false },
+    { pago_id: "p4", fecha: "2026-10-05", monto: 0.1, anulado: false },
+    { pago_id: "p4", fecha: "2026-10-05", monto: 0.2, anulado: false },
+  ];
+  assert.deepEqual(pagadoDelMes(aplicaciones, "2026-10-15"), { monto: 500.3, pagos: 2 });
+  assert.deepEqual(pagadoDelMes([], "2026-10-15"), { monto: 0, pagos: 0 });
 });

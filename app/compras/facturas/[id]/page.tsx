@@ -5,8 +5,8 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
-import { fechaTexto, hoyMX, pesos } from "@/lib/formato";
-import { cotejar, NOMBRE_COTEJO, NOMBRE_ESTADO_FACTURA, valorRecibido, vencida, type EstadoFactura } from "@/lib/compras/facturas";
+import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
+import { cotejar, NOMBRE_COTEJO, nombreEstadoFactura, valorRecibido, vencida, type EstadoFactura } from "@/lib/compras/facturas";
 import { avanceOrden, totalesOrden } from "@/lib/compras/ordenes";
 import { nombreRegimen, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
@@ -73,14 +73,15 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const firmar = async (ruta: string | null) => (ruta ? (await supabase.storage.from("facturas").createSignedUrl(ruta, 3600)).data?.signedUrl ?? null : null);
   const [urlXml, urlPdf] = await Promise.all([firmar(f.xml_ruta), firmar(f.pdf_ruta)]);
   const edita = puedeEditarCompras(perfil.rol) && f.estado !== "cancelada";
+  const notasVigentes = f.tipo === "ingreso" ? (relacionadas ?? []).filter((n) => n.estado !== "cancelada").length : 0;
   const regimenDistinto = f.proveedores && f.regimen_emisor && f.regimen_emisor !== f.proveedores.regimen_fiscal;
-  const hoy = hoyMX();
+  const hoy = hoyCalendarioMX();
 
   return (
     <>
       <div className="encabezado">
         <h1>{f.tipo === "egreso" ? "Nota de crédito" : "Factura"} {f.serie ?? ""}{f.folio ?? ""} · {f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social}</h1>
-        <p>{NOMBRE_ESTADO_FACTURA[f.estado]}{f.motivo_cancelacion ? ` · ${f.motivo_cancelacion}` : ""} · UUID {f.uuid}</p>
+        <p>{nombreEstadoFactura(f.tipo, f.estado)}{f.motivo_cancelacion ? ` · ${f.motivo_cancelacion}` : ""} · UUID {f.uuid}</p>
       </div>
       <Aviso ok={ok} error={error} />
 
@@ -159,7 +160,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           <h2>{f.tipo === "ingreso" ? "Notas de crédito" : "Factura que corrige"}</h2>
           <dl className="tarjeta-datos">
             {(relacionadas ?? []).map((n) => (
-              <Fragment key={n.id}><dt><Link href={`/compras/facturas/${n.id}`}>{n.serie ?? ""}{n.folio ?? n.uuid.slice(0, 8)}</Link></dt><dd>{pesos(n.total)} · {NOMBRE_ESTADO_FACTURA[n.estado]}</dd></Fragment>
+              <Fragment key={n.id}><dt><Link href={`/compras/facturas/${n.id}`}>{n.serie ?? ""}{n.folio ?? n.uuid.slice(0, 8)}</Link></dt><dd>{pesos(n.total)} · {nombreEstadoFactura(n.tipo, n.estado)}</dd></Fragment>
             ))}
           </dl>
         </section>
@@ -211,7 +212,14 @@ export default async function DetalleFactura({ params, searchParams }: { params:
             <form action={cancelarFacturaAccion} className="formulario">
               <input type="hidden" name="id" value={f.id} />
               <div className="campo"><label htmlFor="motivo">Motivo</label><input id="motivo" name="motivo" required placeholder="Ej. el proveedor la canceló en el SAT" /></div>
-              <BotonEnviar className="boton boton-alerta" confirmar="¿Cancelar esta factura? Se quitan sus ligas a órdenes.">Cancelar factura</BotonEnviar>
+              {f.tipo === "ingreso" && notasVigentes > 0 && (
+                <p className="saldo-nota">
+                  Tiene {notasVigentes === 1 ? "1 nota de crédito vigente" : `${notasVigentes} notas de crédito vigentes`}: quedarán ligadas a una factura cancelada.
+                  Si el proveedor la sustituye por otra, cancela también la nota y pide que la emita sobre la nueva.
+                </p>
+              )}
+              <p className="saldo-nota">Las órdenes que esta factura cerró solas se reabren.</p>
+              <BotonEnviar className="boton boton-alerta" confirmar="¿Cancelar esta factura? Se quitan sus ligas a órdenes y las que había cerrado se reabren.">Cancelar factura</BotonEnviar>
             </form>
           </details>
         </section>

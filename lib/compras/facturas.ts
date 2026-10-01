@@ -60,3 +60,7 @@ export const rutaArchivoFactura = (uuid: string, extension: "xml" | "pdf") => `$
 
 /** El archivo quedó de un intento anterior que no llegó a registrarse: se reutiliza (la ruta es única por UUID). */
 export const archivoYaSubido = (mensaje: string) => /already exists|duplicate/i.test(mensaje);
+
+/** Cómo se muestra el estado: una nota de crédito no se paga, se aplica a la factura que corrige. */
+export const nombreEstadoFactura = (tipo: "ingreso" | "egreso" | string, estado: EstadoFactura) =>
+  tipo === "egreso" ? (estado === "cancelada" ? "Cancelada" : "Aplicada") : NOMBRE_ESTADO_FACTURA[estado];

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { leerCfdi } from "@/lib/compras/cfdi";
 import { archivoYaSubido, baseArchivo, rutaArchivoFactura } from "@/lib/compras/facturas";
-import { fechaTexto } from "@/lib/formato";
+import { fechaTexto, fechaMX } from "@/lib/formato";
 import { normalizarRfc, rfcValido } from "@/lib/compras/proveedores";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
 import { clienteAdmin, volver } from "../servidor";
@@ -58,7 +58,7 @@ export async function subirFacturas(_previo: ResultadoSubida | null, fd: FormDat
       continue;
     }
     const { data: previa } = await supabase.from("facturas").select("id, creado_en").eq("uuid", cfdi.uuid).maybeSingle<{ id: string; creado_en: string }>();
-    if (previa) { resultados.push({ archivo: xml.name, ok: false, texto: `Ya se registró el ${fechaTexto(previa.creado_en.slice(0, 10))}.`, id: previa.id }); continue; }
+    if (previa) { resultados.push({ archivo: xml.name, ok: false, texto: `Ya se registró el ${fechaTexto(fechaMX(previa.creado_en))}.`, id: previa.id }); continue; }
     if (!altaProveedor) {
       const { data: prov } = await supabase.from("proveedores").select("id").eq("rfc", cfdi.rfc_emisor).maybeSingle<{ id: string }>();
       if (!prov) { resultados.push({ archivo: xml.name, ok: false, texto: `El proveedor con RFC ${cfdi.rfc_emisor} no está en la cartera.` }); continue; }

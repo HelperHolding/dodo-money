@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
-import { fechaTexto } from "@/lib/formato";
+import { fechaTexto, fechaMX } from "@/lib/formato";
 import { nombreRegimen } from "@/lib/compras/proveedores";
 import { NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, type DatosProveedor } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
@@ -36,7 +36,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
           <dt>Crédito</dt><dd>{p.dias_credito ? `${p.dias_credito} días` : "Contado"} · {NOMBRE_FORMA_PAGO[p.forma_pago_habitual]}</dd>
           <dt>Surte</dt><dd>{p.categorias.map((c) => NOMBRE_CATEGORIA_COMPRA[c]).join(", ") || "Sin categoría"}</dd>
           {p.notas && <><dt>Notas</dt><dd>{p.notas}</dd></>}
-          {!p.activo && <><dt>Desactivado</dt><dd>{p.motivo_desactivacion}{p.desactivado_en ? ` · ${fechaTexto(p.desactivado_en.slice(0, 10))}` : ""}</dd></>}
+          {!p.activo && <><dt>Desactivado</dt><dd>{p.motivo_desactivacion}{p.desactivado_en ? ` · ${fechaTexto(fechaMX(p.desactivado_en))}` : ""}</dd></>}
         </dl>
       </section>
       {edita && (

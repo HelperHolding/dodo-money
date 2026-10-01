@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { obtenerPerfil } from "@/lib/contexto";
-import { fechaTexto, hoyMX, pesos } from "@/lib/formato";
-import { ESTADOS_FACTURA, NOMBRE_ESTADO_FACTURA, vencida, type EstadoFactura } from "@/lib/compras/facturas";
+import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
+import { ESTADOS_FACTURA, NOMBRE_ESTADO_FACTURA, nombreEstadoFactura, vencida, type EstadoFactura } from "@/lib/compras/facturas";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 
@@ -15,7 +15,7 @@ type Factura = {
 export default async function Facturas({ searchParams }: { searchParams: Promise<{ ver?: string; proveedor?: string; ok?: string; error?: string }> }) {
   const { ver = "", proveedor = "", ok, error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
-  const hoy = hoyMX();
+  const hoy = hoyCalendarioMX();
   const [facturas, { data: empresa }, { data: proveedores }] = await Promise.all([
     leerTodo<Factura>((d, h) => supabase.from("facturas_saldo")
       .select("id, uuid, serie, folio, tipo, fecha_emision, total, saldo, estado, vence_el, revisada, proveedor_id, uuid_relacionado, proveedores(razon_social, nombre_comercial)")
@@ -71,7 +71,7 @@ export default async function Facturas({ searchParams }: { searchParams: Promise
               <div className="tarjeta-encabezado">
                 <div>
                   <h3><Link href={`/compras/facturas/${f.id}`}>{f.tipo === "egreso" ? "Nota de crédito" : "Factura"} {f.serie ?? ""}{f.folio ?? f.uuid.slice(0, 8)}</Link></h3>
-                  <p className="tarjeta-estado">{f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social} · {NOMBRE_ESTADO_FACTURA[f.estado]}</p>
+                  <p className="tarjeta-estado">{f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social} · {nombreEstadoFactura(f.tipo, f.estado)}</p>
                 </div>
               </div>
               <dl className="tarjeta-datos">

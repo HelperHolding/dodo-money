@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { obtenerPerfil } from "@/lib/contexto";
-import { hoyMX } from "@/lib/formato";
+import { hoyCalendarioMX } from "@/lib/formato";
 import { NOMBRE_COTEJO, type Cotejo, type EstadoFactura } from "@/lib/compras/facturas";
 import type { FormaPago } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
@@ -46,7 +46,7 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
       </form>
       {elegido && (!facturas.length
         ? <p className="vacio">Este proveedor no tiene facturas por pagar.</p>
-        : <FormPago proveedorId={elegido.id} facturas={facturas} forma={elegido.forma_pago_habitual} hoy={hoyMX()} preseleccion={factura} />)}
+        : <FormPago proveedorId={elegido.id} facturas={facturas} forma={elegido.forma_pago_habitual} hoy={hoyCalendarioMX()} preseleccion={factura} />)}
     </>
   );
 }

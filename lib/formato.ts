@@ -15,6 +15,14 @@ export function hoyMX(ahora: Date = new Date()): string {
   return new Date(ahora.getTime() - (6 + 4) * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+const diaCalendarioMX = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit" });
+
+/** Fecha de calendario de hoy en Ciudad de México (cambia a medianoche). Para Compras: facturas, pagos, recepciones. */
+export const hoyCalendarioMX = (ahora: Date = new Date()) => diaCalendarioMX.format(ahora);
+
+/** Fecha en Ciudad de México (YYYY-MM-DD) de un registro guardado con hora (timestamptz en UTC). */
+export const fechaMX = (iso: string) => diaCalendarioMX.format(new Date(iso));
+
 /** Inicio y fin del día de operación (4:00 a 4:00, Ciudad de México) en UTC, para filtrar por creado_en. */
 export function rangoDiaMX(fecha: string): { desde: string; hasta: string } {
   const desde = new Date(`${fecha}T04:00:00-06:00`);

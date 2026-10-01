@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto } from "@/lib/contexto";
-import { fechaTexto, hoyMX } from "@/lib/formato";
+import { fechaMX, fechaTexto, hoyCalendarioMX } from "@/lib/formato";
 import { avanceRenglon } from "@/lib/compras/ordenes";
 import { puedeRecibirCompras } from "@/lib/roles";
 import { recibirRenglon } from "./actions";
@@ -20,7 +20,7 @@ export default async function RecepcionesSucursal({ searchParams }: { searchPara
   if (errorRpc) throw new Error(errorRpc.message);
   const pendientes = ((data ?? []) as PorRecibir[]).filter((r) => avanceRenglon(Number(r.cantidad), Number(r.recibido)) !== "completa");
   const ordenes = [...new Map(pendientes.map((r) => [r.orden_id, r])).values()];
-  const hoy = hoyMX();
+  const hoy = hoyCalendarioMX();
 
   return (
     <>
@@ -33,7 +33,7 @@ export default async function RecepcionesSucursal({ searchParams }: { searchPara
       {ordenes.map((o) => (
         <section key={o.orden_id} className="seccion" aria-labelledby={`o-${o.orden_id}`}>
           <h2 id={`o-${o.orden_id}`}>{o.folio} · {o.proveedor}</h2>
-          <p className="saldo-nota">Confirmada el {fechaTexto(o.confirmada_en.slice(0, 10))}</p>
+          <p className="saldo-nota">Confirmada el {fechaTexto(fechaMX(o.confirmada_en))}</p>
           <div className="tarjetas">
             {pendientes.filter((r) => r.orden_id === o.orden_id).map((r) => {
               const falta = Math.round((Number(r.cantidad) - Number(r.recibido)) * 1000) / 1000;

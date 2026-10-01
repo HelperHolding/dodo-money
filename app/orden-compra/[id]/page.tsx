@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { notFound, redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
-import { fechaTexto, pesos } from "@/lib/formato";
+import { fechaTexto, pesos, fechaMX } from "@/lib/formato";
 import { NOMBRE_ESTADO_ORDEN, totalesOrden, type EstadoOrden } from "@/lib/compras/ordenes";
 import { NOMBRE_TASA_IVA, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeVerCompras } from "@/lib/roles";
@@ -37,7 +37,7 @@ export default async function OrdenImprimible({ params }: { params: Promise<{ id
         <div className="tarjeta-encabezado">
           <div>
             <h1>{esOrden ? "Orden de compra" : "Solicitud de cotización"} {o.folio}</h1>
-            <p>{fechaTexto((o.confirmada_en ?? o.creado_en).slice(0, 10))} · {NOMBRE_ESTADO_ORDEN[o.estado]}</p>
+            <p>{fechaTexto(fechaMX(o.confirmada_en ?? o.creado_en))} · {NOMBRE_ESTADO_ORDEN[o.estado]}</p>
           </div>
           <img src="/logo-dodo.png" alt="Dodo Pizza" width={48} height={48} />
         </div>
