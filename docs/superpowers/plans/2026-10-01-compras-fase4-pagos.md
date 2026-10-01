@@ -1228,7 +1228,9 @@ export function FormPago({ proveedorId, facturas, forma, hoy, preseleccion }: {
   const pagables = facturas.filter((f) => !f.bloqueada);
   const inicial = preseleccion ? String(pagables.find((f) => f.id === preseleccion)?.saldo ?? "") : "";
   const [monto, setMonto] = useState(inicial);
-  const [manual, setManual] = useState<Record<string, string>>({});
+  // Si se llegó desde una factura, esa queda aplicada completa (y las demás en cero) hasta que se cambie el monto.
+  const [manual, setManual] = useState<Record<string, string>>(() =>
+    preseleccion && inicial ? Object.fromEntries(pagables.map((f) => [f.id, f.id === preseleccion ? inicial : ""])) : {});
   const numero = (t: string) => Number(t.replace(/[$\s,]/g, "")) || 0;
   const reparto = repartirPago(numero(monto), pagables);
   const aplicado = (id: string) => manual[id] ?? String(reparto.aplicaciones.find((a) => a.factura_id === id)?.monto ?? "");
