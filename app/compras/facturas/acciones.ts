@@ -76,3 +76,33 @@ export async function subirFacturas(_previo: ResultadoSubida | null, fd: FormDat
   revalidatePath("/compras", "layout");
   return { resultados };
 }
+
+const rutaFactura = (id: string) => `/compras/facturas/${id}`;
+
+async function llamarFactura(fd: FormData, funcion: string, argumentos: Record<string, unknown>, mensaje: string) {
+  const id = texto(fd, "id");
+  const supabase = await clienteAdmin(rutaFactura(id));
+  const { error } = await supabase.rpc(funcion, argumentos);
+  if (error) volver(rutaFactura(id), "error", error.message);
+  revalidatePath("/compras", "layout");
+  volver(rutaFactura(id), "ok", mensaje);
+}
+
+export async function ligarOrdenes(fd: FormData) {
+  const ordenes = fd.getAll("ordenes").map(String).filter(Boolean);
+  await llamarFactura(fd, "ligar_factura_ordenes", { p_factura: texto(fd, "id"), p_ordenes: ordenes },
+    ordenes.length ? "Factura ligada a sus órdenes." : "La factura quedó sin orden.");
+}
+export async function asignarDestino(fd: FormData) {
+  const s = texto(fd, "sucursal_id");
+  await llamarFactura(fd, "asignar_destino_factura", { p_factura: texto(fd, "id"), p_sucursal: s === "oficina" || !s ? null : s }, "Destino guardado.");
+}
+export async function marcarRevisada(fd: FormData) {
+  await llamarFactura(fd, "marcar_factura_revisada", { p_id: texto(fd, "id"), p_nota: texto(fd, "nota") }, "Factura marcada como revisada.");
+}
+export async function cambiarVencimientoFactura(fd: FormData) {
+  await llamarFactura(fd, "cambiar_vencimiento", { p_id: texto(fd, "id"), p_fecha: texto(fd, "vence_el") || null }, "Vencimiento actualizado.");
+}
+export async function cancelarFacturaAccion(fd: FormData) {
+  await llamarFactura(fd, "cancelar_factura", { p_id: texto(fd, "id"), p_motivo: texto(fd, "motivo") }, "Factura cancelada.");
+}
