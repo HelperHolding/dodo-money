@@ -47,13 +47,19 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const { data: renglones } = ligadas.length
     ? await supabase.from("renglones_recibido").select("orden_id, descripcion, cantidad, precio, tasa_iva, recibido").in("orden_id", ligadas).returns<Renglon[]>()
     : { data: [] as Renglon[] };
-  // Todas las facturas vigentes ligadas a esas órdenes (para el cotejo del grupo).
+  // Todas las facturas vigentes ligadas a esas órdenes (para el cotejo del grupo), por su neto: los pagos no cuentan.
   const { data: delGrupo } = ligadas.length
-    ? await supabase.from("factura_ordenes").select("factura_id, facturas_saldo!inner(saldo, estado, tipo)").in("orden_id", ligadas)
-      .returns<{ factura_id: string; facturas_saldo: { saldo: number; estado: string; tipo: string } }[]>()
-    : { data: [] as { factura_id: string; facturas_saldo: { saldo: number; estado: string; tipo: string } }[] };
+    ? await supabase.from("factura_ordenes").select("factura_id, facturas_saldo!inner(neto, estado, tipo)").in("orden_id", ligadas)
+      .returns<{ factura_id: string; facturas_saldo: { neto: number; estado: string; tipo: string } }[]>()
+    : { data: [] as { factura_id: string; facturas_saldo: { neto: number; estado: string; tipo: string } }[] };
   const facturado = [...new Map((delGrupo ?? []).filter((x) => x.facturas_saldo.estado !== "cancelada" && x.facturas_saldo.tipo === "ingreso")
-    .map((x) => [x.factura_id, Number(x.facturas_saldo.saldo)])).values()].reduce((s, v) => s + v, 0);
+    .map((x) => [x.factura_id, Number(x.facturas_saldo.neto)])).values()].reduce((s, v) => s + v, 0);
+  // Las órdenes ya ligadas siempre aparecen en la lista, aunque no estén entre las 50 más recientes (guardar no las suelta).
+  const faltantes = ligadas.filter((oid) => !(candidatas ?? []).some((o) => o.id === oid));
+  const { data: ligadasViejas } = faltantes.length
+    ? await supabase.from("ordenes_compra").select("id, folio, estado, sucursales(nombre)").in("id", faltantes).returns<Orden[]>()
+    : { data: [] as Orden[] };
+  const opcionesOrden = [...(candidatas ?? []), ...(ligadasViejas ?? [])];
   const rs = renglones ?? [];
   const cotejo = cotejar({
     tieneOrdenes: ligadas.length > 0, ordenado: totalesOrden(rs).total, recibido: valorRecibido(rs),
@@ -107,8 +113,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
               <input type="hidden" name="id" value={f.id} />
               <fieldset className="campo">
                 <legend>Órdenes de compra de este proveedor</legend>
-                {!(candidatas ?? []).length && <p className="vacio">Este proveedor no tiene órdenes confirmadas.</p>}
-                {(candidatas ?? []).map((o) => (
+                {!opcionesOrden.length && <p className="vacio">Este proveedor no tiene órdenes confirmadas.</p>}
+                {opcionesOrden.map((o) => (
                   <label key={o.id}><input type="checkbox" name="ordenes" value={o.id} defaultChecked={ligadas.includes(o.id)} /> {o.folio} · {o.sucursales?.nombre ?? "Oficina"}{o.estado === "cerrada" ? " · cerrada" : ""}</label>
                 ))}
               </fieldset>

@@ -28,7 +28,7 @@ test("ingreso CFDI 4.0: encabezado, emisor, receptor, impuestos del comprobante 
     uuid: "6F2D9A2B-1C3E-4F5A-8B7C-9D0E1F2A3B4C", version: "4.0", serie: "A", folio: "1234", tipo: "ingreso", fecha: "2026-09-25",
     rfc_emisor: "LBA010203AB1", nombre_emisor: "LACTEOS & ABARROTES DEL BAJIO", regimen_emisor: "601", rfc_receptor: "DPM010203XY9",
     metodo_pago: "PPD", forma_pago: "03", moneda: "MXN", subtotal: 1000, descuento: 0, iva: 80, retenciones: 0, total: 1080,
-    uuid_relacionado: null,
+    uuid_relacionado: null, uuids_relacionados: [],
     conceptos: [
       { descripcion: "QUESO MOZZARELLA", cantidad: 10, unidad: "Kilogramo", valor_unitario: 50, importe: 500 },
       { descripcion: "CAJA PIZZA 35", cantidad: 100, unidad: "H87", valor_unitario: 5, importe: 500 },
@@ -71,4 +71,29 @@ test("rechazos con mensaje claro", () => {
   assert.equal(error(INGRESO.replace('TipoDeComprobante="I"', 'TipoDeComprobante="P"')), "Es un complemento de pago: se sube en Pagos.");
   assert.equal(error(INGRESO.replace('TipoDeComprobante="I"', 'TipoDeComprobante="T"')), "Un comprobante de tipo T no se registra como factura de proveedor.");
   assert.equal(error(INGRESO.replace('Moneda="MXN"', 'Moneda="USD"')), "La factura está en USD; por ahora solo se registran en pesos (MXN).");
+});
+
+test("la Addenda del proveedor no agrega conceptos ni impuestos", () => {
+  const xml = INGRESO
+    .replace(/<cfdi:Impuestos TotalImpuestosTrasladados[\s\S]*?<\/cfdi:Impuestos>/, "")
+    .replace("</cfdi:Comprobante>", `<cfdi:Addenda><prov:Datos><cfdi:Concepto Descripcion="FALSO" Importe="5"/><cfdi:Impuestos TotalImpuestosTrasladados="999"/></prov:Datos></cfdi:Addenda></cfdi:Comprobante>`);
+  const r = leerCfdi(xml);
+  assert.ok("cfdi" in r);
+  assert.equal(r.cfdi.conceptos.length, 2);
+  assert.equal(r.cfdi.iva, 0);
+});
+
+test("una nota de crédito que corrige varias facturas trae todas", () => {
+  const xml = INGRESO.replace('TipoDeComprobante="I"', 'TipoDeComprobante="E"')
+    .replace("<cfdi:Emisor", '<cfdi:CfdiRelacionados TipoRelacion="01"><cfdi:CfdiRelacionado UUID="11111111-2222-3333-4444-555555555555"/><cfdi:CfdiRelacionado UUID="aaaaaaaa-2222-3333-4444-555555555555"/></cfdi:CfdiRelacionados><cfdi:Emisor');
+  const r = leerCfdi(xml);
+  assert.ok("cfdi" in r);
+  assert.equal(r.cfdi.uuid_relacionado, "11111111-2222-3333-4444-555555555555");
+  assert.deepEqual(r.cfdi.uuids_relacionados, ["11111111-2222-3333-4444-555555555555", "AAAAAAAA-2222-3333-4444-555555555555"]);
+});
+
+test("un > dentro de un atributo no corta la etiqueta", () => {
+  const r = leerCfdi(INGRESO.replace('Descripcion="QUESO MOZZARELLA"', 'Descripcion="TUBO > 3M"'));
+  assert.ok("cfdi" in r);
+  assert.deepEqual(r.cfdi.conceptos[0], { descripcion: "TUBO > 3M", cantidad: 10, unidad: "Kilogramo", valor_unitario: 50, importe: 500 });
 });

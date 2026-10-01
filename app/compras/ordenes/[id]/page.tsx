@@ -70,10 +70,10 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const puedeEditar = acciones.includes("editar");
   const t = totalesOrden(rs);
   const { data: facturasLigadas } = await supabase.from("factura_ordenes")
-    .select("facturas_saldo!inner(id, serie, folio, uuid, saldo, estado, tipo)").eq("orden_id", o.id)
-    .returns<{ facturas_saldo: { id: string; serie: string | null; folio: string | null; uuid: string; saldo: number; estado: string; tipo: string } }[]>();
+    .select("facturas_saldo!inner(id, serie, folio, uuid, neto, estado, tipo)").eq("orden_id", o.id)
+    .returns<{ facturas_saldo: { id: string; serie: string | null; folio: string | null; uuid: string; neto: number; estado: string; tipo: string } }[]>();
   const facturas = (facturasLigadas ?? []).map((x) => x.facturas_saldo).filter((x) => x.estado !== "cancelada" && x.tipo === "ingreso");
-  const facturado = facturas.reduce((s, x) => s + Number(x.saldo), 0);
+  const facturado = facturas.reduce((s, x) => s + Number(x.neto), 0);
 
   // Para editar y copiar: artículos activos, proveedores activos, sucursales y últimos precios de este proveedor.
   const [articulos, proveedores, sucursales, precios] = await Promise.all([

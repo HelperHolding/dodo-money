@@ -54,3 +54,9 @@ export function avanceFacturacion(totalOrden: number, facturado: number): "nada"
 }
 
 export const baseArchivo = (nombre: string) => nombre.toLowerCase().replace(/\.(xml|pdf)$/, "");
+
+/** Ruta en el bucket: el folio fiscal (UUID) en mayúsculas; el almacenamiento no acepta Ñ ni acentos en las rutas. */
+export const rutaArchivoFactura = (uuid: string, extension: "xml" | "pdf") => `${uuid.toUpperCase()}.${extension}`;
+
+/** El archivo quedó de un intento anterior que no llegó a registrarse: se reutiliza (la ruta es única por UUID). */
+export const archivoYaSubido = (mensaje: string) => /already exists|duplicate/i.test(mensaje);

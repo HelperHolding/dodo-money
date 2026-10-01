@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { leerCfdi } from "@/lib/compras/cfdi";
-import { baseArchivo } from "@/lib/compras/facturas";
+import { archivoYaSubido, baseArchivo, rutaArchivoFactura } from "@/lib/compras/facturas";
+import { fechaTexto } from "@/lib/formato";
 import { normalizarRfc, rfcValido } from "@/lib/compras/proveedores";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
 import { clienteAdmin, volver } from "../servidor";
@@ -57,21 +58,32 @@ export async function subirFacturas(_previo: ResultadoSubida | null, fd: FormDat
       continue;
     }
     const { data: previa } = await supabase.from("facturas").select("id, creado_en").eq("uuid", cfdi.uuid).maybeSingle<{ id: string; creado_en: string }>();
-    if (previa) { resultados.push({ archivo: xml.name, ok: false, texto: `Ya se registró el ${previa.creado_en.slice(0, 10)}.`, id: previa.id }); continue; }
+    if (previa) { resultados.push({ archivo: xml.name, ok: false, texto: `Ya se registró el ${fechaTexto(previa.creado_en.slice(0, 10))}.`, id: previa.id }); continue; }
+    if (!altaProveedor) {
+      const { data: prov } = await supabase.from("proveedores").select("id").eq("rfc", cfdi.rfc_emisor).maybeSingle<{ id: string }>();
+      if (!prov) { resultados.push({ archivo: xml.name, ok: false, texto: `El proveedor con RFC ${cfdi.rfc_emisor} no está en la cartera.` }); continue; }
+    }
 
-    const carpeta = `${cfdi.rfc_emisor}/${cfdi.uuid}`;
-    const { error: errorXml } = await supabase.storage.from(BUCKET).upload(`${carpeta}.xml`, xml, { contentType: "application/xml", upsert: false });
-    if (errorXml) { resultados.push({ archivo: xml.name, ok: false, texto: `No se pudo subir el XML: ${errorXml.message}` }); continue; }
+    // Ruta única por folio fiscal: si quedó de un intento que no se registró, se reutiliza.
+    const rutaXml = rutaArchivoFactura(cfdi.uuid, "xml");
+    const { error: errorXml } = await supabase.storage.from(BUCKET).upload(rutaXml, xml, { contentType: "application/xml", upsert: false });
+    if (errorXml && !archivoYaSubido(errorXml.message)) { resultados.push({ archivo: xml.name, ok: false, texto: `No se pudo subir el XML: ${errorXml.message}` }); continue; }
     const pdf = pdfs.get(baseArchivo(xml.name));
     let pdfRuta: string | null = null;
-    if (pdf && pdf.size <= MAX_BYTES) {
-      const { error: errorPdf } = await supabase.storage.from(BUCKET).upload(`${carpeta}.pdf`, pdf, { contentType: "application/pdf", upsert: false });
-      if (!errorPdf) pdfRuta = `${carpeta}.pdf`;
+    let avisoPdf = "";
+    if (pdf && pdf.size > MAX_BYTES) avisoPdf = " El PDF pesa más de 5 MB y no se guardó.";
+    else if (pdf) {
+      const rutaPdf = rutaArchivoFactura(cfdi.uuid, "pdf");
+      const { error: errorPdf } = await supabase.storage.from(BUCKET).upload(rutaPdf, pdf, { contentType: "application/pdf", upsert: false });
+      if (!errorPdf || archivoYaSubido(errorPdf.message)) pdfRuta = rutaPdf;
+      else avisoPdf = ` El PDF no se pudo guardar: ${errorPdf.message}`;
     }
-    const { data: id, error } = await supabase.rpc("registrar_factura", { p_cfdi: cfdi, p_alta_proveedor: altaProveedor, p_xml: `${carpeta}.xml`, p_pdf: pdfRuta });
+    const { data: id, error } = await supabase.rpc("registrar_factura", { p_cfdi: cfdi, p_alta_proveedor: altaProveedor, p_xml: rutaXml, p_pdf: pdfRuta });
     if (error) { resultados.push({ archivo: xml.name, ok: false, texto: error.message }); continue; }
     const nombre = cfdi.tipo === "egreso" ? "Nota de crédito" : "Factura";
-    resultados.push({ archivo: xml.name, ok: true, texto: `${nombre} ${cfdi.serie ?? ""}${cfdi.folio ?? ""} de ${cfdi.nombre_emisor} registrada${pdfRuta ? " con PDF" : ""}.`, id: id as string });
+    const avisoVarias = cfdi.uuids_relacionados.length > 1
+      ? ` Corrige ${cfdi.uuids_relacionados.length} facturas: se restó completa de la primera; revisa los saldos.` : "";
+    resultados.push({ archivo: xml.name, ok: true, texto: `${nombre} ${cfdi.serie ?? ""}${cfdi.folio ?? ""} de ${cfdi.nombre_emisor} registrada${pdfRuta ? " con PDF" : ""}.${avisoVarias}${avisoPdf}`, id: id as string });
   }
   revalidatePath("/compras", "layout");
   return { resultados };

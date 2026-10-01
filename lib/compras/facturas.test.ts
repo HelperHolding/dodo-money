@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { avanceFacturacion, baseArchivo, cotejar, valorRecibido, venceEl, vencida } from "./facturas.ts";
+import { archivoYaSubido, avanceFacturacion, baseArchivo, cotejar, rutaArchivoFactura, valorRecibido, venceEl, vencida } from "./facturas.ts";
 
 test("vencimiento: PUE vence el mismo día; PPD y sin método suman los días de crédito", () => {
   assert.equal(venceEl("2026-09-25", 15, "PUE"), "2026-09-25");
@@ -45,4 +45,15 @@ test("emparejar XML y PDF por nombre", () => {
   assert.equal(baseArchivo("A-1234.XML"), "a-1234");
   assert.equal(baseArchivo("A-1234.pdf"), "a-1234");
   assert.equal(baseArchivo("factura sin extension"), "factura sin extension");
+});
+
+test("ruta del archivo: solo el folio fiscal (ASCII), sin el RFC que puede traer Ñ", () => {
+  assert.equal(rutaArchivoFactura("6F2D9A2B-1C3E-4F5A-8B7C-9D0E1F2A3B4C", "xml"), "6F2D9A2B-1C3E-4F5A-8B7C-9D0E1F2A3B4C.xml");
+  assert.match(rutaArchivoFactura("6f2d9a2b-1c3e-4f5a-8b7c-9d0e1f2a3b4c", "pdf"), /^[A-Z0-9-]+\.pdf$/);
+});
+
+test("un archivo que ya estaba en el almacenamiento (intento anterior) se reutiliza", () => {
+  assert.equal(archivoYaSubido("The resource already exists"), true);
+  assert.equal(archivoYaSubido("Duplicate"), true);
+  assert.equal(archivoYaSubido("new row violates row-level security policy"), false);
 });

@@ -6,6 +6,7 @@
 do $$
 declare
   v_a uuid; v_b uuid; v_suc uuid; v_prov uuid; v_art uuid; v_oc uuid; v_r uuid; v_f uuid; v_nc uuid; v_n int;
+  v_art2 uuid; v_oa uuid; v_ob uuid; v_fab uuid; v_fb uuid;
   v_hoy date := (now() at time zone 'America/Mexico_City')::date;
   v_insumo text := 'FEDCBA9876543210FEDCBA9876543210';
   v_ok text[] := '{}';
@@ -74,6 +75,7 @@ begin
   v_nc := registrar_factura(v_cfdi || jsonb_build_object('uuid', 'aaaaaaaa-0000-0000-0000-000000000003', 'tipo', 'egreso', 'total', 100, 'subtotal', 100,
                             'uuid_relacionado', 'AAAAAAAA-0000-0000-0000-000000000001'), false, 'x.xml', null);
   if saldo_factura(v_f) <> 900 then raise exception 'FALLÓ: la nota de crédito resta del saldo (saldo %)', saldo_factura(v_f); end if;
+  if neto_factura(v_f) <> 900 then raise exception 'FALLÓ: el neto facturado resta la nota de crédito'; end if;
   if saldo_factura(v_nc) <> 0 then raise exception 'FALLÓ: una nota de crédito no tiene saldo'; end if;
   begin
     perform ligar_factura_ordenes(v_nc, array[v_oc]);
@@ -93,6 +95,31 @@ begin
   if (select estado::text from ordenes_compra where id = v_oc) <> 'cerrada' then raise exception 'FALLÓ: recibida y facturada completa se cierra sola'; end if;
   if (select motivo from ordenes_compra where id = v_oc) <> 'Recibida y facturada' then raise exception 'FALLÓ: motivo del cierre automático'; end if;
   v_ok := array_append(v_ok, 'cierre automático al quedar recibida y facturada');
+
+  -- Una factura que cubre dos órdenes ($1,000 c/u) no las cierra si no cubre el total de ambas.
+  insert into articulos (nombre, unidad, tipo, tasa_iva, dodo_insumo_id) values ('Prueba factura harina', 'kg', 'consumible', '0', 'FEDCBA9876543210FEDCBA987654321A') returning id into v_art2;
+  insert into ordenes_compra (proveedor_id, sucursal_id) values (v_prov, v_suc) returning id into v_oa;
+  insert into orden_renglones (orden_id, articulo_id, descripcion, cantidad, precio, tasa_iva) values (v_oa, v_art, 'Queso', 10, 100, '0');
+  perform confirmar_orden(v_oa);
+  insert into ordenes_compra (proveedor_id, sucursal_id) values (v_prov, v_suc) returning id into v_ob;
+  insert into orden_renglones (orden_id, articulo_id, descripcion, cantidad, precio, tasa_iva) values (v_ob, v_art2, 'Harina', 10, 100, '0');
+  perform confirmar_orden(v_ob);
+  perform importar_recepciones_dodo('prueba2.xlsx', jsonb_build_array(jsonb_build_object('sucursal_id', v_suc, 'fecha', v_hoy + 1)),
+    jsonb_build_array(
+      jsonb_build_object('sucursal_id', v_suc, 'dodo_insumo_id', v_insumo, 'material', 'Queso', 'unidad', 'kg', 'fecha', v_hoy + 1, 'cantidad', 10, 'precio', 100),
+      jsonb_build_object('sucursal_id', v_suc, 'dodo_insumo_id', 'FEDCBA9876543210FEDCBA987654321A', 'material', 'Harina', 'unidad', 'kg', 'fecha', v_hoy + 1, 'cantidad', 10, 'precio', 100)));
+  if not (recepcion_completa(v_oa) and recepcion_completa(v_ob)) then raise exception 'FALLÓ: las dos órdenes de prueba deben quedar recibidas'; end if;
+  v_fab := registrar_factura(v_cfdi || jsonb_build_object('uuid', 'aaaaaaaa-0000-0000-0000-000000000005', 'total', 1200, 'subtotal', 1200), false, 'x.xml', null);
+  perform ligar_factura_ordenes(v_fab, array[v_oa, v_ob]);
+  if (select count(*) from ordenes_compra where id in (v_oa, v_ob) and estado = 'confirmada') <> 2 then
+    raise exception 'FALLÓ: $1,200 no cubren $2,000 de dos órdenes: no se cierra ninguna';
+  end if;
+  v_fb := registrar_factura(v_cfdi || jsonb_build_object('uuid', 'aaaaaaaa-0000-0000-0000-000000000006', 'total', 800, 'subtotal', 800), false, 'x.xml', null);
+  perform ligar_factura_ordenes(v_fb, array[v_ob]);
+  if (select count(*) from ordenes_compra where id in (v_oa, v_ob) and estado = 'cerrada') <> 2 then
+    raise exception 'FALLÓ: con $2,000 facturados las dos órdenes del grupo se cierran';
+  end if;
+  v_ok := array_append(v_ok, 'una factura de varias órdenes cierra el grupo solo cuando cubre el total');
 
   -- Revisar, vencimiento, cancelar
   begin

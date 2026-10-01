@@ -71,18 +71,26 @@ create table factura_ordenes (
 create index factura_ordenes_orden on factura_ordenes (orden_id);
 
 -- ─── Cálculos ───────────────────────────────────────────────────────────────
--- Saldo: total − notas de crédito vigentes que la corrigen (los pagos se restan en la fase 4). Un egreso no tiene saldo.
-create or replace function saldo_factura(p_id uuid) returns numeric
+-- Neto facturado: total − notas de crédito vigentes que la corrigen. Es lo que se coteja y lo que cuenta para facturar
+-- una orden; los pagos (fase 4) no lo cambian. Un egreso o una factura cancelada no tienen neto. Solo Compras lo ve.
+create or replace function neto_factura(p_id uuid) returns numeric
 language sql stable security definer set search_path = public as $$
-  select case when f.tipo = 'egreso' or f.estado = 'cancelada' then 0
+  select case when not ve_compras() then null
+              when f.tipo = 'egreso' or f.estado = 'cancelada' then 0
               else greatest(f.total - coalesce((select sum(n.total) from facturas n
                                                   where n.tipo = 'egreso' and n.estado <> 'cancelada' and n.uuid_relacionado = f.uuid), 0), 0)
          end
     from facturas f where f.id = p_id
 $$;
 
+-- Saldo por pagar: por ahora el neto; la fase 4 le resta los pagos.
+create or replace function saldo_factura(p_id uuid) returns numeric
+language sql stable security definer set search_path = public as $$
+  select neto_factura(p_id)
+$$;
+
 create view facturas_saldo with (security_invoker = true) as
-select f.*, saldo_factura(f.id) as saldo from facturas f;
+select f.*, saldo_factura(f.id) as saldo, neto_factura(f.id) as neto from facturas f;
 
 -- Total de una orden con IVA por renglón (como totalesOrden en lib/compras/ordenes.ts).
 create or replace function total_orden(p_orden uuid) returns numeric
@@ -94,7 +102,7 @@ $$;
 -- Facturado de una orden: facturas de ingreso vigentes ligadas, netas de sus notas de crédito.
 create or replace function facturado_orden(p_orden uuid) returns numeric
 language sql stable security definer set search_path = public as $$
-  select coalesce(sum(saldo_factura(f.id)), 0)
+  select coalesce(sum(neto_factura(f.id)), 0)
     from factura_ordenes fo join facturas f on f.id = fo.factura_id
    where fo.orden_id = p_orden and f.tipo = 'ingreso' and f.estado <> 'cancelada'
 $$;
@@ -105,8 +113,8 @@ language sql stable security definer set search_path = public as $$
      and not exists (select 1 from orden_renglones r where r.orden_id = p_orden and recibido_renglon(r.id) < r.cantidad)
 $$;
 
-revoke execute on function saldo_factura(uuid), total_orden(uuid), facturado_orden(uuid), recepcion_completa(uuid) from public, anon;
-grant execute on function saldo_factura(uuid), total_orden(uuid), facturado_orden(uuid), recepcion_completa(uuid) to authenticated;
+revoke execute on function neto_factura(uuid), saldo_factura(uuid), total_orden(uuid), facturado_orden(uuid), recepcion_completa(uuid) from public, anon;
+grant execute on function neto_factura(uuid), saldo_factura(uuid), total_orden(uuid), facturado_orden(uuid), recepcion_completa(uuid) to authenticated;
 
 -- ─── Seguridad por renglón ──────────────────────────────────────────────────
 alter table empresa            enable row level security;
@@ -183,7 +191,7 @@ end $$;
 -- ─── Ligar a órdenes (y cierre automático) ──────────────────────────────────
 create or replace function ligar_factura_ordenes(p_factura uuid, p_ordenes uuid[]) returns void
 language plpgsql security definer set search_path = public as $$
-declare f facturas; v_orden uuid; v_folio text;
+declare f facturas; v_grupo uuid[]; v_total numeric; v_facturado numeric;
 begin
   perform exigir_admin_compras();
   select * into f from facturas where id = p_factura for update;
@@ -198,14 +206,34 @@ begin
   delete from factura_ordenes where factura_id = p_factura;
   insert into factura_ordenes (factura_id, orden_id) select p_factura, unnest(coalesce(p_ordenes, '{}'));
 
-  foreach v_orden in array coalesce(p_ordenes, '{}') loop
-    if (select estado from ordenes_compra where id = v_orden) = 'confirmada'
-       and recepcion_completa(v_orden) and facturado_orden(v_orden) + 1 >= total_orden(v_orden) then
-      update ordenes_compra set estado = 'cerrada', cerrada_por = auth.uid(), cerrada_en = now(), motivo = 'Recibida y facturada'
-       where id = v_orden returning folio into v_folio;
-      insert into orden_historial (orden_id, evento, nota) values (v_orden, 'cerrada', 'Recibida y facturada');
+  -- Cierre automático por grupo: estas órdenes y todas las que comparten alguna factura vigente con ellas.
+  -- Se cierran juntas solo si todas están recibidas completas y lo facturado (neto, sin repetir facturas) cubre su total.
+  with recursive grupo(orden_id) as (
+    select unnest(coalesce(p_ordenes, '{}'))
+    union
+    select fo2.orden_id
+      from grupo g
+      join factura_ordenes fo on fo.orden_id = g.orden_id
+      join facturas fx on fx.id = fo.factura_id and fx.tipo = 'ingreso' and fx.estado <> 'cancelada'
+      join factura_ordenes fo2 on fo2.factura_id = fo.factura_id
+  )
+  select array_agg(orden_id) into v_grupo from grupo;
+
+  if coalesce(array_length(v_grupo, 1), 0) > 0 and not exists (select 1 from unnest(v_grupo) o(id) where not recepcion_completa(o.id)) then
+    select coalesce(sum(total_orden(o.id)), 0) into v_total from unnest(v_grupo) o(id);
+    select coalesce(sum(neto_factura(fx.id)), 0) into v_facturado
+      from facturas fx
+     where fx.tipo = 'ingreso' and fx.estado <> 'cancelada'
+       and exists (select 1 from factura_ordenes fo where fo.factura_id = fx.id and fo.orden_id = any(v_grupo));
+    if v_facturado + 1 >= v_total then
+      with cerradas as (
+        update ordenes_compra set estado = 'cerrada', cerrada_por = auth.uid(), cerrada_en = now(), motivo = 'Recibida y facturada'
+         where id = any(v_grupo) and estado = 'confirmada'
+        returning id
+      )
+      insert into orden_historial (orden_id, evento, nota) select id, 'cerrada', 'Recibida y facturada' from cerradas;
     end if;
-  end loop;
+  end if;
   insert into orden_historial (orden_id, evento, nota)
   select unnest(coalesce(p_ordenes, '{}')), 'facturada', coalesce(f.serie || '-', '') || coalesce(f.folio, f.uuid);
 end $$;
