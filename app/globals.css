@@ -548,3 +548,9 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   .marco { display: block; }
   .lateral, .franja-movil, .lateral-velo { display: none; }
 }
+
+/* ─── Efectivo a corporativo ─── */
+.nota-estado { display: block; margin-top: 4px; font-size: 0.85rem; color: var(--alerta-texto); overflow-wrap: anywhere; }
+.acciones-salida { display: flex; flex-direction: column; gap: 12px; }
+.form-motivo { display: flex; flex-wrap: wrap; gap: 8px; }
+.form-motivo input:not([type="hidden"]) { flex: 1 1 200px; min-width: 0; }

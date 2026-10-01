@@ -5,6 +5,8 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { alertasDeSucursal, fechaElegida, ordenarSucursales, type Alerta } from "@/lib/corporativo";
 import { diaOperativoMX } from "@/lib/franjas";
 import { hora, hoyCalendarioMX, pesos } from "@/lib/formato";
+import { resumenEnCamino, type Recepcion } from "@/lib/salidas";
+import type { EstadoMovimiento } from "@/lib/tipos";
 import { verSucursal } from "./actions";
 import { datosCorporativo } from "./datos";
 
@@ -19,10 +21,14 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
 
   const datos = await datosCorporativo(supabase, fecha, ahora);
   const hoyCalendario = hoyCalendarioMX();
-  const [{ data: porPagar }, { data: pagosMes }] = await Promise.all([
+  const [{ data: porPagar }, { data: pagosMes }, { data: salidas }] = await Promise.all([
     supabase.from("facturas_saldo").select("id, saldo, vence_el, pago_programado_el, estado").eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).returns<PorPagar[]>(),
     supabase.from("pagos").select("fecha, monto, anulado_en").gte("fecha", `${hoyCalendario.slice(0, 7)}-01`).returns<{ fecha: string; monto: number; anulado_en: string | null }[]>(),
+    supabase.from("movimientos").select("estado, recepcion, monto").eq("tipo", "salida_corporativo")
+      .or("estado.eq.pendiente,and(estado.eq.confirmado,recepcion.is.null)")
+      .returns<{ estado: EstadoMovimiento; recepcion: Recepcion | null; monto: number }[]>(),
   ]);
+  const efectivo = resumenEnCamino(salidas ?? []);
   const proveedoresResumen = resumenPagos(porPagar ?? [], (pagosMes ?? []).map((p) => ({ fecha: p.fecha, monto: Number(p.monto), anulado: !!p.anulado_en })), hoyCalendario);
   const filas = ordenarSucursales(datos.map((d) => ({ ...d, alertas: alertasDeSucursal(d, fecha < hoy) })));
   const conAlertas = filas.filter((f) => f.alertas.length > 0).length;
@@ -53,6 +59,17 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
           <div className="saldo"><span>Esta semana</span><span className="saldo-monto">{pesos(proveedoresResumen.semana)}</span></div>
         </div>
         <Link href="/compras/pagos">Ver calendario de pagos</Link>
+      </section>
+
+      <section className="seccion" aria-labelledby="t-efectivo">
+        <h2 id="t-efectivo">Efectivo por recibir</h2>
+        <div className="rejilla">
+          <div className="saldo" style={efectivo.cuantas > 0 ? { borderLeftColor: "var(--alerta)" } : undefined}>
+            <span>En camino ({efectivo.cuantas})</span><span className="saldo-monto">{pesos(efectivo.total)}</span>
+          </div>
+          <div className="saldo"><span>Por recoger</span><span className="saldo-monto">{efectivo.porRecoger}</span></div>
+        </div>
+        <Link href="/efectivo">Recibir efectivo</Link>
       </section>
 
       {!filas.length ? <p className="vacio">No hay sucursales.</p> : (

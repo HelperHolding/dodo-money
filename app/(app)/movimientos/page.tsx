@@ -2,6 +2,7 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto } from "@/lib/contexto";
 import { hora, hoyMX, pesos, rangoDiaMX } from "@/lib/formato";
+import { CLASE_ESTADO_SALIDA, estadoSalida, NOMBRE_ESTADO_SALIDA } from "@/lib/salidas";
 import { NOMBRE_MOVIMIENTO, type Movimiento } from "@/lib/tipos";
 import { confirmarMovimiento, rechazarMovimiento } from "./actions";
 import { FormMovimiento } from "./FormMovimiento";
@@ -48,7 +49,9 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
                     <td data-label="Folio">{m.folio ?? ""}</td>
                     <td data-label="Registró">{persona.get(m.registrado_por)}</td>
                     <td data-label="Confirmó">
-                      {m.estado === "pendiente" && m.registrado_por !== perfil.id && !soloLectura ? (
+                      {m.estado === "pendiente" && m.tipo === "salida_corporativo" && perfil.rol !== "admin" ? (
+                        "Espera al admin"
+                      ) : m.estado === "pendiente" && m.registrado_por !== perfil.id && !soloLectura ? (
                         <div className="acciones">
                           <form action={confirmarMovimiento}>
                             <input type="hidden" name="id" value={m.id} />
@@ -61,11 +64,23 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
                             <BotonEnviar className="boton boton-alerta" pendiente="…" confirmar="¿Rechazar este movimiento? No se puede deshacer; habría que registrarlo de nuevo.">Rechazar</BotonEnviar>
                           </form>
                         </div>
+                      ) : m.tipo === "salida_corporativo" && m.estado === "confirmado" && m.confirmado_por ? (
+                        `Recogió ${persona.get(m.confirmado_por) ?? "un admin"}`
                       ) : (
                         m.confirmado_por ? persona.get(m.confirmado_por) : ""
                       )}
                     </td>
-                    <td data-label="Estado"><span className={`estado estado-${m.estado}`}>{m.estado}</span></td>
+                    <td data-label="Estado">
+                      {m.tipo === "salida_corporativo" ? (() => {
+                        const e = estadoSalida(m);
+                        return (
+                          <>
+                            <span className={`estado estado-${CLASE_ESTADO_SALIDA[e]}`}>{NOMBRE_ESTADO_SALIDA[e]}</span>
+                            {e === "no_cuadro" && m.nota_recepcion ? <small className="nota-estado">{m.nota_recepcion}</small> : null}
+                          </>
+                        );
+                      })() : <span className={`estado estado-${m.estado}`}>{m.estado}</span>}
+                    </td>
                     <td data-label="Monto" className="monto">{pesos(m.monto)}</td>
                   </tr>
                 ))}

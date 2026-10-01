@@ -13,7 +13,7 @@ const AYUDA: Record<TipoMovimiento, string> = {
   apertura: "El fondo con el que arranca la caja de venta sale de la bóveda.",
   retiro_boveda: "Cuando el cajón pasa del límite o al cerrar el turno, el excedente va a la bóveda.",
   cambio_morralla: "Billetes por monedas: ninguna caja cambia su total. Registra el monto intercambiado.",
-  salida_corporativo: "Todo lo que sale de la bóveda se entrega a corporativo con su recibo. Lo confirma el gerente.",
+  salida_corporativo: "Todo lo que sale de la bóveda se entrega a corporativo con su recibo. Lo recoge un admin y lo recibe corporativo.",
   reposicion_caja_chica: "La caja chica se repone con dinero de corporativo, nunca con efectivo de ventas.",
 };
 

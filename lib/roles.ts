@@ -32,6 +32,11 @@ export const puedeVerCompras = (rol: Rol) => rol === "admin" || rol === "corpora
 export const puedeEditarCompras = (rol: Rol) => rol === "admin";
 /** Confirmar lo recibido de activos fijos, servicios y otros (los consumibles se reciben en Dodo IS). */
 export const puedeRecibirCompras = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
+/** Salidas de efectivo a corporativo de todas las sucursales: un admin las recoge y corporativo las recibe. */
+export const puedeVerEfectivo = (rol: Rol) => rol === "admin" || rol === "corporativo";
+/** Aceptar o rechazar el efectivo que llega a corporativo (la única acción que corporativo puede hacer). */
+export const puedeRecibirEfectivo = esCorporativo;
+
 const ENLACES_SUCURSAL: readonly Enlace[] = [
   { href: "/arqueo", texto: "Arqueo de turno" },
   { href: "/movimientos", texto: "Movimientos" },
@@ -55,6 +60,9 @@ export function menuLateral(rol: Rol): Menu {
       ...(puedeRecibirCompras(rol) ? [{ href: "/recepciones", texto: "Recepciones" }] : []),
     ],
   }];
+  if (puedeVerEfectivo(rol)) {
+    grupos.push({ titulo: "Efectivo", enlaces: [{ href: "/efectivo", texto: "Salidas a corporativo" }] });
+  }
   if (puedeVerVentas(rol)) {
     grupos.push({
       titulo: "Ventas",

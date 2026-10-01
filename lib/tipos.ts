@@ -57,6 +57,10 @@ export interface Movimiento {
   registrado_por: string;
   confirmado_por: string | null;
   creado_en: string;
+  /** Solo salidas a corporativo: la recepción en corporativo después de que un admin la recoge. */
+  recepcion: "aceptada" | "rechazada" | null;
+  recibido_por: string | null;
+  nota_recepcion: string | null;
 }
 
 export interface Arqueo {

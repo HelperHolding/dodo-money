@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
-  puedeGestionar, puedeImportarVentas, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
+  puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeVerEfectivo, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
 } from "./roles.ts";
 
 test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () => {
@@ -64,8 +64,8 @@ test("menú lateral: cada puesto ve solo sus grupos", () => {
   assert.deepEqual(grupos("operacion"), ["Sucursal"]);
   assert.deepEqual(grupos("encargado"), ["Sucursal"]);
   assert.deepEqual(grupos("gerente"), ["Sucursal", "Ventas"]);
-  assert.deepEqual(grupos("admin"), ["Sucursal", "Ventas", "Compras"]);
-  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Ventas", "Compras"]);
+  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras"]);
+  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras"]);
 });
 
 test("menú lateral: Inicio arriba; corporativo empieza en la vista general", () => {
@@ -101,6 +101,17 @@ test("enlaceActivo elige la ruta más larga de todo el menú", () => {
   assert.equal(enlaceActivo("/compras/proveedores/abc", todos), "/compras");
   assert.equal(enlaceActivo("/compras/ordenes/abc", todos), "/compras/ordenes");
   assert.equal(enlaceActivo("/otra", todos), undefined);
+});
+
+test("efectivo a corporativo: admin y corporativo lo ven; solo corporativo recibe", () => {
+  for (const rol of ["admin", "corporativo"] as const) {
+    assert.equal(puedeVerEfectivo(rol), true);
+    assert.deepEqual(grupo(rol, "Efectivo"), ["/efectivo"]);
+  }
+  for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerEfectivo(rol), false);
+  assert.equal(puedeRecibirEfectivo("corporativo"), true);
+  for (const rol of ["operacion", "encargado", "gerente", "admin"] as const) assert.equal(puedeRecibirEfectivo(rol), false);
+  assert.equal(grupoAbierto(menuLateral("admin"), "/efectivo"), "Efectivo");
 });
 
 test("grupoAbierto: se abre el grupo de la página actual", () => {
