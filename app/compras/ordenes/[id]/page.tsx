@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { avanceFacturacion } from "@/lib/compras/facturas";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
@@ -31,6 +32,8 @@ const CLAVE_EVENTO: Record<string, string> = {
   creada: "Creada", editada: "Editada", enviada: "Enviada al proveedor", confirmada: "Confirmada como orden de compra", copiada: "Creada como alternativa",
   cancelada: "Cancelada", cerrada: "Cerrada", recibido: "Recibido en sucursal", "recepción anulada": "Recepción anulada",
 };
+
+const NOMBRE_AVANCE_FACTURA = { nada: "Sin facturar", parcial: "Facturada en parte", completa: "Facturada completa" } as const;
 
 export default async function DetalleOrden({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> }) {
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
@@ -66,6 +69,11 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const acciones = edita ? accionesDe(o.estado, hayRecepciones) : [];
   const puedeEditar = acciones.includes("editar");
   const t = totalesOrden(rs);
+  const { data: facturasLigadas } = await supabase.from("factura_ordenes")
+    .select("facturas_saldo!inner(id, serie, folio, uuid, saldo, estado, tipo)").eq("orden_id", o.id)
+    .returns<{ facturas_saldo: { id: string; serie: string | null; folio: string | null; uuid: string; saldo: number; estado: string; tipo: string } }[]>();
+  const facturas = (facturasLigadas ?? []).map((x) => x.facturas_saldo).filter((x) => x.estado !== "cancelada" && x.tipo === "ingreso");
+  const facturado = facturas.reduce((s, x) => s + Number(x.saldo), 0);
 
   // Para editar y copiar: artículos activos, proveedores activos, sucursales y últimos precios de este proveedor.
   const [articulos, proveedores, sucursales, precios] = await Promise.all([
@@ -90,6 +98,13 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
           <dt>IVA</dt><dd>{pesos(t.iva)}</dd>
           <dt>Total</dt><dd><strong>{pesos(t.total)}</strong></dd>
           {o.estado === "confirmada" && <><dt>Recepción</dt><dd>{NOMBRE_AVANCE[avanceOrden(rs)]}</dd></>}
+          {(o.estado === "confirmada" || o.estado === "cerrada") && (
+            <><dt>Facturación</dt><dd>{NOMBRE_AVANCE_FACTURA[avanceFacturacion(t.total, facturado)]} · {pesos(facturado)} de {pesos(t.total)}
+              {facturas.map((x) => <Fragment key={x.id}> · <Link href={`/compras/facturas/${x.id}`}>{x.serie ?? ""}{x.folio ?? x.uuid.slice(0, 8)}</Link></Fragment>)}</dd></>
+          )}
+          {o.estado === "confirmada" && avanceOrden(rs) === "completa" && avanceFacturacion(t.total, facturado) === "completa" && (
+            <><dt>Lista</dt><dd>Recibida y facturada: ya se puede cerrar.</dd></>
+          )}
           {o.notas && <><dt>Notas</dt><dd>{o.notas}</dd></>}
         </dl>
         <div className="acciones">

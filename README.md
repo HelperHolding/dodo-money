@@ -289,3 +289,7 @@ Diseño completo (fases 2–4: órdenes, facturas XML, pagos y calendario): `doc
 - **Recepciones**: los consumibles llegan del *Incoming supplies* de Dodo IS (Compras → Recepciones) y se ligan solos al renglón de la orden confirmada de la misma sucursal y el mismo insumo, entre la confirmación y 7 días después; lo que no se liga queda "Por revisar". Activos fijos, servicios y otros los registra el gerente o encargado en **Recepciones** de su sucursal (sin ver precios), con foto opcional. Una orden con algo recibido ya no se cancela: se cierra con motivo.
 
 Migración `0012_compras_ordenes.sql` y su prueba `supabase/pruebas/0012_compras_ordenes.sql`.
+
+- **Facturas** (fase 3): se suben los XML del CFDI (3.3 o 4.0) y su PDF con el mismo nombre, varios a la vez. Se valida que sea para el RFC de la empresa (Compras → Facturas → Datos de la empresa), que el folio fiscal no se repita y que esté en pesos; un proveedor fuera de la cartera se da de alta con los datos del XML. Las notas de crédito (egreso) restan del saldo de la factura que corrigen. Cada factura se liga a una o varias órdenes del mismo proveedor (o queda sin orden con su sucursal u Oficina) y se coteja orden ↔ recibido ↔ facturado (±$1); si no cuadra, se marca como revisada con una nota. Al ligar, la orden recibida y facturada completa se cierra sola. Vencimiento = fecha + días de crédito (PUE vence el mismo día), editable.
+
+Migración `0013_compras_facturas.sql` y su prueba `supabase/pruebas/0013_compras_facturas.sql`.
