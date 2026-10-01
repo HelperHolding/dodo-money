@@ -79,3 +79,41 @@ export function leerCfdi(xml: string): { cfdi: Cfdi } | { error: string } {
     },
   };
 }
+
+/** Complemento de pago (CFDI tipo P, Pagos 1.0 o 2.0): qué facturas paga y cuánto. */
+export type ComplementoPago = {
+  uuid: string; fecha: string; rfc_emisor: string; nombre_emisor: string; rfc_receptor: string; monto: number;
+  documentos: { uuid: string; monto_pagado: number; parcialidad: number | null }[];
+};
+
+export function leerComplementoPago(xml: string): { complemento: ComplementoPago } | { error: string } {
+  const texto = xml.replace(/^\uFEFF/, "").replace(/<(?:[\w-]+:)?Addenda\b[\s\S]*?<\/(?:[\w-]+:)?Addenda>/g, "");
+  const comprobante = etiqueta(texto, "Comprobante");
+  if (!comprobante) return { error: NO_ES_CFDI };
+  const letra = atributo(comprobante, "TipoDeComprobante");
+  if (letra !== "P") return { error: `No es un complemento de pago (es tipo ${letra ?? "?"}): las facturas se suben en Facturas.` };
+  const uuid = atributo(etiqueta(texto, "TimbreFiscalDigital"), "UUID");
+  if (!uuid) return { error: "El complemento no está timbrado (no trae folio fiscal UUID)." };
+  const emisor = etiqueta(texto, "Emisor");
+  const receptor = etiqueta(texto, "Receptor");
+  if (!emisor || !receptor) return { error: NO_ES_CFDI };
+
+  const pagos = etiquetas(texto, "Pago");
+  const documentos = etiquetas(texto, "DoctoRelacionado").map((d) => ({
+    uuid: (atributo(d, "IdDocumento") ?? "").toUpperCase(),
+    monto_pagado: monto(d, "ImpPagado"),
+    parcialidad: atributo(d, "NumParcialidad") ? Number(atributo(d, "NumParcialidad")) : null,
+  })).filter((d) => d.uuid);
+  if (!documentos.length) return { error: "El complemento no dice qué facturas paga." };
+
+  const fechaPago = atributo(pagos[0], "FechaPago") ?? atributo(comprobante, "Fecha") ?? "";
+  return {
+    complemento: {
+      uuid: uuid.toUpperCase(), fecha: fechaPago.slice(0, 10),
+      rfc_emisor: (atributo(emisor, "Rfc") ?? "").toUpperCase(), nombre_emisor: atributo(emisor, "Nombre") ?? "",
+      rfc_receptor: (atributo(receptor, "Rfc") ?? "").toUpperCase(),
+      monto: Math.round(pagos.reduce((s, p) => s + monto(p, "Monto"), 0) * 100) / 100,
+      documentos,
+    },
+  };
+}
