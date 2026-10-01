@@ -73,6 +73,7 @@ export function enlacesCompras(rol: Rol): Enlace[] {
     { href: "/compras/ordenes", texto: "Órdenes" },
     { href: "/compras/recepciones", texto: "Recepciones" },
     { href: "/compras/facturas", texto: "Facturas" },
+    { href: "/compras/pagos", texto: "Pagos" },
     ...(puedeEditarCompras(rol) ? [{ href: "/compras/cargar", texto: "Cargar Excel" }] : []),
   ];
 }

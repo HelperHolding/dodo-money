@@ -66,9 +66,9 @@ test("compras: admin edita, corporativo consulta, sucursal no entra", () => {
 
 test("menú de compras por rol", () => {
   assert.deepEqual(enlacesCompras("admin").map((e) => e.href),
-    ["/", "/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/cargar"]);
+    ["/", "/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos", "/compras/cargar"]);
   assert.deepEqual(enlacesCompras("corporativo").map((e) => e.href),
-    ["/corporativo", "/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas"]);
+    ["/corporativo", "/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos"]);
   assert.equal(enlaceActivo("/compras/proveedores/abc", enlacesCompras("admin")), "/compras");
   assert.equal(enlaceActivo("/compras/ordenes/abc", enlacesCompras("admin")), "/compras/ordenes");
 });
