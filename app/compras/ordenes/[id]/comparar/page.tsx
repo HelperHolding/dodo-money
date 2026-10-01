@@ -23,7 +23,7 @@ export default async function Comparar({ params, searchParams }: { params: Promi
   const ids = (ordenes ?? []).map((o) => o.id);
   const { data: renglones } = await supabase.from("orden_renglones").select("orden_id, articulo_id, descripcion, cantidad, precio, tasa_iva")
     .in("orden_id", ids).order("creado_en").returns<Renglon[]>();
-  const cot = (ordenes ?? []).map((o) => ({ id: o.id, renglones: (renglones ?? []).filter((r) => r.orden_id === o.id) }));
+  const cot = (ordenes ?? []).map((o) => ({ id: o.id, cancelada: o.estado === "cancelada", renglones: (renglones ?? []).filter((r) => r.orden_id === o.id) }));
   const { totales, masBarata, mejorPorArticulo } = compararCotizaciones(cot);
   const edita = puedeEditarCompras(perfil.rol);
 

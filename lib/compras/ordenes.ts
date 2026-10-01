@@ -58,21 +58,21 @@ export function leerRenglon(valor: (campo: string) => string): { datos: { articu
   return { datos: { articulo_id, cantidad: Math.round(cantidad * 1000) / 1000, precio: r2(precio) } };
 }
 
-export type Cotizacion = { id: string; renglones: { articulo_id: string; cantidad: number; precio: number; tasa_iva: TasaIva }[] };
+export type Cotizacion = { id: string; cancelada?: boolean; renglones: { articulo_id: string; cantidad: number; precio: number; tasa_iva: TasaIva }[] };
 
-/** Más barata = menor total entre las que tienen precio en todos sus renglones. Empates: la primera. */
+/** Más barata = menor total entre las vigentes (no canceladas) con precio en todos sus renglones. Empates: la primera. */
 export function compararCotizaciones(cotizaciones: readonly Cotizacion[]) {
   const totales = new Map(cotizaciones.map((c) => [c.id, totalesOrden(c.renglones).total]));
   let masBarata: string | null = null;
   for (const c of cotizaciones) {
-    if (!c.renglones.length || c.renglones.some((r) => !(r.precio > 0))) continue;
+    if (c.cancelada || !c.renglones.length || c.renglones.some((r) => !(r.precio > 0))) continue;
     if (masBarata === null || totales.get(c.id)! < totales.get(masBarata)!) masBarata = c.id;
   }
   const mejorPrecio = new Map<string, number>();
   const mejorPorArticulo = new Map<string, string>();
   for (const c of cotizaciones) {
     for (const r of c.renglones) {
-      if (!(r.precio > 0)) continue;
+      if (c.cancelada || !(r.precio > 0)) continue;
       if (!mejorPrecio.has(r.articulo_id) || r.precio < mejorPrecio.get(r.articulo_id)!) {
         mejorPrecio.set(r.articulo_id, r.precio);
         mejorPorArticulo.set(r.articulo_id, c.id);
@@ -80,4 +80,18 @@ export function compararCotizaciones(cotizaciones: readonly Cotizacion[]) {
     }
   }
   return { totales, masBarata, mejorPorArticulo };
+}
+
+/** El precio que registró Dodo IS no coincide con el de la orden (se ignoran centavos de redondeo y precios en 0). */
+export const precioDistinto = (precioOrden: number, precioDodo: number) =>
+  Number(precioDodo) > 0 && Math.abs(Number(precioOrden) - Number(precioDodo)) > 0.005;
+
+/** Sin estado: las abiertas (todo menos canceladas y cerradas). `sucursal` "oficina" = órdenes sin sucursal. */
+export function filtrarOrdenes<T extends { estado: EstadoOrden; proveedor_id: string; sucursal_id: string | null }>(
+  ordenes: readonly T[], filtro: { estado?: EstadoOrden; proveedor?: string; sucursal?: string },
+): T[] {
+  return ordenes.filter((o) =>
+    (filtro.estado ? o.estado === filtro.estado : o.estado !== "cancelada" && o.estado !== "cerrada")
+    && (!filtro.proveedor || o.proveedor_id === filtro.proveedor)
+    && (!filtro.sucursal || (filtro.sucursal === "oficina" ? o.sucursal_id === null : o.sucursal_id === filtro.sucursal)));
 }

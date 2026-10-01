@@ -346,7 +346,7 @@ end $$;
 -- ─── Recepciones en la app (activos fijos, servicios y otros) ───────────────
 create or replace function recibir_renglon(p_renglon uuid, p_cantidad numeric, p_fecha date, p_foto text) returns uuid
 language plpgsql security definer set search_path = public as $$
-declare o ordenes_compra; v_tipo categoria_compra; v_id uuid;
+declare o ordenes_compra; v_tipo categoria_compra; v_id uuid; v_carpeta uuid;
 begin
   if mi_rol()::text not in ('encargado', 'gerente', 'admin') then
     raise exception 'Solo encargado, gerente o administrador reciben compras.';
@@ -359,8 +359,12 @@ begin
   if v_tipo = 'consumible' then raise exception 'Los consumibles se reciben en Dodo IS'; end if;
   if p_cantidad is null or p_cantidad <= 0 then raise exception 'La cantidad debe ser mayor a cero'; end if;
   if p_fecha is null or p_fecha > hoy_mx() then raise exception 'La fecha de recepción no puede ser futura'; end if;
-  if p_foto is not null and (o.sucursal_id is null or p_foto not like o.sucursal_id::text || '/%') then
-    raise exception 'La foto no es de esta sucursal';
+  -- La foto vive en <sucursal>/recepciones/…; en órdenes de Oficina, en la carpeta de la sucursal del admin que recibe.
+  if p_foto is not null then
+    v_carpeta := coalesce(o.sucursal_id, mi_sucursal());
+    if v_carpeta is null or p_foto not like v_carpeta::text || '/recepciones/%' then
+      raise exception 'La foto no es de esta sucursal';
+    end if;
   end if;
   insert into recepciones_app (orden_renglon_id, cantidad, fecha, foto_path) values (p_renglon, p_cantidad, p_fecha, p_foto)
   returning id into v_id;
@@ -399,3 +403,10 @@ language sql stable security definer set search_path = public as $$
      and (o.sucursal_id = mi_sucursal() or (mi_rol()::text = 'admin' and o.sucursal_id is null))
    order by o.confirmada_en, o.folio, r.creado_en, r.id
 $$;
+
+-- ─── Permisos de ejecución ──────────────────────────────────────────────────
+-- ligar_recepciones_dodo escribe: solo la llaman otras funciones (corren como dueño), nunca la API.
+revoke execute on function ligar_recepciones_dodo() from public, anon, authenticated;
+-- Las de solo lectura las usan la vista renglones_recibido y las pantallas: solo usuarios con sesión.
+revoke execute on function recibido_renglon(uuid), hay_recepciones(uuid) from public, anon;
+grant execute on function recibido_renglon(uuid), hay_recepciones(uuid) to authenticated;

@@ -5,9 +5,10 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
+import { BUCKET_FOTOS } from "@/lib/fotos";
 import { fechaTexto, pesos } from "@/lib/formato";
 import {
-  accionesDe, avanceOrden, avanceRenglon, NOMBRE_AVANCE, NOMBRE_ESTADO_ORDEN, recibidoDeMas, totalesOrden, type EstadoOrden,
+  accionesDe, avanceOrden, avanceRenglon, NOMBRE_AVANCE, NOMBRE_ESTADO_ORDEN, precioDistinto, recibidoDeMas, totalesOrden, type EstadoOrden,
 } from "@/lib/compras/ordenes";
 import { NOMBRE_TASA_IVA, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
@@ -23,7 +24,7 @@ type Orden = {
 };
 type Renglon = { id: string; articulo_id: string; descripcion: string; cantidad: number; precio: number; tasa_iva: TasaIva; recibido: number; articulos: { unidad: string; tipo: string } | null };
 type RecDodo = { id: string; orden_renglon_id: string; fecha: string; cantidad: number; unidad: string; precio: number };
-type RecApp = { id: string; orden_renglon_id: string; fecha: string; cantidad: number; anulada_en: string | null; motivo_anulacion: string | null };
+type RecApp = { id: string; orden_renglon_id: string; fecha: string; cantidad: number; anulada_en: string | null; motivo_anulacion: string | null; foto_path: string | null };
 type Evento = { id: number; evento: string; nota: string | null; en: string; perfiles: { nombre: string } | null };
 
 const CLAVE_EVENTO: Record<string, string> = {
@@ -51,9 +52,14 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const [{ data: recDodo }, { data: recApp }] = ids.length
     ? await Promise.all([
       supabase.from("recepciones_dodo").select("id, orden_renglon_id, fecha, cantidad, unidad, precio").in("orden_renglon_id", ids).order("fecha").returns<RecDodo[]>(),
-      supabase.from("recepciones_app").select("id, orden_renglon_id, fecha, cantidad, anulada_en, motivo_anulacion").in("orden_renglon_id", ids).order("recibido_en").returns<RecApp[]>(),
+      supabase.from("recepciones_app").select("id, orden_renglon_id, fecha, cantidad, anulada_en, motivo_anulacion, foto_path").in("orden_renglon_id", ids).order("recibido_en").returns<RecApp[]>(),
     ])
     : [{ data: [] as RecDodo[] }, { data: [] as RecApp[] }];
+
+  // Fotos de recepción: enlaces firmados por una hora (el bucket es privado).
+  const rutasFoto = (recApp ?? []).flatMap((x) => (x.foto_path ? [x.foto_path] : []));
+  const { data: firmadas } = rutasFoto.length ? await supabase.storage.from(BUCKET_FOTOS).createSignedUrls(rutasFoto, 3600) : { data: [] };
+  const urlFoto = new Map((firmadas ?? []).flatMap((f) => (f.path && f.signedUrl ? [[f.path, f.signedUrl] as const] : [])));
 
   const edita = puedeEditarCompras(perfil.rol);
   const hayRecepciones = rs.some((r) => Number(r.recibido) > 0);
@@ -100,9 +106,10 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
             const avance = avanceRenglon(Number(r.cantidad), Number(r.recibido));
             const deMas = recibidoDeMas(Number(r.cantidad), Number(r.recibido));
             const dodo = (recDodo ?? []).filter((x) => x.orden_renglon_id === r.id);
+            const precioOtro = dodo.some((x) => precioDistinto(Number(r.precio), Number(x.precio)));
             const app = (recApp ?? []).filter((x) => x.orden_renglon_id === r.id);
             return (
-              <article key={r.id} className="tarjeta" data-alerta={deMas ? "si" : undefined}>
+              <article key={r.id} className="tarjeta" data-alerta={deMas || precioOtro ? "si" : undefined}>
                 <div className="tarjeta-encabezado">
                   <div>
                     <h3>{r.descripcion}</h3>
@@ -112,9 +119,9 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
                 {o.estado !== "borrador" && o.estado !== "enviada" && (
                   <dl className="tarjeta-datos">
                     <dt>Recibido</dt><dd>{r.recibido} {r.articulos?.unidad} · {NOMBRE_AVANCE[avance]}{deMas ? " · más de lo pedido" : ""}</dd>
-                    {dodo.map((x) => <Fragment key={x.id}><dt>Dodo IS</dt><dd>{fechaTexto(x.fecha)} · {x.cantidad} {x.unidad} · {pesos(x.precio)}</dd></Fragment>)}
+                    {dodo.map((x) => <Fragment key={x.id}><dt>Dodo IS</dt><dd>{fechaTexto(x.fecha)} · {x.cantidad} {x.unidad} · {pesos(x.precio)}{precioDistinto(Number(r.precio), Number(x.precio)) ? ` · precio distinto a la orden (${pesos(r.precio)})` : ""}</dd></Fragment>)}
                     {app.map((x) => (
-                      <Fragment key={x.id}><dt>En sucursal</dt><dd>{fechaTexto(x.fecha)} · {x.cantidad}{x.anulada_en ? ` · anulada: ${x.motivo_anulacion}` : ""}</dd></Fragment>
+                      <Fragment key={x.id}><dt>En sucursal</dt><dd>{fechaTexto(x.fecha)} · {x.cantidad}{x.anulada_en ? ` · anulada: ${x.motivo_anulacion}` : ""}{x.foto_path && urlFoto.get(x.foto_path) ? <> · <a href={urlFoto.get(x.foto_path)} target="_blank" rel="noreferrer">ver foto</a></> : null}</dd></Fragment>
                     ))}
                   </dl>
                 )}

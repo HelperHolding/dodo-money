@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { accionesDe, avanceOrden, avanceRenglon, compararCotizaciones, leerRenglon, recibidoDeMas, totalesOrden } from "./ordenes.ts";
+import { accionesDe, avanceOrden, avanceRenglon, compararCotizaciones, filtrarOrdenes, leerRenglon, precioDistinto, recibidoDeMas, totalesOrden } from "./ordenes.ts";
 
 test("totales: IVA por renglón redondeado; 0 y exento no llevan IVA", () => {
   assert.deepEqual(totalesOrden([
@@ -56,4 +56,36 @@ test("comparar cotizaciones: más barata completa y mejor precio por artículo",
   assert.equal(r.mejorPorArticulo.get("queso"), "C");
   assert.equal(r.mejorPorArticulo.get("caja"), "A");
   assert.equal(compararCotizaciones([]).masBarata, null);
+});
+
+test("comparar: una cotización cancelada no es la más barata ni tiene el mejor precio", () => {
+  const r = compararCotizaciones([
+    { id: "A", renglones: [{ articulo_id: "queso", cantidad: 10, precio: 100, tasa_iva: "0" }] },
+    { id: "B", cancelada: true, renglones: [{ articulo_id: "queso", cantidad: 10, precio: 50, tasa_iva: "0" }] },
+  ]);
+  assert.equal(r.masBarata, "A");
+  assert.equal(r.mejorPorArticulo.get("queso"), "A");
+  assert.equal(r.totales.get("B"), 500);
+});
+
+test("precio de Dodo IS distinto al de la orden (más de medio centavo)", () => {
+  assert.equal(precioDistinto(68, 68), false);
+  assert.equal(precioDistinto(68, 68.004), false);
+  assert.equal(precioDistinto(68, 68.5), true);
+  assert.equal(precioDistinto(68, 0), false);
+});
+
+test("filtrar órdenes por estado, proveedor y sucursal (Oficina = null)", () => {
+  const ordenes = [
+    { id: "1", estado: "confirmada" as const, proveedor_id: "p1", sucursal_id: "s1" },
+    { id: "2", estado: "borrador" as const, proveedor_id: "p2", sucursal_id: null },
+    { id: "3", estado: "cancelada" as const, proveedor_id: "p1", sucursal_id: "s1" },
+    { id: "4", estado: "cerrada" as const, proveedor_id: "p1", sucursal_id: "s2" },
+  ];
+  const ids = (f: Parameters<typeof filtrarOrdenes>[1]) => filtrarOrdenes(ordenes, f).map((o) => o.id);
+  assert.deepEqual(ids({}), ["1", "2"]);
+  assert.deepEqual(ids({ estado: "cancelada" }), ["3"]);
+  assert.deepEqual(ids({ proveedor: "p1" }), ["1"]);
+  assert.deepEqual(ids({ sucursal: "oficina" }), ["2"]);
+  assert.deepEqual(ids({ estado: "cerrada", sucursal: "s2", proveedor: "p1" }), ["4"]);
 });

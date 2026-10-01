@@ -7,6 +7,7 @@ do $$
 declare
   v_a uuid; v_b uuid; v_suc uuid; v_prov uuid; v_prov2 uuid; v_cons uuid; v_fijo uuid;
   v_oc uuid; v_oc2 uuid; v_r_cons uuid; v_r_fijo uuid; v_recep uuid; v_n int; v_res jsonb;
+  v_suc2 uuid; v_oc3 uuid; v_r_c3 uuid; v_oc_otra uuid; v_r_otra uuid;
   v_hoy date := (now() at time zone 'America/Mexico_City')::date;
   v_insumo text := 'ABCDEF0123456789ABCDEF0123456789';
   v_ok text[] := '{}';
@@ -18,6 +19,8 @@ begin
   if v_a is null then raise exception 'FALTAN DATOS: se necesitan dos usuarios activos de la misma sucursal.'; end if;
   update perfiles set rol = 'admin' where id = v_a;
   update perfiles set rol = 'gerente' where id = v_b;
+  select id into v_suc2 from sucursales where id <> v_suc limit 1;
+  if v_suc2 is null then insert into sucursales (nombre) values ('Prueba compras') returning id into v_suc2; end if;
 
   -- ── Admin: cotización → orden ─────────────────────────────────────────────
   perform set_config('request.jwt.claims', json_build_object('sub', v_a, 'role', 'authenticated')::text, true);
@@ -72,7 +75,31 @@ begin
   if (select estado::text from ordenes_compra where id = v_oc) <> 'confirmada' then raise exception 'FALLÓ: el estado solo cambia por las funciones'; end if;
   v_ok := array_append(v_ok, 'cotización → orden con alternativas, último precio y renglones fijos');
 
+  begin
+    perform enviar_orden(v_oc);
+    raise exception 'FALLÓ: enviar una orden ya confirmada';
+  exception when others then
+    if sqlerrm like 'FALLÓ%' then raise; end if;
+    if sqlerrm not like '%ya está%' then raise exception 'FALLÓ: mensaje inesperado (enviar confirmada): %', sqlerrm; end if;
+  end;
+
+  -- Otra orden del mismo insumo y sucursal (más nueva) y una de otra sucursal, ambas confirmadas.
+  insert into ordenes_compra (proveedor_id, sucursal_id) values (v_prov, v_suc) returning id into v_oc3;
+  insert into orden_renglones (orden_id, articulo_id, descripcion, cantidad, precio, tasa_iva) values (v_oc3, v_cons, 'Queso', 5, 100, '0') returning id into v_r_c3;
+  perform confirmar_orden(v_oc3);
+  insert into ordenes_compra (proveedor_id, sucursal_id) values (v_prov, v_suc2) returning id into v_oc_otra;
+  insert into orden_renglones (orden_id, articulo_id, descripcion, cantidad, precio, tasa_iva) values (v_oc_otra, v_fijo, 'Horno', 1, 5000, '16') returning id into v_r_otra;
+  perform confirmar_orden(v_oc_otra);
+  -- now() es el mismo en toda la transacción: se adelanta un día la confirmación de v_oc para que sea la más antigua.
+  execute 'reset role';
+  update ordenes_compra set confirmada_en = confirmada_en - interval '1 day' where id = v_oc;
+  execute 'set local role authenticated';
+
   -- ── Recepciones de Dodo IS ────────────────────────────────────────────────
+  begin
+    perform ligar_recepciones_dodo();
+    raise exception 'FALLÓ: ligar_recepciones_dodo no se llama desde la API';
+  exception when insufficient_privilege then null; end;
   v_res := importar_recepciones_dodo('prueba.xlsx',
     jsonb_build_array(jsonb_build_object('sucursal_id', v_suc, 'fecha', v_hoy), jsonb_build_object('sucursal_id', v_suc, 'fecha', v_hoy + 30)),
     jsonb_build_array(
@@ -80,6 +107,7 @@ begin
       jsonb_build_object('sucursal_id', v_suc, 'dodo_insumo_id', v_insumo, 'material', 'Queso', 'unidad', 'kg', 'fecha', v_hoy + 30, 'cantidad', 1, 'precio', 100)));
   if (v_res->>'ligadas')::int <> 1 or (v_res->>'pendientes')::int <> 1 then raise exception 'FALLÓ: liga automática (ventana de 7 días): %', v_res; end if;
   if recibido_renglon(v_r_cons) <> 4 then raise exception 'FALLÓ: recibido desde Dodo IS'; end if;
+  if recibido_renglon(v_r_c3) <> 0 then raise exception 'FALLÓ: se liga primero a la orden confirmada más antigua'; end if;
   v_res := importar_recepciones_dodo('prueba2.xlsx',
     jsonb_build_array(jsonb_build_object('sucursal_id', v_suc, 'fecha', v_hoy)),
     jsonb_build_array(jsonb_build_object('sucursal_id', v_suc, 'dodo_insumo_id', v_insumo, 'material', 'Queso', 'unidad', 'kg', 'fecha', v_hoy, 'cantidad', 6, 'precio', 100)));
@@ -95,7 +123,7 @@ begin
     if sqlerrm like 'FALLÓ%' then raise; end if;
     if sqlerrm not like '%ciérrala%' then raise exception 'FALLÓ: mensaje inesperado (cancelar): %', sqlerrm; end if;
   end;
-  v_ok := array_append(v_ok, 'recepciones de Dodo IS: liga, reemplazo y clasificación');
+  v_ok := array_append(v_ok, 'recepciones de Dodo IS: la orden más antigua primero, reemplazo y clasificación; ligar es interna');
 
   -- ── Gerente: recibe no consumibles de su sucursal, sin ver la tabla ───────
   perform set_config('request.jwt.claims', json_build_object('sub', v_b, 'role', 'authenticated')::text, true);
@@ -117,9 +145,18 @@ begin
     if sqlerrm like 'FALLÓ%' then raise; end if;
     if sqlerrm not like '%futura%' then raise exception 'FALLÓ: mensaje inesperado (futura): %', sqlerrm; end if;
   end;
+  begin
+    perform recibir_renglon(v_r_otra, 1, v_hoy, null);
+    raise exception 'FALLÓ: el gerente no recibe órdenes de otra sucursal';
+  exception when others then
+    if sqlerrm like 'FALLÓ%' then raise; end if;
+    if sqlerrm not like '%otra sucursal%' then raise exception 'FALLÓ: mensaje inesperado (otra sucursal): %', sqlerrm; end if;
+  end;
+  select count(*) into v_n from ordenes_por_recibir() where orden_id = v_oc_otra;
+  if v_n <> 0 then raise exception 'FALLÓ: por recibir no muestra órdenes de otra sucursal'; end if;
   perform recibir_renglon(v_r_fijo, 1, v_hoy, null);
   if recibido_renglon(v_r_fijo) <> 1 then raise exception 'FALLÓ: recibir en la app'; end if;
-  v_ok := array_append(v_ok, 'el gerente recibe sin ver precios');
+  v_ok := array_append(v_ok, 'el gerente recibe solo su sucursal y sin ver precios');
 
   -- ── Operación no recibe; corporativo solo consulta ────────────────────────
   execute 'reset role';

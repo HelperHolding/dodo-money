@@ -25,16 +25,17 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
   const { ok, error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
   const edita = puedeEditarCompras(perfil.rol);
-  const [recepciones, { data: abiertos }] = await Promise.all([
-    leerTodo<Recepcion>((d, h) => supabase.from("recepciones_dodo")
-      .select("id, sucursal_id, dodo_insumo_id, material, unidad, fecha, cantidad, precio, clasificacion, orden_renglon_id, sucursales(nombre)")
-      .order("fecha", { ascending: false }).order("id").range(d, h).returns<Recepcion[]>()),
+  // Solo lo que se ve: todas las pendientes y las 40 clasificadas más recientes (el historial completo crece cada día).
+  const [pendientes, { data: recientesData }, { data: abiertos }] = await Promise.all([
+    leerTodo<Recepcion>((d, h) => supabase.from("recepciones_dodo").select("id, sucursal_id, dodo_insumo_id, material, unidad, fecha, cantidad, precio, clasificacion, orden_renglon_id, sucursales(nombre)")
+      .eq("clasificacion", "pendiente").order("fecha", { ascending: false }).order("id").range(d, h).returns<Recepcion[]>()),
+    supabase.from("recepciones_dodo").select("id, sucursal_id, dodo_insumo_id, material, unidad, fecha, cantidad, precio, clasificacion, orden_renglon_id, sucursales(nombre)")
+      .neq("clasificacion", "pendiente").order("fecha", { ascending: false }).order("id").limit(40).returns<Recepcion[]>(),
     supabase.from("renglones_recibido")
       .select("id, descripcion, cantidad, recibido, orden_id, articulos(dodo_insumo_id, unidad), ordenes_compra!inner(folio, estado, sucursal_id, proveedores(razon_social, nombre_comercial))")
       .eq("ordenes_compra.estado", "confirmada").returns<Abierto[]>(),
   ]);
-  const pendientes = recepciones.filter((r) => r.clasificacion === "pendiente");
-  const recientes = recepciones.filter((r) => r.clasificacion !== "pendiente").slice(0, 40);
+  const recientes = recientesData ?? [];
   const opciones = (r: Recepcion) => (abiertos ?? []).filter((a) =>
     a.ordenes_compra?.sucursal_id === r.sucursal_id && (!a.articulos?.dodo_insumo_id || a.articulos.dodo_insumo_id === r.dodo_insumo_id));
 
