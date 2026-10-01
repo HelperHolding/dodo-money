@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { BotonEnviar } from "@/components/BotonEnviar";
+import { resumenPagos, type PorPagar } from "@/lib/compras/pagos";
 import { obtenerPerfil } from "@/lib/contexto";
 import { alertasDeSucursal, fechaElegida, ordenarSucursales, type Alerta } from "@/lib/corporativo";
 import { diaOperativoMX } from "@/lib/franjas";
-import { hora, pesos } from "@/lib/formato";
+import { hora, hoyMX, pesos } from "@/lib/formato";
 import { verSucursal } from "./actions";
 import { datosCorporativo } from "./datos";
 
@@ -16,6 +18,12 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
   const { supabase } = await obtenerPerfil();
 
   const datos = await datosCorporativo(supabase, fecha, ahora);
+  const hoyCalendario = hoyMX();
+  const [{ data: porPagar }, { data: pagosMes }] = await Promise.all([
+    supabase.from("facturas_saldo").select("id, saldo, vence_el, pago_programado_el, estado").eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).returns<PorPagar[]>(),
+    supabase.from("pagos").select("fecha, monto, anulado_en").gte("fecha", `${hoyCalendario.slice(0, 7)}-01`).returns<{ fecha: string; monto: number; anulado_en: string | null }[]>(),
+  ]);
+  const proveedoresResumen = resumenPagos(porPagar ?? [], (pagosMes ?? []).map((p) => ({ fecha: p.fecha, monto: Number(p.monto), anulado: !!p.anulado_en })), hoyCalendario);
   const filas = ordenarSucursales(datos.map((d) => ({ ...d, alertas: alertasDeSucursal(d, fecha < hoy) })));
   const conAlertas = filas.filter((f) => f.alertas.length > 0).length;
   const venta = filas.reduce((suma, f) => suma + (f.cierre?.ventaTotal ?? 0), 0);
@@ -35,6 +43,17 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
         <input id="fecha" name="fecha" type="date" defaultValue={fecha} max={hoy} />
         <button className="boton boton-secundario" type="submit">Ver</button>
       </form>
+
+      <section className="seccion" aria-labelledby="t-proveedores">
+        <h2 id="t-proveedores">Pagos a proveedores</h2>
+        <div className="rejilla">
+          <div className="saldo" style={proveedoresResumen.vencido > 0 ? { borderLeftColor: "var(--alerta)" } : undefined}>
+            <span>Vencido</span><span className="saldo-monto">{pesos(proveedoresResumen.vencido)}</span>
+          </div>
+          <div className="saldo"><span>Esta semana</span><span className="saldo-monto">{pesos(proveedoresResumen.semana)}</span></div>
+        </div>
+        <Link href="/compras/pagos">Ver calendario de pagos</Link>
+      </section>
 
       {!filas.length ? <p className="vacio">No hay sucursales.</p> : (
         <div className="tarjetas">

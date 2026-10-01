@@ -118,3 +118,8 @@ export async function cambiarVencimientoFactura(fd: FormData) {
 export async function cancelarFacturaAccion(fd: FormData) {
   await llamarFactura(fd, "cancelar_factura", { p_id: texto(fd, "id"), p_motivo: texto(fd, "motivo") }, "Factura cancelada.");
 }
+
+export async function programarPagoFactura(fd: FormData) {
+  await llamarFactura(fd, "programar_pago", { p_factura: texto(fd, "id"), p_fecha: texto(fd, "pago_programado_el") || null },
+    texto(fd, "pago_programado_el") ? "Pago programado." : "Se quitó la fecha programada.");
+}

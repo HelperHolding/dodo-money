@@ -10,13 +10,14 @@ import { cotejar, NOMBRE_COTEJO, NOMBRE_ESTADO_FACTURA, valorRecibido, vencida, 
 import { avanceOrden, totalesOrden } from "@/lib/compras/ordenes";
 import { nombreRegimen, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
-import { asignarDestino, cambiarVencimientoFactura, cancelarFacturaAccion, ligarOrdenes, marcarRevisada } from "../acciones";
+import { asignarDestino, cambiarVencimientoFactura, cancelarFacturaAccion, ligarOrdenes, marcarRevisada, programarPagoFactura } from "../acciones";
 
 type Factura = {
   id: string; uuid: string; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string;
   rfc_emisor: string; nombre_emisor: string; regimen_emisor: string; metodo_pago: string | null; forma_pago: string | null;
   subtotal: number; descuento: number; iva: number; retenciones: number; total: number; saldo: number; proveedor_id: string; sucursal_id: string | null;
   uuid_relacionado: string | null; vence_el: string; estado: EstadoFactura; revisada: boolean; revision_nota: string | null;
+  pagado: number; falta_complemento: boolean; pago_programado_el: string | null;
   xml_ruta: string; pdf_ruta: string | null; motivo_cancelacion: string | null;
   proveedores: { razon_social: string; nombre_comercial: string | null; regimen_fiscal: string } | null;
 };
@@ -29,10 +30,13 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: f } = await supabase.from("facturas_saldo")
-    .select("id, uuid, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, uuid_relacionado, vence_el, estado, revisada, revision_nota, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal)")
+    .select("id, uuid, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal)")
     .eq("id", id).maybeSingle<Factura>();
   if (!f) notFound();
 
+  const { data: pagosFactura } = await supabase.from("pago_aplicaciones")
+    .select("id, monto, pagos!inner(id, fecha, anulado_en)").eq("factura_id", id).order("id")
+    .returns<{ id: number; monto: number; pagos: { id: string; fecha: string; anulado_en: string | null } }[]>();
   const [{ data: conceptos }, { data: ligas }, { data: candidatas }, { data: sucursales }, { data: relacionadas }] = await Promise.all([
     supabase.from("factura_conceptos").select("id, descripcion, cantidad, unidad, valor_unitario, importe").eq("factura_id", id).order("id").returns<Concepto[]>(),
     supabase.from("factura_ordenes").select("orden_id").eq("factura_id", id).returns<{ orden_id: string }[]>(),
@@ -87,6 +91,9 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           <dt>IVA</dt><dd>{pesos(f.iva)}{Number(f.retenciones) ? ` · retenciones ${pesos(f.retenciones)}` : ""}</dd>
           <dt>Total</dt><dd><strong>{pesos(f.total)}</strong>{f.tipo === "ingreso" ? ` · saldo ${pesos(f.saldo)}` : ""}</dd>
           {f.tipo === "ingreso" && <><dt>Vence</dt><dd>{fechaTexto(f.vence_el)}{vencida(f, hoy) ? " · vencida" : ""}</dd></>}
+          {f.tipo === "ingreso" && Number(f.pagado) > 0 && <><dt>Pagado</dt><dd>{pesos(f.pagado)}</dd></>}
+          {f.pago_programado_el && <><dt>Programada</dt><dd>{fechaTexto(f.pago_programado_el)}</dd></>}
+          {f.falta_complemento && <><dt>Aviso</dt><dd>Falta el complemento de pago del proveedor (factura PPD).</dd></>}
           <dt>Emisor</dt><dd>{f.nombre_emisor} · {f.rfc_emisor} · {f.regimen_emisor} {nombreRegimen(f.regimen_emisor)}</dd>
           {regimenDistinto && <><dt>Aviso</dt><dd>El régimen del XML ({f.regimen_emisor}) no es el de la cartera ({f.proveedores!.regimen_fiscal}).</dd></>}
           {f.revisada && <><dt>Revisada</dt><dd>{f.revision_nota}</dd></>}
@@ -95,6 +102,16 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           {urlXml && <a className="boton boton-secundario" href={urlXml} target="_blank" rel="noreferrer">Ver XML</a>}
           {urlPdf && <a className="boton boton-secundario" href={urlPdf} target="_blank" rel="noreferrer">Ver PDF</a>}
         </div>
+        {(pagosFactura ?? []).length > 0 && (
+          <dl className="tarjeta-datos">
+            {(pagosFactura ?? []).map((a) => (
+              <Fragment key={a.id}><dt><Link href={`/compras/pagos/${a.pagos.id}`}>{fechaTexto(a.pagos.fecha)}</Link></dt><dd>{pesos(a.monto)}{a.pagos.anulado_en ? " · anulado" : ""}</dd></Fragment>
+            ))}
+          </dl>
+        )}
+        {edita && f.tipo === "ingreso" && Number(f.saldo) > 0 && (f.estado === "por_pagar" || f.estado === "parcial") && (
+          <div className="acciones"><Link className="boton" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link></div>
+        )}
       </section>
 
       {f.tipo === "ingreso" && (
@@ -180,6 +197,13 @@ export default async function DetalleFactura({ params, searchParams }: { params:
               <input type="hidden" name="id" value={f.id} />
               <div className="campo"><label htmlFor="vence">Vencimiento</label><input id="vence" name="vence_el" type="date" defaultValue={f.vence_el} required /></div>
               <BotonEnviar className="boton boton-secundario">Cambiar vencimiento</BotonEnviar>
+            </form>
+          )}
+          {f.tipo === "ingreso" && (f.estado === "por_pagar" || f.estado === "parcial") && (
+            <form action={programarPagoFactura} className="formulario">
+              <input type="hidden" name="id" value={f.id} />
+              <div className="campo"><label htmlFor="programada">Fecha programada de pago (vacía = la del vencimiento)</label><input id="programada" name="pago_programado_el" type="date" defaultValue={f.pago_programado_el ?? ""} /></div>
+              <BotonEnviar className="boton boton-secundario">Programar</BotonEnviar>
             </form>
           )}
           <details>
