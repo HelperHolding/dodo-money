@@ -4,7 +4,7 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, fechaMX, hoyCalendarioMX, pesos } from "@/lib/formato";
-import { DIAS_OPINION, estadoDocumentos, NOMBRE_DOCUMENTO, opinionVencida, TIPOS_DOCUMENTO, vigentes, type TipoDocumento } from "@/lib/compras/documentos";
+import { estadoDocumentos, NOMBRE_DOCUMENTO, TIPOS_DOCUMENTO, vigentes, type TipoDocumento } from "@/lib/compras/documentos";
 import { nombreRegimen } from "@/lib/compras/proveedores";
 import { NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, type DatosProveedor } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
@@ -19,7 +19,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: p } = await supabase.from("proveedores")
-    .select("id, razon_social, nombre_comercial, numero_cliente, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, activo, motivo_desactivacion, desactivado_en")
+    .select("id, razon_social, nombre_comercial, numero_cliente, dias_entrega, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, activo, motivo_desactivacion, desactivado_en")
     .eq("id", id).maybeSingle<Proveedor>();
   if (!p) notFound();
   const edita = puedeEditarCompras(perfil.rol);
@@ -34,7 +34,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
   const hoy = hoyCalendarioMX();
   const docs = documentos ?? [];
   const vigente = vigentes(docs);
-  const estadoDocs = estadoDocumentos(docs, hoy);
+  const estadoDocs = estadoDocumentos(docs);
   // Enlaces temporales (1 hora): el bucket es privado.
   const { data: firmadas } = docs.length
     ? await supabase.storage.from("documentos-proveedores").createSignedUrls(docs.map((d) => d.ruta), 3600)
@@ -54,6 +54,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
         <dl className="tarjeta-datos">
           <dt>Razón social</dt><dd>{p.razon_social}</dd>
           {p.numero_cliente && <><dt>Nuestro n.º de cliente</dt><dd>{p.numero_cliente}</dd></>}
+          <dt>Entrega</dt><dd>{p.dias_entrega === null ? "Sin dato" : p.dias_entrega === 0 ? "El mismo día" : `${p.dias_entrega} ${p.dias_entrega === 1 ? "día" : "días"}`}</dd>
           <dt>Régimen fiscal</dt><dd>{p.regimen_fiscal} · {nombreRegimen(p.regimen_fiscal)}</dd>
           <dt>Contacto</dt><dd>{[p.contacto_nombre, p.telefono, p.correo].filter(Boolean).join(" · ") || "—"}</dd>
           <dt>Banco</dt><dd>{[p.banco, p.clabe && `CLABE ${p.clabe}`, p.cuenta && `Cuenta ${p.cuenta}`].filter(Boolean).join(" · ") || "—"}</dd>
@@ -65,25 +66,19 @@ export default async function FichaProveedor({ params, searchParams }: { params:
       </section>
       <section className="seccion" aria-labelledby="t-docs">
         <h2 id="t-docs">Documentos</h2>
-        {estadoDocs.pendiente && (
-          <p className="aviso aviso-error">
-            {[estadoDocs.faltan.length ? `Faltan: ${estadoDocs.faltan.map((t) => NOMBRE_DOCUMENTO[t]).join(", ")}.` : "",
-              estadoDocs.opinionVencida ? `La opinión de cumplimiento tiene más de ${DIAS_OPINION} días.` : ""].filter(Boolean).join(" ")}
-          </p>
-        )}
+        {estadoDocs.pendiente && <p className="aviso aviso-error">Faltan: {estadoDocs.faltan.map((t) => NOMBRE_DOCUMENTO[t]).join(", ")}.</p>}
         <ul className="lista-filas" style={{ "--columnas": 2 } as React.CSSProperties}>
           <li className="fila fila-encabezado" aria-hidden="true"><span>Documento</span><span>Vigente</span><span>Archivo</span></li>
           {TIPOS_DOCUMENTO.map((t) => {
             const d = vigente[t];
-            const vencida = t === "opinion_cumplimiento" && !!d && opinionVencida(d.fecha, hoy);
             const anteriores = docs.filter((x) => x.tipo === t && x.id !== d?.id);
             return (
-              <li key={t} className="fila" data-alerta={!d || vencida ? "si" : undefined}>
+              <li key={t} className="fila" data-alerta={!d ? "si" : undefined}>
                 <div className="fila-nombre">
                   <strong>{NOMBRE_DOCUMENTO[t]}</strong>
                 </div>
                 <div className="fila-datos">
-                  <span>{d ? `${fechaTexto(d.fecha)}${vencida ? " · vencida" : ""}` : "Falta"}</span>
+                  <span>{d ? fechaTexto(d.fecha) : "Falta"}</span>
                   <span>{d && urlDe.get(d.ruta) ? <a href={urlDe.get(d.ruta)} target="_blank" rel="noopener noreferrer">Ver documento</a> : "—"}</span>
                 </div>
                 {anteriores.length > 0 && (
@@ -108,7 +103,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
               <div className="rejilla">
                 <div className="campo">
                   <label htmlFor="doc-tipo">Documento</label>
-                  <select id="doc-tipo" name="tipo" required defaultValue={estadoDocs.faltan[0] ?? (estadoDocs.opinionVencida ? "opinion_cumplimiento" : "")}>
+                  <select id="doc-tipo" name="tipo" required defaultValue={estadoDocs.faltan[0] ?? ""}>
                     <option value="" disabled>Elige…</option>
                     {TIPOS_DOCUMENTO.map((t) => <option key={t} value={t}>{NOMBRE_DOCUMENTO[t]}</option>)}
                   </select>

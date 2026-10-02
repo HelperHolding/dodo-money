@@ -1,4 +1,4 @@
--- Pruebas de la migración 0021 (documentos y número de cliente de proveedores). Córrelas completas en Supabase → SQL Editor después de la migración.
+-- Pruebas de la migración 0021 (documentos, número de cliente y días de entrega de proveedores). Córrelas completas en Supabase → SQL Editor después de la migración.
 -- Necesitan un usuario activo con sucursal y un usuario corporativo activo. Crean un proveedor de prueba.
 -- El resultado aparece como ERROR A PROPÓSITO para que Postgres deshaga todo:
 --   · "PRUEBAS OK — …" → todo bien.   · "FALLÓ: …" → dice qué regla no se cumplió.
@@ -24,7 +24,15 @@ begin
     if sqlerrm like 'FALLÓ%' then raise; end if;
     if sqlerrm not like '%check constraint%' then raise exception 'FALLÓ: mensaje inesperado (número de cliente): %', sqlerrm; end if;
   end;
-  v_ok := array_append(v_ok, 'número de cliente de hasta 60');
+  begin
+    update proveedores set dias_entrega = 400 where id = v_p;
+    raise exception 'FALLÓ: los días de entrega van de 0 a 365';
+  exception when others then
+    if sqlerrm like 'FALLÓ%' then raise; end if;
+    if sqlerrm not like '%check constraint%' then raise exception 'FALLÓ: mensaje inesperado (días de entrega): %', sqlerrm; end if;
+  end;
+  update proveedores set dias_entrega = 3 where id = v_p;
+  v_ok := array_append(v_ok, 'número de cliente de hasta 60 y días de entrega de 0 a 365');
 
   update perfiles set rol = 'admin' where id = v_a;
 

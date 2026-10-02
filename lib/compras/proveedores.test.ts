@@ -36,8 +36,17 @@ test("proveedor mínimo: defaults de crédito, forma de pago y categorías", () 
   assert.deepEqual(r.datos, {
     razon_social: "Lácteos del Bajío SA de CV", nombre_comercial: null, rfc: "LBA010203AB1", regimen_fiscal: "601",
     contacto_nombre: null, telefono: null, correo: null, banco: null, clabe: null, cuenta: null,
-    dias_credito: 0, forma_pago_habitual: "transferencia", categorias: [], notas: null, numero_cliente: null,
+    dias_credito: 0, forma_pago_habitual: "transferencia", categorias: [], notas: null, numero_cliente: null, dias_entrega: null,
   });
+});
+
+test("días de entrega: opcional, entero de 0 a 365", () => {
+  const r = leerProveedor(campos({ ...base, dias_entrega: " 3 " }));
+  assert.ok("datos" in r);
+  assert.equal(r.datos.dias_entrega, 3);
+  for (const malo of ["-1", "366", "2.5", "tres"]) {
+    assert.deepEqual(leerProveedor(campos({ ...base, dias_entrega: malo })), { error: "Los días de entrega van de 0 a 365." });
+  }
 });
 
 test("número de cliente: opcional, sin espacios de sobra, hasta 60 caracteres", () => {

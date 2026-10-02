@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { estadoDocumentos, extensionDocumento, leerDocumento, opinionVencida, rutaDocumento, vigentes } from "./documentos.ts";
+import { estadoDocumentos, extensionDocumento, leerDocumento, rutaDocumento, vigentes } from "./documentos.ts";
 
 const doc = (id: string, tipo: string, fecha: string, subido_en = "2026-10-01T10:00:00Z") => ({ id, tipo: tipo as never, fecha, subido_en });
 
@@ -16,22 +16,12 @@ test("vigentes: el de fecha más reciente; si empatan, el último que se subió"
   assert.equal(v.caratula_banco, null);
 });
 
-test("opinionVencida: más de 30 días", () => {
-  assert.equal(opinionVencida("2026-09-02", "2026-10-02"), false); // 30 días exactos
-  assert.equal(opinionVencida("2026-09-01", "2026-10-02"), true);  // 31
-  assert.equal(opinionVencida("2026-10-02", "2026-10-02"), false);
-});
-
-test("estadoDocumentos: faltantes, opinión vencida y si hay algo pendiente", () => {
-  assert.deepEqual(estadoDocumentos([], "2026-10-02"), {
-    faltan: ["opinion_cumplimiento", "constancia_fiscal", "caratula_banco"], opinionVencida: false, pendiente: true,
-  });
+test("estadoDocumentos: solo los que faltan (una opinión vieja no es pendiente)", () => {
+  assert.deepEqual(estadoDocumentos([]), { faltan: ["opinion_cumplimiento", "constancia_fiscal", "caratula_banco"], pendiente: true });
+  assert.deepEqual(estadoDocumentos([doc("b", "constancia_fiscal", "2026-08-01")]), { faltan: ["opinion_cumplimiento", "caratula_banco"], pendiente: true });
   assert.deepEqual(estadoDocumentos([
-    doc("a", "opinion_cumplimiento", "2026-08-01"), doc("b", "constancia_fiscal", "2026-08-01"), doc("c", "caratula_banco", "2026-01-01"),
-  ], "2026-10-02"), { faltan: [], opinionVencida: true, pendiente: true });
-  assert.deepEqual(estadoDocumentos([
-    doc("a", "opinion_cumplimiento", "2026-09-30"), doc("b", "constancia_fiscal", "2025-08-01"), doc("c", "caratula_banco", "2024-01-01"),
-  ], "2026-10-02"), { faltan: [], opinionVencida: false, pendiente: false });
+    doc("a", "opinion_cumplimiento", "2024-08-01"), doc("b", "constancia_fiscal", "2025-08-01"), doc("c", "caratula_banco", "2024-01-01"),
+  ]), { faltan: [], pendiente: false });
 });
 
 test("leerDocumento valida tipo, fecha y que no sea futura", () => {

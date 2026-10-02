@@ -69,6 +69,8 @@ export type DatosProveedor = {
   dias_credito: number; forma_pago_habitual: FormaPago; categorias: CategoriaCompra[]; notas: string | null;
   /** Nuestro número de cliente con el proveedor (opcional). */
   numero_cliente: string | null;
+  /** Días que tarda en entregar desde que se le hace el pedido (opcional). */
+  dias_entrega: number | null;
 };
 
 type Resultado<T> = { datos: T } | { error: string };
@@ -98,6 +100,10 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
   const forma = textoForma === "" ? "transferencia" : clave(textoForma);
   if (!(FORMAS_PAGO as readonly string[]).includes(forma)) return { error: `Forma de pago no reconocida: ${textoForma}.` };
 
+  const textoEntrega = valor("dias_entrega").trim();
+  const dias_entrega = textoEntrega === "" ? null : Number(textoEntrega);
+  if (dias_entrega !== null && (!Number.isInteger(dias_entrega) || dias_entrega < 0 || dias_entrega > 365)) return { error: "Los días de entrega van de 0 a 365." };
+
   const numero_cliente = opcional(valor("numero_cliente"));
   if (numero_cliente && numero_cliente.length > 60) return { error: "El número de cliente es de hasta 60 caracteres." };
 
@@ -113,7 +119,7 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
       razon_social, nombre_comercial: opcional(valor("nombre_comercial")), rfc, regimen_fiscal,
       contacto_nombre: opcional(valor("contacto_nombre")), telefono: opcional(valor("telefono")), correo,
       banco: opcional(valor("banco")), clabe, cuenta: opcional(valor("cuenta")),
-      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")), numero_cliente,
+      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")), numero_cliente, dias_entrega,
     },
   };
 }
@@ -154,6 +160,7 @@ export const ENCABEZADOS = [
   { texto: "Días de crédito", campo: "dias_credito", obligatorio: false },
   { texto: "Forma de pago", campo: "forma_pago_habitual", obligatorio: false },
   { texto: "Número de cliente", campo: "numero_cliente", obligatorio: false },
+  { texto: "Días de entrega", campo: "dias_entrega", obligatorio: false },
   { texto: "Categorías", campo: "categorias", obligatorio: false },
   { texto: "Notas", campo: "notas", obligatorio: false },
 ] as const;

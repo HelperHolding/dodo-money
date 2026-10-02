@@ -1,11 +1,13 @@
--- Proveedores: número de cliente (el nuestro con ellos) y documentos con historial:
+-- Proveedores: número de cliente (el nuestro con ellos), días de entrega y documentos con historial:
 -- opinión de cumplimiento, constancia de situación fiscal y carátula de cuenta bancaria.
 -- Cada subida es una versión nueva (no se edita ni se borra); la vigente es la de fecha más reciente.
 -- Los archivos van en el bucket privado documentos-proveedores, en <id del proveedor>/<tipo>/<fecha>-<id>.<ext>
 -- (por id y no por RFC: el almacenamiento no acepta la Ñ). Admin sube; admin y corporativo ven.
 -- Requiere 0001–0020.
 
-alter table proveedores add column numero_cliente text check (numero_cliente is null or length(numero_cliente) <= 60);
+alter table proveedores
+  add column numero_cliente text check (numero_cliente is null or length(numero_cliente) <= 60),
+  add column dias_entrega   integer check (dias_entrega is null or dias_entrega between 0 and 365);
 
 create table documentos_proveedor (
   id            uuid primary key default gen_random_uuid(),

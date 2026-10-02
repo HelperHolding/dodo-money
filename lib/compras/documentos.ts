@@ -9,8 +9,6 @@ export const NOMBRE_DOCUMENTO: Record<TipoDocumento, string> = {
   caratula_banco: "Carátula de cuenta bancaria",
 };
 
-/** La opinión de cumplimiento del SAT se pide con a lo más 30 días de antigüedad. */
-export const DIAS_OPINION = 30;
 /** Vercel corta las peticiones de más de 4.5 MB: el archivo tiene que caber con el resto del formulario. */
 export const MAX_BYTES_DOCUMENTO = 4 * 1024 * 1024;
 
@@ -26,15 +24,11 @@ export function vigentes<D extends Documento>(docs: readonly D[]): Record<TipoDo
   return r;
 }
 
-const dia = (f: string) => Date.parse(`${f}T00:00:00Z`) / 86_400_000;
-
-export const opinionVencida = (fecha: string, hoy: string) => dia(hoy) - dia(fecha) > DIAS_OPINION;
-
-export function estadoDocumentos(docs: readonly Documento[], hoy: string) {
+/** Qué documentos faltan por subir. La antigüedad no cuenta: no se avisa de opiniones viejas. */
+export function estadoDocumentos(docs: readonly Documento[]) {
   const v = vigentes(docs);
   const faltan = TIPOS_DOCUMENTO.filter((t) => !v[t]);
-  const vencida = !!v.opinion_cumplimiento && opinionVencida(v.opinion_cumplimiento.fecha, hoy);
-  return { faltan, opinionVencida: vencida, pendiente: faltan.length > 0 || vencida };
+  return { faltan, pendiente: faltan.length > 0 };
 }
 
 const fechaReal = (f: string) => /^\d{4}-\d{2}-\d{2}$/.test(f) && new Date(`${f}T00:00:00Z`).toISOString().slice(0, 10) === f;
