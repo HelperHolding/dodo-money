@@ -5,7 +5,7 @@ import { fechaTexto, pesos, fechaMX } from "@/lib/formato";
 import { NOMBRE_ESTADO_ORDEN, totalesOrden, type EstadoOrden } from "@/lib/compras/ordenes";
 import { NOMBRE_TASA_IVA, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeVerCompras } from "@/lib/roles";
-import { Imprimir } from "./Imprimir";
+import { Imprimir } from "@/components/Imprimir";
 
 export const dynamic = "force-dynamic";
 

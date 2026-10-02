@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
+import { SelectorVista } from "@/components/SelectorVista";
 import { obtenerPerfil } from "@/lib/contexto";
 import { CATEGORIAS_COMPRA, NOMBRE_CATEGORIA_COMPRA, type CategoriaCompra } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
+import { leerVista } from "@/lib/vista";
 
 type Fila = { id: string; razon_social: string; nombre_comercial: string | null; rfc: string; dias_credito: number; categorias: CategoriaCompra[]; activo: boolean };
 
-export default async function Proveedores({ searchParams }: { searchParams: Promise<{ q?: string; categoria?: string; inactivos?: string; ok?: string; error?: string }> }) {
-  const { q = "", categoria, inactivos, ok, error } = await searchParams;
+export default async function Proveedores({ searchParams }: { searchParams: Promise<{ q?: string; categoria?: string; inactivos?: string; vista?: string; ok?: string; error?: string }> }) {
+  const params = await searchParams;
+  const { q = "", categoria, inactivos, ok, error } = params;
+  const vista = leerVista(params.vista);
   const { supabase, perfil } = await obtenerPerfil();
   const filas = await leerTodo<Fila>((desde, hasta) => supabase.from("proveedores")
     .select("id, razon_social, nombre_comercial, rfc, dias_credito, categorias, activo")
@@ -29,6 +33,7 @@ export default async function Proveedores({ searchParams }: { searchParams: Prom
       </div>
       <Aviso ok={ok} error={error} />
       <form className="seccion formulario" role="search">
+        {vista === "lista" && <input type="hidden" name="vista" value="lista" />}
         <div className="rejilla">
           <div className="campo"><label htmlFor="q">Buscar</label><input id="q" name="q" defaultValue={q} placeholder="Razón social, nombre o RFC" /></div>
           <div className="campo">
@@ -46,8 +51,27 @@ export default async function Proveedores({ searchParams }: { searchParams: Prom
         </div>
       </form>
 
+      <SelectorVista ruta="/compras" params={params} vista={vista} />
       {!visibles.length && <p className="vacio">{filas.length ? "Ningún proveedor coincide." : "Aún no hay proveedores. Da de alta el primero o cárgalos desde Excel."}</p>}
-      <div className="tarjetas">
+      {vista === "lista" && visibles.length > 0 && (
+        <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
+          <li className="fila fila-encabezado" aria-hidden="true"><span>Proveedor</span><span>RFC</span><span>Crédito</span><span>Surte</span></li>
+          {visibles.map((p) => (
+            <li key={p.id} className="fila" data-alerta={p.activo ? undefined : "si"}>
+              <div className="fila-nombre">
+                <Link href={`/compras/proveedores/${p.id}`}>{p.nombre_comercial ?? p.razon_social}</Link>
+                {(p.nombre_comercial || !p.activo) && <small>{[p.nombre_comercial ? p.razon_social : "", p.activo ? "" : "inactivo"].filter(Boolean).join(" · ")}</small>}
+              </div>
+              <div className="fila-datos">
+                <span>{p.rfc}</span>
+                <span>{p.dias_credito ? `${p.dias_credito} días` : "Contado"}</span>
+                <span>{p.categorias.length ? p.categorias.map((c) => NOMBRE_CATEGORIA_COMPRA[c]).join(", ") : "Sin categoría"}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {vista === "tarjetas" && <div className="tarjetas">
         {visibles.map((p) => (
           <article key={p.id} className="tarjeta" data-alerta={p.activo ? undefined : "si"}>
             <div className="tarjeta-encabezado">
@@ -63,7 +87,7 @@ export default async function Proveedores({ searchParams }: { searchParams: Prom
             </dl>
           </article>
         ))}
-      </div>
+      </div>}
     </>
   );
 }

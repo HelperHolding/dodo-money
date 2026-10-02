@@ -37,8 +37,11 @@ export const puedeVerEfectivo = (rol: Rol) => rol === "admin" || rol === "corpor
 /** Aceptar o rechazar el efectivo que llega a corporativo (la única acción que corporativo puede hacer). */
 export const puedeRecibirEfectivo = esCorporativo;
 
+/** Historial de turnos con sus arqueos, movimientos y gastos, y sus reportes para imprimir. Operación no lo ve. */
+export const puedeVerTurnos = (rol: Rol) => puedeAbrirTurno(rol) || esCorporativo(rol);
+
+const ENLACE_ARQUEO: Enlace = { href: "/arqueo", texto: "Arqueo de turno" };
 const ENLACES_SUCURSAL: readonly Enlace[] = [
-  { href: "/arqueo", texto: "Arqueo de turno" },
   { href: "/movimientos", texto: "Movimientos" },
   { href: "/caja-chica", texto: "Caja chica" },
   { href: "/cierre", texto: "Cierre del día" },
@@ -56,6 +59,8 @@ export function menuLateral(rol: Rol): Menu {
     enlaces: [
       // Corporativo entra por la vista general; el inicio de la sucursal que está viendo va dentro del grupo.
       ...(corporativo ? [{ href: "/", texto: "Inicio de sucursal" }] : []),
+      ENLACE_ARQUEO,
+      ...(puedeVerTurnos(rol) ? [{ href: "/turnos", texto: "Turnos" }] : []),
       ...ENLACES_SUCURSAL,
       ...(puedeRecibirCompras(rol) ? [{ href: "/recepciones", texto: "Recepciones" }] : []),
     ],

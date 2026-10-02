@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
-  puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeVerEfectivo, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
+  puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
 } from "./roles.ts";
 
 test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () => {
@@ -76,10 +76,12 @@ test("menú lateral: Inicio arriba; corporativo empieza en la vista general", ()
 
 test("menú lateral: grupo Sucursal por puesto (Recepciones solo para quien recibe)", () => {
   assert.deepEqual(grupo("operacion", "Sucursal"), ["/arqueo", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
+  assert.equal(puedeVerTurnos("operacion"), false);
+  for (const rol of ["encargado", "gerente", "admin", "corporativo"] as const) assert.equal(puedeVerTurnos(rol), true);
   for (const rol of ["encargado", "gerente", "admin"] as const) {
-    assert.deepEqual(grupo(rol, "Sucursal"), ["/arqueo", "/movimientos", "/caja-chica", "/cierre", "/checklists", "/recepciones"]);
+    assert.deepEqual(grupo(rol, "Sucursal"), ["/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists", "/recepciones"]);
   }
-  assert.deepEqual(grupo("corporativo", "Sucursal"), ["/", "/arqueo", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
+  assert.deepEqual(grupo("corporativo", "Sucursal"), ["/", "/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
 });
 
 test("menú lateral: Ventas y Compras por puesto", () => {
@@ -98,6 +100,7 @@ test("enlaceActivo elige la ruta más larga de todo el menú", () => {
   assert.equal(enlaceActivo("/ventas/costos", todos), "/ventas/costos");
   assert.equal(enlaceActivo("/", todos), "/");
   assert.equal(enlaceActivo("/checklists/ronda", todos), "/checklists");
+  assert.equal(enlaceActivo("/turnos/abc", todos), "/turnos");
   assert.equal(enlaceActivo("/compras/proveedores/abc", todos), "/compras");
   assert.equal(enlaceActivo("/compras/ordenes/abc", todos), "/compras/ordenes");
   assert.equal(enlaceActivo("/otra", todos), undefined);

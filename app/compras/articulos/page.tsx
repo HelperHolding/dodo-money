@@ -1,11 +1,14 @@
+import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { Plegable } from "@/components/Plegable";
+import { SelectorVista } from "@/components/SelectorVista";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, pesos } from "@/lib/formato";
 import { CATEGORIAS_COMPRA, NOMBRE_CATEGORIA_COMPRA, NOMBRE_TASA_IVA, TASAS_IVA, type CategoriaCompra, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
+import { leerVista } from "@/lib/vista";
 import { cambiarActivoArticulo, guardarArticulo } from "../acciones";
 import { FormValidado } from "../FormValidado";
 
@@ -39,8 +42,10 @@ function CamposArticulo({ a }: { a?: Articulo }) {
   );
 }
 
-export default async function Articulos({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const { ok, error } = await searchParams;
+export default async function Articulos({ searchParams }: { searchParams: Promise<{ vista?: string; ok?: string; error?: string }> }) {
+  const params = await searchParams;
+  const { ok, error } = params;
+  const vista = leerVista(params.vista);
   const { supabase, perfil } = await obtenerPerfil();
   const edita = puedeEditarCompras(perfil.rol);
   const [articulos, precios] = await Promise.all([
@@ -68,12 +73,36 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
           </FormValidado>
         </details>
       )}
+      <SelectorVista ruta="/compras/articulos" params={params} vista={vista} />
       {!articulos.length && <p className="vacio">Aún no hay artículos.</p>}
       {CATEGORIAS_COMPRA.map((tipo) => {
         const lista = articulos.filter((a) => a.tipo === tipo);
         if (!lista.length) return null;
         return (
           <Plegable key={tipo} id={`t-${tipo}`} titulo={NOMBRE_CATEGORIA_COMPRA[tipo]} resumen={`${lista.filter((a) => a.activo).length} activos`}>
+            {vista === "lista" ? (
+              <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
+                <li className="fila fila-encabezado" aria-hidden="true"><span>Artículo</span><span>Mejor precio</span><span>Proveedores</span><span>Última compra</span></li>
+                {lista.map((a) => {
+                  const ps = preciosDe.get(a.id) ?? [];
+                  const mejor = ps.reduce<Precio | null>((m, p) => (!m || Number(p.precio) < Number(m.precio) ? p : m), null);
+                  const ultima = ps.reduce<string | null>((u, p) => (!u || p.fecha > u ? p.fecha : u), null);
+                  return (
+                    <li key={a.id} className="fila" data-alerta={a.activo ? undefined : "si"}>
+                      <div className="fila-nombre">
+                        <Link href={`/compras/articulos#a-${a.id}`}>{a.nombre}</Link>
+                        <small>{a.unidad} · {NOMBRE_TASA_IVA[a.tasa_iva]}{a.activo ? "" : " · inactivo"}</small>
+                      </div>
+                      <div className="fila-datos">
+                        <span>{mejor ? `${pesos(mejor.precio)} · ${mejor.proveedores?.nombre_comercial ?? mejor.proveedores?.razon_social ?? ""}` : "Sin precio"}</span>
+                        <span>{ps.length ? `${ps.length} ${ps.length === 1 ? "proveedor" : "proveedores"}` : "Sin compras"}</span>
+                        <span>{ultima ? fechaTexto(ultima) : "—"}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
             <div className="tarjetas">
               {lista.map((a) => {
                 const ps = preciosDe.get(a.id) ?? [];
@@ -113,6 +142,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                 );
               })}
             </div>
+            )}
           </Plegable>
         );
       })}
