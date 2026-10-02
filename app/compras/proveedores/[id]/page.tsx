@@ -110,7 +110,8 @@ export default async function FichaProveedor({ params, searchParams }: { params:
                 </div>
                 <div className="campo">
                   <label htmlFor="doc-fecha">Fecha que trae el documento</label>
-                  <input id="doc-fecha" name="fecha" type="date" max={hoy} required />
+                  <input id="doc-fecha" name="fecha" type="date" max={hoy} />
+                  <small>En la constancia en PDF del SAT se toma sola.</small>
                 </div>
                 <CampoDocumento />
               </div>

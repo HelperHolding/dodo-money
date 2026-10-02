@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
-import { leerArticulo, leerDesactivacion, leerProveedor, leerSeleccionProveedores, type DatosArticulo, type DatosProveedor } from "@/lib/compras/proveedores";
+import { leerArticulo, leerDesactivacion, leerProveedor, leerSeleccionProveedores, REGIMENES, type DatosArticulo, type DatosProveedor } from "@/lib/compras/proveedores";
+import { leerConstancia, regimenPropuesto } from "@/lib/compras/constancia";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
-import { extensionDocumento, leerDocumento, MAX_BYTES_DOCUMENTO, rutaDocumento } from "@/lib/compras/documentos";
+import { extensionDocumento, leerDocumento, MAX_BYTES_DOCUMENTO, rutaDocumento, type TipoDocumento } from "@/lib/compras/documentos";
 import { hoyCalendarioMX } from "@/lib/formato";
 
 const volver = (ruta: string, clave: "ok" | "error", texto: string): never =>
@@ -31,32 +32,101 @@ export async function guardarProveedor(fd: FormData) {
     : await supabase.from("proveedores").insert(datos).select("id").single();
   if (error) volver(ruta, "error", error.code === "23505" ? `Ya hay un proveedor con el RFC ${datos.rfc}.` : error.message);
 
+  // Alta con constancia: queda como su primer documento (si es de este RFC y se puede leer su fecha).
+  let aviso = "";
+  const constancia = id ? null : archivoDe(fd, "constancia");
+  if (constancia) {
+    const c = await constanciaDe(constancia);
+    const problema = "error" in c ? c.error
+      : c.datos.rfc !== datos.rfc ? `es del RFC ${c.datos.rfc}.`
+      : await guardarArchivoDocumento(supabase, data!.id, "constancia_fiscal", c.datos.fecha_emision, constancia);
+    aviso = problema ? ` La constancia no se guardó: ${problema} Súbela en Documentos.` : " Su constancia quedó en Documentos.";
+  }
+
   revalidatePath("/compras", "layout");
-  volver(`/compras/proveedores/${data!.id}`, "ok", id ? "Proveedor actualizado." : "Proveedor dado de alta.");
+  volver(`/compras/proveedores/${data!.id}`, "ok", (id ? "Proveedor actualizado." : "Proveedor dado de alta.") + aviso);
 }
 
-/** Sube una versión nueva de un documento del proveedor; las anteriores quedan en el historial. */
+type Cliente = Awaited<ReturnType<typeof clienteAdmin>>;
+
+const archivoDe = (fd: FormData, campo: string) => {
+  const a = fd.get(campo);
+  return a instanceof File && a.size > 0 ? a : null;
+};
+
+const constanciaDe = async (archivo: File) => leerConstancia(new Uint8Array(await archivo.arrayBuffer()), REGIMENES);
+
+/** Revisa el archivo y lo guarda como versión nueva del documento; devuelve el problema o null. */
+async function guardarArchivoDocumento(supabase: Cliente, proveedorId: string, tipo: TipoDocumento, fecha: string, archivo: File): Promise<string | null> {
+  const extension = extensionDocumento(archivo.type);
+  if (!extension) return "El documento debe ser PDF o foto (JPG, PNG o WebP).";
+  if (archivo.size > MAX_BYTES_DOCUMENTO) return "El archivo pesa más de 4 MB. Si es foto, tómala con menos resolución o súbela como PDF.";
+  const destino = rutaDocumento(proveedorId, tipo, fecha, crypto.randomUUID(), extension);
+  const { error: errorArchivo } = await supabase.storage.from("documentos-proveedores").upload(destino, archivo, { contentType: archivo.type, upsert: false });
+  if (errorArchivo) return `No se pudo subir el archivo: ${errorArchivo.message}`;
+  const { error } = await supabase.from("documentos_proveedor").insert({ proveedor_id: proveedorId, tipo, fecha, ruta: destino });
+  return error ? error.message : null;
+}
+
+export type LecturaConstancia = {
+  datos?: {
+    tipo: "moral" | "fisica"; rfc: string; razon_social: string; nombre_comercial: string | null; fecha_emision: string;
+    /** Régimen propuesto (el primero vigente del catálogo) y todos los vigentes que trae, para elegir. */
+    regimen: string | null; regimenes: { codigo: string; nombre: string }[];
+  };
+  error?: string;
+};
+
+/** Lee una constancia para prellenar el alta de un proveedor. No guarda nada. */
+export async function leerConstanciaSubida(fd: FormData): Promise<LecturaConstancia> {
+  const { perfil } = await obtenerPerfil();
+  if (!puedeEditarCompras(perfil.rol)) return { error: SOLO_CONSULTA };
+  const archivo = archivoDe(fd, "constancia");
+  if (!archivo) return { error: "Elige la constancia (PDF)." };
+  if (archivo.size > MAX_BYTES_DOCUMENTO) return { error: "La constancia pesa más de 4 MB." };
+  const c = await constanciaDe(archivo);
+  if ("error" in c) return { error: c.error };
+  const { tipo, rfc, razon_social, nombre_comercial, fecha_emision } = c.datos;
+  const regimenes = c.datos.regimenes.flatMap((r) => (!r.fin && r.codigo ? [{ codigo: r.codigo, nombre: r.nombre }] : []));
+  return { datos: { tipo, rfc, razon_social, nombre_comercial, fecha_emision, regimen: regimenPropuesto(c.datos), regimenes } };
+}
+
+/**
+ * Sube una versión nueva de un documento del proveedor; las anteriores quedan en el historial.
+ * Una constancia en PDF se lee: tiene que ser del RFC del proveedor, su fecha sale sola y avisa si el régimen cambió.
+ */
 export async function subirDocumentoProveedor(fd: FormData) {
   const id = String(fd.get("id") ?? "");
   const ruta = `/compras/proveedores/${id}`;
   const supabase = await clienteAdmin(ruta);
-  const r = leerDocumento(String(fd.get("tipo") ?? ""), String(fd.get("fecha") ?? ""), hoyCalendarioMX());
-  if ("error" in r) volver(ruta, "error", r.error);
-  const { datos } = r as { datos: { tipo: Parameters<typeof rutaDocumento>[1]; fecha: string } };
-  const archivo = fd.get("archivo");
-  if (!(archivo instanceof File) || archivo.size === 0) volver(ruta, "error", "Elige el archivo del documento.");
-  const f = archivo as File;
-  const extension = extensionDocumento(f.type);
-  if (!extension) volver(ruta, "error", "El documento debe ser PDF o foto (JPG, PNG o WebP).");
-  if (f.size > MAX_BYTES_DOCUMENTO) volver(ruta, "error", "El archivo pesa más de 4 MB. Si es foto, tómala con menos resolución o súbela como PDF.");
+  const tipo = String(fd.get("tipo") ?? "");
+  let fecha = String(fd.get("fecha") ?? "").trim();
+  const archivo = archivoDe(fd, "archivo");
+  if (!archivo) volver(ruta, "error", "Elige el archivo del documento.");
 
-  const destino = rutaDocumento(id, datos.tipo, datos.fecha, crypto.randomUUID(), extension!);
-  const { error: errorArchivo } = await supabase.storage.from("documentos-proveedores").upload(destino, f, { contentType: f.type, upsert: false });
-  if (errorArchivo) volver(ruta, "error", `No se pudo subir el archivo: ${errorArchivo.message}`);
-  const { error } = await supabase.from("documentos_proveedor").insert({ proveedor_id: id, tipo: datos.tipo, fecha: datos.fecha, ruta: destino });
-  if (error) volver(ruta, "error", error.message);
+  let aviso = "";
+  if (tipo === "constancia_fiscal" && archivo!.type === "application/pdf") {
+    const c = await constanciaDe(archivo!);
+    if ("datos" in c) {
+      const { data: p } = await supabase.from("proveedores").select("rfc, regimen_fiscal").eq("id", id).maybeSingle<{ rfc: string; regimen_fiscal: string }>();
+      if (p && c.datos.rfc !== p.rfc) volver(ruta, "error", `Esta constancia es del RFC ${c.datos.rfc}, no de este proveedor (${p.rfc}).`);
+      if (!fecha) fecha = c.datos.fecha_emision;
+      const vigentes = c.datos.regimenes.flatMap((r) => (!r.fin && r.codigo ? [r.codigo] : []));
+      if (p && vigentes.length && !vigentes.includes(p.regimen_fiscal)) {
+        aviso = ` Ojo: la constancia trae el régimen ${vigentes.join(", ")} y el proveedor tiene ${p.regimen_fiscal}; si cambió, actualízalo en Editar datos.`;
+      }
+    } else if (!fecha) {
+      volver(ruta, "error", `${c.error} Si es la correcta, escribe la fecha que trae.`);
+    }
+  }
+
+  const r = leerDocumento(tipo, fecha, hoyCalendarioMX());
+  if ("error" in r) volver(ruta, "error", r.error);
+  const { datos } = r as { datos: { tipo: TipoDocumento; fecha: string } };
+  const problema = await guardarArchivoDocumento(supabase, id, datos.tipo, datos.fecha, archivo!);
+  if (problema) volver(ruta, "error", problema);
   revalidatePath("/compras", "layout");
-  volver(ruta, "ok", "Documento guardado.");
+  volver(ruta, "ok", "Documento guardado." + aviso);
 }
 
 export async function cambiarActivoProveedor(fd: FormData) {

@@ -1,6 +1,7 @@
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { CATEGORIAS_COMPRA, FORMAS_PAGO, NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, REGIMENES, type DatosProveedor } from "@/lib/compras/proveedores";
 import { guardarProveedor } from "./acciones";
+import { CampoConstancia } from "./CampoConstancia";
 import { FormValidado } from "./FormValidado";
 
 export function FormProveedor({ id, inicial }: { id?: string; inicial?: DatosProveedor }) {
@@ -14,6 +15,7 @@ export function FormProveedor({ id, inicial }: { id?: string; inicial?: DatosPro
   return (
     <FormValidado tipo="proveedor" action={guardarProveedor} className="seccion formulario">
       {id && <input type="hidden" name="id" value={id} />}
+      {!id && <CampoConstancia />}
       <h2>Datos fiscales</h2>
       <div className="rejilla">
         {campo("razon_social", "Razón social", { required: true })}
