@@ -16,3 +16,21 @@ export function cuadre({ momento, fondo, ventas, retiros, contado }: {
   const estado: EstadoCuadre = !listo ? "pendiente" : diferencia === 0 ? "cuadra" : diferencia < 0 ? "faltante" : "sobrante";
   return { ventas: v, esperado, diferencia, estado };
 }
+
+/** Los arqueos anulados (un duplicado, un conteo equivocado) se ven tachados pero no cuentan. */
+export const arqueosVigentes = <A extends { anulado_en: string | null }>(arqueos: readonly A[]) => arqueos.filter((a) => !a.anulado_en);
+
+const MOMENTOS: MomentoArqueo[] = ["inicio", "traspaso", "cierre"];
+
+/**
+ * Qué momentos se pueden registrar en el turno: un solo inicio vigente (la base de datos también lo exige).
+ * Sugerido: inicio si aún no hay arqueos vigentes; si ya hay, traspaso.
+ */
+export function momentosDelTurno(arqueos: readonly { momento: MomentoArqueo; anulado_en: string | null }[]) {
+  const vigentes = arqueosVigentes(arqueos);
+  const conInicio = vigentes.some((a) => a.momento === "inicio");
+  return {
+    posibles: MOMENTOS.filter((m) => m !== "inicio" || !conInicio),
+    sugerido: (vigentes.length ? "traspaso" : "inicio") as MomentoArqueo,
+  };
+}

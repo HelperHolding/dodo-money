@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
-import { obtenerContexto } from "@/lib/contexto";
+import { momentosDelTurno } from "@/lib/arqueo";
+import { obtenerContexto, puedeGestionar } from "@/lib/contexto";
 import { hora, pesos } from "@/lib/formato";
-import { NOMBRE_MOMENTO, type Arqueo, type MomentoArqueo } from "@/lib/tipos";
-import { recibirArqueo } from "./actions";
+import { NOMBRE_MOMENTO, type Arqueo } from "@/lib/tipos";
+import { anularArqueo, recibirArqueo } from "./actions";
 import { fondoYRetirosDelTurno } from "./datos";
 import { FormArqueo } from "./FormArqueo";
 
@@ -24,14 +25,15 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
 
   const [{ fondo, fondoDeMovimientos, retiros }, { data: arqueos }, { count: pendientes }, { data: nombres }] = await Promise.all([
     fondoYRetirosDelTurno(supabase, turno.id, Number(sucursal.fondo_caja_venta)),
-    supabase.from("arqueos").select("id, turno_id, momento, total_contado, esperado, diferencia, entrega_id, recibe_id, creado_en")
+    supabase.from("arqueos").select("id, turno_id, momento, total_contado, esperado, diferencia, entrega_id, recibe_id, creado_en, anulado_en, motivo_anulacion")
       .eq("turno_id", turno.id).order("creado_en").returns<Arqueo[]>(),
     supabase.from("movimientos").select("id", { count: "exact", head: true })
       .eq("turno_id", turno.id).eq("estado", "pendiente").in("tipo", ["apertura", "retiro_boveda"]),
     supabase.from("perfiles").select("id, nombre").returns<{ id: string; nombre: string }[]>(),
   ]);
   const persona = new Map((nombres ?? []).map((p) => [p.id, p.nombre]));
-  const momentoSugerido: MomentoArqueo = !arqueos?.length ? "inicio" : "traspaso";
+  const momentos = momentosDelTurno(arqueos ?? []);
+  const anula = puedeGestionar(perfil.rol) && !soloLectura;
 
   return (
     <>
@@ -51,15 +53,20 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
           <h2 id="t-turno">Arqueos de este turno</h2>
           <div className="tabla-contenedor">
             <table className="tabla tabla-tarjetas">
-              <thead><tr><th>Hora</th><th>Momento</th><th>Entregó</th><th>Recibió</th><th>Esperado</th><th>Contado</th><th>Diferencia</th></tr></thead>
+              <thead><tr><th>Hora</th><th>Momento</th><th>Entregó</th><th>Recibió</th><th>Esperado</th><th>Contado</th><th>Diferencia</th>{anula && <th>Anular</th>}</tr></thead>
               <tbody>
                 {arqueos.map((a) => (
-                  <tr key={a.id}>
+                  <tr key={a.id} className={a.anulado_en ? "fila-anulada" : undefined}>
                     <td data-label="Hora">{hora(a.creado_en)}</td>
-                    <td data-label="Momento">{NOMBRE_MOMENTO[a.momento]}</td>
+                    <td data-label="Momento">
+                      <span className="celda-pila">
+                        {NOMBRE_MOMENTO[a.momento]}
+                        {a.anulado_en && <small className="nota-estado">Anulado: {a.motivo_anulacion}</small>}
+                      </span>
+                    </td>
                     <td data-label="Entregó">{persona.get(a.entrega_id)}</td>
                     <td data-label="Recibió">
-                      {a.recibe_id ? persona.get(a.recibe_id) : soloLectura || a.entrega_id === perfil.id ? (
+                      {a.recibe_id ? persona.get(a.recibe_id) : a.anulado_en ? "—" : soloLectura || a.entrega_id === perfil.id ? (
                         <span className="saldo-nota">Pendiente</span>
                       ) : (
                         <form action={recibirArqueo}>
@@ -70,7 +77,22 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
                     </td>
                     <td data-label="Esperado" className="monto">{pesos(a.esperado)}</td>
                     <td data-label="Contado" className="monto">{pesos(a.total_contado)}</td>
-                    <td data-label="Diferencia" className="monto" style={{ color: Number(a.diferencia) === 0 ? "var(--cuadra)" : "var(--alerta)" }}>{pesos(a.diferencia)}</td>
+                    <td data-label="Diferencia" className="monto" style={{ color: a.anulado_en ? undefined : Number(a.diferencia) === 0 ? "var(--cuadra)" : "var(--alerta)" }}>{pesos(a.diferencia)}</td>
+                    {anula && (
+                      <td data-label="Anular">
+                        {a.anulado_en || a.momento === "cierre" ? "" : (
+                          <details>
+                            <summary>Anular</summary>
+                            <form action={anularArqueo} className="form-motivo">
+                              <input type="hidden" name="id" value={a.id} />
+                              <label className="solo-lector" htmlFor={`motivo-${a.id}`}>Motivo</label>
+                              <input id={`motivo-${a.id}`} name="motivo" placeholder="Por qué (p. ej. inicio duplicado)" required />
+                              <BotonEnviar className="boton boton-alerta" pendiente="…" confirmar="¿Anular este arqueo? Queda tachado y deja de contar.">Anular</BotonEnviar>
+                            </form>
+                          </details>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -79,7 +101,7 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
         </section>
       )}
 
-      {!soloLectura && <FormArqueo fondoInicial={fondo} fondoDeMovimientos={fondoDeMovimientos} retirosBoveda={retiros} momentoSugerido={momentoSugerido} />}
+      {!soloLectura && <FormArqueo fondoInicial={fondo} fondoDeMovimientos={fondoDeMovimientos} retirosBoveda={retiros} momentoSugerido={momentos.sugerido} momentosPosibles={momentos.posibles} />}
     </>
   );
 }

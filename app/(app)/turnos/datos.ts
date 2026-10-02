@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { arqueosVigentes } from "@/lib/arqueo";
 import { primerError } from "@/lib/corporativo";
 import { rangoDiaMX } from "@/lib/formato";
 import type { OrigenGasto } from "@/lib/gastos";
@@ -10,6 +11,7 @@ export type TurnoDia = { id: string; fecha: string; tipo: TipoTurno; abierto_en:
 export type ArqueoDia = {
   id: string; turno_id: string; momento: MomentoArqueo; total_contado: number; esperado: number; diferencia: number;
   entrega_id: string; recibe_id: string | null; explicacion: string | null; creado_en: string;
+  anulado_en: string | null; motivo_anulacion: string | null;
 };
 export type MovimientoDia = {
   id: string; turno_id: string | null; tipo: TipoMovimiento; caja_origen_id: string; caja_destino_id: string; monto: number;
@@ -45,7 +47,7 @@ export async function cargarDia(supabase: SupabaseClient, sucursalId: string, fe
   const sinIds = ["00000000-0000-0000-0000-000000000000"];
 
   const resultados = await Promise.all([
-    supabase.from("arqueos").select("id, turno_id, momento, total_contado, esperado, diferencia, entrega_id, recibe_id, explicacion, creado_en")
+    supabase.from("arqueos").select("id, turno_id, momento, total_contado, esperado, diferencia, entrega_id, recibe_id, explicacion, creado_en, anulado_en, motivo_anulacion")
       .in("turno_id", ids.length ? ids : sinIds).order("creado_en").returns<ArqueoDia[]>(),
     supabase.from("movimientos").select(MOVS).eq("sucursal_id", sucursalId)
       .gte("creado_en", desde).lt("creado_en", hasta).order("creado_en").returns<MovimientoDia[]>(),
@@ -69,7 +71,7 @@ export async function cargarDia(supabase: SupabaseClient, sucursalId: string, fe
   const detalles: DetalleTurno[] = (turnos ?? []).map((turno) => {
     const as = (arqueos ?? []).filter((a) => a.turno_id === turno.id);
     const ms = movimientos.filter((m) => m.turno_id === turno.id);
-    return { turno, arqueos: as, movimientos: ms, gastos: reparto.porTurno.get(turno.id) ?? [], resumen: resumenTurno(as, ms) };
+    return { turno, arqueos: as, movimientos: ms, gastos: reparto.porTurno.get(turno.id) ?? [], resumen: resumenTurno(arqueosVigentes(as), ms) };
   });
 
   return {

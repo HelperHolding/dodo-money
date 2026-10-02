@@ -9,8 +9,8 @@ import { NOMBRE_MOMENTO, type MomentoArqueo } from "@/lib/tipos";
 import { registrarArqueo } from "./actions";
 
 export function FormArqueo({
-  fondoInicial, fondoDeMovimientos, retirosBoveda, momentoSugerido,
-}: { fondoInicial: number; fondoDeMovimientos: boolean; retirosBoveda: number; momentoSugerido: MomentoArqueo }) {
+  fondoInicial, fondoDeMovimientos, retirosBoveda, momentoSugerido, momentosPosibles,
+}: { fondoInicial: number; fondoDeMovimientos: boolean; retirosBoveda: number; momentoSugerido: MomentoArqueo; momentosPosibles: MomentoArqueo[] }) {
   const [conteo, setConteo] = useState<Record<string, number>>({});
   const [ventas, setVentas] = useState("");
   const [momento, setMomento] = useState<MomentoArqueo>(momentoSugerido);
@@ -48,7 +48,7 @@ export function FormArqueo({
       <section className="seccion" aria-labelledby="t-momento">
         <h2 id="t-momento">Momento</h2>
         <div className="acciones" role="radiogroup" aria-labelledby="t-momento">
-          {(Object.keys(NOMBRE_MOMENTO) as MomentoArqueo[]).map((m) => (
+          {momentosPosibles.map((m) => (
             <label key={m} className="acciones" style={{ gap: 8, minHeight: 48 }}>
               <input type="radio" name="momento" value={m} checked={m === momento} onChange={() => setMomento(m)} style={{ minHeight: 0, width: 20, height: 20 }} />
               {NOMBRE_MOMENTO[m]}
@@ -138,7 +138,8 @@ export function FormArqueo({
       </section>
 
       <div className="acciones">
-        <BotonEnviar pendiente="Guardando arqueo…">Guardar arqueo</BotonEnviar>
+        <BotonEnviar pendiente="Guardando arqueo…"
+          confirmar={contado === 0 ? "El conteo está en $0.00. ¿Guardar el arqueo así?" : undefined}>Guardar arqueo</BotonEnviar>
         <span className="saldo-nota">Después, quien recibe el turno lo confirma con su usuario.</span>
       </div>
     </form>

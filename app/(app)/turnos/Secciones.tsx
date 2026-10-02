@@ -20,13 +20,19 @@ export function TablaArqueos({ arqueos, persona }: { arqueos: ArqueoDia[]; perso
         <thead><tr><th>Hora</th><th>Momento</th><th>Entregó → recibió</th><th>Contado</th><th>Esperado</th><th>Diferencia</th></tr></thead>
         <tbody>
           {arqueos.map((a) => (
-            <tr key={a.id}>
+            <tr key={a.id} className={a.anulado_en ? "fila-anulada" : undefined}>
               <td data-label="Hora">{hora(a.creado_en)}</td>
-              <td data-label="Momento">{NOMBRE_MOMENTO[a.momento]}{a.explicacion ? <small className="nota-estado">{a.explicacion}</small> : null}</td>
+              <td data-label="Momento">
+                <span className="celda-pila">
+                  {NOMBRE_MOMENTO[a.momento]}
+                  {a.anulado_en ? <small className="nota-estado">Anulado: {a.motivo_anulacion}</small> : null}
+                  {a.explicacion ? <small className="nota-estado">{a.explicacion}</small> : null}
+                </span>
+              </td>
               <td data-label="Entregó → recibió">{persona.get(a.entrega_id) ?? "—"} → {a.recibe_id ? persona.get(a.recibe_id) ?? "—" : "sin recibir"}</td>
               <td data-label="Contado" className="monto">{pesos(a.total_contado)}</td>
               <td data-label="Esperado" className="monto">{pesos(a.esperado)}</td>
-              <td data-label="Diferencia" className={`monto${conDiferencia(a.diferencia) ? " celda-alerta" : ""}`}>{pesos(a.diferencia)}</td>
+              <td data-label="Diferencia" className={`monto${!a.anulado_en && conDiferencia(a.diferencia) ? " celda-alerta" : ""}`}>{pesos(a.diferencia)}</td>
             </tr>
           ))}
         </tbody>
@@ -52,12 +58,12 @@ export function TablaMovimientos({ movimientos, persona, caja }: { movimientos: 
                 <td data-label="Folio">{m.folio ?? ""}</td>
                 <td data-label="Registró">{persona.get(m.registrado_por) ?? "—"}</td>
                 <td data-label="Confirmó">{m.confirmado_por ? persona.get(m.confirmado_por) ?? "—" : ""}</td>
-                <td data-label="Estado">
+                <td data-label="Estado"><span className="celda-pila">
                   {salida
                     ? <span className={`estado estado-${CLASE_ESTADO_SALIDA[salida]}`}>{NOMBRE_ESTADO_SALIDA[salida]}</span>
                     : <span className={`estado estado-${m.estado}`}>{m.estado}</span>}
                   {salida === "no_cuadro" && m.nota_recepcion ? <small className="nota-estado">{m.nota_recepcion}</small> : null}
-                </td>
+                </span></td>
                 <td data-label="Monto" className="monto">{pesos(m.monto)}</td>
               </tr>
             );

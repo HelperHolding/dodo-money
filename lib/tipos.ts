@@ -73,6 +73,9 @@ export interface Arqueo {
   entrega_id: string;
   recibe_id: string | null;
   creado_en: string;
+  /** Anulado por el gerente o el admin (un duplicado, un conteo equivocado): se ve tachado y no cuenta. */
+  anulado_en: string | null;
+  motivo_anulacion: string | null;
 }
 
 /** Cada tipo de movimiento solo puede ir por esta ruta (la base de datos lo vuelve a validar). */

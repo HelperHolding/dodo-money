@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContextoParaEscribir } from "@/lib/contexto";
+import { obtenerContextoParaEscribir, puedeGestionar } from "@/lib/contexto";
 import { totalConteo } from "@/lib/denominaciones";
 import { numero, numeroOpcional } from "@/lib/formato";
 import type { MomentoArqueo } from "@/lib/tipos";
@@ -50,6 +50,18 @@ export async function registrarArqueo(formData: FormData) {
     ? "Arqueo de cierre guardado y turno cerrado. Registra el retiro del efectivo a la bóveda."
     : "Arqueo guardado. Quien recibe debe confirmarlo con su usuario.";
   redirect("/arqueo?ok=" + encodeURIComponent(texto));
+}
+
+/** El gerente o el admin anulan un arqueo equivocado (por ejemplo, un inicio duplicado). No se borra: queda tachado con su motivo. */
+export async function anularArqueo(formData: FormData) {
+  const { supabase, perfil } = await obtenerContextoParaEscribir("/arqueo");
+  if (!puedeGestionar(perfil.rol)) error("Solo el gerente o el admin anulan un arqueo.");
+  const motivo = String(formData.get("motivo") ?? "").trim();
+  if (!motivo) error("Escribe por qué se anula el arqueo.");
+  const { error: e } = await supabase.rpc("anular_arqueo", { p_id: String(formData.get("id") ?? ""), p_motivo: motivo });
+  if (e) error(e.message);
+  revalidatePath("/", "layout");
+  redirect("/arqueo?ok=" + encodeURIComponent("Arqueo anulado. Ya no cuenta en las diferencias."));
 }
 
 export async function recibirArqueo(formData: FormData) {
