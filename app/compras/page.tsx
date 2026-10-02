@@ -2,27 +2,45 @@ import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { SelectorVista } from "@/components/SelectorVista";
 import { obtenerPerfil } from "@/lib/contexto";
+import { estadoDocumentos, NOMBRE_DOCUMENTO, type Documento } from "@/lib/compras/documentos";
 import { CATEGORIAS_COMPRA, NOMBRE_CATEGORIA_COMPRA, type CategoriaCompra } from "@/lib/compras/proveedores";
+import { hoyCalendarioMX } from "@/lib/formato";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { leerVista } from "@/lib/vista";
 
-type Fila = { id: string; razon_social: string; nombre_comercial: string | null; rfc: string; dias_credito: number; categorias: CategoriaCompra[]; activo: boolean };
+type Fila = { id: string; razon_social: string; nombre_comercial: string | null; numero_cliente: string | null; rfc: string; dias_credito: number; categorias: CategoriaCompra[]; activo: boolean };
 
-export default async function Proveedores({ searchParams }: { searchParams: Promise<{ q?: string; categoria?: string; inactivos?: string; vista?: string; ok?: string; error?: string }> }) {
+export default async function Proveedores({ searchParams }: { searchParams: Promise<{ q?: string; categoria?: string; inactivos?: string; docs?: string; vista?: string; ok?: string; error?: string }> }) {
   const params = await searchParams;
-  const { q = "", categoria, inactivos, ok, error } = params;
+  const { q = "", categoria, inactivos, docs, ok, error } = params;
   const vista = leerVista(params.vista);
   const { supabase, perfil } = await obtenerPerfil();
-  const filas = await leerTodo<Fila>((desde, hasta) => supabase.from("proveedores")
-    .select("id, razon_social, nombre_comercial, rfc, dias_credito, categorias, activo")
-    .order("razon_social").order("id").range(desde, hasta).returns<Fila[]>());
+  const [filas, documentos] = await Promise.all([
+    leerTodo<Fila>((desde, hasta) => supabase.from("proveedores")
+      .select("id, razon_social, nombre_comercial, numero_cliente, rfc, dias_credito, categorias, activo")
+      .order("razon_social").order("id").range(desde, hasta).returns<Fila[]>()),
+    leerTodo<Documento & { proveedor_id: string }>((desde, hasta) => supabase.from("documentos_proveedor")
+      .select("id, proveedor_id, tipo, fecha, subido_en").order("id").range(desde, hasta).returns<(Documento & { proveedor_id: string })[]>()),
+  ]);
+  const hoy = hoyCalendarioMX();
+  const docsDe = new Map<string, Documento[]>();
+  for (const d of documentos) docsDe.set(d.proveedor_id, [...(docsDe.get(d.proveedor_id) ?? []), d]);
+  const estadoDe = (id: string) => estadoDocumentos(docsDe.get(id) ?? [], hoy);
+  /** "Faltan 2 documentos · opinión vencida", o null si todo está al día. */
+  const avisoDocs = (id: string) => {
+    const e = estadoDe(id);
+    if (!e.pendiente) return null;
+    return [e.faltan.length ? (e.faltan.length === 1 ? `Falta ${NOMBRE_DOCUMENTO[e.faltan[0]].toLowerCase()}` : `Faltan ${e.faltan.length} documentos`) : "",
+      e.opinionVencida ? "opinión vencida" : ""].filter(Boolean).join(" · ");
+  };
 
   const buscar = q.trim().toLowerCase();
   const filtro = (CATEGORIAS_COMPRA as readonly string[]).includes(categoria ?? "") ? (categoria as CategoriaCompra) : undefined;
   const visibles = filas.filter((p) =>
     (inactivos === "si" || p.activo)
     && (!filtro || p.categorias.includes(filtro))
+    && (docs !== "pendientes" || estadoDe(p.id).pendiente)
     && (!buscar || [p.razon_social, p.nombre_comercial ?? "", p.rfc].some((t) => t.toLowerCase().includes(buscar))));
 
   return (
@@ -44,6 +62,7 @@ export default async function Proveedores({ searchParams }: { searchParams: Prom
             </select>
           </div>
           <label className="campo"><span><input type="checkbox" name="inactivos" value="si" defaultChecked={inactivos === "si"} /> Incluir inactivos</span></label>
+          <label className="campo"><span><input type="checkbox" name="docs" value="pendientes" defaultChecked={docs === "pendientes"} /> Solo con documentos pendientes</span></label>
         </div>
         <div className="acciones">
           <button className="boton boton-secundario" type="submit">Filtrar</button>
@@ -60,7 +79,8 @@ export default async function Proveedores({ searchParams }: { searchParams: Prom
             <li key={p.id} className="fila" data-alerta={p.activo ? undefined : "si"}>
               <div className="fila-nombre">
                 <Link href={`/compras/proveedores/${p.id}`}>{p.nombre_comercial ?? p.razon_social}</Link>
-                {(p.nombre_comercial || !p.activo) && <small>{[p.nombre_comercial ? p.razon_social : "", p.activo ? "" : "inactivo"].filter(Boolean).join(" · ")}</small>}
+                {(p.nombre_comercial || !p.activo || p.numero_cliente) && <small>{[p.nombre_comercial ? p.razon_social : "", p.numero_cliente ? `cliente ${p.numero_cliente}` : "", p.activo ? "" : "inactivo"].filter(Boolean).join(" · ")}</small>}
+                {avisoDocs(p.id) && <small className="nota-estado">{avisoDocs(p.id)}</small>}
               </div>
               <div className="fila-datos">
                 <span>{p.rfc}</span>
@@ -82,7 +102,9 @@ export default async function Proveedores({ searchParams }: { searchParams: Prom
             </div>
             <dl className="tarjeta-datos">
               {p.nombre_comercial && <><dt>Razón social</dt><dd>{p.razon_social}</dd></>}
+              {p.numero_cliente && <><dt>N.º de cliente</dt><dd>{p.numero_cliente}</dd></>}
               <dt>Crédito</dt><dd>{p.dias_credito ? `${p.dias_credito} días` : "Contado"}</dd>
+              <dt>Documentos</dt><dd className={avisoDocs(p.id) ? "celda-alerta" : undefined}>{avisoDocs(p.id) ?? "Al día"}</dd>
               <dt>Surte</dt><dd>{p.categorias.length ? p.categorias.map((c) => NOMBRE_CATEGORIA_COMPRA[c]).join(", ") : "Sin categoría"}</dd>
             </dl>
           </article>

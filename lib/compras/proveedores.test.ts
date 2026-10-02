@@ -36,8 +36,15 @@ test("proveedor mínimo: defaults de crédito, forma de pago y categorías", () 
   assert.deepEqual(r.datos, {
     razon_social: "Lácteos del Bajío SA de CV", nombre_comercial: null, rfc: "LBA010203AB1", regimen_fiscal: "601",
     contacto_nombre: null, telefono: null, correo: null, banco: null, clabe: null, cuenta: null,
-    dias_credito: 0, forma_pago_habitual: "transferencia", categorias: [], notas: null,
+    dias_credito: 0, forma_pago_habitual: "transferencia", categorias: [], notas: null, numero_cliente: null,
   });
+});
+
+test("número de cliente: opcional, sin espacios de sobra, hasta 60 caracteres", () => {
+  const r = leerProveedor(campos({ ...base, numero_cliente: "  CLI-00452 " }));
+  assert.ok("datos" in r);
+  assert.equal(r.datos.numero_cliente, "CLI-00452");
+  assert.deepEqual(leerProveedor(campos({ ...base, numero_cliente: "x".repeat(61) })), { error: "El número de cliente es de hasta 60 caracteres." });
 });
 
 test("proveedor completo: acepta etiquetas legibles y las normaliza", () => {

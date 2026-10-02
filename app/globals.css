@@ -590,3 +590,5 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .check-proveedor:first-of-type { border-top: 0; }
 .check-proveedor label { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; overflow-wrap: anywhere; }
 .check-proveedor input { width: 20px; height: 20px; min-height: 0; flex: none; }
+.lista-simple { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.9rem; }
+.fila-extra { grid-column: 1 / -1; }

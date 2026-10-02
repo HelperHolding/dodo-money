@@ -67,6 +67,8 @@ export type DatosProveedor = {
   contacto_nombre: string | null; telefono: string | null; correo: string | null;
   banco: string | null; clabe: string | null; cuenta: string | null;
   dias_credito: number; forma_pago_habitual: FormaPago; categorias: CategoriaCompra[]; notas: string | null;
+  /** Nuestro número de cliente con el proveedor (opcional). */
+  numero_cliente: string | null;
 };
 
 type Resultado<T> = { datos: T } | { error: string };
@@ -96,6 +98,9 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
   const forma = textoForma === "" ? "transferencia" : clave(textoForma);
   if (!(FORMAS_PAGO as readonly string[]).includes(forma)) return { error: `Forma de pago no reconocida: ${textoForma}.` };
 
+  const numero_cliente = opcional(valor("numero_cliente"));
+  if (numero_cliente && numero_cliente.length > 60) return { error: "El número de cliente es de hasta 60 caracteres." };
+
   const categorias: CategoriaCompra[] = [];
   for (const parte of valor("categorias").split(",").map((p) => p.trim()).filter(Boolean)) {
     const c = clave(parte);
@@ -108,7 +113,7 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
       razon_social, nombre_comercial: opcional(valor("nombre_comercial")), rfc, regimen_fiscal,
       contacto_nombre: opcional(valor("contacto_nombre")), telefono: opcional(valor("telefono")), correo,
       banco: opcional(valor("banco")), clabe, cuenta: opcional(valor("cuenta")),
-      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")),
+      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")), numero_cliente,
     },
   };
 }
@@ -148,6 +153,7 @@ export const ENCABEZADOS = [
   { texto: "Cuenta", campo: "cuenta", obligatorio: false },
   { texto: "Días de crédito", campo: "dias_credito", obligatorio: false },
   { texto: "Forma de pago", campo: "forma_pago_habitual", obligatorio: false },
+  { texto: "Número de cliente", campo: "numero_cliente", obligatorio: false },
   { texto: "Categorías", campo: "categorias", obligatorio: false },
   { texto: "Notas", campo: "notas", obligatorio: false },
 ] as const;

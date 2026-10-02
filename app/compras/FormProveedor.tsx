@@ -18,6 +18,7 @@ export function FormProveedor({ id, inicial }: { id?: string; inicial?: DatosPro
       <div className="rejilla">
         {campo("razon_social", "Razón social", { required: true })}
         {campo("nombre_comercial", "Nombre comercial")}
+        {campo("numero_cliente", "Nuestro número de cliente", { maxLength: 60, placeholder: "Opcional" })}
         {campo("rfc", "RFC", { required: true, maxLength: 15, autoCapitalize: "characters" })}
         <div className="campo">
           <label htmlFor="regimen_fiscal">Régimen fiscal</label>
