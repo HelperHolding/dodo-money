@@ -28,6 +28,9 @@ export interface Sucursal {
   fondo_cambios: number;
   fondo_caja_chica: number;
   limite_retiro: number;
+  /** Lo que se queda en la bóveda después de la salida a corporativo (incluye el de emergencia). */
+  fondo_boveda: number;
+  fondo_emergencia: number;
 }
 
 export interface Caja {

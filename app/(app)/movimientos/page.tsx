@@ -5,6 +5,7 @@ import { hora, hoyMX, pesos, rangoDiaMX } from "@/lib/formato";
 import { CLASE_ESTADO_SALIDA, estadoSalida, NOMBRE_ESTADO_SALIDA } from "@/lib/salidas";
 import { NOMBRE_MOVIMIENTO, type Movimiento } from "@/lib/tipos";
 import { confirmarMovimiento, rechazarMovimiento } from "./actions";
+import { bovedaDe } from "./datos";
 import { FormMovimiento } from "./FormMovimiento";
 
 export default async function Movimientos({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
@@ -12,11 +13,12 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
   const { supabase, perfil, sucursal, cajas, soloLectura } = await obtenerContexto();
   const { desde, hasta } = rangoDiaMX(hoyMX());
 
-  const [{ data: movimientos }, { data: nombres }] = await Promise.all([
+  const [{ data: movimientos }, { data: nombres }, boveda] = await Promise.all([
     supabase.from("movimientos").select("*").eq("sucursal_id", sucursal.id)
       .gte("creado_en", desde).lt("creado_en", hasta).order("creado_en", { ascending: false })
       .returns<Movimiento[]>(),
     supabase.from("perfiles").select("id, nombre").returns<{ id: string; nombre: string }[]>(),
+    bovedaDe(supabase, sucursal.id, Number(sucursal.fondo_boveda)),
   ]);
   const persona = new Map((nombres ?? []).map((p) => [p.id, p.nombre]));
   const caja = new Map(cajas.map((c) => [c.id, c.nombre]));
@@ -28,7 +30,8 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
         <p>Cada vez que el efectivo pasa de una caja a otra se registra aquí. Quien lo recibe lo confirma con su propio usuario.</p>
       </div>
       <Aviso ok={ok} error={error} />
-      {!soloLectura && <FormMovimiento limiteRetiro={Number(sucursal.limite_retiro)} />}
+      {!soloLectura && <FormMovimiento limiteRetiro={Number(sucursal.limite_retiro)} fondoCajon={Number(sucursal.fondo_caja_venta)}
+        boveda={boveda} fondoEmergencia={Number(sucursal.fondo_emergencia)} />}
 
       <section className="seccion" aria-labelledby="t-hoy">
         <h2 id="t-hoy">Movimientos de hoy</h2>

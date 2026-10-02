@@ -12,6 +12,12 @@ type Cierre = {
   cambios_diferencia: number; diferencia_turnos: number; deposito_ficha: string | null;
 };
 
+/** "$4,500.00 (de ellos $3,000.00 de emergencia)" */
+const fondoBoveda = (s: { fondo_boveda: number; fondo_emergencia: number }) =>
+  `${pesos(s.fondo_boveda)} (de ellos ${pesos(s.fondo_emergencia)} de emergencia)`;
+/** Lo que pasa del fondo de la bóveda y debe salir a corporativo. */
+const porSalir = (bovedaHay: number, fondo: number) => Math.max(0, Math.round((bovedaHay - Number(fondo)) * 100) / 100);
+
 const Fila = ({ texto, valor, fuerte }: { texto: string; valor: string; fuerte?: boolean }) => (
   <tr><td style={{ fontWeight: fuerte ? 700 : 400 }}>{texto}</td><td className="monto">{valor}</td></tr>
 );
@@ -41,6 +47,8 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="Bóveda esperada" valor={pesos(cierre.boveda_esperado)} />
             <Fila texto="Bóveda contada" valor={pesos(cierre.boveda_contado)} />
             <Fila texto="Diferencia de bóveda" valor={pesos(cierre.boveda_diferencia)} fuerte />
+            <Fila texto="Fondo que se queda en bóveda" valor={fondoBoveda(sucursal)} />
+            <Fila texto="Debe salir a corporativo" valor={pesos(porSalir(Number(cierre.boveda_contado), sucursal.fondo_boveda))} fuerte />
             <Fila texto="Diferencia del fondo de cambios" valor={pesos(cierre.cambios_diferencia)} />
             <Fila texto="Folio de la salida a corporativo" valor={cierre.deposito_ficha ?? "Sin salida"} />
           </tbody></table>
@@ -106,6 +114,8 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="− Salidas a corporativo de hoy" valor={pesos(d.depositos)} />
             <Fila texto="− Gastos pagados de la bóveda hoy" valor={pesos(d.gastosBoveda)} />
             <Fila texto="= Debe haber en bóveda" valor={pesos(esperado)} fuerte />
+            <Fila texto="Fondo que se queda en bóveda" valor={fondoBoveda(sucursal)} />
+            <Fila texto="Puede salir a corporativo" valor={pesos(porSalir(esperado, sucursal.fondo_boveda))} />
             <Fila texto="Diferencia de los arqueos de turno" valor={pesos(d.diferenciaTurnos)} />
           </tbody></table>
           <div className="rejilla rejilla-corta">

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { BotonEnviar } from "@/components/BotonEnviar";
+import { salidaSugerida, type Boveda } from "@/lib/fondos";
+import { pesos } from "@/lib/formato";
 import { NOMBRE_MOVIMIENTO, RUTAS, type TipoCaja, type TipoMovimiento } from "@/lib/tipos";
 import { registrarMovimiento } from "./actions";
 
@@ -17,11 +19,16 @@ const AYUDA: Record<TipoMovimiento, string> = {
   reposicion_caja_chica: "La caja chica se repone con dinero de corporativo, nunca con efectivo de ventas.",
 };
 
-export function FormMovimiento({ limiteRetiro }: { limiteRetiro: number }) {
+export function FormMovimiento({ limiteRetiro, fondoCajon, boveda, fondoEmergencia }: {
+  limiteRetiro: number; fondoCajon: number; boveda: Boveda; fondoEmergencia: number;
+}) {
   const [tipo, setTipo] = useState<TipoMovimiento>("retiro_boveda");
   const ruta = RUTAS[tipo];
   const [origen, setOrigen] = useState<TipoCaja>(ruta.origen[0]);
   const destinos = ruta.destino.filter((d) => d !== origen);
+  const maximoSalida = salidaSugerida(boveda);
+  // Montos propuestos: el fondo del cajón al abrir y, en la salida, todo lo que pasa del fondo de la bóveda.
+  const propuesto = tipo === "apertura" ? fondoCajon : tipo === "salida_corporativo" && maximoSalida > 0 ? maximoSalida : undefined;
 
   function cambiarTipo(nuevo: TipoMovimiento) {
     setTipo(nuevo);
@@ -54,12 +61,17 @@ export function FormMovimiento({ limiteRetiro }: { limiteRetiro: number }) {
         </div>
         <div className="campo">
           <label htmlFor="monto">Monto</label>
-          <input id="monto" name="monto" type="number" inputMode="decimal" min="0.5" step="0.5" required />
+          <input id="monto" name="monto" key={tipo} defaultValue={propuesto} type="number" inputMode="decimal" min="0.5" step="0.01" required />
         </div>
       </div>
       <p className="aviso aviso-info">
         {AYUDA[tipo]}
+        {tipo === "retiro_boveda" && ` Al cerrar el turno el cajón se queda con ${pesos(fondoCajon)}; lo demás va a la bóveda.`}
         {tipo === "retiro_boveda" && limiteRetiro > 0 && ` Límite del cajón en esta sucursal: $${limiteRetiro.toLocaleString("es-MX")}.`}
+        {tipo === "apertura" && ` El cajón arranca con ${pesos(fondoCajon)}.`}
+        {tipo === "salida_corporativo" && (maximoSalida > 0
+          ? ` La bóveda se queda con ${pesos(boveda.fondoBoveda)} (de ellos ${pesos(fondoEmergencia)} de emergencia): pueden salir hasta ${pesos(maximoSalida)}.`
+          : ` La bóveda tiene ${pesos(boveda.saldoBoveda - boveda.salidasPendientes)} y debe quedarse con ${pesos(boveda.fondoBoveda)}: ahora no puede salir nada.`)}
       </p>
       <div className="rejilla">
         <div className="campo">

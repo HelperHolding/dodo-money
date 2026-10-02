@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { obtenerContextoParaEscribir } from "@/lib/contexto";
+import { problemaSalida } from "@/lib/fondos";
+import { bovedaDe } from "./datos";
 import { numero } from "@/lib/formato";
 import { RUTAS, type TipoCaja, type TipoMovimiento } from "@/lib/tipos";
 
@@ -27,6 +29,10 @@ export async function registrarMovimiento(formData: FormData) {
     volverCon("/movimientos", "error", "Esa ruta no está permitida para este tipo de movimiento.");
   if (monto <= 0) volverCon("/movimientos", "error", "Escribe un monto mayor a cero.");
   if (tipo === "salida_corporativo" && !folio) volverCon("/movimientos", "error", "Escribe el folio o recibo de la salida a corporativo.");
+  if (tipo === "salida_corporativo") {
+    const problema = problemaSalida(monto, await bovedaDe(supabase, sucursal.id, Number(sucursal.fondo_boveda)));
+    if (problema) volverCon("/movimientos", "error", problema);
+  }
 
   const { error } = await supabase.from("movimientos").insert({
     sucursal_id: sucursal.id,
