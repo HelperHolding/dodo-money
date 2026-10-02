@@ -18,6 +18,14 @@ export type DatosVentas = {
   cierres: CierreDia[];
 };
 
+/**
+ * Qué sucursal se ve. Gerente: siempre la suya (la base de datos tampoco le deja ver otra).
+ * Admin y corporativo: la pedida si existe, o todas (null).
+ */
+export function sucursalElegida(todas: boolean, pedida: string | undefined, propia: string | null, existe: (id: string) => boolean): string | null {
+  return todas ? (pedida && existe(pedida) ? pedida : null) : propia;
+}
+
 /** Último día importado (de una sucursal o de cualquiera); null si no hay nada. */
 export async function ultimoDiaConDatos(supabase: SupabaseClient, sucursal: string | null): Promise<string | null> {
   let q = supabase.from("ventas_dia").select("fecha");

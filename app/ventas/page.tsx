@@ -15,7 +15,7 @@ import {
 } from "@/lib/ventas/calculos";
 import { indicadores } from "@/lib/ventas/tablero";
 import { moverMes } from "@/lib/ventas/calendario";
-import { datosPedidos, datosVentas, ultimoDiaConDatos, ventaDiariaDesde } from "./datos";
+import { datosPedidos, datosVentas, sucursalElegida, ultimoDiaConDatos, ventaDiariaDesde } from "./datos";
 import { SeccionesPedidos } from "./SeccionesPedidos";
 
 const categoria = (c: Categoria | null) => (c ? NOMBRE_CATEGORIA[c] : "Sin categoría");
@@ -32,8 +32,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const { data: sucursales, error } = await supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>();
   if (error) throw new Error(`No se pudieron cargar las sucursales: ${error.message}`);
   const nombreDe = new Map((sucursales ?? []).map((s) => [s.id, s.nombre]));
-  // Gerente: siempre la suya (la base de datos tampoco le deja ver otra). Admin y corporativo: todas o una.
-  const sucursal = todas ? (q.sucursal && nombreDe.has(q.sucursal) ? q.sucursal : null) : perfil.sucursal_id;
+  const sucursal = sucursalElegida(todas, q.sucursal, perfil.sucursal_id, (id) => nombreDe.has(id));
 
   const ultimo = await ultimoDiaConDatos(supabase, sucursal);
   if (!ultimo) {
@@ -72,6 +71,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const m2 = sucursal ? d.dias.filter((x) => x.venta_m2 !== null) : [];
   const mayorCosto = productos.filter((p) => p.costoPct !== null).sort((a, b) => (b.costoPct ?? 0) - (a.costoPct ?? 0)).slice(0, 5);
   const titulo = sucursal ? nombreDe.get(sucursal) : "Todas las sucursales";
+  const filtroReporte = new URLSearchParams({ desde: periodo.desde, hasta: periodo.hasta, ...(sucursal ? { sucursal } : {}) }).toString();
   // Días importados con el formato anterior: tienen venta pero no pedidos.
   const conDetalle = new Set(detalle.pedidos.map((p) => `${p.sucursal_id}|${p.fecha}`));
   const diasSinDetalle = d.dias.filter((x) => !conDetalle.has(`${x.sucursal_id}|${x.fecha}`)).length;
@@ -81,6 +81,10 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
       <div className="encabezado">
         <h1>Ventas</h1>
         <p>{titulo} · {fechaTexto(periodo.desde)} a {fechaTexto(periodo.hasta)} · {resumen.dias} {resumen.dias === 1 ? "día" : "días"} con datos</p>
+      </div>
+      <div className="acciones">
+        <Link className="boton boton-secundario" href={`/reporte/ventas?${filtroReporte}`} target="_blank">Reporte PDF</Link>
+        <a className="boton boton-secundario" href={`/reporte/ventas/excel?${filtroReporte}`} download>Descargar Excel</a>
       </div>
 
       <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
