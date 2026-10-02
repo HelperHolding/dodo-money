@@ -95,6 +95,17 @@ export async function cerrarOrden(fd: FormData) {
   await llamar(fd, "cerrar_orden", { p_motivo: texto(fd, "motivo") }, "Orden cerrada.");
 }
 
+/** El admin ajusta cuándo se espera la entrega (el proveedor dio otro día). */
+export async function cambiarEntregaEsperada(fd: FormData) {
+  const id = texto(fd, "id");
+  const supabase = await clienteAdmin(ruta(id));
+  const fecha = texto(fd, "entrega_esperada");
+  if (!/^d{4}-d{2}-d{2}$/.test(fecha)) volver(ruta(id), "error", "Escribe la fecha en que se espera la entrega.");
+  const { error } = await supabase.rpc("cambiar_entrega_esperada", { p_orden: id, p_fecha: fecha });
+  if (error) volver(ruta(id), "error", error.message);
+  listo(id, "Entrega esperada actualizada.");
+}
+
 export async function copiarOrden(fd: FormData) {
   const id = texto(fd, "id");
   const supabase = await clienteAdmin(ruta(id));

@@ -9,7 +9,7 @@ import { recibirRenglon } from "./actions";
 
 type PorRecibir = {
   orden_id: string; folio: string; proveedor: string; confirmada_en: string; renglon_id: string;
-  descripcion: string; unidad: string; tipo: string; cantidad: number; recibido: number;
+  descripcion: string; unidad: string; tipo: string; cantidad: number; recibido: number; entrega_esperada: string | null;
 };
 
 export default async function RecepcionesSucursal({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
@@ -33,7 +33,10 @@ export default async function RecepcionesSucursal({ searchParams }: { searchPara
       {ordenes.map((o) => (
         <section key={o.orden_id} className="seccion" aria-labelledby={`o-${o.orden_id}`}>
           <h2 id={`o-${o.orden_id}`}>{o.folio} · {o.proveedor}</h2>
-          <p className="saldo-nota">Confirmada el {fechaTexto(fechaMX(o.confirmada_en))}</p>
+          <p className={o.entrega_esperada && o.entrega_esperada < hoy ? "aviso aviso-error" : "saldo-nota"}>
+            Confirmada el {fechaTexto(fechaMX(o.confirmada_en))}
+            {o.entrega_esperada ? ` · se espera el ${fechaTexto(o.entrega_esperada)}${o.entrega_esperada < hoy ? " (atrasada)" : o.entrega_esperada === hoy ? " (hoy)" : ""}` : ""}
+          </p>
           <div className="tarjetas">
             {pendientes.filter((r) => r.orden_id === o.orden_id).map((r) => {
               const falta = Math.round((Number(r.cantidad) - Number(r.recibido)) * 1000) / 1000;

@@ -3,11 +3,14 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
-import { fechaTexto, pesos } from "@/lib/formato";
+import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
+import { avanceOrden, NOMBRE_AVANCE } from "@/lib/compras/ordenes";
+import { esperadasPorDia, estadoEntrega } from "@/lib/compras/entregas";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { clasificarRecepcion } from "./acciones";
 import { FormImportarRecepciones } from "./FormImportarRecepciones";
+import { CalendarioEntregas, type OrdenEsperada } from "./CalendarioEntregas";
 
 type Recepcion = {
   id: string; sucursal_id: string; dodo_insumo_id: string; material: string; unidad: string; fecha: string; cantidad: number; precio: number;
@@ -19,6 +22,11 @@ type Abierto = {
   ordenes_compra: { folio: string; estado: string; sucursal_id: string | null; proveedores: { razon_social: string; nombre_comercial: string | null } | null } | null;
 };
 
+type OrdenConfirmada = {
+  id: string; folio: string; entrega_esperada: string | null;
+  proveedores: { razon_social: string; nombre_comercial: string | null } | null; sucursales: { nombre: string } | null;
+};
+
 const NOMBRE_CLASE = { pendiente: "Por revisar", orden: "Ligada a orden", sin_orden: "Compra sin orden", traspaso: "Traspaso" } as const;
 
 export default async function Recepciones({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
@@ -26,7 +34,7 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
   const { supabase, perfil } = await obtenerPerfil();
   const edita = puedeEditarCompras(perfil.rol);
   // Solo lo que se ve: todas las pendientes y las 40 clasificadas más recientes (el historial completo crece cada día).
-  const [pendientes, { data: recientesData }, { data: abiertos }] = await Promise.all([
+  const [pendientes, { data: recientesData }, { data: abiertos }, { data: confirmadas }] = await Promise.all([
     leerTodo<Recepcion>((d, h) => supabase.from("recepciones_dodo").select("id, sucursal_id, dodo_insumo_id, material, unidad, fecha, cantidad, precio, clasificacion, orden_renglon_id, sucursales(nombre)")
       .eq("clasificacion", "pendiente").order("fecha", { ascending: false }).order("id").range(d, h).returns<Recepcion[]>()),
     supabase.from("recepciones_dodo").select("id, sucursal_id, dodo_insumo_id, material, unidad, fecha, cantidad, precio, clasificacion, orden_renglon_id, sucursales(nombre)")
@@ -34,7 +42,24 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
     supabase.from("renglones_recibido")
       .select("id, descripcion, cantidad, recibido, orden_id, articulos(dodo_insumo_id, unidad), ordenes_compra!inner(folio, estado, sucursal_id, proveedores(razon_social, nombre_comercial))")
       .eq("ordenes_compra.estado", "confirmada").returns<Abierto[]>(),
+    supabase.from("ordenes_compra").select("id, folio, entrega_esperada, proveedores(razon_social, nombre_comercial), sucursales(nombre)")
+      .eq("estado", "confirmada").order("entrega_esperada", { nullsFirst: false }).returns<OrdenConfirmada[]>(),
   ]);
+  // Recepciones esperadas: órdenes confirmadas que no se han recibido completas.
+  const hoy = hoyCalendarioMX();
+  const esperadas = (confirmadas ?? []).map((o) => {
+    const rs = (abiertos ?? []).filter((a) => a.orden_id === o.id).map((a) => ({ cantidad: Number(a.cantidad), recibido: Number(a.recibido) }));
+    const avance = avanceOrden(rs);
+    const estado = estadoEntrega(o.entrega_esperada, avance === "completa", hoy);
+    const vista: OrdenEsperada & { entrega_esperada: string | null; completa: boolean } = {
+      id: o.id, folio: o.folio, proveedor: o.proveedores?.nombre_comercial ?? o.proveedores?.razon_social ?? "", destino: o.sucursales?.nombre ?? "Oficina",
+      avance: NOMBRE_AVANCE[avance].toLowerCase(), atrasada: estado === "atrasada", entrega_esperada: o.entrega_esperada, completa: avance === "completa",
+    };
+    return vista;
+  });
+  const porDia = esperadasPorDia(esperadas);
+  const atrasadas = esperadas.filter((o) => o.atrasada);
+  const sinFecha = esperadas.filter((o) => !o.completa && !o.entrega_esperada);
   const recientes = recientesData ?? [];
   const opciones = (r: Recepcion) => (abiertos ?? []).filter((a) =>
     a.ordenes_compra?.sucursal_id === r.sucursal_id && (!a.articulos?.dodo_insumo_id || a.articulos.dodo_insumo_id === r.dodo_insumo_id));
@@ -46,6 +71,26 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
         <p>Lo que se recibió en Dodo IS, ligado a las órdenes de compra. Los consumibles se ligan solos por su ID de insumo.</p>
       </div>
       <Aviso ok={ok} error={error} />
+      <CalendarioEntregas hoy={hoy} porDia={porDia} />
+      {(atrasadas.length > 0 || sinFecha.length > 0) && (
+        <section className="seccion" aria-labelledby="t-atrasadas">
+          <h2 id="t-atrasadas">Por seguir</h2>
+          {atrasadas.length > 0 && <p className="aviso aviso-error">{atrasadas.length} {atrasadas.length === 1 ? "orden atrasada" : "órdenes atrasadas"}.</p>}
+          <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
+            <li className="fila fila-encabezado" aria-hidden="true"><span>Orden</span><span>Proveedor</span><span>Para</span><span>Esperada</span></li>
+            {[...atrasadas, ...sinFecha].map((o) => (
+              <li key={o.id} className="fila" data-alerta={o.atrasada ? "si" : undefined}>
+                <div className="fila-nombre"><Link href={`/compras/ordenes/${o.id}`}>{o.folio}</Link><small>{o.avance}</small></div>
+                <div className="fila-datos">
+                  <span>{o.proveedor}</span>
+                  <span>{o.destino}</span>
+                  <span>{o.entrega_esperada ? `atrasada desde ${fechaTexto(o.entrega_esperada)}` : "Sin fecha: ponla en la orden"}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {edita && <FormImportarRecepciones />}
 
       <section className="seccion" aria-labelledby="t-pendientes">

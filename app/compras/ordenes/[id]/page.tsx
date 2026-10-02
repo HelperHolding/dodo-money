@@ -7,20 +7,21 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { BUCKET_FOTOS } from "@/lib/fotos";
-import { fechaTexto, pesos, fechaMX } from "@/lib/formato";
+import { fechaTexto, pesos, fechaMX, hoyCalendarioMX } from "@/lib/formato";
+import { estadoEntrega, NOMBRE_ESTADO_ENTREGA } from "@/lib/compras/entregas";
 import {
   accionesDe, avanceOrden, avanceRenglon, NOMBRE_AVANCE, NOMBRE_ESTADO_ORDEN, precioDistinto, recibidoDeMas, totalesOrden, type EstadoOrden,
 } from "@/lib/compras/ordenes";
 import { NOMBRE_TASA_IVA, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import {
-  agregarRenglon, anularRecepcionApp, cancelarOrden, cerrarOrden, confirmarOrden, copiarOrden, editarOrden, editarRenglon, enviarOrden, quitarRenglon,
+  agregarRenglon, anularRecepcionApp, cancelarOrden, cerrarOrden, confirmarOrden, copiarOrden, editarOrden, editarRenglon, enviarOrden, quitarRenglon, cambiarEntregaEsperada,
 } from "../acciones";
 import { CamposRenglon } from "../CamposRenglon";
 
 type Orden = {
   id: string; folio: string; estado: EstadoOrden; grupo_id: string; proveedor_id: string; sucursal_id: string | null; notas: string | null;
-  motivo: string | null; creado_en: string; confirmada_en: string | null;
+  motivo: string | null; creado_en: string; confirmada_en: string | null; entrega_esperada: string | null;
   proveedores: { razon_social: string; nombre_comercial: string | null } | null; sucursales: { nombre: string } | null;
 };
 type Renglon = { id: string; articulo_id: string; descripcion: string; cantidad: number; precio: number; tasa_iva: TasaIva; recibido: number; articulos: { unidad: string; tipo: string } | null };
@@ -31,7 +32,7 @@ type Evento = { id: number; evento: string; nota: string | null; en: string; per
 const CLAVE_EVENTO: Record<string, string> = {
   creada: "Creada", editada: "Editada", enviada: "Enviada al proveedor", confirmada: "Confirmada como orden de compra", copiada: "Creada como alternativa",
   cancelada: "Cancelada", cerrada: "Cerrada", recibido: "Recibido en sucursal", "recepción anulada": "Recepción anulada",
-  facturada: "Factura ligada", reabierta: "Reabierta",
+  facturada: "Factura ligada", reabierta: "Reabierta", entrega: "Entrega esperada cambiada a",
 };
 
 const NOMBRE_AVANCE_FACTURA = { nada: "Sin facturar", parcial: "Facturada en parte", completa: "Facturada completa" } as const;
@@ -40,7 +41,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: o, error: errorOrden } = await supabase.from("ordenes_compra")
-    .select("id, folio, estado, grupo_id, proveedor_id, sucursal_id, notas, motivo, creado_en, confirmada_en, proveedores(razon_social, nombre_comercial), sucursales(nombre)")
+    .select("id, folio, estado, grupo_id, proveedor_id, sucursal_id, notas, motivo, creado_en, confirmada_en, entrega_esperada, proveedores(razon_social, nombre_comercial), sucursales(nombre)")
     .eq("id", id).maybeSingle<Orden>();
   if (errorOrden) throw new Error(errorOrden.message);
   if (!o) notFound();
@@ -100,6 +101,16 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
           <dt>IVA</dt><dd>{pesos(t.iva)}</dd>
           <dt>Total</dt><dd><strong>{pesos(t.total)}</strong></dd>
           {o.estado === "confirmada" && <><dt>Recepción</dt><dd>{NOMBRE_AVANCE[avanceOrden(rs)]}</dd></>}
+          {o.estado === "confirmada" && (() => {
+            const estado = estadoEntrega(o.entrega_esperada, avanceOrden(rs) === "completa", hoyCalendarioMX());
+            return (
+              <><dt>Entrega esperada</dt>
+                <dd className={estado === "atrasada" ? "celda-alerta" : undefined}>
+                  {o.entrega_esperada ? fechaTexto(o.entrega_esperada) : "Sin fecha"}
+                  {estado === "atrasada" || estado === "hoy" ? ` · ${NOMBRE_ESTADO_ENTREGA[estado].toLowerCase()}` : ""}
+                </dd></>
+            );
+          })()}
           {(o.estado === "confirmada" || o.estado === "cerrada") && (
             <><dt>Facturación</dt><dd>{NOMBRE_AVANCE_FACTURA[avanceFacturacion(t.total, facturado)]} · {pesos(facturado)} de {pesos(t.total)}
               {facturas.map((x) => <Fragment key={x.id}> · <Link href={`/compras/facturas/${x.id}`}>{x.serie ?? ""}{x.folio ?? x.uuid.slice(0, 8)}</Link></Fragment>)}</dd></>
@@ -109,6 +120,16 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
           )}
           {o.notas && <><dt>Notas</dt><dd>{o.notas}</dd></>}
         </dl>
+        {edita && o.estado === "confirmada" && (
+          <form action={cambiarEntregaEsperada} className="acciones">
+            <input type="hidden" name="id" value={o.id} />
+            <div className="campo">
+              <label htmlFor="entrega_esperada">{o.entrega_esperada ? "Cambiar la entrega esperada" : "Poner la entrega esperada"}</label>
+              <input id="entrega_esperada" name="entrega_esperada" type="date" defaultValue={o.entrega_esperada ?? ""} required />
+            </div>
+            <BotonEnviar className="boton boton-secundario" pendiente="Guardando…">Guardar fecha</BotonEnviar>
+          </form>
+        )}
         <div className="acciones">
           <Link className="boton boton-secundario" href={`/orden-compra/${o.id}`} target="_blank">Ver PDF</Link>
           {(grupo?.length ?? 0) > 1 && <Link className="boton boton-secundario" href={`/compras/ordenes/${o.id}/comparar`}>Comparar {grupo!.length} cotizaciones</Link>}
