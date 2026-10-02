@@ -18,6 +18,8 @@ export type DatosSucursal = {
   mermas: number;
   gastos: number;
   sinComprobante: number;
+  /** Gastos que pagaron empleados de su bolsa y aún no se les reponen (de cualquier día). */
+  porReponerEmpleados: number;
   /** Ronda de la hora de las zonas: faltantes = horas ya cerradas sin registro. */
   rondas: { total: number; hechas: number; faltantes: number; conFallas: number };
   /** Listas del turno que aplican hoy y cuántas ya se registraron. */

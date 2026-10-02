@@ -32,6 +32,7 @@ export async function cerrarDia(formData: FormData) {
     retiros_dia: d.retiros,
     aperturas_dia: d.aperturas,
     deposito_dia: d.depositos,
+    gastos_boveda_dia: d.gastosBoveda,
     boveda_contado: numero(formData.get("boveda_contado")),
     cambios_autorizado: Number(sucursal.fondo_cambios),
     cambios_contado: numero(formData.get("cambios_contado")),

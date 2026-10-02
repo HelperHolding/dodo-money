@@ -36,6 +36,8 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
     supabase.from("lotes_amasado").select("sucursal_id, temp_masa, temp_sala, temp_harina, temp_agua").eq("fecha", fecha)
       .returns<{ sucursal_id: string; temp_masa: number; temp_sala: number; temp_harina: number; temp_agua: number }[]>(),
     supabase.from("limpiezas_profundas").select("sucursal_id").eq("fecha", fecha).returns<{ sucursal_id: string }[]>(),
+    supabase.from("gastos_caja_chica").select("sucursal_id, monto").eq("origen", "empleado").is("repuesto_en", null)
+      .returns<{ sucursal_id: string; monto: number }[]>(),
   ]);
   const errorCarga = primerError(resultados);
   if (errorCarga) throw new Error(`No se pudieron cargar los datos: ${errorCarga}`);
@@ -43,7 +45,7 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
     { data: sucursales }, { data: turnos }, { data: movimientos }, { data: cierres },
     { data: normas }, { data: lecturas }, { data: checklists }, { data: recorridos },
     { data: cierresMerma }, { data: mermas }, { data: gastos },
-    { data: puntosListas }, { data: registrosListas }, { data: lotes }, { data: limpiezas },
+    { data: puntosListas }, { data: registrosListas }, { data: lotes }, { data: limpiezas }, { data: deEmpleados },
   ] = resultados;
 
   const idsTurnos = (turnos ?? []).map((t) => t.id);
@@ -111,6 +113,7 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
       mermas: de(mermas, s.id).length,
       gastos: gs.reduce((suma, g) => suma + Number(g.monto), 0),
       sinComprobante: gs.filter((g) => g.comprobante === "sin_comprobante").length,
+      porReponerEmpleados: de(deEmpleados, s.id).reduce((suma, g) => suma + Number(g.monto), 0),
       rondas: {
         total: horasRonda.length,
         hechas: rondasHechas.length,

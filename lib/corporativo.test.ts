@@ -9,7 +9,7 @@ const base: DatosSucursal = {
   cierre: { cerradoEn: "2026-09-26T05:00:00Z", ventaTotal: 20000, bovedaDiferencia: 0 },
   masa: { total: 13, registradas: 13, faltantes: 0, fueraDeNorma: 0 },
   recorrido: { total: 12, hechos: 12, faltantes: 0, conFallas: 0 },
-  mermasCerradas: true, mermas: 3, gastos: 250, sinComprobante: 0,
+  mermasCerradas: true, mermas: 3, gastos: 250, sinComprobante: 0, porReponerEmpleados: 0,
   rondas: { total: 61, hechas: 61, faltantes: 0, conFallas: 0 },
   listas: { total: 12, hechas: 12 },
   amasadoFuera: 0, limpiezaProfunda: true,

@@ -8,7 +8,7 @@ import { datosDelDia } from "./datos";
 
 type Cierre = {
   venta_total: number; venta_neta: number; ticket_promedio: number; transacciones: number;
-  boveda_esperado: number; boveda_contado: number; boveda_diferencia: number;
+  boveda_esperado: number; boveda_contado: number; boveda_diferencia: number; gastos_boveda_dia: number;
   cambios_diferencia: number; diferencia_turnos: number; deposito_ficha: string | null;
 };
 
@@ -22,7 +22,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
   const fecha = hoyMX();
 
   const { data: cierre } = await supabase.from("cierres_dia")
-    .select("venta_total, venta_neta, ticket_promedio, transacciones, boveda_esperado, boveda_contado, boveda_diferencia, cambios_diferencia, diferencia_turnos, deposito_ficha")
+    .select("venta_total, venta_neta, ticket_promedio, transacciones, boveda_esperado, boveda_contado, boveda_diferencia, gastos_boveda_dia, cambios_diferencia, diferencia_turnos, deposito_ficha")
     .eq("sucursal_id", sucursal.id).eq("fecha", fecha).maybeSingle<Cierre>();
 
   if (cierre) {
@@ -37,6 +37,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="Transacciones" valor={String(cierre.transacciones)} />
             <Fila texto="Ticket promedio sin IVA" valor={pesos(cierre.ticket_promedio)} />
             <Fila texto="Diferencia de los arqueos de turno" valor={pesos(cierre.diferencia_turnos)} fuerte />
+            {Number(cierre.gastos_boveda_dia) > 0 && <Fila texto="Gastos pagados de la bóveda" valor={pesos(cierre.gastos_boveda_dia)} />}
             <Fila texto="Bóveda esperada" valor={pesos(cierre.boveda_esperado)} />
             <Fila texto="Bóveda contada" valor={pesos(cierre.boveda_contado)} />
             <Fila texto="Diferencia de bóveda" valor={pesos(cierre.boveda_diferencia)} fuerte />
@@ -58,7 +59,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
   }
 
   const d = await datosDelDia(supabase, sucursal.id, fecha);
-  const esperado = d.bovedaInicial + d.retiros - d.aperturas - d.depositos;
+  const esperado = d.bovedaInicial + d.retiros - d.aperturas - d.depositos - d.gastosBoveda;
   const bloqueado = !!turno || d.pendientes > 0;
 
   const campo = (id: string, texto: string, ayuda?: string) => (
@@ -103,6 +104,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="+ Retiros a bóveda de hoy" valor={pesos(d.retiros)} />
             <Fila texto="− Fondos entregados a caja de venta" valor={pesos(d.aperturas)} />
             <Fila texto="− Salidas a corporativo de hoy" valor={pesos(d.depositos)} />
+            <Fila texto="− Gastos pagados de la bóveda hoy" valor={pesos(d.gastosBoveda)} />
             <Fila texto="= Debe haber en bóveda" valor={pesos(esperado)} fuerte />
             <Fila texto="Diferencia de los arqueos de turno" valor={pesos(d.diferenciaTurnos)} />
           </tbody></table>

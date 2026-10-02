@@ -123,6 +123,7 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
                     <span>Mermas {f.mermas}</span>
                     <span>Gastos {pesos(f.gastos)}</span>
                     <span className={clases(alerta(f, "comprobantes"))}>Sin comprobante {f.sinComprobante}</span>
+                    {f.porReponerEmpleados > 0 && <span>Por reponer a empleados {pesos(f.porReponerEmpleados)}</span>}
                   </dd>
                 </dl>
               </article>
