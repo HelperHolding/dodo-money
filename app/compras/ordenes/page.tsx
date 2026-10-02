@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
+import { SelectorVista } from "@/components/SelectorVista";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, pesos, fechaMX } from "@/lib/formato";
 import { avanceOrden, ESTADOS_ORDEN, filtrarOrdenes, NOMBRE_AVANCE, NOMBRE_ESTADO_ORDEN, totalesOrden, type EstadoOrden } from "@/lib/compras/ordenes";
 import type { TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
+import { leerVista } from "@/lib/vista";
 
 type Orden = {
   id: string; folio: string; estado: EstadoOrden; grupo_id: string; creado_en: string; sucursal_id: string | null; proveedor_id: string;
@@ -14,9 +16,11 @@ type Orden = {
 type Renglon = { orden_id: string; cantidad: number; precio: number; tasa_iva: TasaIva; recibido: number };
 
 export default async function Ordenes({ searchParams }: {
-  searchParams: Promise<{ estado?: string; proveedor?: string; sucursal?: string; ok?: string; error?: string }>;
+  searchParams: Promise<{ estado?: string; proveedor?: string; sucursal?: string; vista?: string; ok?: string; error?: string }>;
 }) {
-  const { estado, proveedor = "", sucursal = "", ok, error } = await searchParams;
+  const params = await searchParams;
+  const { estado, proveedor = "", sucursal = "", ok, error } = params;
+  const vista = leerVista(params.vista);
   const { supabase, perfil } = await obtenerPerfil();
   const filtro = (ESTADOS_ORDEN as readonly string[]).includes(estado ?? "") ? (estado as EstadoOrden) : undefined;
   const [ordenes, renglones, { data: proveedores }, { data: sucursales }] = await Promise.all([
@@ -43,6 +47,7 @@ export default async function Ordenes({ searchParams }: {
       </div>
       <Aviso ok={ok} error={error} />
       <form className="seccion formulario" role="search">
+        {vista === "lista" && <input type="hidden" name="vista" value="lista" />}
         <div className="rejilla">
           <div className="campo">
             <label htmlFor="f-estado">Estado</label>
@@ -72,8 +77,31 @@ export default async function Ordenes({ searchParams }: {
           {puedeEditarCompras(perfil.rol) && <Link className="boton" href="/compras/ordenes/nueva">Nueva cotización</Link>}
         </div>
       </form>
+      <SelectorVista ruta="/compras/ordenes" params={params} vista={vista} />
       {!visibles.length && <p className="vacio">No hay órdenes con ese filtro.</p>}
-      <div className="tarjetas">
+      {vista === "lista" && visibles.length > 0 && (
+        <ul className="lista-filas" style={{ "--columnas": 4 } as React.CSSProperties}>
+          <li className="fila fila-encabezado" aria-hidden="true"><span>Orden</span><span>Proveedor</span><span>Para</span><span>Estado</span><span>Total</span></li>
+          {visibles.map((o) => {
+            const rs = renglonesDe.get(o.id) ?? [];
+            return (
+              <li key={o.id} className="fila" data-alerta={o.estado === "cancelada" ? "si" : undefined}>
+                <div className="fila-nombre">
+                  <Link href={`/compras/ordenes/${o.id}`}>{o.folio}</Link>
+                  <small>{fechaTexto(fechaMX(o.creado_en))}</small>
+                </div>
+                <div className="fila-datos">
+                  <span>{o.proveedores?.nombre_comercial ?? o.proveedores?.razon_social}</span>
+                  <span>{o.sucursales?.nombre ?? "Oficina"}</span>
+                  <span>{NOMBRE_ESTADO_ORDEN[o.estado]}{o.estado === "confirmada" ? ` · ${NOMBRE_AVANCE[avanceOrden(rs)].toLowerCase()}` : ""}</span>
+                  <span>{pesos(totalesOrden(rs).total)}</span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {vista === "tarjetas" && <div className="tarjetas">
         {visibles.map((o) => {
           const rs = renglonesDe.get(o.id) ?? [];
           const avance = avanceOrden(rs);
@@ -95,7 +123,7 @@ export default async function Ordenes({ searchParams }: {
             </article>
           );
         })}
-      </div>
+      </div>}
     </>
   );
 }

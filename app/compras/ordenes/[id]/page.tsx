@@ -77,11 +77,12 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const facturado = facturas.reduce((s, x) => s + Number(x.neto), 0);
 
   // Para editar y copiar: artículos activos, proveedores activos, sucursales y últimos precios de este proveedor.
-  const [articulos, proveedores, sucursales, precios] = await Promise.all([
+  const [articulos, proveedores, sucursales, precios, surtidos] = await Promise.all([
     supabase.from("articulos").select("id, nombre, unidad").eq("activo", true).order("nombre").returns<{ id: string; nombre: string; unidad: string }[]>(),
     supabase.from("proveedores").select("id, razon_social, nombre_comercial").eq("activo", true).order("razon_social").returns<{ id: string; razon_social: string; nombre_comercial: string | null }[]>(),
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     supabase.from("precios_proveedor").select("articulo_id, precio").eq("proveedor_id", o.proveedor_id).returns<{ articulo_id: string; precio: number }[]>(),
+    supabase.from("articulo_proveedores").select("articulo_id").eq("proveedor_id", o.proveedor_id).returns<{ articulo_id: string }[]>(),
   ]);
   const preciosPorArticulo = Object.fromEntries((precios.data ?? []).map((p) => [p.articulo_id, Number(p.precio)]));
 
@@ -180,7 +181,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
         {puedeEditar && (
           <form action={agregarRenglon} className="formulario">
             <input type="hidden" name="orden_id" value={o.id} />
-            <CamposRenglon articulos={articulos.data ?? []} precios={preciosPorArticulo} />
+            <CamposRenglon articulos={articulos.data ?? []} precios={preciosPorArticulo} surtidos={(surtidos.data ?? []).map((s) => s.articulo_id)} />
             <BotonEnviar>Agregar renglón</BotonEnviar>
           </form>
         )}

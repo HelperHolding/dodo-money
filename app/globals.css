@@ -585,3 +585,8 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 /* Un valor con su nota debajo (anulado, explicación); en celular se alinea a la derecha como el resto de la tarjeta. */
 .celda-pila { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; }
 @media (max-width: 640px) { .tabla-tarjetas .celda-pila { align-items: flex-end; } }
+.lista-checks { border: 1px solid var(--linea); border-radius: 8px; padding: 6px 10px; margin: 0; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; }
+.check-proveedor { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; padding: 6px 0; border-top: 1px solid var(--linea); }
+.check-proveedor:first-of-type { border-top: 0; }
+.check-proveedor label { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; overflow-wrap: anywhere; }
+.check-proveedor input { width: 20px; height: 20px; min-height: 0; flex: none; }

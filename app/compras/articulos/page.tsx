@@ -9,10 +9,12 @@ import { CATEGORIAS_COMPRA, NOMBRE_CATEGORIA_COMPRA, NOMBRE_TASA_IVA, TASAS_IVA,
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { leerVista } from "@/lib/vista";
-import { cambiarActivoArticulo, guardarArticulo } from "../acciones";
+import { cambiarActivoArticulo, guardarArticulo, guardarProveedoresArticulo } from "../acciones";
 import { FormValidado } from "../FormValidado";
 
 type Articulo = { id: string; nombre: string; unidad: string; tipo: CategoriaCompra; tasa_iva: TasaIva; dodo_insumo_id: string | null; activo: boolean; motivo_desactivacion: string | null };
+type Liga = { articulo_id: string; proveedor_id: string; principal: boolean };
+type ProveedorCorto = { id: string; razon_social: string; nombre_comercial: string | null; activo: boolean };
 type Precio = { articulo_id: string; precio: number; fecha: string; proveedores: { razon_social: string; nombre_comercial: string | null } | null };
 
 function CamposArticulo({ a }: { a?: Articulo }) {
@@ -48,12 +50,22 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
   const vista = leerVista(params.vista);
   const { supabase, perfil } = await obtenerPerfil();
   const edita = puedeEditarCompras(perfil.rol);
-  const [articulos, precios] = await Promise.all([
+  const [articulos, precios, ligas, proveedores] = await Promise.all([
     leerTodo<Articulo>((d, h) => supabase.from("articulos").select("id, nombre, unidad, tipo, tasa_iva, dodo_insumo_id, activo, motivo_desactivacion")
       .order("nombre").order("id").range(d, h).returns<Articulo[]>()),
     leerTodo<Precio>((d, h) => supabase.from("precios_proveedor").select("articulo_id, precio, fecha, proveedores(razon_social, nombre_comercial)")
       .order("articulo_id").order("proveedor_id").range(d, h).returns<Precio[]>()),
+    leerTodo<Liga>((d, h) => supabase.from("articulo_proveedores").select("articulo_id, proveedor_id, principal")
+      .order("articulo_id").order("proveedor_id").range(d, h).returns<Liga[]>()),
+    leerTodo<ProveedorCorto>((d, h) => supabase.from("proveedores").select("id, razon_social, nombre_comercial, activo")
+      .order("razon_social").order("id").range(d, h).returns<ProveedorCorto[]>()),
   ]);
+  const nombreProv = new Map(proveedores.map((p) => [p.id, p.nombre_comercial ?? p.razon_social]));
+  // Proveedores de cada artículo, el principal primero.
+  const surtenDe = new Map<string, Liga[]>();
+  for (const l of ligas) surtenDe.set(l.articulo_id, [...(surtenDe.get(l.articulo_id) ?? []), l]);
+  for (const lista of surtenDe.values()) lista.sort((a, b) => Number(b.principal) - Number(a.principal) || (nombreProv.get(a.proveedor_id) ?? "").localeCompare(nombreProv.get(b.proveedor_id) ?? "", "es"));
+  const textoSurten = (id: string) => (surtenDe.get(id) ?? []).map((l) => `${nombreProv.get(l.proveedor_id) ?? "—"}${l.principal ? " (principal)" : ""}`).join(", ");
   const preciosDe = new Map<string, Precio[]>();
   for (const p of precios) preciosDe.set(p.articulo_id, [...(preciosDe.get(p.articulo_id) ?? []), p]);
 
@@ -82,7 +94,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
           <Plegable key={tipo} id={`t-${tipo}`} titulo={NOMBRE_CATEGORIA_COMPRA[tipo]} resumen={`${lista.filter((a) => a.activo).length} activos`}>
             {vista === "lista" ? (
               <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
-                <li className="fila fila-encabezado" aria-hidden="true"><span>Artículo</span><span>Mejor precio</span><span>Proveedores</span><span>Última compra</span></li>
+                <li className="fila fila-encabezado" aria-hidden="true"><span>Artículo</span><span>Lo surten</span><span>Mejor precio</span><span>Última compra</span></li>
                 {lista.map((a) => {
                   const ps = preciosDe.get(a.id) ?? [];
                   const mejor = ps.reduce<Precio | null>((m, p) => (!m || Number(p.precio) < Number(m.precio) ? p : m), null);
@@ -94,8 +106,8 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                         <small>{a.unidad} · {NOMBRE_TASA_IVA[a.tasa_iva]}{a.activo ? "" : " · inactivo"}</small>
                       </div>
                       <div className="fila-datos">
+                        <span>{textoSurten(a.id) || "Sin proveedor"}</span>
                         <span>{mejor ? `${pesos(mejor.precio)} · ${mejor.proveedores?.nombre_comercial ?? mejor.proveedores?.razon_social ?? ""}` : "Sin precio"}</span>
-                        <span>{ps.length ? `${ps.length} ${ps.length === 1 ? "proveedor" : "proveedores"}` : "Sin compras"}</span>
                         <span>{ultima ? fechaTexto(ultima) : "—"}</span>
                       </div>
                     </li>
@@ -117,6 +129,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                     <dl className="tarjeta-datos">
                       {a.dodo_insumo_id && <><dt>Dodo IS</dt><dd>{a.dodo_insumo_id}</dd></>}
                       {!a.activo && <><dt>Desactivado</dt><dd>{a.motivo_desactivacion}</dd></>}
+                      <dt>Lo surten</dt><dd>{textoSurten(a.id) || "Sin proveedor"}</dd>
                       <dt>Precios</dt>
                       <dd>{ps.length ? ps.map((p, i) => (
                         <span key={i}>{p.proveedores?.nombre_comercial ?? p.proveedores?.razon_social}: {pesos(p.precio)} ({fechaTexto(p.fecha)})</span>
@@ -138,6 +151,30 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                         </form>
                       </details>
                     )}
+                    {edita && (() => {
+                      const actuales = new Map((surtenDe.get(a.id) ?? []).map((l) => [l.proveedor_id, l.principal]));
+                      // Los activos, más los inactivos que ya estaban ligados (para poder quitarlos).
+                      const opciones = proveedores.filter((p) => p.activo || actuales.has(p.id));
+                      return (
+                        <details>
+                          <summary>Proveedores que lo surten</summary>
+                          <form action={guardarProveedoresArticulo} className="formulario">
+                            <input type="hidden" name="id" value={a.id} />
+                            <fieldset className="lista-checks">
+                              <legend className="solo-lector">Proveedores de {a.nombre}</legend>
+                              {opciones.map((p) => (
+                                <div key={p.id} className="check-proveedor">
+                                  <label><input type="checkbox" name="proveedores" value={p.id} defaultChecked={actuales.has(p.id)} /> {nombreProv.get(p.id)}{p.activo ? "" : " (inactivo)"}</label>
+                                  <label className="saldo-nota"><input type="radio" name="principal" value={p.id} defaultChecked={actuales.get(p.id) === true} /> principal</label>
+                                </div>
+                              ))}
+                            </fieldset>
+                            <small>Si no marcas principal, queda el primero de la lista.</small>
+                            <BotonEnviar>Guardar proveedores</BotonEnviar>
+                          </form>
+                        </details>
+                      );
+                    })()}
                   </article>
                 );
               })}

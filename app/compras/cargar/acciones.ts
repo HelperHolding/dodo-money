@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
-import { leerCargaArticulos, leerCargaProveedores } from "@/lib/compras/proveedores";
+import { indiceProveedores, leerCargaArticulos, leerCargaProveedores } from "@/lib/compras/proveedores";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { leerPrimeraHoja, NO_ES_XLSX, type Hoja } from "@/lib/ventas/xlsx";
@@ -52,21 +52,37 @@ export async function cargarArticulos(_previo: ResultadoCarga | null, fd: FormDa
   const { supabase, hoja } = listo;
 
   type Existente = { nombre: string; dodo_insumo_id: string | null };
+  type Prov = { id: string; razon_social: string; nombre_comercial: string | null; rfc: string };
   let existentes: Existente[];
+  let proveedores: Prov[];
   try {
-    existentes = await leerTodo<Existente>((d, h) => supabase.from("articulos").select("nombre, dodo_insumo_id")
-      .order("id").range(d, h).returns<Existente[]>());
+    [existentes, proveedores] = await Promise.all([
+      leerTodo<Existente>((d, h) => supabase.from("articulos").select("nombre, dodo_insumo_id").order("id").range(d, h).returns<Existente[]>()),
+      leerTodo<Prov>((d, h) => supabase.from("proveedores").select("id, razon_social, nombre_comercial, rfc").order("id").range(d, h).returns<Prov[]>()),
+    ]);
   } catch {
-    return { errores: ["No se pudo leer el catálogo de artículos; intenta de nuevo."] };
+    return { errores: ["No se pudo leer el catálogo de artículos o de proveedores; intenta de nuevo."] };
   }
-  const { articulos, errores } = leerCargaArticulos(hoja, {
+  const { articulos, errores, ligas } = leerCargaArticulos(hoja, {
     nombres: new Set(existentes.map((a) => a.nombre.toLowerCase())),
     ids: new Set(existentes.flatMap((a) => (a.dodo_insumo_id ? [a.dodo_insumo_id] : []))),
+    proveedores: indiceProveedores(proveedores),
   });
   if (errores.length) return { errores };
 
-  const { error } = await supabase.from("articulos").insert(articulos);
+  const { data: nuevos, error } = await supabase.from("articulos").insert(articulos).select("id, nombre").returns<{ id: string; nombre: string }[]>();
   if (error) return { errores: [error.code === "23505" ? "Alguien dio de alta uno de estos artículos mientras cargabas; vuelve a intentarlo." : error.message] };
   revalidatePath("/compras", "layout");
-  return { ok: `${articulos.length} artículos dados de alta.` };
+
+  // Proveedores de cada artículo nuevo; el primero de la celda es el principal.
+  const idDe = new Map((nuevos ?? []).map((a) => [a.nombre.toLowerCase(), a.id]));
+  const filas = ligas.flatMap((l) => {
+    const articulo = idDe.get(l.nombre.toLowerCase());
+    return articulo ? l.proveedores.map((proveedor, i) => ({ articulo_id: articulo, proveedor_id: proveedor, principal: i === 0 })) : [];
+  });
+  if (filas.length) {
+    const { error: errorLigas } = await supabase.from("articulo_proveedores").insert(filas);
+    if (errorLigas) return { errores: [`Los ${articulos.length} artículos sí se dieron de alta, pero no se pudieron ligar sus proveedores: ${errorLigas.message}. Lígalos desde Artículos.`] };
+  }
+  return { ok: `${articulos.length} artículos dados de alta${filas.length ? ` con ${filas.length} ligas a proveedores` : ""}.` };
 }

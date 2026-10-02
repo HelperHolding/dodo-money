@@ -231,7 +231,32 @@ export const ENCABEZADOS_ARTICULOS = [
   { texto: "Tipo", campo: "tipo", obligatorio: true },
   { texto: "IVA", campo: "tasa_iva", obligatorio: false },
   { texto: "ID de insumo Dodo IS", campo: "dodo_insumo_id", obligatorio: false },
+  { texto: "Proveedores", campo: "proveedores", obligatorio: false },
 ] as const;
+
+/** Proveedor por nombre comercial, razón social o RFC (sin importar mayúsculas ni acentos); null = el nombre lo comparten varios. */
+export type IndiceProveedores = ReadonlyMap<string, string | null>;
+
+export function indiceProveedores(lista: readonly { id: string; razon_social: string; nombre_comercial: string | null; rfc: string }[]): IndiceProveedores {
+  const indice = new Map<string, string | null>();
+  for (const p of lista) {
+    for (const texto of [p.nombre_comercial, p.razon_social, p.rfc]) {
+      if (!texto?.trim()) continue;
+      const k = clave(texto);
+      indice.set(k, indice.has(k) && indice.get(k) !== p.id ? null : p.id);
+    }
+  }
+  return indice;
+}
+
+/** Proveedores que surten un artículo, como llegan del formulario: casillas y el principal. */
+export function leerSeleccionProveedores(elegidos: readonly string[], principal: string): Resultado<{ proveedores: string[]; principal: string | null }> {
+  const proveedores = [...new Set(elegidos.filter(Boolean))];
+  if (!proveedores.length) return { datos: { proveedores, principal: null } };
+  if (!principal) return { datos: { proveedores, principal: proveedores[0] } };
+  if (!proveedores.includes(principal)) return { error: "El proveedor principal tiene que estar entre los que lo surten." };
+  return { datos: { proveedores, principal } };
+}
 
 /** IVA como lo escriben: 16, "16 %", 0.16 (Excel con formato de porcentaje), 0, "Exento". Vacío = 16. */
 function tasaDeCelda(valor: string | number | undefined): string | null {
@@ -246,12 +271,13 @@ function tasaDeCelda(valor: string | number | undefined): string | null {
  * Si un renglón falla no devuelve ninguno.
  */
 export function leerCargaArticulos(
-  hoja: Hoja, existentes: { nombres: ReadonlySet<string>; ids: ReadonlySet<string> },
-): { articulos: DatosArticulo[]; errores: string[] } {
+  hoja: Hoja, existentes: { nombres: ReadonlySet<string>; ids: ReadonlySet<string>; proveedores?: IndiceProveedores },
+): { articulos: DatosArticulo[]; errores: string[]; ligas: { nombre: string; proveedores: string[] }[] } {
   const leidos = renglonesDeHoja(hoja, ENCABEZADOS_ARTICULOS, SIN_ARTICULOS, MAX_ARTICULOS, "artículos");
-  if ("errores" in leidos) return { articulos: [], errores: leidos.errores };
+  if ("errores" in leidos) return { articulos: [], errores: leidos.errores, ligas: [] };
 
   const articulos: DatosArticulo[] = [];
+  const ligas: { nombre: string; proveedores: string[] }[] = [];
   const errores: string[] = [];
   const renglonDeNombre = new Map<string, number>();
   const renglonDeId = new Map<string, number>();
@@ -279,9 +305,22 @@ export function leerCargaArticulos(
     }
     if (existentes.nombres.has(nombre.toLowerCase())) { errores.push(`Renglón ${n}: ya hay un artículo llamado ${nombre}.`); continue; }
     if (id && existentes.ids.has(id)) { errores.push(`Renglón ${n}: el ID de Dodo IS ${id} ya está en otro artículo.`); continue; }
+
+    // Proveedores separados por coma o punto y coma; el primero queda como principal.
+    const nombres = String(crudo("proveedores") ?? "").split(/[,;]/).map((t) => t.trim()).filter(Boolean);
+    const ids: string[] = [];
+    let problema: string | null = null;
+    for (const texto of nombres) {
+      const encontrado = existentes.proveedores?.get(clave(texto));
+      if (encontrado === undefined) { problema = `no encontré al proveedor ${texto} (escribe su nombre comercial, razón social o RFC).`; break; }
+      if (encontrado === null) { problema = `hay varios proveedores llamados ${texto}; usa su RFC.`; break; }
+      if (!ids.includes(encontrado)) ids.push(encontrado);
+    }
+    if (problema) { errores.push(`Renglón ${n}: ${problema}`); continue; }
     articulos.push(r.datos);
+    if (ids.length) ligas.push({ nombre, proveedores: ids });
   }
-  return errores.length ? { articulos: [], errores } : { articulos, errores };
+  return errores.length ? { articulos: [], errores, ligas: [] } : { articulos, errores, ligas };
 }
 
 /** Desactivar exige motivo (quién y cuándo los pone la base); reactivar lo borra. `activo` = "si" o "no" del formulario. */

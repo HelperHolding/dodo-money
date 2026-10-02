@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
-import { leerArticulo, leerDesactivacion, leerProveedor, type DatosArticulo, type DatosProveedor } from "@/lib/compras/proveedores";
+import { leerArticulo, leerDesactivacion, leerProveedor, leerSeleccionProveedores, type DatosArticulo, type DatosProveedor } from "@/lib/compras/proveedores";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
 
 const volver = (ruta: string, clave: "ok" | "error", texto: string): never =>
@@ -64,6 +64,20 @@ export async function guardarArticulo(fd: FormData) {
   }
   revalidatePath("/compras", "layout");
   redirect(`${ruta}?ok=${encodeURIComponent(id ? "Artículo actualizado." : "Artículo dado de alta.")}#a-${data!.id}`);
+}
+
+/** Proveedores que surten un artículo (casillas) y cuál es el principal. Reemplaza los que tenía. */
+export async function guardarProveedoresArticulo(fd: FormData) {
+  const ruta = "/compras/articulos";
+  const supabase = await clienteAdmin(ruta);
+  const id = String(fd.get("id") ?? "");
+  const r = leerSeleccionProveedores(fd.getAll("proveedores").map(String), String(fd.get("principal") ?? ""));
+  if ("error" in r) volver(ruta, "error", r.error);
+  const { datos } = r as { datos: { proveedores: string[]; principal: string | null } };
+  const { error } = await supabase.rpc("guardar_proveedores_articulo", { p_articulo: id, p_proveedores: datos.proveedores, p_principal: datos.principal });
+  if (error) volver(ruta, "error", error.message);
+  revalidatePath("/compras", "layout");
+  redirect(`${ruta}?ok=${encodeURIComponent(datos.proveedores.length ? "Proveedores del artículo guardados." : "El artículo quedó sin proveedores.")}#a-${id}`);
 }
 
 export async function cambiarActivoArticulo(fd: FormData) {

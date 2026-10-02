@@ -33,6 +33,7 @@ export default async function CargarExcel() {
         <h2>Artículos</h2>
         <p>Obligatorias: <strong>{lista(ENCABEZADOS_ARTICULOS, true)}</strong>.</p>
         <p>Opcionales: {lista(ENCABEZADOS_ARTICULOS, false)}.</p>
+        <p>En <strong>Proveedores</strong> escribe uno o varios separados por coma (nombre comercial, razón social o RFC). El primero queda como principal; los proveedores ya deben estar dados de alta.</p>
         <p className="saldo-nota">
           Tipo: Consumible, Activo fijo, Servicio u Otro. IVA: 16, 0 o Exento (vacío = 16). El ID de insumo de Dodo IS solo va en consumibles
           y es la columna ID del reporte Incoming supplies. Un nombre que ya está en el catálogo cuenta como error.

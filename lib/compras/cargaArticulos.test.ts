@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Hoja } from "../ventas/xlsx.ts";
-import { leerCargaArticulos, SIN_ARTICULOS } from "./proveedores.ts";
+import { indiceProveedores, leerCargaArticulos, leerSeleccionProveedores, SIN_ARTICULOS } from "./proveedores.ts";
 
 /** Hoja a partir de filas: la primera son los encabezados. */
 function hoja(filas: (string | number | undefined)[][]): Hoja {
@@ -74,4 +74,44 @@ test("errores por renglón: repetidos en el archivo o ya en el catálogo, tipo e
     "Renglón 9: Solo los consumibles llevan ID de insumo de Dodo IS.",
   ]);
   assert.equal(r.articulos.length, 0);
+});
+
+const catalogo = indiceProveedores([
+  { id: "p1", razon_social: "Gas Express Nieto S.A. de C.V.", nombre_comercial: "Gas Express", rfc: "GEN850101AB1" },
+  { id: "p2", razon_social: "Lácteos del Centro S.A.", nombre_comercial: null, rfc: "LCE900101XY2" },
+  { id: "p3", razon_social: "Distribuidora Uno", nombre_comercial: "Abarrotes", rfc: "DUN000101AA1" },
+  { id: "p4", razon_social: "Distribuidora Dos", nombre_comercial: "abarrotes", rfc: "DDO000101BB2" },
+]);
+
+test("columna Proveedores: por nombre comercial, razón social o RFC; el primero es el principal", () => {
+  const r = leerCargaArticulos(hoja([
+    [...ENC, "Proveedores"],
+    ["Queso", "kg", "Consumible", 16, "", "lacteos del centro s.a., GEN850101AB1, Gas Express"],
+    ["Horno", "pza", "Activo fijo", 16, "", ""],
+  ]), { ...sinNada, proveedores: catalogo });
+  assert.deepEqual(r.errores, []);
+  assert.deepEqual(r.ligas, [{ nombre: "Queso", proveedores: ["p2", "p1"] }]);
+  assert.equal("proveedores" in r.articulos[0], false);
+});
+
+test("columna Proveedores: desconocido o ambiguo es error del renglón", () => {
+  const r = leerCargaArticulos(hoja([
+    [...ENC, "Proveedores"],
+    ["Queso", "kg", "Consumible", 16, "", "Lácteos Norte"],
+    ["Arroz", "kg", "Consumible", 16, "", "Abarrotes"],
+    ["Frijol", "kg", "Consumible", 16, "", "DDO000101BB2"],
+  ]), { ...sinNada, proveedores: catalogo });
+  assert.deepEqual(r.errores, [
+    "Renglón 2: no encontré al proveedor Lácteos Norte (escribe su nombre comercial, razón social o RFC).",
+    "Renglón 3: hay varios proveedores llamados Abarrotes; usa su RFC.",
+  ]);
+  assert.deepEqual(r.articulos, []);
+  assert.deepEqual(r.ligas, []);
+});
+
+test("leerSeleccionProveedores: el principal debe estar entre los elegidos; si no se marca, es el primero", () => {
+  assert.deepEqual(leerSeleccionProveedores(["p1", "p2", "p1"], "p2"), { datos: { proveedores: ["p1", "p2"], principal: "p2" } });
+  assert.deepEqual(leerSeleccionProveedores(["p1", "p2"], ""), { datos: { proveedores: ["p1", "p2"], principal: "p1" } });
+  assert.deepEqual(leerSeleccionProveedores([], ""), { datos: { proveedores: [], principal: null } });
+  assert.deepEqual(leerSeleccionProveedores(["p1"], "p9"), { error: "El proveedor principal tiene que estar entre los que lo surten." });
 });
