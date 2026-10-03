@@ -5,7 +5,8 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { leerCfdi } from "@/lib/compras/cfdi";
 import { archivoYaSubido, baseArchivo, rutaArchivoFactura } from "@/lib/compras/facturas";
 import { fechaTexto, fechaMX } from "@/lib/formato";
-import { normalizarRfc, rfcValido } from "@/lib/compras/proveedores";
+import { REGIMENES } from "@/lib/compras/proveedores";
+import { leerEmpresa } from "@/lib/compras/empresa";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
 import { clienteAdmin, volver } from "../servidor";
 
@@ -16,11 +17,10 @@ const texto = (fd: FormData, campo: string) => String(fd.get(campo) ?? "").trim(
 export async function guardarEmpresa(fd: FormData) {
   const ruta = "/compras/facturas/empresa";
   const supabase = await clienteAdmin(ruta);
-  const rfc = normalizarRfc(texto(fd, "rfc"));
-  const razon_social = texto(fd, "razon_social");
-  if (!rfcValido(rfc)) volver(ruta, "error", `El RFC ${rfc || "(vacío)"} no es válido.`);
-  if (!razon_social) volver(ruta, "error", "Escribe la razón social.");
-  const { error } = await supabase.from("empresa").upsert({ id: true, rfc, razon_social });
+  const r = leerEmpresa((c) => texto(fd, c), REGIMENES);
+  if ("error" in r) volver(ruta, "error", r.error);
+  const { datos } = r as Exclude<typeof r, { error: string }>;
+  const { error } = await supabase.from("empresa").upsert({ id: true, ...datos });
   if (error) volver(ruta, "error", error.message);
   revalidatePath("/compras", "layout");
   volver("/compras/facturas", "ok", "Datos de la empresa guardados.");

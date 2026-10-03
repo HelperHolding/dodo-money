@@ -14,7 +14,7 @@ function poner(form: HTMLFormElement, nombre: string, valor: string | null) {
  * Constancia de situación fiscal para el alta: al elegirla se leen RFC, razón social, nombre comercial y régimen
  * y se llenan en el formulario para revisarlos. El archivo se envía con el alta y queda como primer documento.
  */
-export function CampoConstancia() {
+export function CampoConstancia({ nota = "Descargada del portal del SAT: se llenan los datos fiscales y queda guardada en sus documentos." }: { nota?: string }) {
   const [estado, setEstado] = useState<{ leyendo?: boolean } & LecturaConstancia>({});
 
   async function alElegir(e: React.ChangeEvent<HTMLInputElement>) {
@@ -32,6 +32,7 @@ export function CampoConstancia() {
     poner(form, "razon_social", r.datos.razon_social);
     poner(form, "nombre_comercial", r.datos.nombre_comercial);
     poner(form, "regimen_fiscal", r.datos.regimen);
+    poner(form, "codigo_postal", r.datos.codigo_postal);
   }
 
   const d = estado.datos;
@@ -40,7 +41,7 @@ export function CampoConstancia() {
       <div className="campo">
         <label htmlFor="constancia">Constancia de situación fiscal (opcional)</label>
         <input id="constancia" name="constancia" type="file" accept="application/pdf" onChange={alElegir} />
-        <small>Descargada del portal del SAT: se llenan los datos fiscales y queda guardada en sus documentos.</small>
+        <small>{nota}</small>
       </div>
       {estado.leyendo && <p className="saldo-nota">Leyendo la constancia…</p>}
       {estado.error && <p className="aviso aviso-error" role="alert">{estado.error}</p>}

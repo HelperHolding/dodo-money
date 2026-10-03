@@ -70,7 +70,7 @@ async function guardarArchivoDocumento(supabase: Cliente, proveedorId: string, t
 
 export type LecturaConstancia = {
   datos?: {
-    tipo: "moral" | "fisica"; rfc: string; razon_social: string; nombre_comercial: string | null; fecha_emision: string;
+    tipo: "moral" | "fisica"; rfc: string; razon_social: string; nombre_comercial: string | null; codigo_postal: string | null; fecha_emision: string;
     /** Régimen propuesto (el primero vigente del catálogo) y todos los vigentes que trae, para elegir. */
     regimen: string | null; regimenes: { codigo: string; nombre: string }[];
   };
@@ -86,9 +86,9 @@ export async function leerConstanciaSubida(fd: FormData): Promise<LecturaConstan
   if (archivo.size > MAX_BYTES_DOCUMENTO) return { error: "La constancia pesa más de 4 MB." };
   const c = await constanciaDe(archivo);
   if ("error" in c) return { error: c.error };
-  const { tipo, rfc, razon_social, nombre_comercial, fecha_emision } = c.datos;
+  const { tipo, rfc, razon_social, nombre_comercial, codigo_postal, fecha_emision } = c.datos;
   const regimenes = c.datos.regimenes.flatMap((r) => (!r.fin && r.codigo ? [{ codigo: r.codigo, nombre: r.nombre }] : []));
-  return { datos: { tipo, rfc, razon_social, nombre_comercial, fecha_emision, regimen: regimenPropuesto(c.datos), regimenes } };
+  return { datos: { tipo, rfc, razon_social, nombre_comercial, codigo_postal, fecha_emision, regimen: regimenPropuesto(c.datos), regimenes } };
 }
 
 /**

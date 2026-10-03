@@ -592,3 +592,32 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .check-proveedor input { width: 20px; height: 20px; min-height: 0; flex: none; }
 .lista-simple { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.9rem; }
 .fila-extra { grid-column: 1 / -1; }
+
+/* ─── Detalle con columna lateral (orden de compra: historial a la derecha) ─── */
+.detalle-con-lado { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+.detalle-principal { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+.detalle-lado { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+@media (max-width: 1000px) {
+  .detalle-con-lado { grid-template-columns: minmax(0, 1fr); }
+  .detalle-lado { position: static; max-height: none; }
+}
+.linea-tiempo { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--linea); display: flex; flex-direction: column; gap: 14px; }
+.linea-tiempo li { position: relative; display: flex; flex-direction: column; gap: 1px; overflow-wrap: anywhere; }
+.linea-tiempo li::before { content: ""; position: absolute; left: -20px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--accion); }
+.linea-tiempo-fecha { font-size: 0.8rem; color: var(--tinta-2); }
+.linea-tiempo-evento { font-weight: 700; font-size: 0.95rem; }
+.linea-tiempo-quien { font-size: 0.85rem; color: var(--tinta-2); }
+
+.tabla-renglones .fila-alerta td { background: var(--alerta-fondo); }
+.tabla-renglones tfoot td { font-weight: 700; border-bottom: 0; }
+.tabla-renglones tfoot td:first-child { text-align: right; color: var(--tinta-2); }
+.tabla-renglones .fila-total td { font-size: 1.05rem; color: var(--tinta); border-top: 2px solid var(--tinta); }
+.tabla-renglones details { margin-top: 4px; }
+@media (max-width: 640px) {
+  .tabla-renglones tfoot, .tabla-renglones tfoot tr { display: block; width: 100%; }
+  .tabla-renglones tfoot td { display: flex; justify-content: space-between; width: 100%; }
+  .tabla-renglones tfoot tr { border: 0; padding: 0 12px; margin: 0; background: transparent; }
+  .tabla-renglones tfoot td:first-child, .tabla-renglones tfoot td[data-label=""]:not(:first-child) { display: none; }
+  .tabla-renglones td[data-label="#"] { display: none; }
+}
+.tabla th.monto { text-align: right; }

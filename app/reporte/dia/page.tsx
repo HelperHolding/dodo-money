@@ -51,6 +51,8 @@ export default async function ReporteDia({ searchParams }: { searchParams: Promi
             <Fila texto="Fondo que se queda en bóveda" valor={`${pesos(sucursal.fondo_boveda)} (de ellos ${pesos(sucursal.fondo_emergencia)} de emergencia)`} />
             <Fila texto="Debe salir a corporativo" valor={pesos(Math.max(0, Number(c.boveda_contado) - Number(sucursal.fondo_boveda)))} />
             <Fila texto="Diferencia del fondo de cambios" valor={pesos(c.cambios_diferencia)} />
+            <Fila texto="Rappi según Dodo IS" valor={pesos(c.rappi)} />
+            <Fila texto="Corte de Rappi" valor={c.rappi_corte === null ? "Sin registrar" : `${pesos(c.rappi_corte)} (diferencia ${pesos(Number(c.rappi_corte) - Number(c.rappi))})`} />
             <Fila texto="Folio de la salida a corporativo" valor={c.deposito_ficha ?? "Sin salida"} />
             <Fila texto="Cerró" valor={`${dia.persona.get(c.cerrado_por) ?? "—"} a las ${hora(c.cerrado_en)}`} />
           </tbody></table>

@@ -4,10 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
-import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { BUCKET_FOTOS } from "@/lib/fotos";
-import { fechaTexto, pesos, fechaMX, hoyCalendarioMX } from "@/lib/formato";
+import { fechaTexto, pesos, fechaMX, hora, hoyCalendarioMX } from "@/lib/formato";
 import { estadoEntrega, NOMBRE_ESTADO_ENTREGA } from "@/lib/compras/entregas";
 import {
   accionesDe, avanceOrden, avanceRenglon, NOMBRE_AVANCE, NOMBRE_ESTADO_ORDEN, precioDistinto, recibidoDeMas, totalesOrden, type EstadoOrden,
@@ -69,6 +68,8 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const edita = puedeEditarCompras(perfil.rol);
   const hayRecepciones = rs.some((r) => Number(r.recibido) > 0);
   const acciones = edita ? accionesDe(o.estado, hayRecepciones) : [];
+  // Lo recibido solo tiene sentido en una orden ya confirmada (o cerrada).
+  const conRecepcion = o.estado !== "borrador" && o.estado !== "enviada";
   const puedeEditar = acciones.includes("editar");
   const t = totalesOrden(rs);
   const { data: facturasLigadas } = await supabase.from("factura_ordenes")
@@ -94,12 +95,11 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
         <p>{NOMBRE_ESTADO_ORDEN[o.estado]} · para {o.sucursales?.nombre ?? "Oficina"}{o.motivo ? ` · ${o.motivo}` : ""}</p>
       </div>
       <Aviso ok={ok} error={error} />
+      <div className="detalle-con-lado">
+        <div className="detalle-principal">
 
       <section className="seccion">
         <dl className="tarjeta-datos">
-          <dt>Subtotal</dt><dd>{pesos(t.subtotal)}</dd>
-          <dt>IVA</dt><dd>{pesos(t.iva)}</dd>
-          <dt>Total</dt><dd><strong>{pesos(t.total)}</strong></dd>
           {o.estado === "confirmada" && <><dt>Recepción</dt><dd>{NOMBRE_AVANCE[avanceOrden(rs)]}</dd></>}
           {o.estado === "confirmada" && (() => {
             const estado = estadoEntrega(o.entrega_esperada, avanceOrden(rs) === "completa", hoyCalendarioMX());
@@ -139,65 +139,92 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
       <section className="seccion" aria-labelledby="t-renglones">
         <h2 id="t-renglones">Renglones</h2>
         {!rs.length && <p className="vacio">Agrega el primer artículo.</p>}
-        <div className="tarjetas">
-          {rs.map((r) => {
-            const avance = avanceRenglon(Number(r.cantidad), Number(r.recibido));
-            const deMas = recibidoDeMas(Number(r.cantidad), Number(r.recibido));
-            const dodo = (recDodo ?? []).filter((x) => x.orden_renglon_id === r.id);
-            const precioOtro = dodo.some((x) => precioDistinto(Number(r.precio), Number(x.precio)));
-            const app = (recApp ?? []).filter((x) => x.orden_renglon_id === r.id);
-            return (
-              <article key={r.id} className="tarjeta" data-alerta={deMas || precioOtro ? "si" : undefined}>
-                <div className="tarjeta-encabezado">
-                  <div>
-                    <h3>{r.descripcion}</h3>
-                    <p className="tarjeta-estado">{r.cantidad} {r.articulos?.unidad} · {pesos(r.precio)} c/u · {NOMBRE_TASA_IVA[r.tasa_iva]}</p>
-                  </div>
-                </div>
-                {o.estado !== "borrador" && o.estado !== "enviada" && (
-                  <dl className="tarjeta-datos">
-                    <dt>Recibido</dt><dd>{r.recibido} {r.articulos?.unidad} · {NOMBRE_AVANCE[avance]}{deMas ? " · más de lo pedido" : ""}</dd>
-                    {dodo.map((x) => <Fragment key={x.id}><dt>Dodo IS</dt><dd>{fechaTexto(x.fecha)} · {x.cantidad} {x.unidad} · {pesos(x.precio)}{precioDistinto(Number(r.precio), Number(x.precio)) ? ` · precio distinto a la orden (${pesos(r.precio)})` : ""}</dd></Fragment>)}
-                    {app.map((x) => (
-                      <Fragment key={x.id}><dt>En sucursal</dt><dd>{fechaTexto(x.fecha)} · {x.cantidad}{x.anulada_en ? ` · anulada: ${x.motivo_anulacion}` : ""}{x.foto_path && urlFoto.get(x.foto_path) ? <> · <a href={urlFoto.get(x.foto_path)} target="_blank" rel="noreferrer">ver foto</a></> : null}</dd></Fragment>
-                    ))}
-                  </dl>
-                )}
-                {edita && app.some((x) => !x.anulada_en) && (
-                  <details>
-                    <summary>Anular una recepción de la sucursal</summary>
-                    {app.filter((x) => !x.anulada_en).map((x) => (
-                      <form key={x.id} action={anularRecepcionApp} className="formulario">
-                        <input type="hidden" name="id" value={o.id} />
-                        <input type="hidden" name="recepcion_id" value={x.id} />
-                        <div className="campo"><label htmlFor={`m-${x.id}`}>Motivo ({fechaTexto(x.fecha)} · {x.cantidad})</label><input id={`m-${x.id}`} name="motivo" required /></div>
-                        <BotonEnviar className="boton boton-alerta">Anular</BotonEnviar>
-                      </form>
-                    ))}
-                  </details>
-                )}
-                {puedeEditar && (
-                  <details>
-                    <summary>Editar</summary>
-                    <form action={editarRenglon} className="formulario">
-                      <input type="hidden" name="orden_id" value={o.id} />
-                      <input type="hidden" name="renglon_id" value={r.id} />
-                      <div className="rejilla">
-                        <div className="campo"><label htmlFor={`c-${r.id}`}>Cantidad</label><input id={`c-${r.id}`} name="cantidad" inputMode="decimal" defaultValue={r.cantidad} required /></div>
-                        <div className="campo"><label htmlFor={`p-${r.id}`}>Precio sin IVA</label><input id={`p-${r.id}`} name="precio" inputMode="decimal" defaultValue={r.precio} /></div>
-                      </div>
-                      <BotonEnviar>Guardar</BotonEnviar>
-                    </form>
-                    <form action={quitarRenglon} className="acciones">
-                      <input type="hidden" name="orden_id" value={o.id} />
-                      <input type="hidden" name="renglon_id" value={r.id} />
-                      <BotonEnviar className="boton boton-secundario" confirmar="¿Quitar este renglón de la cotización?">Quitar renglón</BotonEnviar>
-                    </form>
-                  </details>
-                )}
-              </article>
-            );
-          })}
+        <div className="tabla-contenedor">
+          <table className="tabla tabla-tarjetas tabla-renglones">
+            <thead>
+              <tr>
+                <th>#</th><th>Artículo</th><th className="monto">Cantidad</th><th className="monto">Precio</th><th>IVA</th><th className="monto">Importe</th>
+                {conRecepcion && <th>Recibido</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {rs.map((r, i) => {
+                const avance = avanceRenglon(Number(r.cantidad), Number(r.recibido));
+                const deMas = recibidoDeMas(Number(r.cantidad), Number(r.recibido));
+                const dodo = (recDodo ?? []).filter((x) => x.orden_renglon_id === r.id);
+                const precioOtro = dodo.some((x) => precioDistinto(Number(r.precio), Number(x.precio)));
+                const app = (recApp ?? []).filter((x) => x.orden_renglon_id === r.id);
+                const alerta = deMas || precioOtro;
+                return (
+                  <tr key={r.id} className={alerta ? "fila-alerta" : undefined}>
+                    <td data-label="#">{i + 1}</td>
+                    <td data-label="Artículo">
+                      <span className="celda-pila">
+                        <strong>{r.descripcion}</strong>
+                        {precioOtro && <small className="nota-estado">Dodo IS trae otro precio</small>}
+                        {conRecepcion && (dodo.length > 0 || app.length > 0) && (
+                          <details>
+                            <summary className="saldo-nota">Recepciones ({dodo.length + app.length})</summary>
+                            <ul className="lista-simple">
+                              {dodo.map((x) => <li key={x.id}>Dodo IS · {fechaTexto(x.fecha)} · {x.cantidad} {x.unidad} · {pesos(x.precio)}{precioDistinto(Number(r.precio), Number(x.precio)) ? ` (orden: ${pesos(r.precio)})` : ""}</li>)}
+                              {app.map((x) => (
+                                <li key={x.id}>En sucursal · {fechaTexto(x.fecha)} · {x.cantidad}{x.anulada_en ? ` · anulada: ${x.motivo_anulacion}` : ""}
+                                  {x.foto_path && urlFoto.get(x.foto_path) ? <> · <a href={urlFoto.get(x.foto_path)} target="_blank" rel="noreferrer">ver foto</a></> : null}</li>
+                              ))}
+                            </ul>
+                            {edita && app.filter((x) => !x.anulada_en).map((x) => (
+                              <form key={x.id} action={anularRecepcionApp} className="form-motivo">
+                                <input type="hidden" name="id" value={o.id} />
+                                <input type="hidden" name="recepcion_id" value={x.id} />
+                                <label className="solo-lector" htmlFor={`m-${x.id}`}>Motivo para anular ({fechaTexto(x.fecha)} · {x.cantidad})</label>
+                                <input id={`m-${x.id}`} name="motivo" required placeholder={`Motivo para anular la del ${fechaTexto(x.fecha)}`} />
+                                <BotonEnviar className="boton boton-alerta" pendiente="…">Anular</BotonEnviar>
+                              </form>
+                            ))}
+                          </details>
+                        )}
+                        {puedeEditar && (
+                          <details>
+                            <summary className="saldo-nota">Editar</summary>
+                            <form action={editarRenglon} className="form-motivo">
+                              <input type="hidden" name="orden_id" value={o.id} />
+                              <input type="hidden" name="renglon_id" value={r.id} />
+                              <label className="solo-lector" htmlFor={`c-${r.id}`}>Cantidad</label>
+                              <input id={`c-${r.id}`} name="cantidad" inputMode="decimal" defaultValue={r.cantidad} required placeholder="Cantidad" />
+                              <label className="solo-lector" htmlFor={`p-${r.id}`}>Precio sin IVA</label>
+                              <input id={`p-${r.id}`} name="precio" inputMode="decimal" defaultValue={r.precio} placeholder="Precio sin IVA" />
+                              <BotonEnviar pendiente="…">Guardar</BotonEnviar>
+                            </form>
+                            <form action={quitarRenglon} className="acciones">
+                              <input type="hidden" name="orden_id" value={o.id} />
+                              <input type="hidden" name="renglon_id" value={r.id} />
+                              <BotonEnviar className="boton boton-secundario" confirmar="¿Quitar este renglón de la cotización?">Quitar renglón</BotonEnviar>
+                            </form>
+                          </details>
+                        )}
+                      </span>
+                    </td>
+                    <td data-label="Cantidad" className="monto">{r.cantidad} {r.articulos?.unidad}</td>
+                    <td data-label="Precio" className="monto">{Number(r.precio) > 0 ? pesos(r.precio) : "Por cotizar"}</td>
+                    <td data-label="IVA" style={{ whiteSpace: "nowrap" }}>{r.tasa_iva === "exento" ? "Exento" : `${r.tasa_iva} %`}</td>
+                    <td data-label="Importe" className="monto">{pesos(Number(r.cantidad) * Number(r.precio))}</td>
+                    {conRecepcion && (
+                      <td data-label="Recibido" className={deMas ? "celda-alerta" : undefined}>
+                        {r.recibido} {r.articulos?.unidad} · {NOMBRE_AVANCE[avance].toLowerCase()}{deMas ? " · de más" : ""}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+            {rs.length > 0 && (
+              <tfoot>
+                <tr><td colSpan={5} data-label="">Subtotal</td><td data-label="Subtotal" className="monto">{pesos(t.subtotal)}</td>{conRecepcion && <td data-label="" />}</tr>
+                <tr><td colSpan={5} data-label="">IVA</td><td data-label="IVA" className="monto">{pesos(t.iva)}</td>{conRecepcion && <td data-label="" />}</tr>
+                <tr className="fila-total"><td colSpan={5} data-label="">Total</td><td data-label="Total" className="monto">{pesos(t.total)}</td>{conRecepcion && <td data-label="" />}</tr>
+              </tfoot>
+            )}
+          </table>
         </div>
         {puedeEditar && (
           <form action={agregarRenglon} className="formulario">
@@ -276,13 +303,24 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
         </section>
       )}
 
-      <Plegable id="t-historial" titulo="Historial" resumen={`${historial?.length ?? 0} eventos`}>
-        <dl className="tarjeta-datos">
-          {(historial ?? []).map((h) => (
-            <Fragment key={h.id}><dt>{fechaTexto(fechaMX(h.en))}</dt><dd>{CLAVE_EVENTO[h.evento] ?? h.evento}{h.nota ? ` · ${h.nota}` : ""}{h.perfiles ? ` · ${h.perfiles.nombre}` : ""}</dd></Fragment>
-          ))}
-        </dl>
-      </Plegable>
+        </div>
+        <aside className="detalle-lado" aria-labelledby="t-historial">
+          <section className="seccion">
+            <h2 id="t-historial">Historial</h2>
+            {!historial?.length ? <p className="vacio">Sin eventos.</p> : (
+              <ol className="linea-tiempo">
+                {[...historial].reverse().map((h) => (
+                  <li key={h.id}>
+                    <span className="linea-tiempo-fecha">{fechaTexto(fechaMX(h.en))} · {hora(h.en)}</span>
+                    <span className="linea-tiempo-evento">{CLAVE_EVENTO[h.evento] ?? h.evento}{h.nota ? ` · ${h.nota}` : ""}</span>
+                    {h.perfiles && <span className="linea-tiempo-quien">{h.perfiles.nombre}</span>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </aside>
+      </div>
     </>
   );
 }

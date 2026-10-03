@@ -21,6 +21,16 @@ export function totalesOrden(renglones: readonly { cantidad: number; precio: num
   return { subtotal: r2(subtotal), iva: r2(iva), total: r2(subtotal + iva) };
 }
 
+/** Una línea por tasa presente, en orden 16 %, 0 %, exento: base e IVA (sumado por renglón, igual que totalesOrden). */
+export function impuestosPorTasa(renglones: readonly { cantidad: number; precio: number; tasa_iva: TasaIva }[]) {
+  const orden: TasaIva[] = ["16", "0", "exento"];
+  return orden.flatMap((t) => {
+    const rs = renglones.filter((r) => r.tasa_iva === t);
+    if (!rs.length) return [];
+    const { subtotal, iva } = totalesOrden(rs);
+    return [{ tasa: t, base: subtotal, iva }];
+  });
+}
 export type Avance = "nada" | "parcial" | "completa";
 export const NOMBRE_AVANCE: Record<Avance, string> = { nada: "Sin recibir", parcial: "Recibida en parte", completa: "Recibida completa" };
 

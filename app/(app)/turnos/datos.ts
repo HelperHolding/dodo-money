@@ -23,6 +23,7 @@ export type GastoDia = {
   origen: OrigenGasto; pagado_por: string | null; repuesto_en: string | null; creado_en: string;
 };
 export type CierreDia = {
+  rappi: number; rappi_corte: number | null;
   venta_total: number; venta_neta: number; transacciones: number; ticket_promedio: number;
   boveda_inicial: number; retiros_dia: number; aperturas_dia: number; deposito_dia: number; gastos_boveda_dia: number;
   boveda_esperado: number; boveda_contado: number; boveda_diferencia: number; cambios_diferencia: number;
@@ -55,7 +56,7 @@ export async function cargarDia(supabase: SupabaseClient, sucursalId: string, fe
     supabase.from("gastos_caja_chica").select("id, fecha, concepto, proveedor, monto, comprobante, origen, pagado_por, repuesto_en, creado_en")
       .eq("sucursal_id", sucursalId).gte("creado_en", desde).lt("creado_en", hasta).order("creado_en").returns<GastoDia[]>(),
     supabase.from("cierres_dia")
-      .select("venta_total, venta_neta, transacciones, ticket_promedio, boveda_inicial, retiros_dia, aperturas_dia, deposito_dia, gastos_boveda_dia, boveda_esperado, boveda_contado, boveda_diferencia, cambios_diferencia, deposito_ficha, cerrado_por, cerrado_en")
+      .select("rappi, rappi_corte, venta_total, venta_neta, transacciones, ticket_promedio, boveda_inicial, retiros_dia, aperturas_dia, deposito_dia, gastos_boveda_dia, boveda_esperado, boveda_contado, boveda_diferencia, cambios_diferencia, deposito_ficha, cerrado_por, cerrado_en")
       .eq("sucursal_id", sucursalId).eq("fecha", fecha).maybeSingle<CierreDia>(),
     supabase.from("perfiles").select("id, nombre").returns<{ id: string; nombre: string }[]>(),
   ]);

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { accionesDe, avanceOrden, avanceRenglon, compararCotizaciones, filtrarOrdenes, leerRenglon, precioDistinto, recibidoDeMas, totalesOrden } from "./ordenes.ts";
+import { accionesDe, avanceOrden, avanceRenglon, compararCotizaciones, filtrarOrdenes, leerRenglon, precioDistinto, impuestosPorTasa, recibidoDeMas, totalesOrden } from "./ordenes.ts";
 
 test("totales: IVA por renglón redondeado; 0 y exento no llevan IVA", () => {
   assert.deepEqual(totalesOrden([
@@ -88,4 +88,21 @@ test("filtrar órdenes por estado, proveedor y sucursal (Oficina = null)", () =>
   assert.deepEqual(ids({ proveedor: "p1" }), ["1"]);
   assert.deepEqual(ids({ sucursal: "oficina" }), ["2"]);
   assert.deepEqual(ids({ estado: "cerrada", sucursal: "s2", proveedor: "p1" }), ["4"]);
+});
+
+test("impuestosPorTasa: una línea por tasa presente (16, 0, exento), y cuadra con los totales", () => {
+  const rs = [
+    { cantidad: 80, precio: 158.33, tasa_iva: "0" as const },
+    { cantidad: 2, precio: 499.99, tasa_iva: "16" as const },
+    { cantidad: 1, precio: 0.05, tasa_iva: "16" as const },
+    { cantidad: 3, precio: 10, tasa_iva: "exento" as const },
+  ];
+  assert.deepEqual(impuestosPorTasa(rs), [
+    { tasa: "16", base: 1000.03, iva: 160.01 },
+    { tasa: "0", base: 12666.4, iva: 0 },
+    { tasa: "exento", base: 30, iva: 0 },
+  ]);
+  const t = totalesOrden(rs);
+  assert.equal(impuestosPorTasa(rs).reduce((s, l) => s + l.iva, 0), t.iva);
+  assert.deepEqual(impuestosPorTasa([]), []);
 });

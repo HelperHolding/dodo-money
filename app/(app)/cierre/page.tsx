@@ -3,10 +3,14 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto, puedeGestionar } from "@/lib/contexto";
 import { hoyMX, pesos } from "@/lib/formato";
-import { cerrarDia } from "./actions";
+import { CampoArchivo } from "@/components/CampoArchivo";
+import { BUCKET_FOTOS } from "@/lib/fotos";
+import { diferenciaRappi } from "@/lib/rappi";
+import { cerrarDia, registrarCorteRappi } from "./actions";
 import { datosDelDia } from "./datos";
 
 type Cierre = {
+  id: string; rappi: number; rappi_corte: number | null; rappi_corte_ruta: string | null;
   venta_total: number; venta_neta: number; ticket_promedio: number; transacciones: number;
   boveda_esperado: number; boveda_contado: number; boveda_diferencia: number; gastos_boveda_dia: number;
   cambios_diferencia: number; diferencia_turnos: number; deposito_ficha: string | null;
@@ -28,10 +32,14 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
   const fecha = hoyMX();
 
   const { data: cierre } = await supabase.from("cierres_dia")
-    .select("venta_total, venta_neta, ticket_promedio, transacciones, boveda_esperado, boveda_contado, boveda_diferencia, gastos_boveda_dia, cambios_diferencia, diferencia_turnos, deposito_ficha")
+    .select("id, rappi, rappi_corte, rappi_corte_ruta, venta_total, venta_neta, ticket_promedio, transacciones, boveda_esperado, boveda_contado, boveda_diferencia, gastos_boveda_dia, cambios_diferencia, diferencia_turnos, deposito_ficha")
     .eq("sucursal_id", sucursal.id).eq("fecha", fecha).maybeSingle<Cierre>();
 
   if (cierre) {
+    const difRappi = diferenciaRappi(Number(cierre.rappi), cierre.rappi_corte === null ? null : Number(cierre.rappi_corte));
+    const urlCorte = cierre.rappi_corte_ruta
+      ? (await supabase.storage.from(BUCKET_FOTOS).createSignedUrl(cierre.rappi_corte_ruta, 3600)).data?.signedUrl ?? null
+      : null;
     return (
       <>
         <div className="encabezado"><h1>Cierre del día {fecha}</h1><p>Este día ya está cerrado.</p></div>
@@ -52,6 +60,27 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="Diferencia del fondo de cambios" valor={pesos(cierre.cambios_diferencia)} />
             <Fila texto="Folio de la salida a corporativo" valor={cierre.deposito_ficha ?? "Sin salida"} />
           </tbody></table>
+        </section>
+        <section className="seccion" aria-labelledby="t-rappi">
+          <h2 id="t-rappi">Corte de Rappi</h2>
+          <table className="tabla"><tbody>
+            <Fila texto="Rappi según Dodo IS" valor={pesos(cierre.rappi)} />
+            <Fila texto="Corte de Rappi" valor={cierre.rappi_corte === null ? "Sin registrar" : pesos(cierre.rappi_corte)} />
+            {difRappi !== null && <Fila texto="Diferencia (Rappi − Dodo IS)" valor={pesos(difRappi)} fuerte />}
+          </tbody></table>
+          {urlCorte && <p><a href={urlCorte} target="_blank" rel="noopener noreferrer">Ver el corte de Rappi</a></p>}
+          {cierre.rappi_corte === null && puedeGestionar(perfil.rol) && !soloLectura && (
+            <form action={registrarCorteRappi} className="formulario">
+              <input type="hidden" name="cierre_id" value={cierre.id} />
+              <input type="hidden" name="fecha" value={fecha} />
+              <p className="saldo-nota">Si el reporte de Rappi llegó después del cierre, regístralo aquí (una sola vez).</p>
+              <div className="rejilla">
+                <div className="campo"><label htmlFor="rappi_corte">Total del corte de Rappi</label><input id="rappi_corte" name="rappi_corte" inputMode="decimal" required /></div>
+                <CampoArchivo id="rappi_corte_archivo" name="rappi_corte_archivo" etiqueta="Foto o PDF del corte" accept="image/*,application/pdf" />
+              </div>
+              <BotonEnviar pendiente="Guardando…">Registrar corte de Rappi</BotonEnviar>
+            </form>
+          )}
         </section>
       </>
     );
@@ -102,6 +131,15 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
               <label htmlFor="transacciones">Transacciones</label>
               <input id="transacciones" name="transacciones" type="number" inputMode="numeric" min="0" step="1" required />
             </div>
+          </div>
+        </section>
+
+        <section className="seccion" aria-labelledby="t-corte-rappi">
+          <h2 id="t-corte-rappi">Corte de Rappi</h2>
+          <p className="saldo-nota">Mientras no esté la integración con Rappi: el total del reporte de Rappi del día y su foto o PDF. Si aún no lo tienes, lo puedes registrar después.</p>
+          <div className="rejilla">
+            <div className="campo"><label htmlFor="rappi_corte">Total del corte de Rappi</label><input id="rappi_corte" name="rappi_corte" inputMode="decimal" placeholder="Opcional" /></div>
+            <CampoArchivo id="rappi_corte_archivo" name="rappi_corte_archivo" etiqueta="Foto o PDF del corte" accept="image/*,application/pdf" />
           </div>
         </section>
 
