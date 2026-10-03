@@ -42,7 +42,7 @@ begin
   end;
   v_ok := array_append(v_ok, 'empresa con régimen, CP, domicilio y correo');
 
-  if not ('application/pdf' = any((select allowed_mime_types from storage.buckets where id = 'comprobantes'))) then
+  if not exists (select 1 from storage.buckets where id = 'comprobantes' and 'application/pdf' = any(allowed_mime_types)) then
     raise exception 'FALLÓ: el bucket de comprobantes debe aceptar PDF';
   end if;
   v_ok := array_append(v_ok, 'comprobantes acepta PDF');
