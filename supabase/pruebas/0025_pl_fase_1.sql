@@ -16,7 +16,7 @@ begin
   if v_c is null then raise exception 'FALTAN DATOS: se necesita un usuario corporativo activo.'; end if;
 
   -- Precargas.
-  if (select valor from pl_parametros where clave = 'rappi_pct' and vigente_desde = '2027-01-01') <> 0.18 then raise exception 'FALLÓ: Rappi 18 % desde 2027'; end if;
+  if (select valor from pl_parametros where clave = 'rappi_pct' and vigente_desde = '2027-01-01') <> 0.18 then raise exception 'FALLÓ: Rappi 18 por ciento desde 2027'; end if;
   if not exists (select 1 from nomina_plantilla where sucursal_id = v_suc and puesto = 'Gerente') then raise exception 'FALLÓ: plantilla precargada'; end if;
   if (select count(*) from pl_metas where sucursal_id = v_suc) <> 15 then raise exception 'FALLÓ: 15 metas por sucursal'; end if;
   v_ok := array_append(v_ok, 'parámetros, plantilla y metas precargados');
