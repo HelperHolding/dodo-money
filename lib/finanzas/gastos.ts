@@ -3,23 +3,35 @@ import type { CuentaGasto } from "./cuentas";
 const GASTO = ["repartidores", "marketing_agregadores", "marketing", "renta", "servicios", "mantenimiento", "consumibles_equipo", "otros"];
 const centavos = (n: number) => Math.round(n * 100) / 100;
 
+type FacturaGasto = {
+  tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; fecha_emision?: string;
+  conceptos?: readonly { descripcion?: string; importe: number; cuenta_pl: string | null }[];
+};
+
 /**
- * Facturas → gasto por cuenta (subtotal − descuento; notas de crédito restan; canceladas no cuentan).
- * Con `fraccionDe`, cada factura cuenta por la parte de su mes que entra en el periodo.
+ * Partes de una factura en el P&L, sin IVA y con signo (las notas de crédito restan): una por concepto, con su cuenta o la
+ * de la factura, repartiendo subtotal − descuento en proporción al importe; sin conceptos, la factura completa. Canceladas: nada.
  */
-export function facturasAGastos(
-  facturas: readonly { tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; fecha_emision?: string }[],
-  fraccionDe?: (fecha: string) => number,
-) {
+export function partesFactura(f: FacturaGasto, fraccion = 1): { cuenta: string | null; monto: number; concepto: string | null }[] {
+  if (f.estado === "cancelada") return [];
+  const base = (Number(f.subtotal) - Number(f.descuento)) * (f.tipo === "egreso" ? -1 : 1) * fraccion;
+  const conceptos = (f.conceptos ?? []).filter((c) => Number(c.importe) > 0);
+  const suma = conceptos.reduce((t, c) => t + Number(c.importe), 0);
+  if (!conceptos.length || suma <= 0) return [{ cuenta: f.cuenta_pl, monto: base, concepto: null }];
+  return conceptos.map((c) => ({ cuenta: c.cuenta_pl ?? f.cuenta_pl, monto: (base * Number(c.importe)) / suma, concepto: c.descripcion ?? null }));
+}
+
+/** Facturas → gasto por cuenta (por concepto cuando los trae). Con `fraccionDe`, cada una por la parte de su mes que entra en el periodo. */
+export function facturasAGastos(facturas: readonly FacturaGasto[], fraccionDe?: (fecha: string) => number) {
   const gastos: Partial<Record<CuentaGasto, number>> = {};
   let sinCuenta = 0;
   const memos = { insumos: 0, inversiones: 0 };
   for (const f of facturas) {
-    if (f.estado === "cancelada") continue;
-    const monto = (Number(f.subtotal) - Number(f.descuento)) * (f.tipo === "egreso" ? -1 : 1) * (fraccionDe ? fraccionDe(f.fecha_emision ?? "") : 1);
-    if (f.cuenta_pl === "insumos" || f.cuenta_pl === "inversiones") memos[f.cuenta_pl] = centavos(memos[f.cuenta_pl] + monto);
-    else if (f.cuenta_pl && GASTO.includes(f.cuenta_pl)) gastos[f.cuenta_pl as CuentaGasto] = centavos((gastos[f.cuenta_pl as CuentaGasto] ?? 0) + monto);
-    else sinCuenta = centavos(sinCuenta + monto);
+    for (const p of partesFactura(f, fraccionDe ? fraccionDe(f.fecha_emision ?? "") : 1)) {
+      if (p.cuenta === "insumos" || p.cuenta === "inversiones") memos[p.cuenta] = centavos(memos[p.cuenta] + p.monto);
+      else if (p.cuenta && GASTO.includes(p.cuenta)) gastos[p.cuenta as CuentaGasto] = centavos((gastos[p.cuenta as CuentaGasto] ?? 0) + p.monto);
+      else sinCuenta = centavos(sinCuenta + p.monto);
+    }
   }
   return { gastos, sinCuenta, memos };
 }

@@ -147,6 +147,6 @@ test("finanzas: admin y corporativo ven; solo admin edita; grupo Finanzas", () =
   for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerFinanzas(rol), false);
   assert.equal(puedeEditarFinanzas("admin"), true);
   assert.equal(puedeEditarFinanzas("corporativo"), false);
-  assert.deepEqual(grupo("admin", "Finanzas"), ["/finanzas", "/finanzas/nomina", "/finanzas/gastos", "/finanzas/parametros"]);
+  assert.deepEqual(grupo("admin", "Finanzas"), ["/finanzas", "/finanzas/nomina", "/finanzas/parametros"]);
   assert.equal(grupo("gerente", "Finanzas"), undefined);
 });
