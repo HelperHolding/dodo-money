@@ -125,6 +125,11 @@ export function sumarMetas(sucursales: readonly { metas: readonly Meta[]; ctx: C
 
 /** Primer mes con datos del P&L: el acumulado del año no va antes. */
 export const INICIO_PL = "2026-10";
+export const INICIO_FECHA = `${INICIO_PL}-01`;
+
+/** Metas de un periodo: los % no cambian; el monto fijo mensual se reparte por la fracción de días. La plantilla ya viene prorrateada en el contexto. */
+export const escalarMetas = (metas: readonly Meta[], fraccion: number): Meta[] =>
+  metas.map((m) => (m.tipo === "monto" ? { ...m, valor: centavos(Number(m.valor) * fraccion) } : m));
 
 export function finDeMes(mes: string): string {
   const d = new Date(`${mes}-01T00:00:00Z`);
