@@ -4,12 +4,13 @@ import type { CuentaGasto } from "./cuentas";
 export type ClaveRenglon =
   | "venta_neta" | "alimento" | "merma" | "nomina_cocina" | "nomina_gerencia" | "repartidores" | "agregadores"
   | "marketing_agregadores" | "marketing" | "renta" | "servicios" | "mantenimiento" | "consumibles_equipo"
-  | "regalias" | "otros" | "ebitda_tienda" | "oficina" | "ebitda";
+  | "regalias" | "otros" | "ebitda_tienda" | "oficina" | "ebitda" | "margen_bruto";
 
 export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "venta" | "gasto" | "total" }[] = [
   { clave: "venta_neta", nombre: "Venta neta", tipo: "venta" },
   { clave: "alimento", nombre: "Alimento y empaque", tipo: "gasto" },
   { clave: "merma", nombre: "Merma", tipo: "gasto" },
+  { clave: "margen_bruto", nombre: "Margen bruto", tipo: "total" },
   { clave: "nomina_cocina", nombre: "Nómina cocina", tipo: "gasto" },
   { clave: "nomina_gerencia", nombre: "Nómina gerencia", tipo: "gasto" },
   { clave: "repartidores", nombre: "Repartidores", tipo: "gasto" },
@@ -95,6 +96,7 @@ export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMe
   const sumaTienda = gastosTienda.reduce((s, r) => s + (montos[r.clave] ?? 0), 0);
   montos.ebitda_tienda = centavos(e.ventaNeta - sumaTienda);
   montos.ebitda = centavos(montos.ebitda_tienda - e.oficina);
+  montos.margen_bruto = centavos(e.ventaNeta - e.alimento - (e.merma ?? 0));
 
   const metaDe = new Map(metas.map((m) => [m.renglon, metaMonto(m, ctx)]));
   const metasTienda = gastosTienda.map((r) => metaDe.get(r.clave));
@@ -103,6 +105,7 @@ export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMe
   metaDe.set("ebitda_tienda", metaTienda as number);
   if (metaTienda !== null) metaDe.set("ebitda", centavos(metaTienda - (metaDe.get("oficina") ?? 0)));
   if (hayMetas) metaDe.set("venta_neta", ctx.ventaNeta);
+  if (hayMetas) metaDe.set("margen_bruto", centavos(ctx.ventaNeta - (metaDe.get("alimento") ?? 0) - (metaDe.get("merma") ?? 0)));
 
   const pct = (n: number | null | undefined) => (n === null || n === undefined || e.ventaNeta <= 0 ? null : Math.round((n / e.ventaNeta) * 10000) / 10000);
   return RENGLONES.map((r) => {
