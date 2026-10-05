@@ -5,7 +5,7 @@
 
 do $$
 declare
-  v_a uuid; v_b uuid; v_c uuid; v_suc uuid; v_prov uuid; v_fac uuid; v_n int;
+  v_a uuid; v_b uuid; v_c uuid; v_suc uuid; v_prov uuid; v_fac uuid; v_n int; v_nota uuid; v_prov2 uuid;
   v_ok text[] := '{}';
 begin
   select a.id, b.id, a.sucursal_id into v_a, v_b, v_suc
@@ -29,6 +29,27 @@ begin
   if (select cuenta_pl from facturas where id = v_fac) <> 'servicios' then raise exception 'FALLÓ: la factura hereda la cuenta'; end if;
   if (select cuenta_pl from facturas_saldo where id = v_fac) is distinct from 'servicios' then raise exception 'FALLÓ: facturas_saldo debe traer la cuenta'; end if;
   v_ok := array_append(v_ok, 'la factura hereda la cuenta del proveedor');
+
+  -- La nota de crédito toma la cuenta y la sucursal de la factura que corrige, y las sigue si cambian.
+  update facturas set sucursal_id = v_suc, cuenta_pl = 'mantenimiento' where id = v_fac;
+  insert into facturas (uuid, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, rfc_receptor, subtotal, total, proveedor_id, vence_el, xml_ruta, uuid_relacionado)
+  values ('11111111-2222-3333-4444-666666666666', 'egreso', current_date, 'PPL010203AB1', 'Prueba PL', '601', 'XAXX010101000', 10, 11.6, v_prov, current_date, 'nota.xml', '11111111-2222-3333-4444-555555555555')
+  returning id into v_nota;
+  if (select cuenta_pl from facturas where id = v_nota) is distinct from 'mantenimiento'
+     or (select sucursal_id from facturas where id = v_nota) is distinct from v_suc then
+    raise exception 'FALLÓ: la nota de crédito toma la cuenta y la sucursal de su factura';
+  end if;
+  update facturas set cuenta_pl = 'renta' where id = v_fac;
+  if (select cuenta_pl from facturas where id = v_nota) is distinct from 'renta' then raise exception 'FALLÓ: la nota sigue a su factura si cambia la cuenta'; end if;
+  update facturas set cuenta_pl = 'servicios', sucursal_id = null where id = v_fac;
+  v_ok := array_append(v_ok, 'la nota de crédito va a la cuenta y sucursal de su factura');
+
+  -- Proveedores que solo surten insumos o activo fijo quedan en su memo.
+  insert into proveedores (razon_social, rfc, regimen_fiscal, categorias) values ('Prueba insumos', 'PIN010203AB1', '601', '{consumible}') returning id into v_prov2;
+  update proveedores set cuenta_pl = null where id = v_prov2;
+  perform cuenta_pl_por_categoria();
+  if (select cuenta_pl from proveedores where id = v_prov2) is distinct from 'insumos' then raise exception 'FALLÓ: proveedor de insumos → memo insumos'; end if;
+  v_ok := array_append(v_ok, 'proveedor de insumos sin cuenta → memo insumos');
 
   -- Gerente no ve; corporativo ve y no escribe; admin escribe.
   update perfiles set rol = 'gerente' where id = v_a;

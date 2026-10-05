@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { clabeValida, leerArticulo, leerDesactivacion, leerProveedor, nombreRegimen, normalizarRfc, REGIMENES, rfcValido } from "./proveedores.ts";
 
 const campos = (o: Record<string, string>) => (c: string) => o[c] ?? "";
@@ -116,4 +117,14 @@ test("desactivar pide motivo; reactivar lo borra", () => {
   assert.deepEqual(leerDesactivacion("no", " Cerró el negocio "), { datos: { activo: false, motivo_desactivacion: "Cerró el negocio" } });
   assert.deepEqual(leerDesactivacion("no", "  "), { error: "Escribe por qué se desactiva." });
   assert.deepEqual(leerDesactivacion("si", "lo que sea"), { datos: { activo: true, motivo_desactivacion: null } });
+});
+
+// Si la ficha no trae un campo, el formulario abre vacío y guardar lo borra (pasó con cuenta_pl).
+test("la ficha del proveedor trae todos los campos que guarda el formulario", () => {
+  const r = leerProveedor(campos(base));
+  assert.ok("datos" in r);
+  const ficha = readFileSync(new URL("../../app/compras/proveedores/[id]/page.tsx", import.meta.url), "utf8");
+  const select = ficha.match(/from\("proveedores"\)\s*\.select\("([^"]+)"/)?.[1] ?? "";
+  const columnas = select.split(",").map((c) => c.trim());
+  assert.deepEqual(Object.keys(r.datos).filter((c) => !columnas.includes(c)), []);
 });

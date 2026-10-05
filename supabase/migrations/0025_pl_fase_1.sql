@@ -25,14 +25,59 @@ create view facturas_saldo with (security_invoker = true) as
 select f.*, saldo_factura(f.id) as saldo, neto_factura(f.id) as neto, pagado_factura(f.id) as pagado, falta_complemento(f.id) as falta_complemento
   from facturas f;
 
--- Una factura nueva hereda la cuenta de su proveedor.
+-- Una factura nueva hereda la cuenta de su proveedor. Una nota de crédito toma la cuenta y la sucursal de la factura
+-- que corrige (si ya se subió); si no, la del proveedor.
 create or replace function heredar_cuenta_factura() returns trigger
 language plpgsql security definer set search_path = public as $$
+declare v_cuenta text; v_sucursal uuid;
 begin
+  if new.tipo = 'egreso' and new.uuid_relacionado is not null then
+    select cuenta_pl, sucursal_id into v_cuenta, v_sucursal from facturas where uuid = new.uuid_relacionado and tipo = 'ingreso';
+    if found then
+      new.cuenta_pl := coalesce(new.cuenta_pl, v_cuenta);
+      new.sucursal_id := coalesce(new.sucursal_id, v_sucursal);
+    end if;
+  end if;
   if new.cuenta_pl is null then select cuenta_pl into new.cuenta_pl from proveedores where id = new.proveedor_id; end if;
   return new;
 end $$;
 create trigger facturas_heredar_cuenta before insert on facturas for each row execute function heredar_cuenta_factura();
+
+-- Si cambia la cuenta o la sucursal de una factura (o llega después de su nota), sus notas de crédito la siguen.
+create or replace function notas_siguen_factura() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.tipo = 'ingreso' and (tg_op = 'INSERT' or new.cuenta_pl is distinct from old.cuenta_pl or new.sucursal_id is distinct from old.sucursal_id) then
+    update facturas set cuenta_pl = new.cuenta_pl, sucursal_id = new.sucursal_id
+     where tipo = 'egreso' and uuid_relacionado = new.uuid
+       and (cuenta_pl is distinct from new.cuenta_pl or sucursal_id is distinct from new.sucursal_id);
+  end if;
+  return null;
+end $$;
+create trigger facturas_notas_siguen after insert or update of cuenta_pl, sucursal_id on facturas
+  for each row execute function notas_siguen_factura();
+
+-- Proveedores sin cuenta que solo surten insumos o activo fijo van a su memo, y sus facturas sin cuenta la toman.
+-- Corre una vez aquí (proveedores y facturas que ya existían); se puede volver a correr.
+create or replace function cuenta_pl_por_categoria() returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update proveedores set cuenta_pl = 'insumos' where cuenta_pl is null and categorias = '{consumible}';
+  update proveedores set cuenta_pl = 'inversiones' where cuenta_pl is null and categorias = '{activo_fijo}';
+  update facturas f set cuenta_pl = p.cuenta_pl
+    from proveedores p
+   where p.id = f.proveedor_id and f.cuenta_pl is null and p.cuenta_pl is not null and f.tipo = 'ingreso';
+  update facturas n set cuenta_pl = f.cuenta_pl, sucursal_id = f.sucursal_id
+    from facturas f
+   where n.tipo = 'egreso' and f.tipo = 'ingreso' and f.uuid = n.uuid_relacionado
+     and (n.cuenta_pl is distinct from f.cuenta_pl or n.sucursal_id is distinct from f.sucursal_id);
+  -- Las notas: las de factura ya subida las acomoda el trigger de arriba; las sueltas toman la del proveedor.
+  update facturas f set cuenta_pl = p.cuenta_pl
+    from proveedores p
+   where p.id = f.proveedor_id and f.cuenta_pl is null and p.cuenta_pl is not null and f.tipo = 'egreso';
+end $$;
+revoke execute on function cuenta_pl_por_categoria() from public, anon, authenticated;
+select cuenta_pl_por_categoria();
 
 create or replace function asignar_cuenta_factura(p_factura uuid, p_cuenta text) returns void
 language plpgsql security definer set search_path = public as $$

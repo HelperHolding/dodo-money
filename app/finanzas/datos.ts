@@ -24,6 +24,8 @@ const renglonDe = (cuenta: string | null) => (cuenta && cuenta !== "insumos" && 
 export type SucursalPL = { id: string; nombre: string; entrada: EntradaPL; ctx: ContextoMeta; metas: Meta[]; avisos: string[] };
 export type DatosMes = {
   mes: string; porSucursal: SucursalPL[]; oficina: number;
+  /** Avisos de oficina central (van en el consolidado). */
+  avisosOficina: string[];
   consolidado: { entrada: EntradaPL; ctx: ContextoMeta };
   /** Llave `sucursal|renglón` → de dónde sale el monto. */
   detalle: Map<string, Detalle>;
@@ -151,6 +153,8 @@ export async function datosPL(supabase: SupabaseClient, mes: string): Promise<Da
 
   // Oficina central: facturas sin sucursal (sin memos), gastos del mes y nómina de oficina; se prorratea por venta neta.
   const fOf = facturasAGastos(de(facturas, null));
+  const sinCuentaOf = de(facturas, null).filter((x) => x.estado !== "cancelada" && !x.cuenta_pl).length;
+  const avisosOficina = sinCuentaOf ? [`Oficina central: ${sinCuentaOf} facturas sin sucursal ni cuenta del P&L (se reparten como gasto de oficina).`] : [];
   const nOf = nominaMes(puestos, ajustes, null, hasta);
   const manualOf = de(gastosMes, null).reduce((t, g) => t + Number(g.monto), 0);
   const oficina = centavos(Object.values(fOf.gastos).reduce((t, v) => t + v, 0) + fOf.sinCuenta + nOf.cocina + nOf.gerencia + manualOf);
@@ -170,7 +174,7 @@ export async function datosPL(supabase: SupabaseClient, mes: string): Promise<Da
       gerencia: centavos(porSucursal.reduce((t, s) => t + s.ctx.plantilla.gerencia, 0)),
     },
   };
-  return { mes, porSucursal, oficina, consolidado: { entrada, ctx }, detalle };
+  return { mes, porSucursal, oficina, avisosOficina, consolidado: { entrada, ctx }, detalle };
 }
 
 /** P&L de una sucursal (o consolidado si no hay o no existe) en un mes ya cargado. */
@@ -180,7 +184,7 @@ export function vistaPL(d: DatosMes, sucursalId: string | undefined) {
   return {
     suc: null, titulo: "Consolidado", entrada: d.consolidado.entrada,
     filas: calcularPL(d.consolidado.entrada, sumarMetas(d.porSucursal), d.consolidado.ctx),
-    avisos: d.porSucursal.flatMap((s) => s.avisos.map((a) => `${s.nombre}: ${a}`)),
+    avisos: [...d.avisosOficina, ...d.porSucursal.flatMap((s) => s.avisos.map((a) => `${s.nombre}: ${a}`))],
   };
 }
 
