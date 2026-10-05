@@ -92,13 +92,50 @@ export function periodoSemana(semana: string, hoy: string, inicio?: string): Per
   return armar("semana", semana, desde, hasta, `Semana ${n} · ${primero} al ${diaMes(hasta)} ${hasta.slice(0, 4)}`, hoy);
 }
 
-/** Para la lista: "Sem 41 · 5–11 oct" o "Sem 40 · 28 sep – 4 oct". */
-export function etiquetaSemana(semana: string): string {
-  const { desde, hasta } = rangoSemana(semana);
-  const n = Number(semana.slice(6));
+/** "Sem 41 · 5–11 oct", "Sem 40 · 28 sep – 4 oct" o, de un solo día, "Sem 44 · 1 nov". */
+function etiquetaRango(n: number, desde: string, hasta: string): string {
+  if (desde === hasta) return `Sem ${n} · ${diaMes(desde)}`;
   return desde.slice(0, 7) === hasta.slice(0, 7)
     ? `Sem ${n} · ${Number(desde.slice(8))}–${diaMes(hasta)}`
     : `Sem ${n} · ${diaMes(desde)} – ${diaMes(hasta)}`;
+}
+
+/** Para la lista: "Sem 41 · 5–11 oct" o "Sem 40 · 28 sep – 4 oct". */
+export function etiquetaSemana(semana: string): string {
+  const { desde, hasta } = rangoSemana(semana);
+  return etiquetaRango(Number(semana.slice(6)), desde, hasta);
+}
+
+export type ColumnaComparativo = { clave: string; etiqueta: string; rango: Rango };
+const MESES_CORTOS = MESES.map((m) => m[0].toUpperCase() + m.slice(1));
+
+/**
+ * Columnas de la vista comparativa. Mensual: los meses del año hasta el elegido. Semanal: las semanas del mes al que
+ * pertenece la semana elegida (el de su jueves), cada una cortada al mes. Todas cortadas al inicio del P&L y a ayer;
+ * sin columnas vacías.
+ */
+export function columnasComparativo(p: Periodo, hoy: string, inicio: string): { columnas: ColumnaComparativo[]; total: string; titulo: string } {
+  const ayer = sumarDias(hoy, -1);
+  const corta = (desde: string, hasta: string): Rango => ({ desde: desde < inicio ? inicio : desde, hasta: hasta > ayer ? ayer : hasta });
+  const columnas: ColumnaComparativo[] = [];
+  if (p.tipo === "mes") {
+    const anio = p.clave.slice(0, 4);
+    for (let m = `${anio}-01`; m <= p.clave; m = mesMenos(m, -1)) {
+      const rango = corta(`${m}-01`, ultimoDia(m));
+      if (rango.desde <= rango.hasta) columnas.push({ clave: m, etiqueta: MESES_CORTOS[Number(m.slice(5)) - 1], rango });
+    }
+    return { columnas, total: `Total ${anio}`, titulo: `Meses de ${anio}` };
+  }
+  const mes = sumarDias(rangoSemana(p.clave).desde, 3).slice(0, 7);
+  const primero = `${mes}-01`, ultimo = ultimoDia(mes);
+  for (let lunes = rangoSemana(semanaISO(primero)).desde; lunes <= ultimo; lunes = sumarDias(lunes, 7)) {
+    const domingo = sumarDias(lunes, 6);
+    const rango = corta(lunes < primero ? primero : lunes, domingo > ultimo ? ultimo : domingo);
+    const n = Number(semanaISO(lunes).slice(6));
+    if (rango.desde <= rango.hasta) columnas.push({ clave: semanaISO(lunes), etiqueta: etiquetaRango(n, rango.desde, rango.hasta), rango });
+  }
+  const nombre = MESES_LARGOS[Number(mes.slice(5)) - 1].toLowerCase();
+  return { columnas, total: `Total ${nombre}`, titulo: `Semanas de ${nombre} ${mes.slice(0, 4)}` };
 }
 
 /** Semanas de la que contiene `inicio` a la de hoy, la más reciente primero. */

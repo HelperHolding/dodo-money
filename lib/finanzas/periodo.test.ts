@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  acumuladoDe, anteriorDe, diasEntre, elegirPeriodo, esSemana, etiquetaSemana, mesesDelRango, paramsPeriodo,
+  acumuladoDe, anteriorDe, columnasComparativo, diasEntre, elegirPeriodo, esSemana, etiquetaSemana, mesesDelRango, paramsPeriodo,
   periodoMes, periodoSemana, rangoSemana, rangosPorMes, semanaISO, semanasDesde,
 } from "./periodo.ts";
 
@@ -97,4 +97,23 @@ test("rangosPorMes: el acumulado se parte en un rango por mes", () => {
   ]);
   assert.deepEqual(rangosPorMes({ desde: "2026-11-01", hasta: "2026-11-08" }), [{ desde: "2026-11-01", hasta: "2026-11-08" }]);
   assert.deepEqual(rangosPorMes({ desde: "2026-10-01", hasta: "2026-09-30" }), []);
+});
+
+test("columnasComparativo: meses del año y semanas del mes (la del jueves), cortadas al mes, al inicio y a ayer", () => {
+  const meses = columnasComparativo(periodoMes("2026-12", "2027-01-10"), "2027-01-10", INICIO);
+  assert.deepEqual(meses.columnas.map((c) => [c.clave, c.etiqueta, c.rango.desde, c.rango.hasta]),
+    [["2026-10", "Oct", "2026-10-01", "2026-10-31"], ["2026-11", "Nov", "2026-11-01", "2026-11-30"], ["2026-12", "Dic", "2026-12-01", "2026-12-31"]]);
+  assert.deepEqual([meses.total, meses.titulo], ["Total 2026", "Meses de 2026"]);
+  assert.deepEqual(columnasComparativo(periodoMes("2026-11", "2026-11-10"), "2026-11-10", INICIO).columnas.at(-1)?.rango, { desde: "2026-11-01", hasta: "2026-11-09" });
+  assert.deepEqual(columnasComparativo(periodoMes("2027-02", "2027-03-05"), "2027-03-05", INICIO).columnas.map((c) => c.clave), ["2027-01", "2027-02"]);
+
+  const oct = columnasComparativo(periodoSemana("2026-W41", "2026-11-10", INICIO), "2026-11-10", INICIO);
+  assert.deepEqual(oct.columnas.map((c) => c.etiqueta), ["Sem 40 · 1–4 oct", "Sem 41 · 5–11 oct", "Sem 42 · 12–18 oct", "Sem 43 · 19–25 oct", "Sem 44 · 26–31 oct"]);
+  assert.deepEqual([oct.total, oct.titulo], ["Total octubre", "Semanas de octubre 2026"]);
+  assert.deepEqual(columnasComparativo(periodoSemana("2026-W44", "2026-11-10", INICIO), "2026-11-10", INICIO).columnas.length, 5);
+  assert.deepEqual(columnasComparativo(periodoSemana("2026-W45", "2026-11-10", INICIO), "2026-11-10", INICIO).columnas.map((c) => c.etiqueta),
+    ["Sem 44 · 1 nov", "Sem 45 · 2–8 nov", "Sem 46 · 9 nov"]);
+  assert.deepEqual(columnasComparativo(periodoSemana("2026-W42", "2026-10-15", INICIO), "2026-10-15", INICIO).columnas.map((c) => c.rango),
+    [{ desde: "2026-10-01", hasta: "2026-10-04" }, { desde: "2026-10-05", hasta: "2026-10-11" }, { desde: "2026-10-12", hasta: "2026-10-14" }]);
+  assert.deepEqual(columnasComparativo(periodoMes("2026-10", "2026-10-01"), "2026-10-01", INICIO).columnas, []);
 });
