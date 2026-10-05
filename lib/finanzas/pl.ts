@@ -138,16 +138,3 @@ export function finDeMes(mes: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function mesAnterior(mes: string): string {
-  const d = new Date(`${mes}-01T00:00:00Z`);
-  d.setUTCMonth(d.getUTCMonth() - 1);
-  return d.toISOString().slice(0, 7);
-}
-
-/** Meses del acumulado del año hasta `mes` (de enero, o del inicio del P&L si es posterior). */
-export function mesesAcumulados(mes: string): string[] {
-  const desde = `${mes.slice(0, 4)}-01` > INICIO_PL ? `${mes.slice(0, 4)}-01` : INICIO_PL;
-  const meses: string[] = [];
-  for (let m = mes; m >= desde; m = mesAnterior(m)) meses.unshift(m);
-  return meses;
-}
