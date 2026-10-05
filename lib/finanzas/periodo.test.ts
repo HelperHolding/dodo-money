@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   acumuladoDe, anteriorDe, diasEntre, elegirPeriodo, esSemana, etiquetaSemana, mesesDelRango, paramsPeriodo,
-  periodoMes, periodoSemana, rangoSemana, semanaISO, semanasDesde,
+  periodoMes, periodoSemana, rangoSemana, rangosPorMes, semanaISO, semanasDesde,
 } from "./periodo.ts";
 
 const INICIO = "2026-10-01";
@@ -80,4 +80,21 @@ test("comparaciones: periodo anterior y acumulado", () => {
   assert.deepEqual(acumuladoDe(periodoSemana("2026-W45", "2026-11-14"), INICIO), { desde: "2026-11-01", hasta: "2026-11-08" });
   assert.deepEqual(acumuladoDe(periodoMes("2026-11", "2026-11-10"), INICIO), { desde: "2026-10-01", hasta: "2026-11-09" });
   assert.deepEqual(acumuladoDe(periodoMes("2027-02", "2027-03-10"), INICIO), { desde: "2027-01-01", hasta: "2027-02-28" });
+});
+
+test("nada antes del inicio del P&L: la semana 40 empieza el 1 de octubre", () => {
+  const w40 = periodoSemana("2026-W40", "2026-10-12", INICIO);
+  assert.deepEqual([w40.desde, w40.hasta, w40.titulo], ["2026-10-01", "2026-10-04", "Semana 40 · 1 al 4 oct 2026"]);
+  assert.equal(elegirPeriodo({ periodo: "semana", semana: "2026-W40" }, "2026-10-12", INICIO).desde, "2026-10-01");
+  assert.equal(elegirPeriodo({ periodo: "semana" }, "2026-10-05", INICIO).desde, "2026-10-01");
+  assert.equal(anteriorDe(periodoSemana("2026-W41", "2026-10-14", INICIO), "2026-10-14", INICIO).desde, "2026-10-01");
+  assert.equal(periodoSemana("2026-W41", "2026-10-14", INICIO).desde, "2026-10-05");
+});
+
+test("rangosPorMes: el acumulado se parte en un rango por mes", () => {
+  assert.deepEqual(rangosPorMes({ desde: "2026-10-01", hasta: "2026-12-09" }), [
+    { desde: "2026-10-01", hasta: "2026-10-31" }, { desde: "2026-11-01", hasta: "2026-11-30" }, { desde: "2026-12-01", hasta: "2026-12-09" },
+  ]);
+  assert.deepEqual(rangosPorMes({ desde: "2026-11-01", hasta: "2026-11-08" }), [{ desde: "2026-11-01", hasta: "2026-11-08" }]);
+  assert.deepEqual(rangosPorMes({ desde: "2026-10-01", hasta: "2026-09-30" }), []);
 });

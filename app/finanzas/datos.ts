@@ -4,7 +4,7 @@ import type { CuentaGasto } from "@/lib/finanzas/cuentas";
 import { facturasAGastos, faltantesDe, sumarGastos } from "@/lib/finanzas/gastos";
 import { costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Puesto } from "@/lib/finanzas/nomina";
 import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
-import { acumuladoDe, anteriorDe, COLUMNAS, diasEntre, mesesDelRango, type Periodo, type Rango } from "@/lib/finanzas/periodo";
+import { acumuladoDe, anteriorDe, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
 import {
   calcularPL, entradaVacia, escalarMetas, INICIO_FECHA, sumarEntradas, sumarMetas,
   type ContextoMeta, type EntradaPL, type FilaPL, type Meta,
@@ -60,23 +60,24 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     supabase.from("gastos_mes").select("sucursal_id, cuenta, monto, concepto, mes").in("mes", primerosDeMes)
       .returns<(Fila & { cuenta: CuentaGasto; monto: number; concepto: string; mes: string })[]>(),
     supabase.from("pl_metas").select("sucursal_id, renglon, tipo, valor").returns<(Meta & { sucursal_id: string })[]>(),
-    supabase.from("facturas").select("sucursal_id, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision")
-      .gte("fecha_emision", iniMeses).lte("fecha_emision", finMeses)
-      .returns<(Fila & { tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null; nombre_emisor: string; fecha_emision: string })[]>(),
-    supabase.from("gastos_caja_chica").select("sucursal_id, fecha, concepto, monto, cuenta_pl").gte("fecha", desde).lte("fecha", hasta)
-      .returns<(Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null })[]>(),
-    supabase.from("cierres_dia").select("sucursal_id, boveda_diferencia").gte("fecha", desde).lte("fecha", hasta)
-      .returns<(Fila & { boveda_diferencia: number })[]>(),
-    supabase.from("arqueos").select("diferencia, turnos!inner(sucursal_id, fecha)").eq("momento", "cierre").is("anulado_en", null)
-      .gte("turnos.fecha", desde).lte("turnos.fecha", hasta).returns<{ diferencia: number; turnos: { sucursal_id: string } }[]>(),
   ]);
   const error = primerError(res);
   if (error) throw new Error(`No se pudieron cargar los datos del P&L: ${error}`);
   const sucursales = res[0].data ?? [], params = res[1].data ?? [], puestos = res[2].data ?? [], ajustes = res[3].data ?? [];
-  const gastosMes = res[4].data ?? [], metas = res[5].data ?? [], facturas = res[6].data ?? [], cajaChica = res[7].data ?? [];
-  const cierres = res[8].data ?? [], arqueos = res[9].data ?? [];
+  const gastosMes = res[4].data ?? [], metas = res[5].data ?? [];
 
-  const [dias, desglose, ventas, catalogo, costos] = await Promise.all([
+  type FacturaPL = Fila & { tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null; nombre_emisor: string; fecha_emision: string };
+  const [facturas, cajaChica, cierres, arqueos, dias, desglose, ventas, catalogo, costos] = await Promise.all([
+    leerTodo<FacturaPL>((d, h) => supabase.from("facturas").select("sucursal_id, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision")
+      .gte("fecha_emision", iniMeses).lte("fecha_emision", finMeses).order("id").range(d, h).returns<FacturaPL[]>()),
+    leerTodo<Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null }>((d, h) => supabase.from("gastos_caja_chica")
+      .select("sucursal_id, fecha, concepto, monto, cuenta_pl").gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h)
+      .returns<(Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null })[]>()),
+    leerTodo<Fila & { boveda_diferencia: number }>((d, h) => supabase.from("cierres_dia").select("sucursal_id, boveda_diferencia")
+      .gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h).returns<(Fila & { boveda_diferencia: number })[]>()),
+    leerTodo<{ diferencia: number; turnos: { sucursal_id: string } }>((d, h) => supabase.from("arqueos").select("diferencia, turnos!inner(sucursal_id, fecha)")
+      .eq("momento", "cierre").is("anulado_en", null).gte("turnos.fecha", desde).lte("turnos.fecha", hasta).order("id").range(d, h)
+      .returns<{ diferencia: number; turnos: { sucursal_id: string } }[]>()),
     leerTodo<VentaDia & { id: string }>((d, h) => supabase.from("ventas_dia").select("id, sucursal_id, fecha, pedidos, total, efectivo, tarjeta, en_linea, iva, venta_m2")
       .gte("fecha", desde).lte("fecha", hasta).order("sucursal_id").order("fecha").range(d, h).returns<(VentaDia & { id: string })[]>()),
     leerTodo<{ ventas_dia_id: string; total: number; tarjeta: number; en_linea: number }>((d, h) => supabase.from("ventas_dia_desglose")
@@ -221,18 +222,18 @@ export function vistaPL(d: DatosPeriodo, sucursalId: string | undefined) {
 
 /**
  * El periodo con sus dos comparaciones (% de venta): mes → mes anterior y acumulado del año;
- * semana → semana anterior y acumulado del mes. Tres cargas, cada una de un solo rango.
+ * semana → semana anterior y acumulado del mes. El acumulado se carga mes por mes en paralelo y se suma.
  */
 export async function plConHistoria(supabase: SupabaseClient, p: Periodo, sucursalId: string | undefined) {
-  const ant = anteriorDe(p, hoyMX());
-  const [d, previo, acumulado] = await Promise.all([
+  const ant = anteriorDe(p, hoyMX(), INICIO_FECHA);
+  const [d, previo, ...meses] = await Promise.all([
     datosPL(supabase, p),
     ant.vacio || ant.finNominal < INICIO_FECHA ? Promise.resolve(null) : datosPL(supabase, ant),
-    datosPL(supabase, acumuladoDe(p, INICIO_FECHA)),
+    ...rangosPorMes(acumuladoDe(p, INICIO_FECHA)).map((r) => datosPL(supabase, r)),
   ]);
   const vista = vistaPL(d, sucursalId);
   const pctDe = (filas: FilaPL[]) => new Map(filas.map((f) => [f.clave, f.pct]));
-  const acum = vistaPL(acumulado, sucursalId).entrada;
+  const acum = sumarEntradas(meses.map((m) => vistaPL(m!, sucursalId).entrada));
   return {
     datos: d, ...vista,
     anterior: previo ? pctDe(vistaPL(previo, sucursalId).filas) : null,

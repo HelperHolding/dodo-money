@@ -81,13 +81,15 @@ export function periodoMes(mes: string, hoy: string): Periodo {
   return armar("mes", mes, `${mes}-01`, ultimoDia(mes), `${MESES_LARGOS[Number(mes.slice(5)) - 1]} ${mes.slice(0, 4)}`, hoy);
 }
 
-export function periodoSemana(semana: string, hoy: string): Periodo {
-  const { desde, hasta } = rangoSemana(semana);
+/** Con `inicio`, la semana que lo cruza empieza ahí (antes no hay datos ni costos del P&L). */
+export function periodoSemana(semana: string, hoy: string, inicio?: string): Periodo {
+  const r = rangoSemana(semana);
+  const desde = inicio && r.desde < inicio ? inicio : r.desde, hasta = r.hasta;
   const n = Number(semana.slice(6));
   const mismoAnio = desde.slice(0, 4) === hasta.slice(0, 4);
   const mismoMes = desde.slice(0, 7) === hasta.slice(0, 7);
-  const inicio = mismoMes ? String(Number(desde.slice(8))) : `${diaMes(desde)}${mismoAnio ? "" : ` ${desde.slice(0, 4)}`}`;
-  return armar("semana", semana, desde, hasta, `Semana ${n} · ${inicio} al ${diaMes(hasta)} ${hasta.slice(0, 4)}`, hoy);
+  const primero = mismoMes ? String(Number(desde.slice(8))) : `${diaMes(desde)}${mismoAnio ? "" : ` ${desde.slice(0, 4)}`}`;
+  return armar("semana", semana, desde, hasta, `Semana ${n} · ${primero} al ${diaMes(hasta)} ${hasta.slice(0, 4)}`, hoy);
 }
 
 /** Para la lista: "Sem 41 · 5–11 oct" o "Sem 40 · 28 sep – 4 oct". */
@@ -113,7 +115,7 @@ export function elegirPeriodo(q: { periodo?: string; mes?: string; semana?: stri
   if (q.periodo === "semana") {
     const s = q.semana ?? "";
     const valida = esSemana(s) && rangoSemana(s).desde <= hoy && rangoSemana(s).hasta >= inicio;
-    return periodoSemana(valida ? s : semanaISO(ayer), hoy);
+    return periodoSemana(valida ? s : semanaISO(ayer), hoy, inicio);
   }
   const m = q.mes ?? "";
   const valido = /^\d{4}-\d{2}$/.test(m) && m <= hoy.slice(0, 7) && m >= inicio.slice(0, 7);
@@ -124,14 +126,18 @@ export const paramsPeriodo = (p: Periodo): Record<string, string> =>
   p.tipo === "semana" ? { periodo: "semana", semana: p.clave } : { periodo: "mes", mes: p.clave };
 
 /** Periodo anterior del mismo tipo. */
-export const anteriorDe = (p: Periodo, hoy: string): Periodo =>
-  p.tipo === "semana" ? periodoSemana(semanaISO(sumarDias(p.desde, -7)), hoy) : periodoMes(mesMenos(p.clave, 1), hoy);
+export const anteriorDe = (p: Periodo, hoy: string, inicio?: string): Periodo =>
+  p.tipo === "semana" ? periodoSemana(semanaISO(sumarDias(p.desde, -7)), hoy, inicio) : periodoMes(mesMenos(p.clave, 1), hoy);
 
 /** Acumulado para comparar: del 1 de enero (mes) o del 1 del mes (semana) hasta el último día calculado; nunca antes del inicio. */
 export function acumuladoDe(p: Periodo, inicio: string): Rango {
   const base = p.tipo === "mes" ? `${p.hasta.slice(0, 4)}-01-01` : `${p.hasta.slice(0, 7)}-01`;
   return { desde: base > inicio ? base : inicio, hasta: p.hasta };
 }
+
+/** Un rango por cada mes que toca (para cargar el acumulado en paralelo, mes por mes). */
+export const rangosPorMes = (r: Rango): Rango[] =>
+  mesesDelRango(r.desde, r.hasta).map((m) => ({ desde: m.mes === r.desde.slice(0, 7) ? r.desde : `${m.mes}-01`, hasta: m.fin < r.hasta ? m.fin : r.hasta }));
 
 /** Encabezados de las dos columnas de comparación. */
 export const COLUMNAS = {
