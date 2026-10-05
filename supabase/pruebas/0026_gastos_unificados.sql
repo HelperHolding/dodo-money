@@ -1,5 +1,5 @@
 -- Pruebas de la migración 0026 (gastos unificados). Córrelas completas en Supabase → SQL Editor después de la migración.
--- Necesitan un usuario activo con sucursal, un usuario corporativo activo y los datos de la empresa.
+-- Necesitan un usuario activo con sucursal y un usuario corporativo activo. Si aún no hay datos de la empresa, se usa uno de prueba (se deshace).
 -- El resultado aparece como ERROR A PROPÓSITO para que Postgres deshaga todo:
 --   · "PRUEBAS OK — …" → todo bien.   · "FALLÓ: …" → dice qué regla no se cumplió.
 
@@ -12,7 +12,7 @@ begin
   if v_a is null then raise exception 'FALTAN DATOS: se necesita un usuario activo con sucursal.'; end if;
   select id into v_c from perfiles where rol::text = 'corporativo' and activo limit 1;
   if v_c is null then raise exception 'FALTAN DATOS: se necesita un usuario corporativo activo.'; end if;
-  if not exists (select 1 from empresa) then raise exception 'FALTAN DATOS: configura los datos de la empresa.'; end if;
+  if not exists (select 1 from empresa) then insert into empresa (rfc, razon_social) values ('DMX010101AB1', 'Empresa de prueba'); end if;
 
   insert into proveedores (razon_social, rfc, regimen_fiscal, cuenta_pl, sucursal_id, dias_credito)
   values ('Arrendador Prueba', 'PEPJ800101AB1', '606', 'renta', v_suc, 5) returning id into v_prov;
