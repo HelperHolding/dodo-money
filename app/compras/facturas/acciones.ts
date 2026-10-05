@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { leerCfdi } from "@/lib/compras/cfdi";
-import { archivoYaSubido, baseArchivo, rutaArchivoFactura } from "@/lib/compras/facturas";
+import { archivoYaSubido, avisoGastosSinCfdi, baseArchivo, rutaArchivoFactura } from "@/lib/compras/facturas";
 import { fechaTexto, fechaMX, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { leerGastoManual, type GastoManual } from "@/lib/compras/gastoManual";
 import { CUENTAS_GASTO, CUENTAS_MEMO } from "@/lib/finanzas/cuentas";
@@ -83,9 +83,18 @@ export async function subirFacturas(_previo: ResultadoSubida | null, fd: FormDat
     const { data: id, error } = await supabase.rpc("registrar_factura", { p_cfdi: cfdi, p_alta_proveedor: altaProveedor, p_xml: rutaXml, p_pdf: pdfRuta });
     if (error) { resultados.push({ archivo: xml.name, ok: false, texto: error.message }); continue; }
     const nombre = cfdi.tipo === "egreso" ? "Nota de crédito" : "Factura";
+    // Si el proveedor tiene gastos sin CFDI abiertos, se recuerda sustituirlos (si no, el gasto se cuenta doble).
+    let avisoSinCfdi = "";
+    if (cfdi.tipo === "ingreso") {
+      const { data: nueva } = await supabase.from("facturas").select("proveedor_id").eq("id", id as string).maybeSingle<{ proveedor_id: string }>();
+      const { count } = nueva
+        ? await supabase.from("facturas").select("id", { count: "exact", head: true }).eq("proveedor_id", nueva.proveedor_id).eq("origen", "manual").neq("estado", "cancelada")
+        : { count: 0 };
+      avisoSinCfdi = avisoGastosSinCfdi(count ?? 0);
+    }
     const avisoVarias = cfdi.uuids_relacionados.length > 1
       ? ` Corrige ${cfdi.uuids_relacionados.length} facturas: se restó completa de la primera; revisa los saldos.` : "";
-    resultados.push({ archivo: xml.name, ok: true, texto: `${nombre} ${cfdi.serie ?? ""}${cfdi.folio ?? ""} de ${cfdi.nombre_emisor} registrada${pdfRuta ? " con PDF" : ""}.${avisoVarias}${avisoPdf}`, id: id as string });
+    resultados.push({ archivo: xml.name, ok: true, texto: `${nombre} ${cfdi.serie ?? ""}${cfdi.folio ?? ""} de ${cfdi.nombre_emisor} registrada${pdfRuta ? " con PDF" : ""}.${avisoVarias}${avisoPdf}${avisoSinCfdi}`, id: id as string });
   }
   revalidatePath("/compras", "layout");
   return { resultados };
@@ -167,12 +176,13 @@ export async function sustituirGastoManual(fd: FormData) {
   const supabase = await clienteAdmin(rutaFactura(id));
   if (!manual) volver(rutaFactura(id), "error", "Elige el gasto sin CFDI que sustituye.");
   const { data: totales } = await supabase.from("facturas").select("id, total").in("id", [id, manual]).returns<{ id: string; total: number }[]>();
-  const { data: faltan, error } = await supabase.rpc("sustituir_factura_manual", { p_cfdi: id, p_manual: manual });
+  const { data: resultado, error } = await supabase.rpc("sustituir_factura_manual", { p_cfdi: id, p_manual: manual });
   if (error) volver(rutaFactura(id), "error", error.message);
   const t = new Map((totales ?? []).map((x) => [x.id, Number(x.total)]));
   const diferencia = Math.abs((t.get(id) ?? 0) - (t.get(manual) ?? 0));
   revalidatePath("/compras", "layout");
   volver(rutaFactura(id), "ok", `Sustituyó al gasto sin CFDI; sus pagos pasaron a esta factura.`
     + `${diferencia > 1 ? ` Ojo: los totales difieren por ${pesos(diferencia)}.` : ""}`
-    + `${faltan ? " Asigna la cuenta de cada concepto (el gasto tenía varias)." : ""}`);
+    + `${resultado?.sucursal_cambio ? " Se dejó la sucursal que elegiste en el gasto sin CFDI." : ""}`
+    + `${resultado?.faltan_cuentas ? " Revisa la cuenta de cada concepto (el gasto tenía varias o renglones sin cuenta)." : ""}`);
 }

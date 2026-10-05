@@ -68,3 +68,9 @@ export const nombreEstadoFactura = (tipo: "ingreso" | "egreso" | string, estado:
 /** Cómo se nombra una factura en listas: serie + folio, o el principio del UUID (un gasto sin CFDI siempre trae folio). */
 export const nombreFactura = (f: { serie: string | null; folio: string | null; uuid: string | null }) =>
   `${f.serie ?? ""}${f.folio ?? f.uuid?.slice(0, 8) ?? ""}`;
+
+/** Al subir un CFDI: si su proveedor tiene gastos sin CFDI abiertos, recordar elegir si los sustituye (si no, se cuentan doble). */
+export const avisoGastosSinCfdi = (n: number) =>
+  n <= 0 ? ""
+    : n === 1 ? " Este proveedor tiene 1 gasto sin CFDI abierto: abre la factura y elige si lo sustituye, para no contarlo doble."
+      : ` Este proveedor tiene ${n} gastos sin CFDI abiertos: abre la factura y elige cuál sustituye, para no contarlos doble.`;

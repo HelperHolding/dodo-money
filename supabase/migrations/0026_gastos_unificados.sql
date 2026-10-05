@@ -133,10 +133,11 @@ begin
 end $$;
 
 -- El CFDI que llega sustituye al gasto sin CFDI: los pagos pasan al CFDI y el gasto queda cancelado.
--- Devuelve true si el gasto tenía varias cuentas (los conceptos del CFDI sin cuenta hay que asignarlos a mano).
-create or replace function sustituir_factura_manual(p_cfdi uuid, p_manual uuid) returns boolean
+-- Devuelve {faltan_cuentas: el gasto tenía varias cuentas o renglones sin cuenta (asignar a mano en el CFDI),
+--           sucursal_cambio: el CFDI venía con otra sucursal y se dejó la elegida en el gasto}.
+create or replace function sustituir_factura_manual(p_cfdi uuid, p_manual uuid) returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare c facturas; m facturas; v_cuentas integer; v_cuenta text;
+declare c facturas; m facturas; v_cuentas integer; v_cuenta text; v_sin boolean;
 begin
   perform exigir_admin_compras();
   select * into c from facturas where id = p_cfdi for update;
@@ -158,15 +159,29 @@ begin
    where b.factura_id = p_manual and exists (select 1 from pago_aplicaciones a where a.factura_id = p_cfdi and a.pago_id = b.pago_id);
   update pago_aplicaciones set factura_id = p_cfdi where factura_id = p_manual;
 
-  update facturas set sucursal_id = coalesce(c.sucursal_id, m.sucursal_id) where id = p_cfdi;
-  select count(distinct cuenta_pl), min(cuenta_pl) into v_cuentas, v_cuenta from factura_conceptos where factura_id = p_manual and cuenta_pl is not null;
-  if v_cuentas = 1 then update factura_conceptos set cuenta_pl = v_cuenta where factura_id = p_cfdi and cuenta_pl is null; end if;
+  -- Las órdenes ligadas al gasto pasan al CFDI (siguen facturadas).
+  insert into factura_ordenes (factura_id, orden_id) select p_cfdi, orden_id from factura_ordenes where factura_id = p_manual on conflict do nothing;
+  delete from factura_ordenes where factura_id = p_manual;
+
+  -- Manda la sucursal elegida en el gasto: la del CFDI pudo venir de la sucursal por omisión del proveedor.
+  update facturas set sucursal_id = m.sucursal_id where id = p_cfdi;
+
+  -- Cuenta efectiva de cada renglón del gasto (la suya o la de la factura). Si todos tienen la misma, la toma el CFDI;
+  -- si hay varias o alguno sin cuenta, se asignan a mano.
+  select count(distinct coalesce(fc.cuenta_pl, m.cuenta_pl)), min(coalesce(fc.cuenta_pl, m.cuenta_pl)), bool_or(coalesce(fc.cuenta_pl, m.cuenta_pl) is null)
+    into v_cuentas, v_cuenta, v_sin from factura_conceptos fc where fc.factura_id = p_manual;
+  if v_cuentas = 0 then v_cuentas := case when m.cuenta_pl is null then 0 else 1 end; v_cuenta := m.cuenta_pl; v_sin := m.cuenta_pl is null; end if;
+  if v_cuentas = 1 and not coalesce(v_sin, false) then
+    update factura_conceptos set cuenta_pl = v_cuenta where factura_id = p_cfdi and cuenta_pl is null;
+    update facturas set cuenta_pl = v_cuenta where id = p_cfdi;
+  end if;
 
   update facturas set estado = 'cancelada', sustituido_por = p_cfdi, cancelada_por = auth.uid(), cancelada_en = now(),
          motivo_cancelacion = 'Sustituido por CFDI ' || coalesce(c.serie || '-', '') || coalesce(c.folio, c.uuid)
    where id = p_manual;
   perform actualizar_estado_factura(p_cfdi);
-  return v_cuentas > 1;
+  return jsonb_build_object('faltan_cuentas', v_cuentas > 1 or coalesce(v_sin, false),
+                            'sucursal_cambio', c.sucursal_id is distinct from m.sucursal_id);
 end $$;
 
 revoke execute on function registrar_gasto_manual(jsonb), asignar_cuentas_conceptos(uuid, jsonb), sustituir_factura_manual(uuid, uuid) from public, anon;

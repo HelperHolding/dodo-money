@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { archivoYaSubido, avanceFacturacion, baseArchivo, cotejar, nombreEstadoFactura, rutaArchivoFactura, valorRecibido, venceEl, vencida, nombreFactura } from "./facturas.ts";
+import { archivoYaSubido, avanceFacturacion, baseArchivo, cotejar, nombreEstadoFactura, rutaArchivoFactura, valorRecibido, venceEl, vencida, nombreFactura, avisoGastosSinCfdi } from "./facturas.ts";
 
 test("vencimiento: PUE vence el mismo día; PPD y sin método suman los días de crédito", () => {
   assert.equal(venceEl("2026-09-25", 15, "PUE"), "2026-09-25");
@@ -70,4 +70,10 @@ test("nombreFactura: serie y folio; sin folio, el principio del UUID; nunca true
   assert.equal(nombreFactura({ serie: null, folio: null, uuid: "ABCDEF12-0000" }), "ABCDEF12");
   assert.equal(nombreFactura({ serie: null, folio: "Prefactura renta", uuid: null }), "Prefactura renta");
   assert.equal(nombreFactura({ serie: null, folio: null, uuid: null }), "");
+});
+
+test("avisoGastosSinCfdi: al subir un CFDI, recuerda sustituir los gastos sin CFDI abiertos del proveedor", () => {
+  assert.equal(avisoGastosSinCfdi(0), "");
+  assert.equal(avisoGastosSinCfdi(1), " Este proveedor tiene 1 gasto sin CFDI abierto: abre la factura y elige si lo sustituye, para no contarlo doble.");
+  assert.equal(avisoGastosSinCfdi(3), " Este proveedor tiene 3 gastos sin CFDI abiertos: abre la factura y elige cuál sustituye, para no contarlos doble.");
 });
