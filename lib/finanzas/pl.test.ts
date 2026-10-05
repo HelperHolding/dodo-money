@@ -75,3 +75,13 @@ test("escalarMetas: solo el monto fijo se reparte por días", () => {
     { renglon: "nomina_cocina", tipo: "plantilla", valor: 0 },
   ]);
 });
+
+test("margen bruto: venta − alimento − merma, con su meta", () => {
+  const ctx = { ventaNeta: 1000, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } };
+  const filas = calcularPL({ ...entradaVacia(), ventaNeta: 1000, alimento: 310, merma: 15 },
+    [{ renglon: "alimento", tipo: "pct", valor: 0.3 }, { renglon: "merma", tipo: "pct", valor: 0.02 }], ctx);
+  const mb = filas.find((f) => f.clave === "margen_bruto")!;
+  assert.deepEqual([mb.tipo, mb.monto, mb.pct, mb.meta, mb.diferencia], ["total", 675, 0.675, 680, -5]);
+  const sinMerma = calcularPL({ ...entradaVacia(), ventaNeta: 100, alimento: 30 }, [], { ...ctx, ventaNeta: 100 });
+  assert.equal(sinMerma.find((f) => f.clave === "margen_bruto")!.monto, 70);
+});

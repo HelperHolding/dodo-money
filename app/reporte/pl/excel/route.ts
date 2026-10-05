@@ -1,19 +1,26 @@
-import { reportePL } from "@/app/finanzas/reporte-datos";
+import { reportePL, type FiltrosPL } from "@/app/finanzas/reporte-datos";
 import { fechaMX, hora } from "@/lib/formato";
-import { hojaPL } from "@/lib/finanzas/excel";
+import { hojaComparativo, hojaPL } from "@/lib/finanzas/excel";
+import { PRESENTACION } from "@/lib/finanzas/secciones";
 import { escribirXlsx } from "@/lib/xlsx-escribir";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const q = Object.fromEntries(new URL(request.url).searchParams) as { periodo?: string; mes?: string; semana?: string; sucursal?: string };
-  const r = await reportePL(q);
+  const q = Object.fromEntries(new URL(request.url).searchParams) as FiltrosPL;
+  const r = await reportePL(q, { meta: true, comparativo: true });
   const ahora = new Date().toISOString();
-  const archivo = escribirXlsx(hojaPL({
-    titulo: r.titulo, periodo: r.periodo.titulo, generado: `${r.generadoPor} · ${fechaMX(ahora)} ${hora(ahora)}`,
-    filas: r.filas, anterior: r.anterior, acumulado: r.acumulado, columnas: r.columnas,
-  }));
-  const nombre = `P&L ${r.titulo.replace(/[\\/:*?"<>|]/g, " ")} ${r.periodo.clave}.xlsx`;
+  const generado = `${r.generadoPor} · ${fechaMX(ahora)} ${hora(ahora)}`;
+  const p = r.periodo;
+  const enCurso = !p.vacio && p.hasta < p.finNominal;
+  const archivo = escribirXlsx([
+    ...hojaPL({
+      titulo: r.titulo, periodo: `${p.titulo}${enCurso ? ` · hasta el ${p.hasta}` : ""}`, generado, filas: r.meta!.filas, entrada: r.meta!.entrada,
+      anterior: r.meta!.anterior, acumulado: r.meta!.acumulado, columnas: r.meta!.columnas,
+    }, PRESENTACION),
+    ...hojaComparativo({ titulo: r.titulo, periodo: r.comp!.periodoTitulo, generado, columnas: r.comp!.columnas, total: r.comp!.total }, PRESENTACION),
+  ]);
+  const nombre = `P&L ${r.titulo.replace(/[\\/:*?"<>|]/g, " ")} ${p.clave}.xlsx`;
   return new Response(Buffer.from(archivo), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
