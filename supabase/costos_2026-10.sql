@@ -1,6 +1,7 @@
 -- Costos del menú (Excel "MENU DODO FINAL", pestaña Costo), vigentes desde el 2026-10-01.
 -- Costo = costo de receta + periférico (1 % del precio de venta: sobres de cátsup, servilletas, chile en polvo).
--- Bebidas y dips no llevan periférico. Las variantes "T" llevan el costo de su tamaño; Boneless = Chicken pieces.
+-- Bebidas y dips no llevan periférico. Las variantes "T" (Thin, masa delgada) llevan por ahora el costo de su tamaño
+-- en masa normal: no se vendió ninguna en 90 días. Boneless = Chicken pieces.
 -- Los combos no se cargan: Dodo IS los registra como sus piezas por separado. "Mitad y mitad Grande" queda sin costo.
 -- Los costos anteriores se conservan (las ventas antes del 1 de octubre se siguen costeando con ellos).
 -- Se puede correr más de una vez: si ya hay costo con esa fecha, lo actualiza.
