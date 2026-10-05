@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Control de efectivo · Dodo Pizza",
-  description: "Arqueos, movimientos entre cajas y cierre del día",
+  title: "Dodo MX",
+  applicationName: "Dodo MX",
+  description: "Efectivo, checklists, ventas y compras de Dodo Pizza México",
 };
 
 // themeColor: la barra del navegador en celular, del mismo negro que el encabezado.

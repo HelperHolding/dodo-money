@@ -1,7 +1,7 @@
-# Control de efectivo · Dodo Pizza
+# Dodo MX
 
-Aplicación web para registrar arqueos de turno, movimientos entre cajas, caja chica y el cierre del día.
-Reemplaza las hojas de papel de inicio, traspaso y cierre de caja.
+Aplicación web de Dodo Pizza México: efectivo de las sucursales (arqueos, movimientos entre cajas, caja chica y cierre del día),
+checklists, ventas importadas de Dodo IS y compras (proveedores, órdenes, recepciones, facturas y pagos).
 
 Next.js 15 (TypeScript) + Supabase (Postgres, autenticación y seguridad por renglón). Se publica en Vercel.
 
