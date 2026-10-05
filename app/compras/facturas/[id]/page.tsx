@@ -9,13 +9,14 @@ import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { cotejar, NOMBRE_COTEJO, nombreEstadoFactura, valorRecibido, vencida, type EstadoFactura } from "@/lib/compras/facturas";
 import { avanceOrden, totalesOrden } from "@/lib/compras/ordenes";
 import { nombreRegimen, type TasaIva } from "@/lib/compras/proveedores";
+import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA, esCuentaPl } from "@/lib/finanzas/cuentas";
 import { puedeEditarCompras } from "@/lib/roles";
-import { asignarDestino, cambiarVencimientoFactura, cancelarFacturaAccion, ligarOrdenes, marcarRevisada, programarPagoFactura } from "../acciones";
+import { asignarCuentaFactura, asignarDestino, cambiarVencimientoFactura, cancelarFacturaAccion, ligarOrdenes, marcarRevisada, programarPagoFactura } from "../acciones";
 
 type Factura = {
   id: string; uuid: string; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string;
   rfc_emisor: string; nombre_emisor: string; regimen_emisor: string; metodo_pago: string | null; forma_pago: string | null;
-  subtotal: number; descuento: number; iva: number; retenciones: number; total: number; saldo: number; proveedor_id: string; sucursal_id: string | null;
+  subtotal: number; descuento: number; iva: number; retenciones: number; total: number; saldo: number; proveedor_id: string; sucursal_id: string | null; cuenta_pl: string | null;
   uuid_relacionado: string | null; vence_el: string; estado: EstadoFactura; revisada: boolean; revision_nota: string | null;
   pagado: number; falta_complemento: boolean; pago_programado_el: string | null;
   xml_ruta: string; pdf_ruta: string | null; motivo_cancelacion: string | null;
@@ -30,7 +31,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: f } = await supabase.from("facturas_saldo")
-    .select("id, uuid, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal)")
+    .select("id, uuid, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal)")
     .eq("id", id).maybeSingle<Factura>();
   if (!f) notFound();
 
@@ -98,7 +99,18 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           <dt>Emisor</dt><dd>{f.nombre_emisor} · {f.rfc_emisor} · {f.regimen_emisor} {nombreRegimen(f.regimen_emisor)}</dd>
           {regimenDistinto && <><dt>Aviso</dt><dd>El régimen del XML ({f.regimen_emisor}) no es el de la cartera ({f.proveedores!.regimen_fiscal}).</dd></>}
           {f.revisada && <><dt>Revisada</dt><dd>{f.revision_nota}</dd></>}
+          <dt>Cuenta del P&L</dt><dd>{f.cuenta_pl && esCuentaPl(f.cuenta_pl) ? NOMBRE_CUENTA[f.cuenta_pl] : "Sin cuenta (va a Otros)"}</dd>
         </dl>
+        {edita && (
+          <form action={asignarCuentaFactura} className="acciones">
+            <input type="hidden" name="id" value={f.id} />
+            <select name="cuenta_pl" defaultValue={f.cuenta_pl ?? ""} aria-label="Cuenta del P&L">
+              <option value="">Sin cuenta (va a Otros)</option>
+              {[...CUENTAS_GASTO, ...CUENTAS_MEMO].map((c) => <option key={c} value={c}>{NOMBRE_CUENTA[c]}</option>)}
+            </select>
+            <BotonEnviar className="boton boton-secundario">Guardar cuenta</BotonEnviar>
+          </form>
+        )}
         <div className="acciones">
           {urlXml && <a className="boton boton-secundario" href={urlXml} target="_blank" rel="noreferrer">Ver XML</a>}
           {urlPdf && <a className="boton boton-secundario" href={urlPdf} target="_blank" rel="noreferrer">Ver PDF</a>}

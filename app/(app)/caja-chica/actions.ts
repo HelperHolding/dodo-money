@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { obtenerContextoParaEscribir, puedeGestionar } from "@/lib/contexto";
 import { hoyMX, numero } from "@/lib/formato";
 import { BUCKET_FOTOS, rutaFoto, validarFoto } from "@/lib/fotos";
+import { esCuentaGasto } from "@/lib/finanzas/cuentas";
 import { leerOrigen } from "@/lib/gastos";
 
 const volver = (clave: "ok" | "error", texto: string) => redirect(`/caja-chica?${clave}=${encodeURIComponent(texto)}`);
@@ -17,10 +18,12 @@ export async function registrarGasto(formData: FormData) {
   const uuid = String(formData.get("uuid_cfdi") ?? "").trim() || null;
   const monto = numero(formData.get("monto"));
   const concepto = String(formData.get("concepto") ?? "").trim();
+  const cuenta = String(formData.get("cuenta_pl") ?? "otros");
 
   if (!concepto) volver("error", "Escribe en qué se gastó.");
   if (monto <= 0) volver("error", "Escribe un monto mayor a cero.");
   if (!origen) volver("error", "Elige de dónde salió el dinero.");
+  if (!esCuentaGasto(cuenta)) volver("error", "Elige el tipo de gasto.");
   if (comprobante === "cfdi" && !uuid) volver("error", "Con factura, escribe el folio fiscal (UUID) del CFDI.");
 
   const foto = formData.get("foto");
@@ -48,6 +51,7 @@ export async function registrarGasto(formData: FormData) {
     foto_path: fotoPath,
     origen,
     pagado_por: pagadoPor,
+    cuenta_pl: cuenta,
   });
   if (error) volver("error", error.message);
   revalidatePath("/", "layout");

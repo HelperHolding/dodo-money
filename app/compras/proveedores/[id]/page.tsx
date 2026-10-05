@@ -7,6 +7,7 @@ import { fechaTexto, fechaMX, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { estadoDocumentos, NOMBRE_DOCUMENTO, TIPOS_DOCUMENTO, vigentes, type TipoDocumento } from "@/lib/compras/documentos";
 import { nombreRegimen } from "@/lib/compras/proveedores";
 import { NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, type DatosProveedor } from "@/lib/compras/proveedores";
+import { esCuentaPl, NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
 import { puedeEditarCompras } from "@/lib/roles";
 import { cambiarActivoProveedor, subirDocumentoProveedor } from "../../acciones";
 import { CampoDocumento } from "./CampoDocumento";
@@ -19,7 +20,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: p } = await supabase.from("proveedores")
-    .select("id, razon_social, nombre_comercial, numero_cliente, dias_entrega, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, activo, motivo_desactivacion, desactivado_en")
+    .select("id, razon_social, nombre_comercial, numero_cliente, dias_entrega, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, cuenta_pl, activo, motivo_desactivacion, desactivado_en")
     .eq("id", id).maybeSingle<Proveedor>();
   if (!p) notFound();
   const edita = puedeEditarCompras(perfil.rol);
@@ -60,6 +61,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
           <dt>Banco</dt><dd>{[p.banco, p.clabe && `CLABE ${p.clabe}`, p.cuenta && `Cuenta ${p.cuenta}`].filter(Boolean).join(" · ") || "—"}</dd>
           <dt>Crédito</dt><dd>{p.dias_credito ? `${p.dias_credito} días` : "Contado"} · {NOMBRE_FORMA_PAGO[p.forma_pago_habitual]}</dd>
           <dt>Surte</dt><dd>{p.categorias.map((c) => NOMBRE_CATEGORIA_COMPRA[c]).join(", ") || "Sin categoría"}</dd>
+          <dt>Cuenta del P&L</dt><dd>{p.cuenta_pl && esCuentaPl(p.cuenta_pl) ? NOMBRE_CUENTA[p.cuenta_pl] : "Sin cuenta (sus facturas van a Otros)"}</dd>
           {p.notas && <><dt>Notas</dt><dd>{p.notas}</dd></>}
           {!p.activo && <><dt>Desactivado</dt><dd>{p.motivo_desactivacion}{p.desactivado_en ? ` · ${fechaTexto(fechaMX(p.desactivado_en))}` : ""}</dd></>}
         </dl>

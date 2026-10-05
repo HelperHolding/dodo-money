@@ -109,6 +109,9 @@ export async function asignarDestino(fd: FormData) {
   const s = texto(fd, "sucursal_id");
   await llamarFactura(fd, "asignar_destino_factura", { p_factura: texto(fd, "id"), p_sucursal: s === "oficina" || !s ? null : s }, "Destino guardado.");
 }
+export async function asignarCuentaFactura(fd: FormData) {
+  await llamarFactura(fd, "asignar_cuenta_factura", { p_factura: texto(fd, "id"), p_cuenta: texto(fd, "cuenta_pl") }, "Cuenta del P&L guardada.");
+}
 export async function marcarRevisada(fd: FormData) {
   await llamarFactura(fd, "marcar_factura_revisada", { p_id: texto(fd, "id"), p_nota: texto(fd, "nota") }, "Factura marcada como revisada.");
 }
