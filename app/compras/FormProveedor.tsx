@@ -5,7 +5,7 @@ import { guardarProveedor } from "./acciones";
 import { CampoConstancia } from "./CampoConstancia";
 import { FormValidado } from "./FormValidado";
 
-export function FormProveedor({ id, inicial }: { id?: string; inicial?: DatosProveedor }) {
+export function FormProveedor({ id, inicial, sucursales }: { id?: string; inicial?: DatosProveedor; sucursales: { id: string; nombre: string }[] }) {
   const v = (c: keyof DatosProveedor) => (inicial?.[c] ?? "") as string;
   const campo = (nombre: keyof DatosProveedor, etiqueta: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <div className="campo">
@@ -57,6 +57,14 @@ export function FormProveedor({ id, inicial }: { id?: string; inicial?: DatosPro
             {[...CUENTAS_GASTO, ...CUENTAS_MEMO].map((c) => <option key={c} value={c}>{NOMBRE_CUENTA[c]}</option>)}
           </select>
           <small>Sus facturas la toman sola; se puede cambiar en cada factura.</small>
+        </div>
+        <div className="campo">
+          <label htmlFor="sucursal_id">Sucursal por omisión</label>
+          <select id="sucursal_id" name="sucursal_id" defaultValue={v("sucursal_id")}>
+            <option value="">Ninguna (Oficina)</option>
+            {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+          <small>Sus facturas se cargan aquí si no se elige otra.</small>
         </div>
       </div>
       <fieldset className="campo">

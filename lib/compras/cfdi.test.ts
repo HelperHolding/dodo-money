@@ -27,7 +27,7 @@ test("ingreso CFDI 4.0: encabezado, emisor, receptor, impuestos del comprobante 
   assert.deepEqual(r.cfdi, {
     uuid: "6F2D9A2B-1C3E-4F5A-8B7C-9D0E1F2A3B4C", version: "4.0", serie: "A", folio: "1234", tipo: "ingreso", fecha: "2026-09-25",
     rfc_emisor: "LBA010203AB1", nombre_emisor: "LACTEOS & ABARROTES DEL BAJIO", regimen_emisor: "601", rfc_receptor: "DPM010203XY9",
-    metodo_pago: "PPD", forma_pago: "03", moneda: "MXN", subtotal: 1000, descuento: 0, iva: 80, retenciones: 0, total: 1080,
+    metodo_pago: "PPD", forma_pago: "03", moneda: "MXN", subtotal: 1000, descuento: 0, iva: 80, retenciones: 0, retencion_iva: 0, retencion_isr: 0, total: 1080,
     uuid_relacionado: null, uuids_relacionados: [],
     conceptos: [
       { descripcion: "QUESO MOZZARELLA", cantidad: 10, unidad: "Kilogramo", valor_unitario: 50, importe: 500 },
@@ -133,4 +133,19 @@ test("complemento: rechaza facturas normales y complementos sin documentos", () 
   assert.equal(error(INGRESO), "No es un complemento de pago (es tipo I): las facturas se suben en Facturas.");
   assert.equal(error(COMPLEMENTO.replace(/<pago20:DoctoRelacionado[^>]*\/>/g, "")), "El complemento no dice qué facturas paga.");
   assert.equal(error("<x/>"), NO_ES_CFDI);
+});
+
+test("retenciones del comprobante por tipo (ISR 001, IVA 002); las de los conceptos no se suman", () => {
+  const xml = `<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" Fecha="2026-10-01T10:00:00" SubTotal="31200" Moneda="MXN" Total="29744" TipoDeComprobante="I" MetodoPago="PUE">
+  <cfdi:Emisor Rfc="PEPJ800101AB1" Nombre="JUAN PEREZ" RegimenFiscal="606"/><cfdi:Receptor Rfc="DPM010203XY9"/>
+  <cfdi:Conceptos>
+    <cfdi:Concepto Cantidad="1" ClaveUnidad="E48" Descripcion="Renta" ValorUnitario="30000" Importe="30000"><cfdi:Impuestos><cfdi:Retenciones><cfdi:Retencion Base="30000" Impuesto="001" TipoFactor="Tasa" TasaOCuota="0.100000" Importe="3000"/></cfdi:Retenciones></cfdi:Impuestos></cfdi:Concepto>
+    <cfdi:Concepto Cantidad="1" ClaveUnidad="E48" Descripcion="Agua" ValorUnitario="1200" Importe="1200"/>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosRetenidos="6448" TotalImpuestosTrasladados="4992"><cfdi:Retenciones><cfdi:Retencion Impuesto="001" Importe="3120"/><cfdi:Retencion Impuesto="002" Importe="3328"/></cfdi:Retenciones></cfdi:Impuestos>
+  ${TFD("12345678-1234-1234-1234-123456789012")}
+</cfdi:Comprobante>`;
+  const r = leerCfdi(xml);
+  assert.ok("cfdi" in r);
+  assert.deepEqual([r.cfdi.retenciones, r.cfdi.retencion_isr, r.cfdi.retencion_iva], [6448, 3120, 3328]);
 });

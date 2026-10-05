@@ -4,6 +4,8 @@ export type Cfdi = {
   rfc_emisor: string; nombre_emisor: string; regimen_emisor: string; rfc_receptor: string;
   metodo_pago: "PUE" | "PPD" | null; forma_pago: string | null; moneda: string;
   subtotal: number; descuento: number; iva: number; retenciones: number; total: number;
+  /** Retenciones del comprobante por impuesto (002 IVA, 001 ISR). */
+  retencion_iva: number; retencion_isr: number;
   /** Primera factura que corrige (egreso); `uuids_relacionados` trae todas. */
   uuid_relacionado: string | null; uuids_relacionados: string[];
   conceptos: { descripcion: string; cantidad: number; unidad: string; valor_unitario: number; importe: number }[];
@@ -60,6 +62,11 @@ export function leerCfdi(xml: string): { cfdi: Cfdi } | { error: string } {
   // Solo los conceptos del comprobante (no los de complementos).
   const bloqueConceptos = /<(?:[\w-]+:)?Conceptos\b[\s\S]*?<\/(?:[\w-]+:)?Conceptos>/.exec(texto)?.[0] ?? "";
 
+  // Retenciones del comprobante por impuesto: las de los conceptos (traen Base) no se cuentan.
+  const retencionesComprobante = etiquetas(texto.replace(bloqueConceptos, ""), "Retencion").filter((t) => atributo(t, "Base") === null);
+  const retenido = (impuesto: string) =>
+    Math.round(retencionesComprobante.filter((t) => atributo(t, "Impuesto") === impuesto).reduce((s, t) => s + monto(t, "Importe"), 0) * 100) / 100;
+
   return {
     cfdi: {
       uuid: uuid.toUpperCase(), version, serie: atributo(comprobante, "Serie"), folio: atributo(comprobante, "Folio"),
@@ -69,6 +76,7 @@ export function leerCfdi(xml: string): { cfdi: Cfdi } | { error: string } {
       metodo_pago: metodo === "PUE" || metodo === "PPD" ? metodo : null, forma_pago: atributo(comprobante, "FormaPago"), moneda,
       subtotal: monto(comprobante, "SubTotal"), descuento: monto(comprobante, "Descuento"),
       iva: monto(impuestos, "TotalImpuestosTrasladados"), retenciones: monto(impuestos, "TotalImpuestosRetenidos"),
+      retencion_iva: retenido("002"), retencion_isr: retenido("001"),
       total: monto(comprobante, "Total"),
       uuid_relacionado: relacionados[0] ?? null, uuids_relacionados: relacionados,
       conceptos: etiquetas(bloqueConceptos, "Concepto").map((c) => ({

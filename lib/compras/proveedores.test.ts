@@ -37,7 +37,7 @@ test("proveedor mínimo: defaults de crédito, forma de pago y categorías", () 
   assert.deepEqual(r.datos, {
     razon_social: "Lácteos del Bajío SA de CV", nombre_comercial: null, rfc: "LBA010203AB1", regimen_fiscal: "601",
     contacto_nombre: null, telefono: null, correo: null, banco: null, clabe: null, cuenta: null,
-    dias_credito: 0, forma_pago_habitual: "transferencia", categorias: [], notas: null, numero_cliente: null, dias_entrega: null, cuenta_pl: null,
+    dias_credito: 0, forma_pago_habitual: "transferencia", categorias: [], notas: null, numero_cliente: null, dias_entrega: null, cuenta_pl: null, sucursal_id: null,
   });
 });
 
@@ -127,4 +127,11 @@ test("la ficha del proveedor trae todos los campos que guarda el formulario", ()
   const select = ficha.match(/from\("proveedores"\)\s*\.select\("([^"]+)"/)?.[1] ?? "";
   const columnas = select.split(",").map((c) => c.trim());
   assert.deepEqual(Object.keys(r.datos).filter((c) => !columnas.includes(c)), []);
+});
+
+test("sucursal por omisión del proveedor: opcional y de la lista", () => {
+  const r = leerProveedor(campos({ ...base, sucursal_id: "22222222-2222-2222-2222-222222222222" }));
+  assert.ok("datos" in r);
+  assert.equal(r.datos.sucursal_id, "22222222-2222-2222-2222-222222222222");
+  assert.deepEqual(leerProveedor(campos({ ...base, sucursal_id: "Zapopan" })), { error: "Elige la sucursal de la lista." });
 });

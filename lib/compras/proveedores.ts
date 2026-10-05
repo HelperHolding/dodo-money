@@ -73,6 +73,8 @@ export type DatosProveedor = {
   dias_entrega: number | null;
   /** Cuenta del P&L por omisión (sus facturas la heredan). */
   cuenta_pl: string | null;
+  /** Sucursal a la que se cargan sus facturas cuando el XML no trae destino. */
+  sucursal_id: string | null;
 };
 
 /** Cuentas del P&L válidas para un proveedor (igual que lib/finanzas/cuentas.ts y el check de la base). */
@@ -114,6 +116,8 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
 
   const cuenta_pl = opcional(valor("cuenta_pl"));
   if (cuenta_pl && !CUENTAS_PL_PROVEEDOR.includes(cuenta_pl)) return { error: "Elige una cuenta del P&L de la lista." };
+  const sucursal_id = opcional(valor("sucursal_id"));
+  if (sucursal_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sucursal_id)) return { error: "Elige la sucursal de la lista." };
 
   const categorias: CategoriaCompra[] = [];
   for (const parte of valor("categorias").split(",").map((p) => p.trim()).filter(Boolean)) {
@@ -127,7 +131,7 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
       razon_social, nombre_comercial: opcional(valor("nombre_comercial")), rfc, regimen_fiscal,
       contacto_nombre: opcional(valor("contacto_nombre")), telefono: opcional(valor("telefono")), correo,
       banco: opcional(valor("banco")), clabe, cuenta: opcional(valor("cuenta")),
-      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")), numero_cliente, dias_entrega, cuenta_pl,
+      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")), numero_cliente, dias_entrega, cuenta_pl, sucursal_id,
     },
   };
 }

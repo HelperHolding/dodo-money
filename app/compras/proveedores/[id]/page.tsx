@@ -20,15 +20,16 @@ export default async function FichaProveedor({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: p } = await supabase.from("proveedores")
-    .select("id, razon_social, nombre_comercial, numero_cliente, dias_entrega, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, cuenta_pl, activo, motivo_desactivacion, desactivado_en")
+    .select("id, razon_social, nombre_comercial, numero_cliente, dias_entrega, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, cuenta_pl, sucursal_id, activo, motivo_desactivacion, desactivado_en")
     .eq("id", id).maybeSingle<Proveedor>();
   if (!p) notFound();
   const edita = puedeEditarCompras(perfil.rol);
-  const [{ data: surte }, { data: precios }, { data: documentos }] = await Promise.all([
+  const [{ data: surte }, { data: precios }, { data: sucursales }, { data: documentos }] = await Promise.all([
     supabase.from("articulo_proveedores").select("articulo_id, principal, articulos(nombre, unidad, activo)").eq("proveedor_id", id)
       .returns<{ articulo_id: string; principal: boolean; articulos: { nombre: string; unidad: string; activo: boolean } | null }[]>(),
     supabase.from("precios_proveedor").select("articulo_id, precio, fecha").eq("proveedor_id", id)
       .returns<{ articulo_id: string; precio: number; fecha: string }[]>(),
+    supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     supabase.from("documentos_proveedor").select("id, tipo, fecha, ruta, subido_en").eq("proveedor_id", id)
       .order("fecha", { ascending: false }).order("subido_en", { ascending: false }).returns<Doc[]>(),
   ]);
@@ -61,6 +62,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
           <dt>Banco</dt><dd>{[p.banco, p.clabe && `CLABE ${p.clabe}`, p.cuenta && `Cuenta ${p.cuenta}`].filter(Boolean).join(" · ") || "—"}</dd>
           <dt>Crédito</dt><dd>{p.dias_credito ? `${p.dias_credito} días` : "Contado"} · {NOMBRE_FORMA_PAGO[p.forma_pago_habitual]}</dd>
           <dt>Surte</dt><dd>{p.categorias.map((c) => NOMBRE_CATEGORIA_COMPRA[c]).join(", ") || "Sin categoría"}</dd>
+          <dt>Sucursal por omisión</dt><dd>{(sucursales ?? []).find((s) => s.id === p.sucursal_id)?.nombre ?? "Ninguna (Oficina)"}</dd>
           <dt>Cuenta del P&L</dt><dd>{p.cuenta_pl && esCuentaPl(p.cuenta_pl) ? NOMBRE_CUENTA[p.cuenta_pl] : "Sin cuenta (sus facturas van a Otros)"}</dd>
           {p.notas && <><dt>Notas</dt><dd>{p.notas}</dd></>}
           {!p.activo && <><dt>Desactivado</dt><dd>{p.motivo_desactivacion}{p.desactivado_en ? ` · ${fechaTexto(fechaMX(p.desactivado_en))}` : ""}</dd></>}
@@ -150,7 +152,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
         <>
           <details className="seccion">
             <summary>Editar datos</summary>
-            <FormProveedor id={p.id} inicial={p} />
+            <FormProveedor id={p.id} inicial={p} sucursales={sucursales ?? []} />
           </details>
           <form action={cambiarActivoProveedor} className="acciones">
             <input type="hidden" name="id" value={p.id} />
