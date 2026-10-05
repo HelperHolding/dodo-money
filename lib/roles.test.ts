@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
+  puedeVerFinanzas, puedeEditarFinanzas,
 } from "./roles.ts";
 
 test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () => {
@@ -64,8 +65,8 @@ test("menú lateral: cada puesto ve solo sus grupos", () => {
   assert.deepEqual(grupos("operacion"), ["Sucursal"]);
   assert.deepEqual(grupos("encargado"), ["Sucursal"]);
   assert.deepEqual(grupos("gerente"), ["Sucursal", "Ventas"]);
-  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras"]);
-  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras"]);
+  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas"]);
+  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas"]);
 });
 
 test("menú lateral: Inicio arriba; corporativo empieza en la vista general", () => {
@@ -139,4 +140,13 @@ test("nombre de cada puesto como se muestra en la app", () => {
 test("un usuario desactivado no entra", () => {
   assert.equal(puedeEntrar({ activo: true }), true);
   assert.equal(puedeEntrar({ activo: false }), false);
+});
+
+test("finanzas: admin y corporativo ven; solo admin edita; grupo Finanzas", () => {
+  for (const rol of ["admin", "corporativo"] as const) assert.equal(puedeVerFinanzas(rol), true);
+  for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerFinanzas(rol), false);
+  assert.equal(puedeEditarFinanzas("admin"), true);
+  assert.equal(puedeEditarFinanzas("corporativo"), false);
+  assert.deepEqual(grupo("admin", "Finanzas"), ["/finanzas", "/finanzas/nomina", "/finanzas/gastos", "/finanzas/parametros"]);
+  assert.equal(grupo("gerente", "Finanzas"), undefined);
 });

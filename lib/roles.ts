@@ -30,6 +30,9 @@ export type Enlace = { href: string; texto: string };
 /** Compras (proveedores, órdenes, facturas, pagos): oficina central. Admin edita; corporativo consulta. */
 export const puedeVerCompras = (rol: Rol) => rol === "admin" || rol === "corporativo";
 export const puedeEditarCompras = (rol: Rol) => rol === "admin";
+/** P&L y nómina: admin y corporativo ven; solo admin captura. */
+export const puedeVerFinanzas = (rol: Rol) => rol === "admin" || rol === "corporativo";
+export const puedeEditarFinanzas = (rol: Rol) => rol === "admin";
 /** Confirmar lo recibido de activos fijos, servicios y otros (los consumibles se reciben en Dodo IS). */
 export const puedeRecibirCompras = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
 /** Salidas de efectivo a corporativo de todas las sucursales: un admin las recoge y corporativo las recibe. */
@@ -88,6 +91,17 @@ export function menuLateral(rol: Rol): Menu {
         { href: "/compras/facturas", texto: "Facturas" },
         { href: "/compras/pagos", texto: "Pagos" },
         ...(puedeEditarCompras(rol) ? [{ href: "/compras/cargar", texto: "Cargar Excel" }] : []),
+      ],
+    });
+  }
+  if (puedeVerFinanzas(rol)) {
+    grupos.push({
+      titulo: "Finanzas",
+      enlaces: [
+        { href: "/finanzas", texto: "P&L" },
+        { href: "/finanzas/nomina", texto: "Nómina" },
+        { href: "/finanzas/gastos", texto: "Gastos del mes" },
+        { href: "/finanzas/parametros", texto: "Parámetros y metas" },
       ],
     });
   }
