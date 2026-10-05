@@ -64,3 +64,7 @@ export const archivoYaSubido = (mensaje: string) => /already exists|duplicate/i.
 /** Cómo se muestra el estado: una nota de crédito no se paga, se aplica a la factura que corrige. */
 export const nombreEstadoFactura = (tipo: "ingreso" | "egreso" | string, estado: EstadoFactura) =>
   tipo === "egreso" ? (estado === "cancelada" ? "Cancelada" : "Aplicada") : NOMBRE_ESTADO_FACTURA[estado];
+
+/** Cómo se nombra una factura en listas: serie + folio, o el principio del UUID (un gasto sin CFDI siempre trae folio). */
+export const nombreFactura = (f: { serie: string | null; folio: string | null; uuid: string | null }) =>
+  `${f.serie ?? ""}${f.folio ?? f.uuid?.slice(0, 8) ?? ""}`;
