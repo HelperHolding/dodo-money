@@ -55,6 +55,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
         </p>
       </div>
       <Aviso ok={ok} error={error} />
+      <div className="acciones"><Link className="boton" href="/ventas/costos/cargar">Cargar costos desde Excel</Link></div>
       <nav className="acciones" aria-label="Filtros">
         <Link className="boton boton-secundario" href="/ventas/costos" aria-current={!filtro ? "page" : undefined}>Todos</Link>
         {(Object.keys(FILTROS) as Filtro[]).map((f) => (
