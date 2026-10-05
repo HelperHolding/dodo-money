@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { leerCfdi } from "@/lib/compras/cfdi";
 import { archivoYaSubido, baseArchivo, rutaArchivoFactura } from "@/lib/compras/facturas";
-import { fechaTexto, fechaMX } from "@/lib/formato";
+import { fechaTexto, fechaMX, hoyCalendarioMX } from "@/lib/formato";
+import { leerGastoManual, type GastoManual } from "@/lib/compras/gastoManual";
+import { CUENTAS_GASTO, CUENTAS_MEMO } from "@/lib/finanzas/cuentas";
 import { REGIMENES } from "@/lib/compras/proveedores";
 import { leerEmpresa } from "@/lib/compras/empresa";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
@@ -125,4 +127,30 @@ export async function cancelarFacturaAccion(fd: FormData) {
 export async function programarPagoFactura(fd: FormData) {
   await llamarFactura(fd, "programar_pago", { p_factura: texto(fd, "id"), p_fecha: texto(fd, "pago_programado_el") || null },
     texto(fd, "pago_programado_el") ? "Pago programado." : "Se quitó la fecha programada.");
+}
+
+const MAX_ADJUNTO = 4 * 1024 * 1024;
+const EXTENSION: Record<string, string> = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "image/heif": "heif" };
+
+/** Gasto sin CFDI (prefactura, recibo): se guarda como factura "Sin CFDI" con sus renglones y su adjunto. */
+export async function registrarGastoManual(fd: FormData) {
+  const ruta = "/compras/facturas/nueva";
+  const supabase = await clienteAdmin(ruta);
+  const r = leerGastoManual((c) => String(fd.get(c) ?? ""), (c) => fd.getAll(c).map(String), [...CUENTAS_GASTO, ...CUENTAS_MEMO], hoyCalendarioMX());
+  if ("error" in r) volver(ruta, "error", r.error);
+  const { datos } = r as { datos: GastoManual };
+  let adjunto: string | null = null;
+  const archivo = fd.get("adjunto");
+  if (archivo instanceof File && archivo.size > 0) {
+    if (archivo.size > MAX_ADJUNTO) volver(ruta, "error", "El adjunto pesa más de 4 MB.");
+    const ext = EXTENSION[archivo.type];
+    if (!ext) volver(ruta, "error", "El adjunto debe ser PDF o foto.");
+    adjunto = `manual/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from(BUCKET).upload(adjunto, archivo, { contentType: archivo.type, upsert: false });
+    if (error) volver(ruta, "error", `No se pudo subir el adjunto: ${error.message}`);
+  }
+  const { data: id, error } = await supabase.rpc("registrar_gasto_manual", { p: { ...datos, adjunto } });
+  if (error) volver(ruta, "error", error.message);
+  revalidatePath("/compras", "layout");
+  volver(`/compras/facturas/${id}`, "ok", "Gasto sin CFDI registrado. Cuando llegue el CFDI, súbelo y elige qué gasto sustituye.");
 }
