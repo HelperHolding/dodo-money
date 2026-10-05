@@ -9,7 +9,7 @@ export type Celda =
   | string
   | number
   | null
-  | { valor: number; formato: "pesos" | "porcentaje" | "puntos" }
+  | { valor: number; formato: "pesos" | "porcentaje" | "puntos" | "contable" }
   | { fecha: string };
 
 export type HojaXlsx = {
@@ -19,11 +19,49 @@ export type HojaXlsx = {
   negritas?: number[];
   /** Ancho de cada columna en caracteres. */
   anchos?: number[];
+  /** Estilo de renglones completos (índice desde 0): fondo y color de letra en hex RRGGBB y negritas. Con fondo se pinta hasta la última columna. */
+  estilos?: Record<number, EstiloFila>;
 };
 
-// Estilos: cada formato tiene dos variantes, normal y en negritas → índice = formato × 2 + (negritas ? 1 : 0).
-const FORMATOS = ["general", "pesos", "porcentaje", "fecha", "puntos"] as const;
-const NUM_FMT: Record<(typeof FORMATOS)[number], number> = { general: 0, pesos: 164, porcentaje: 10, fecha: 165, puntos: 166 };
+export type EstiloFila = { fondo?: string; texto?: string; negrita?: boolean };
+
+type Formato = "general" | "pesos" | "porcentaje" | "fecha" | "puntos" | "contable";
+const NUM_FMT: Record<Formato, number> = { general: 0, pesos: 164, porcentaje: 10, fecha: 165, puntos: 166, contable: 167 };
+type Estilo = { negrita: boolean; fondo?: string; texto?: string };
+
+/** Estilos del libro: el 0 es el normal; los demás se agregan según se usen (formato, negritas, fondo, color de letra). */
+class Estilos {
+  private claves = ["general|0||"];
+  indice(formato: Formato, e: Estilo): number {
+    const clave = `${formato}|${e.negrita ? 1 : 0}|${e.fondo ?? ""}|${e.texto ?? ""}`;
+    let i = this.claves.indexOf(clave);
+    if (i < 0) { i = this.claves.length; this.claves.push(clave); }
+    return i;
+  }
+  xml(): string {
+    const partes = this.claves.map((c) => { const [formato, b, fondo, texto] = c.split("|"); return { formato: formato as Formato, negrita: b === "1", fondo, texto }; });
+    const fuentes = [...new Set(["0|", "1|", ...partes.map((p) => `${p.negrita ? 1 : 0}|${p.texto}`)])];
+    const fondos = [...new Set(partes.map((p) => p.fondo).filter(Boolean))];
+    const fuente = (f: string) => {
+      const [b, color] = f.split("|");
+      return `<font>${b === "1" ? "<b/>" : ""}<sz val="11"/>${color ? `<color rgb="FF${color}"/>` : ""}<name val="Calibri"/></font>`;
+    };
+    const xf = (p: (typeof partes)[number]) => {
+      const fontId = fuentes.indexOf(`${p.negrita ? 1 : 0}|${p.texto}`), fillId = p.fondo ? fondos.indexOf(p.fondo) + 2 : 0, num = NUM_FMT[p.formato];
+      return `<xf numFmtId="${num}" fontId="${fontId}" fillId="${fillId}" borderId="0" xfId="0"${num ? ' applyNumberFormat="1"' : ""}${fontId ? ' applyFont="1"' : ""}${fillId ? ' applyFill="1"' : ""}/>`;
+    };
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="4"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy"/><numFmt numFmtId="166" formatCode="+0.0&quot; pts&quot;;-0.0&quot; pts&quot;;0.0&quot; pts&quot;"/><numFmt numFmtId="167" formatCode="_(&quot;$&quot;* #,##0.00_);_(&quot;$&quot;* \\(#,##0.00\\);_(&quot;$&quot;* &quot;-&quot;??_);_(@_)"/></numFmts>
+<fonts count="${fuentes.length}">${fuentes.map(fuente).join("")}</fonts>
+<fills count="${fondos.length + 2}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>${fondos.map((c) => `<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`).join("")}</fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="${partes.length}">${partes.map(xf).join("")}</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+  }
+}
 
 const escapar = (t: string) =>
   t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!)
@@ -39,43 +77,37 @@ function columna(i: number): string {
 /** "YYYY-MM-DD" → número de serie de Excel (sistema 1900). */
 const serial = (fecha: string) => (Date.parse(`${fecha}T00:00:00Z`) - Date.UTC(1899, 11, 30)) / 86_400_000;
 
-function celdaXml(ref: string, c: Celda, negrita: boolean): string {
-  if (c === null || c === "") return "";
-  const estilo = (f: (typeof FORMATOS)[number]) => FORMATOS.indexOf(f) * 2 + (negrita ? 1 : 0);
-  const s = (f: (typeof FORMATOS)[number]) => { const i = estilo(f); return i ? ` s="${i}"` : ""; };
+function celdaXml(ref: string, c: Celda, e: Estilo, estilos: Estilos): string {
+  const s = (f: Formato) => { const i = estilos.indice(f, e); return i ? ` s="${i}"` : ""; };
+  if (c === null || c === "") return e.fondo ? `<c r="${ref}"${s("general")}/>` : "";
   if (typeof c === "string") return `<c r="${ref}" t="inlineStr"${s("general")}><is><t xml:space="preserve">${escapar(c)}</t></is></c>`;
   if (typeof c === "number") return Number.isFinite(c) ? `<c r="${ref}"${s("general")}><v>${c}</v></c>` : "";
   if ("fecha" in c) return `<c r="${ref}"${s("fecha")}><v>${serial(c.fecha)}</v></c>`;
   return Number.isFinite(c.valor) ? `<c r="${ref}"${s(c.formato)}><v>${c.valor}</v></c>` : "";
 }
 
-function hojaXml(h: HojaXlsx): string {
+function hojaXml(h: HojaXlsx, estilos: Estilos): string {
   const negritas = new Set(h.negritas ?? []);
+  const ancho = Math.max(h.anchos?.length ?? 0, ...h.filas.map((f) => f.length));
   const cols = h.anchos?.length
     ? `<cols>${h.anchos.map((a, i) => `<col min="${i + 1}" max="${i + 1}" width="${a}" customWidth="1"/>`).join("")}</cols>`
     : "";
-  const filas = h.filas.map((fila, r) =>
-    `<row r="${r + 1}">${fila.map((c, i) => celdaXml(`${columna(i)}${r + 1}`, c, negritas.has(r))).join("")}</row>`).join("");
+  const filas = h.filas.map((fila, r) => {
+    const x = h.estilos?.[r];
+    const e: Estilo = { negrita: x?.negrita ?? negritas.has(r), fondo: x?.fondo, texto: x?.texto };
+    const celdas = e.fondo ? Array.from({ length: ancho }, (_, i) => fila[i] ?? null) : fila;
+    return `<row r="${r + 1}">${celdas.map((c, i) => celdaXml(`${columna(i)}${r + 1}`, c, e, estilos)).join("")}</row>`;
+  }).join("");
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${cols}<sheetData>${filas}</sheetData></worksheet>`;
 }
-
-const ESTILOS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<numFmts count="3"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy"/><numFmt numFmtId="166" formatCode="+0.0&quot; pts&quot;;-0.0&quot; pts&quot;;0.0&quot; pts&quot;"/></numFmts>
-<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
-<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
-<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
-<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="${FORMATOS.length * 2}">${FORMATOS.map((f) => [0, 1].map((b) =>
-  `<xf numFmtId="${NUM_FMT[f]}" fontId="${b}" fillId="0" borderId="0" xfId="0"${NUM_FMT[f] ? ' applyNumberFormat="1"' : ""}${b ? ' applyFont="1"' : ""}/>`).join("")).join("")}</cellXfs>
-<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
-</styleSheet>`;
 
 /** Excel no acepta en el nombre de hoja \ / ? * [ ] : ni más de 31 caracteres. */
 const nombreHoja = (n: string) => n.replace(/[\\/?*[\]:]/g, " ").slice(0, 31) || "Hoja";
 
 export function escribirXlsx(hojas: readonly HojaXlsx[]): Uint8Array {
+  const estilos = new Estilos();
+  const hojasXml = hojas.map((h) => hojaXml(h, estilos));
   const archivos: [string, string][] = [
     ["[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -98,8 +130,8 @@ ${hojas.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" Con
 ${hojas.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("\n")}
 <Relationship Id="rId${hojas.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`],
-    ["xl/styles.xml", ESTILOS],
-    ...hojas.map((h, i): [string, string] => [`xl/worksheets/sheet${i + 1}.xml`, hojaXml(h)]),
+    ["xl/styles.xml", estilos.xml()],
+    ...hojasXml.map((x, i): [string, string] => [`xl/worksheets/sheet${i + 1}.xml`, x]),
   ];
   return zip(archivos.map(([nombre, texto]) => [nombre, Buffer.from(texto, "utf8")]));
 }

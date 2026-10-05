@@ -66,7 +66,8 @@ test("escribirXlsx: los formatos de número están bien escritos (Excel no abre 
     p = inicio + tam;
   }
   assert.equal(estilos.match(/<numFmts/g)?.length, 1);
-  assert.match(estilos, /<numFmts count="3"><numFmt numFmtId="164" formatCode="&quot;\$&quot;#,##0\.00"\/><numFmt numFmtId="165" formatCode="dd\/mm\/yyyy"\/><numFmt numFmtId="166" formatCode="\+0\.0&quot; pts&quot;;-0\.0&quot; pts&quot;;0\.0&quot; pts&quot;"\/><\/numFmts>/);
+  assert.match(estilos, /<numFmts count="4"><numFmt numFmtId="164" formatCode="&quot;\$&quot;#,##0\.00"\/><numFmt numFmtId="165" formatCode="dd\/mm\/yyyy"\/><numFmt numFmtId="166" formatCode="\+0\.0&quot; pts&quot;;-0\.0&quot; pts&quot;;0\.0&quot; pts&quot;"\/><numFmt numFmtId="167" /);
+  assert.ok(estilos.includes(`<numFmt numFmtId="167" formatCode="_(&quot;$&quot;* #,##0.00_);_(&quot;$&quot;* \\(#,##0.00\\);_(&quot;$&quot;* &quot;-&quot;??_);_(@_)"/>`));
 });
 
 /** CRC-32 de referencia, bit por bit. */
@@ -78,3 +79,34 @@ function crc32Ref(datos: Uint8Array): number {
   }
   return (crc ^ 0xffffffff) >>> 0;
 }
+
+/** Un archivo del ZIP, ya inflado. */
+function parte(b: Buffer, nombre: string): string {
+  let p = 0;
+  while (b.readUInt32LE(p) === 0x04034b50) {
+    const tam = b.readUInt32LE(p + 18), ln = b.readUInt16LE(p + 26);
+    const inicio = p + 30 + ln + b.readUInt16LE(p + 28);
+    if (b.toString("utf8", p + 30, p + 30 + ln) === nombre) return inflateRawSync(b.subarray(inicio, inicio + tam)).toString("utf8");
+    p = inicio + tam;
+  }
+  return "";
+}
+
+test("escribirXlsx: renglones con fondo, color de letra y formato contable", () => {
+  const b = Buffer.from(escribirXlsx([{
+    nombre: "P&L",
+    filas: [["VENTA"], ["Venta neta", { valor: -10, formato: "contable" }], ["EBITDA", { valor: 5, formato: "contable" }, null]],
+    anchos: [20, 14, 14],
+    estilos: { 0: { fondo: "BDD7EE", negrita: true }, 2: { fondo: "7F7F7F", texto: "FFFFFF", negrita: true } },
+  }]));
+  const estilos = parte(b, "xl/styles.xml"), hoja = parte(b, "xl/worksheets/sheet1.xml");
+  assert.ok(estilos.includes('<fgColor rgb="FFBDD7EE"/>'));
+  assert.ok(estilos.includes('<fgColor rgb="FF7F7F7F"/>'));
+  assert.ok(estilos.includes('<color rgb="FFFFFFFF"/>'));
+  // La banda llega a la última columna aunque el renglón traiga menos celdas; un renglón sin estilo no se rellena.
+  assert.match(hoja, /<c r="C1" s="\d+"\/>/);
+  assert.match(hoja, /<c r="C3" s="\d+"\/>/);
+  assert.doesNotMatch(hoja, /r="C2"/);
+  assert.match(hoja, /<c r="B2" s="\d+"><v>-10<\/v><\/c>/);
+  assert.equal(leerHojas(new Uint8Array(b))[0].celdas.get("B2"), -10);
+});
