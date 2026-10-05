@@ -1,13 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { calcularPL, entradaVacia, finDeMes, mesAnterior, mesesAcumulados, metaMonto, sumarEntradas, sumarMetas, type EntradaPL } from "./pl.ts";
+import { calcularPL, entradaVacia, escalarMetas, finDeMes, metaMonto, sumarEntradas, sumarMetas, type EntradaPL } from "./pl.ts";
 
-test("meses: fin de mes, anterior y acumulado del año desde el inicio del P&L", () => {
+test("finDeMes", () => {
   assert.equal(finDeMes("2026-10"), "2026-10-31");
   assert.equal(finDeMes("2028-02"), "2028-02-29");
-  assert.equal(mesAnterior("2027-01"), "2026-12");
-  assert.deepEqual(mesesAcumulados("2026-12"), ["2026-10", "2026-11", "2026-12"]);
-  assert.deepEqual(mesesAcumulados("2027-02"), ["2027-01", "2027-02"]);
 });
 
 test("sumarMetas: el consolidado suma las metas en pesos de cada sucursal", () => {
@@ -65,4 +62,16 @@ test("sumarEntradas: consolidado", () => {
   assert.equal(s.gastos.servicios, 4500);
   assert.equal(s.merma, null);
   assert.equal(s.memos.insumos, 28001);
+});
+
+test("escalarMetas: solo el monto fijo se reparte por días", () => {
+  assert.deepEqual(escalarMetas([
+    { renglon: "renta", tipo: "monto", valor: 31000 },
+    { renglon: "alimento", tipo: "pct", valor: 0.3 },
+    { renglon: "nomina_cocina", tipo: "plantilla", valor: 0 },
+  ], 7 / 31), [
+    { renglon: "renta", tipo: "monto", valor: 7000 },
+    { renglon: "alimento", tipo: "pct", valor: 0.3 },
+    { renglon: "nomina_cocina", tipo: "plantilla", valor: 0 },
+  ]);
 });

@@ -1,25 +1,28 @@
 import { pesos, porcentaje } from "@/lib/formato";
 import { NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
+import type { Columnas } from "@/lib/finanzas/periodo";
 import type { EntradaPL, FilaPL } from "@/lib/finanzas/pl";
 
 type Detalle = { texto: string; monto: number }[];
 const NOMBRE_MEMO = { insumos: NOMBRE_CUENTA.insumos, inversiones: NOMBRE_CUENTA.inversiones } as const;
 
-/** Tabla del P&L: real, %, meta, diferencia, mes anterior y acumulado, con el detalle de cada renglón. */
-export function TablaPL({ r, oficina }: {
+/** Tabla del P&L: real, %, meta, diferencia y las dos comparaciones del periodo, con el detalle de cada renglón. */
+export function TablaPL({ r, oficina, columnas }: {
   r: {
     filas: FilaPL[]; entrada: EntradaPL; anterior: ReadonlyMap<string, number | null> | null; acumulado: ReadonlyMap<string, number | null>;
     detalleDe: (renglon: string) => Detalle; memoDetalle: (cuenta: "insumos" | "inversiones") => Detalle;
   };
-  /** Total de oficina central del mes (solo en el consolidado). */
+  /** Total de oficina central del periodo (solo en el consolidado). */
   oficina: number | null;
+  /** Encabezados de las comparaciones (mes o semana). */
+  columnas: Columnas;
 }) {
   return (
     <section className="seccion">
       <div className="tabla-contenedor">
         <table className="tabla tabla-tarjetas">
           <thead>
-            <tr><th>Renglón</th><th className="monto">Real</th><th className="monto">%</th><th className="monto">Meta %</th><th className="monto">Dif.</th><th className="monto" title="% del mes anterior">Mes ant.</th><th className="monto" title="% acumulado del año">Año</th></tr>
+            <tr><th>Renglón</th><th className="monto">Real</th><th className="monto">%</th><th className="monto">Meta %</th><th className="monto">Dif.</th><th className="monto" title={columnas.anterior}>{columnas.anteriorCorto}</th><th className="monto" title={columnas.acumulado}>{columnas.acumuladoCorto}</th></tr>
           </thead>
           <tbody>
             {r.filas.map((f) => {
@@ -43,8 +46,8 @@ export function TablaPL({ r, oficina }: {
                   <td data-label="%" className="monto">{porcentaje(f.pct)}</td>
                   <td data-label="Meta %" className="monto">{porcentaje(f.metaPct)}</td>
                   <td data-label="Diferencia" className={`monto${pasa || falta ? " celda-alerta" : ""}`}>{f.diferencia === null ? "—" : pesos(f.diferencia)}</td>
-                  <td data-label="Mes anterior %" className="monto">{r.anterior ? porcentaje(r.anterior.get(f.clave) ?? null) : "—"}</td>
-                  <td data-label="Acumulado %" className="monto">{porcentaje(r.acumulado.get(f.clave) ?? null)}</td>
+                  <td data-label={columnas.anterior} className="monto">{r.anterior ? porcentaje(r.anterior.get(f.clave) ?? null) : "—"}</td>
+                  <td data-label={columnas.acumulado} className="monto">{porcentaje(r.acumulado.get(f.clave) ?? null)}</td>
                 </tr>
               );
             })}
@@ -66,7 +69,7 @@ export function TablaPL({ r, oficina }: {
             </dd>
           </div>
         ))}
-        {oficina !== null && <><dt>Oficina central del mes</dt><dd>{pesos(oficina)}</dd></>}
+        {oficina !== null && <><dt>Oficina central del periodo</dt><dd>{pesos(oficina)}</dd></>}
       </dl>
     </section>
   );

@@ -6,11 +6,14 @@ import { escribirXlsx } from "@/lib/xlsx-escribir";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const q = Object.fromEntries(new URL(request.url).searchParams) as { mes?: string; sucursal?: string };
+  const q = Object.fromEntries(new URL(request.url).searchParams) as { periodo?: string; mes?: string; semana?: string; sucursal?: string };
   const r = await reportePL(q);
   const ahora = new Date().toISOString();
-  const archivo = escribirXlsx(hojaPL({ titulo: r.titulo, mes: r.mes, generado: `${r.generadoPor} · ${fechaMX(ahora)} ${hora(ahora)}`, filas: r.filas, anterior: r.anterior, acumulado: r.acumulado }));
-  const nombre = `P&L ${r.titulo.replace(/[\\/:*?"<>|]/g, " ")} ${r.mes}.xlsx`;
+  const archivo = escribirXlsx(hojaPL({
+    titulo: r.titulo, periodo: r.periodo.titulo, generado: `${r.generadoPor} · ${fechaMX(ahora)} ${hora(ahora)}`,
+    filas: r.filas, anterior: r.anterior, acumulado: r.acumulado, columnas: r.columnas,
+  }));
+  const nombre = `P&L ${r.titulo.replace(/[\\/:*?"<>|]/g, " ")} ${r.periodo.clave}.xlsx`;
   return new Response(Buffer.from(archivo), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

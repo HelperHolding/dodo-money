@@ -3,14 +3,20 @@ import type { CuentaGasto } from "./cuentas";
 const GASTO = ["repartidores", "marketing_agregadores", "marketing", "renta", "servicios", "mantenimiento", "consumibles_equipo", "otros"];
 const centavos = (n: number) => Math.round(n * 100) / 100;
 
-/** Facturas del mes → gasto por cuenta (subtotal − descuento; notas de crédito restan; canceladas no cuentan). */
-export function facturasAGastos(facturas: readonly { tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null }[]) {
+/**
+ * Facturas → gasto por cuenta (subtotal − descuento; notas de crédito restan; canceladas no cuentan).
+ * Con `fraccionDe`, cada factura cuenta por la parte de su mes que entra en el periodo.
+ */
+export function facturasAGastos(
+  facturas: readonly { tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; fecha_emision?: string }[],
+  fraccionDe?: (fecha: string) => number,
+) {
   const gastos: Partial<Record<CuentaGasto, number>> = {};
   let sinCuenta = 0;
   const memos = { insumos: 0, inversiones: 0 };
   for (const f of facturas) {
     if (f.estado === "cancelada") continue;
-    const monto = (Number(f.subtotal) - Number(f.descuento)) * (f.tipo === "egreso" ? -1 : 1);
+    const monto = (Number(f.subtotal) - Number(f.descuento)) * (f.tipo === "egreso" ? -1 : 1) * (fraccionDe ? fraccionDe(f.fecha_emision ?? "") : 1);
     if (f.cuenta_pl === "insumos" || f.cuenta_pl === "inversiones") memos[f.cuenta_pl] = centavos(memos[f.cuenta_pl] + monto);
     else if (f.cuenta_pl && GASTO.includes(f.cuenta_pl)) gastos[f.cuenta_pl as CuentaGasto] = centavos((gastos[f.cuenta_pl as CuentaGasto] ?? 0) + monto);
     else sinCuenta = centavos(sinCuenta + monto);

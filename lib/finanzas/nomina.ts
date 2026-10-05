@@ -34,3 +34,24 @@ export function nominaMes(puestos: readonly Puesto[], ajustes: readonly Ajuste[]
   for (const a of ajustes) if (a.sucursal_id === sucursal) ajuste[a.renglon] = centavos(ajuste[a.renglon] + Number(a.monto));
   return { plantilla, cocina: centavos(plantilla.cocina + ajuste.cocina), gerencia: centavos(plantilla.gerencia + ajuste.gerencia) };
 }
+
+export type AjusteMes = Ajuste & { mes: string };
+
+/** Nómina de un periodo: la de cada mes que toca (plantilla al cierre de ese mes + sus ajustes) × su fracción. */
+export function nominaPeriodo(
+  puestos: readonly Puesto[], ajustes: readonly AjusteMes[], sucursal: string | null,
+  meses: readonly { mes: string; fraccion: number; fin: string }[],
+) {
+  const r = { plantilla: { cocina: 0, gerencia: 0 }, cocina: 0, gerencia: 0 };
+  for (const m of meses) {
+    const n = nominaMes(puestos, ajustes.filter((a) => a.mes.slice(0, 7) === m.mes), sucursal, m.fin);
+    r.plantilla.cocina += n.plantilla.cocina * m.fraccion;
+    r.plantilla.gerencia += n.plantilla.gerencia * m.fraccion;
+    r.cocina += n.cocina * m.fraccion;
+    r.gerencia += n.gerencia * m.fraccion;
+  }
+  return {
+    plantilla: { cocina: centavos(r.plantilla.cocina), gerencia: centavos(r.plantilla.gerencia) },
+    cocina: centavos(r.cocina), gerencia: centavos(r.gerencia),
+  };
+}
