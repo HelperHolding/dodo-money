@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CUENTAS_GASTO, NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
 import { NOMBRE_ORIGEN, ORIGENES, type OrigenGasto } from "@/lib/gastos";
 
 const AYUDA: Record<OrigenGasto, string> = {
@@ -9,7 +10,7 @@ const AYUDA: Record<OrigenGasto, string> = {
   empleado: "Ninguna caja cambia: queda por reponer a esa persona.",
 };
 
-/** De dónde salió el dinero; si lo pagó un empleado, quién. */
+/** De dónde salió el dinero; si lo pagó un empleado, quién; y a qué cuenta del P&L va. */
 export function CampoOrigen({ personas, yo }: { personas: { id: string; nombre: string }[]; yo: string }) {
   const [origen, setOrigen] = useState<OrigenGasto>("caja_chica");
   return (
@@ -29,6 +30,13 @@ export function CampoOrigen({ personas, yo }: { personas: { id: string; nombre: 
           </select>
         </div>
       )}
+      <div className="campo">
+        <label htmlFor="cuenta_pl">¿Qué tipo de gasto es?</label>
+        <select id="cuenta_pl" name="cuenta_pl" defaultValue="otros">
+          {CUENTAS_GASTO.map((c) => <option key={c} value={c}>{NOMBRE_CUENTA[c]}</option>)}
+        </select>
+        <small>Para el estado de resultados (P&L). Si no sabes, déjalo en Otros.</small>
+      </div>
     </>
   );
 }

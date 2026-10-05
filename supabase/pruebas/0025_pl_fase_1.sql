@@ -27,6 +27,7 @@ begin
   values ('11111111-2222-3333-4444-555555555555', 'ingreso', current_date, 'PPL010203AB1', 'Prueba PL', '601', 'XAXX010101000', 100, 116, v_prov, current_date, 'prueba.xml')
   returning id into v_fac;
   if (select cuenta_pl from facturas where id = v_fac) <> 'servicios' then raise exception 'FALLÓ: la factura hereda la cuenta'; end if;
+  if (select cuenta_pl from facturas_saldo where id = v_fac) is distinct from 'servicios' then raise exception 'FALLÓ: facturas_saldo debe traer la cuenta'; end if;
   v_ok := array_append(v_ok, 'la factura hereda la cuenta del proveedor');
 
   -- Gerente no ve; corporativo ve y no escribe; admin escribe.

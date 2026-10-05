@@ -1,5 +1,6 @@
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { CATEGORIAS_COMPRA, FORMAS_PAGO, NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, REGIMENES, type DatosProveedor } from "@/lib/compras/proveedores";
+import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
 import { guardarProveedor } from "./acciones";
 import { CampoConstancia } from "./CampoConstancia";
 import { FormValidado } from "./FormValidado";
@@ -48,6 +49,14 @@ export function FormProveedor({ id, inicial }: { id?: string; inicial?: DatosPro
           <select id="forma_pago_habitual" name="forma_pago_habitual" defaultValue={inicial?.forma_pago_habitual ?? "transferencia"}>
             {FORMAS_PAGO.map((f) => <option key={f} value={f}>{NOMBRE_FORMA_PAGO[f]}</option>)}
           </select>
+        </div>
+        <div className="campo">
+          <label htmlFor="cuenta_pl">Cuenta del P&L</label>
+          <select id="cuenta_pl" name="cuenta_pl" defaultValue={v("cuenta_pl")}>
+            <option value="">Sin cuenta</option>
+            {[...CUENTAS_GASTO, ...CUENTAS_MEMO].map((c) => <option key={c} value={c}>{NOMBRE_CUENTA[c]}</option>)}
+          </select>
+          <small>Sus facturas la toman sola; se puede cambiar en cada factura.</small>
         </div>
       </div>
       <fieldset className="campo">

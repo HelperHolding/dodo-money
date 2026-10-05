@@ -19,6 +19,12 @@ alter table facturas add column cuenta_pl text check (cuenta_pl in
 alter table gastos_caja_chica add column cuenta_pl text check (cuenta_pl in
   ('repartidores', 'marketing_agregadores', 'marketing', 'renta', 'servicios', 'mantenimiento', 'consumibles_equipo', 'otros'));
 
+-- La vista se rehace para que traiga la columna nueva (select f.* se fija al crear la vista).
+drop view facturas_saldo;
+create view facturas_saldo with (security_invoker = true) as
+select f.*, saldo_factura(f.id) as saldo, neto_factura(f.id) as neto, pagado_factura(f.id) as pagado, falta_complemento(f.id) as falta_complemento
+  from facturas f;
+
 -- Una factura nueva hereda la cuenta de su proveedor.
 create or replace function heredar_cuenta_factura() returns trigger
 language plpgsql security definer set search_path = public as $$

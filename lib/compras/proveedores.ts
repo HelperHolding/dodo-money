@@ -71,7 +71,12 @@ export type DatosProveedor = {
   numero_cliente: string | null;
   /** Días que tarda en entregar desde que se le hace el pedido (opcional). */
   dias_entrega: number | null;
+  /** Cuenta del P&L por omisión (sus facturas la heredan). */
+  cuenta_pl: string | null;
 };
+
+/** Cuentas del P&L válidas para un proveedor (igual que lib/finanzas/cuentas.ts y el check de la base). */
+const CUENTAS_PL_PROVEEDOR = ["repartidores", "marketing_agregadores", "marketing", "renta", "servicios", "mantenimiento", "consumibles_equipo", "otros", "insumos", "inversiones"];
 
 type Resultado<T> = { datos: T } | { error: string };
 
@@ -107,6 +112,9 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
   const numero_cliente = opcional(valor("numero_cliente"));
   if (numero_cliente && numero_cliente.length > 60) return { error: "El número de cliente es de hasta 60 caracteres." };
 
+  const cuenta_pl = opcional(valor("cuenta_pl"));
+  if (cuenta_pl && !CUENTAS_PL_PROVEEDOR.includes(cuenta_pl)) return { error: "Elige una cuenta del P&L de la lista." };
+
   const categorias: CategoriaCompra[] = [];
   for (const parte of valor("categorias").split(",").map((p) => p.trim()).filter(Boolean)) {
     const c = clave(parte);
@@ -119,7 +127,7 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
       razon_social, nombre_comercial: opcional(valor("nombre_comercial")), rfc, regimen_fiscal,
       contacto_nombre: opcional(valor("contacto_nombre")), telefono: opcional(valor("telefono")), correo,
       banco: opcional(valor("banco")), clabe, cuenta: opcional(valor("cuenta")),
-      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")), numero_cliente, dias_entrega,
+      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")), numero_cliente, dias_entrega, cuenta_pl,
     },
   };
 }
