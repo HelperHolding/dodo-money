@@ -648,6 +648,12 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 }
 .tabla-comparativo .pl-col-total { border-left: 2px solid var(--linea); }
 .tabla-comparativo th.monto, .tabla-comparativo td.monto { min-width: 9.5em; }
+/* Al deslizar, el nombre de la sección se queda a la vista. */
+.tabla-comparativo .pl-seccion-nombre { position: sticky; left: 10px; }
+@media (max-width: 640px) {
+  .tabla-comparativo th[scope="row"], .tabla-comparativo thead th:first-child { white-space: normal; min-width: 7.5em; max-width: 8.5em; font-size: 0.85rem; }
+  .tabla-comparativo th.monto, .tabla-comparativo td.monto { min-width: 8.5em; }
+}
 @media (max-width: 640px) {
   .tabla-pl.tabla-tarjetas .pl-seccion { border: 0; padding: 0; margin: 18px 0 8px; background: none; }
   .tabla-pl.tabla-tarjetas .pl-seccion th { display: block; border-radius: 8px; border-top: 0; }

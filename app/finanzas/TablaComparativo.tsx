@@ -34,14 +34,14 @@ export function TablaComparativo({ columnas, total }: { columnas: ColumnaPL[]; t
           <thead><tr><th>Renglón</th>{todas.map((c, i) => <th key={i} className={clase(i)}>{c.etiqueta}</th>)}</tr></thead>
           {SECCIONES.map((s) => (
             <tbody key={s.clave}>
-              <tr className={`pl-seccion pl-${s.clave}`}><th colSpan={ancho} scope="rowgroup">{s.nombre}</th></tr>
+              <tr className={`pl-seccion pl-${s.clave}`}><th colSpan={ancho} scope="rowgroup"><span className="pl-seccion-nombre">{s.nombre}</span></th></tr>
               {s.renglones.map((c) => renglon(c, false))}
               {s.clave === "venta" && simple("descuentos", "Descuentos (informativo)", (c) => c.entrada.descuentos)}
               {s.total && renglon(s.total, true)}
             </tbody>
           ))}
           <tbody>
-            <tr className="pl-seccion pl-memo"><th colSpan={ancho} scope="rowgroup">Memo</th></tr>
+            <tr className="pl-seccion pl-memo"><th colSpan={ancho} scope="rowgroup"><span className="pl-seccion-nombre">Memo</span></th></tr>
             {simple("insumos", NOMBRE_CUENTA.insumos, (c) => c.entrada.memos.insumos)}
             {simple("inversiones", NOMBRE_CUENTA.inversiones, (c) => c.entrada.memos.inversiones)}
           </tbody>
