@@ -2,12 +2,12 @@ import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
-import { ESTADOS_FACTURA, NOMBRE_ESTADO_FACTURA, nombreEstadoFactura, vencida, type EstadoFactura } from "@/lib/compras/facturas";
+import { ESTADOS_FACTURA, NOMBRE_ESTADO_FACTURA, nombreEstadoFactura, nombreFactura, vencida, type EstadoFactura } from "@/lib/compras/facturas";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 
 type Factura = {
-  id: string; uuid: string; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string; total: number; saldo: number;
+  id: string; uuid: string | null; origen: "cfdi" | "manual"; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string; total: number; saldo: number;
   estado: EstadoFactura; vence_el: string; revisada: boolean; proveedor_id: string; uuid_relacionado: string | null;
   proveedores: { razon_social: string; nombre_comercial: string | null } | null;
 };
@@ -18,15 +18,16 @@ export default async function Facturas({ searchParams }: { searchParams: Promise
   const hoy = hoyCalendarioMX();
   const [facturas, { data: empresa }, { data: proveedores }] = await Promise.all([
     leerTodo<Factura>((d, h) => supabase.from("facturas_saldo")
-      .select("id, uuid, serie, folio, tipo, fecha_emision, total, saldo, estado, vence_el, revisada, proveedor_id, uuid_relacionado, proveedores(razon_social, nombre_comercial)")
+      .select("id, uuid, origen, serie, folio, tipo, fecha_emision, total, saldo, estado, vence_el, revisada, proveedor_id, uuid_relacionado, proveedores(razon_social, nombre_comercial)")
       .order("vence_el").order("id").range(d, h).returns<Factura[]>()),
     supabase.from("empresa").select("rfc, razon_social").maybeSingle<{ rfc: string; razon_social: string }>(),
     supabase.from("proveedores").select("id, razon_social, nombre_comercial").order("razon_social").returns<{ id: string; razon_social: string; nombre_comercial: string | null }[]>(),
   ]);
-  const uuids = new Set(facturas.map((f) => f.uuid));
+  const uuids = new Set(facturas.map((f) => f.uuid).filter(Boolean));
   const visibles = facturas.filter((f) =>
     (!proveedor || f.proveedor_id === proveedor)
     && (ver === "vencidas" ? vencida(f, hoy)
+      : ver === "sin_cfdi" ? f.origen === "manual" && f.estado !== "cancelada"
       : ver === "notas" ? f.tipo === "egreso"
       : (ESTADOS_FACTURA as readonly string[]).includes(ver) ? f.estado === ver && f.tipo === "ingreso"
       : f.tipo === "ingreso" && (f.estado === "por_pagar" || f.estado === "parcial")));
@@ -47,6 +48,7 @@ export default async function Facturas({ searchParams }: { searchParams: Promise
               <option value="vencidas">Vencidas</option>
               {ESTADOS_FACTURA.filter((e) => e !== "por_pagar").map((e) => <option key={e} value={e}>{NOMBRE_ESTADO_FACTURA[e]}</option>)}
               <option value="notas">Notas de crédito</option>
+              <option value="sin_cfdi">Sin CFDI</option>
             </select>
           </div>
           <div className="campo">
@@ -60,6 +62,7 @@ export default async function Facturas({ searchParams }: { searchParams: Promise
         <div className="acciones">
           <button className="boton boton-secundario" type="submit">Filtrar</button>
           {puedeEditarCompras(perfil.rol) && <Link className="boton" href="/compras/facturas/subir">Subir facturas</Link>}
+          {puedeEditarCompras(perfil.rol) && <Link className="boton boton-secundario" href="/compras/facturas/nueva">Agregar sin CFDI</Link>}
         </div>
       </form>
       {!visibles.length && <p className="vacio">No hay facturas con ese filtro.</p>}
@@ -70,8 +73,8 @@ export default async function Facturas({ searchParams }: { searchParams: Promise
             <article key={f.id} className="tarjeta" data-alerta={atrasada || (f.tipo === "egreso" && f.uuid_relacionado && !uuids.has(f.uuid_relacionado)) ? "si" : undefined}>
               <div className="tarjeta-encabezado">
                 <div>
-                  <h3><Link href={`/compras/facturas/${f.id}`}>{f.tipo === "egreso" ? "Nota de crédito" : "Factura"} {f.serie ?? ""}{f.folio ?? f.uuid.slice(0, 8)}</Link></h3>
-                  <p className="tarjeta-estado">{f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social} · {nombreEstadoFactura(f.tipo, f.estado)}</p>
+                  <h3><Link href={`/compras/facturas/${f.id}`}>{f.tipo === "egreso" ? "Nota de crédito" : f.origen === "manual" ? "Gasto" : "Factura"} {nombreFactura(f)}</Link></h3>
+                  <p className="tarjeta-estado">{f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social} · {nombreEstadoFactura(f.tipo, f.estado)}{f.origen === "manual" ? " · Sin CFDI" : ""}</p>
                 </div>
               </div>
               <dl className="tarjeta-datos">

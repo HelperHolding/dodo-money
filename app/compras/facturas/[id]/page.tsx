@@ -6,23 +6,26 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
-import { cotejar, NOMBRE_COTEJO, nombreEstadoFactura, valorRecibido, vencida, type EstadoFactura } from "@/lib/compras/facturas";
+import { cotejar, NOMBRE_COTEJO, nombreEstadoFactura, nombreFactura, valorRecibido, vencida, type EstadoFactura } from "@/lib/compras/facturas";
 import { avanceOrden, totalesOrden } from "@/lib/compras/ordenes";
 import { nombreRegimen, type TasaIva } from "@/lib/compras/proveedores";
 import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA, esCuentaPl } from "@/lib/finanzas/cuentas";
 import { puedeEditarCompras } from "@/lib/roles";
-import { asignarCuentaFactura, asignarDestino, cambiarVencimientoFactura, cancelarFacturaAccion, ligarOrdenes, marcarRevisada, programarPagoFactura } from "../acciones";
+import {
+  asignarCuentaFactura, asignarDestino, cambiarVencimientoFactura, cancelarFacturaAccion, guardarCuentasConceptos, ligarOrdenes, marcarRevisada,
+  programarPagoFactura, sustituirGastoManual,
+} from "../acciones";
 
 type Factura = {
-  id: string; uuid: string; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string;
+  id: string; uuid: string | null; origen: "cfdi" | "manual"; sustituido_por: string | null; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string;
   rfc_emisor: string; nombre_emisor: string; regimen_emisor: string; metodo_pago: string | null; forma_pago: string | null;
   subtotal: number; descuento: number; iva: number; retenciones: number; total: number; saldo: number; proveedor_id: string; sucursal_id: string | null; cuenta_pl: string | null;
   uuid_relacionado: string | null; vence_el: string; estado: EstadoFactura; revisada: boolean; revision_nota: string | null;
   pagado: number; falta_complemento: boolean; pago_programado_el: string | null;
-  xml_ruta: string; pdf_ruta: string | null; motivo_cancelacion: string | null;
+  xml_ruta: string | null; pdf_ruta: string | null; motivo_cancelacion: string | null;
   proveedores: { razon_social: string; nombre_comercial: string | null; regimen_fiscal: string } | null;
 };
-type Concepto = { id: number; descripcion: string; cantidad: number; unidad: string; valor_unitario: number; importe: number };
+type Concepto = { id: number; descripcion: string; cantidad: number; unidad: string; valor_unitario: number; importe: number; cuenta_pl: string | null };
 type Orden = { id: string; folio: string; estado: string; sucursales: { nombre: string } | null };
 type Renglon = { orden_id: string; descripcion: string; cantidad: number; precio: number; tasa_iva: TasaIva; recibido: number };
 type Relacionada = { id: string; serie: string | null; folio: string | null; uuid: string; tipo: string; total: number; estado: EstadoFactura };
@@ -31,22 +34,27 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: f } = await supabase.from("facturas_saldo")
-    .select("id, uuid, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal)")
+    .select("id, uuid, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal)")
     .eq("id", id).maybeSingle<Factura>();
   if (!f) notFound();
 
   const { data: pagosFactura } = await supabase.from("pago_aplicaciones")
     .select("id, monto, pagos!inner(id, fecha, anulado_en)").eq("factura_id", id).order("id")
     .returns<{ id: number; monto: number; pagos: { id: string; fecha: string; anulado_en: string | null } }[]>();
-  const [{ data: conceptos }, { data: ligas }, { data: candidatas }, { data: sucursales }, { data: relacionadas }] = await Promise.all([
-    supabase.from("factura_conceptos").select("id, descripcion, cantidad, unidad, valor_unitario, importe").eq("factura_id", id).order("id").returns<Concepto[]>(),
+  const [{ data: conceptos }, { data: ligas }, { data: candidatas }, { data: sucursales }, { data: relacionadas }, { data: sinCfdi }, { data: sustituye }] = await Promise.all([
+    supabase.from("factura_conceptos").select("id, descripcion, cantidad, unidad, valor_unitario, importe, cuenta_pl").eq("factura_id", id).order("id").returns<Concepto[]>(),
     supabase.from("factura_ordenes").select("orden_id").eq("factura_id", id).returns<{ orden_id: string }[]>(),
     supabase.from("ordenes_compra").select("id, folio, estado, sucursales(nombre)").eq("proveedor_id", f.proveedor_id).in("estado", ["confirmada", "cerrada"])
       .order("confirmada_en", { ascending: false }).limit(50).returns<Orden[]>(),
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     f.tipo === "ingreso"
-      ? supabase.from("facturas").select("id, serie, folio, uuid, tipo, total, estado").eq("uuid_relacionado", f.uuid).returns<Relacionada[]>()
+      ? supabase.from("facturas").select("id, serie, folio, uuid, tipo, total, estado").eq("uuid_relacionado", f.uuid ?? "").returns<Relacionada[]>()
       : supabase.from("facturas").select("id, serie, folio, uuid, tipo, total, estado").eq("uuid", f.uuid_relacionado ?? "").returns<Relacionada[]>(),
+    f.origen === "cfdi" && f.tipo === "ingreso"
+      ? supabase.from("facturas").select("id, folio, fecha_emision, total").eq("proveedor_id", f.proveedor_id).eq("origen", "manual").neq("estado", "cancelada")
+        .order("fecha_emision").returns<{ id: string; folio: string; fecha_emision: string; total: number }[]>()
+      : Promise.resolve({ data: [] as { id: string; folio: string; fecha_emision: string; total: number }[] }),
+    supabase.from("facturas").select("id, folio").eq("sustituido_por", f.id).returns<{ id: string; folio: string }[]>(),
   ]);
   const ligadas = (ligas ?? []).map((l) => l.orden_id);
   const { data: renglones } = ligadas.length
@@ -82,7 +90,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
     <>
       <div className="encabezado">
         <h1>{f.tipo === "egreso" ? "Nota de crédito" : "Factura"} {f.serie ?? ""}{f.folio ?? ""} · {f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social}</h1>
-        <p>{nombreEstadoFactura(f.tipo, f.estado)}{f.motivo_cancelacion ? ` · ${f.motivo_cancelacion}` : ""} · UUID {f.uuid}</p>
+        <p>{nombreEstadoFactura(f.tipo, f.estado)}{f.motivo_cancelacion ? ` · ${f.motivo_cancelacion}` : ""}{f.origen === "manual" ? " · Sin CFDI" : ` · UUID ${f.uuid}`}</p>
       </div>
       <Aviso ok={ok} error={error} />
 
@@ -113,7 +121,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
         )}
         <div className="acciones">
           {urlXml && <a className="boton boton-secundario" href={urlXml} target="_blank" rel="noreferrer">Ver XML</a>}
-          {urlPdf && <a className="boton boton-secundario" href={urlPdf} target="_blank" rel="noreferrer">Ver PDF</a>}
+          {urlPdf && <a className="boton boton-secundario" href={urlPdf} target="_blank" rel="noreferrer">{f.origen === "manual" ? "Ver adjunto" : "Ver PDF"}</a>}
         </div>
         {(pagosFactura ?? []).length > 0 && (
           <dl className="tarjeta-datos">
@@ -172,7 +180,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           <h2>{f.tipo === "ingreso" ? "Notas de crédito" : "Factura que corrige"}</h2>
           <dl className="tarjeta-datos">
             {(relacionadas ?? []).map((n) => (
-              <Fragment key={n.id}><dt><Link href={`/compras/facturas/${n.id}`}>{n.serie ?? ""}{n.folio ?? n.uuid.slice(0, 8)}</Link></dt><dd>{pesos(n.total)} · {nombreEstadoFactura(n.tipo, n.estado)}</dd></Fragment>
+              <Fragment key={n.id}><dt><Link href={`/compras/facturas/${n.id}`}>{nombreFactura(n)}</Link></dt><dd>{pesos(n.total)} · {nombreEstadoFactura(n.tipo, n.estado)}</dd></Fragment>
             ))}
           </dl>
         </section>
@@ -181,10 +189,34 @@ export default async function DetalleFactura({ params, searchParams }: { params:
         <p className="aviso aviso-error">La factura que corrige ({f.uuid_relacionado}) aún no se sube. Cuando se suba, su saldo ya restará esta nota.</p>
       )}
 
-      <Plegable id="t-conceptos" titulo="Conceptos del XML" resumen={`${conceptos?.length ?? 0}`}>
-        <dl className="tarjeta-datos">
-          {(conceptos ?? []).map((c) => <Fragment key={c.id}><dt>{c.cantidad} {c.unidad}</dt><dd>{c.descripcion} · {pesos(c.valor_unitario)} · {pesos(c.importe)}</dd></Fragment>)}
-        </dl>
+      <Plegable id="t-conceptos" titulo={f.origen === "manual" ? "Renglones" : "Conceptos del XML"} resumen={`${conceptos?.length ?? 0}`}>
+        {edita && (conceptos ?? []).length > 0 ? (
+          <form action={guardarCuentasConceptos} className="formulario">
+            <input type="hidden" name="id" value={f.id} />
+            <ul className="lista-filas" style={{ "--columnas": 2 } as React.CSSProperties}>
+              {(conceptos ?? []).map((c) => (
+                <li key={c.id} className="fila">
+                  <div className="fila-nombre"><strong>{c.descripcion}</strong><small>{c.cantidad} {c.unidad} · {pesos(c.valor_unitario)}</small></div>
+                  <div className="fila-datos">
+                    <span>{pesos(c.importe)}</span>
+                    <span>
+                      <input type="hidden" name="concepto_id" value={c.id} />
+                      <select name="concepto_cuenta" defaultValue={c.cuenta_pl ?? ""} aria-label={`Cuenta del P&L de ${c.descripcion}`}>
+                        <option value="">La de la factura</option>
+                        {[...CUENTAS_GASTO, ...CUENTAS_MEMO].map((k) => <option key={k} value={k}>{NOMBRE_CUENTA[k]}</option>)}
+                      </select>
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <BotonEnviar className="boton boton-secundario">Guardar cuentas</BotonEnviar>
+          </form>
+        ) : (
+          <dl className="tarjeta-datos">
+            {(conceptos ?? []).map((c) => <Fragment key={c.id}><dt>{c.cantidad} {c.unidad}</dt><dd>{c.descripcion} · {pesos(c.importe)} · {c.cuenta_pl && esCuentaPl(c.cuenta_pl) ? NOMBRE_CUENTA[c.cuenta_pl] : "cuenta de la factura"}</dd></Fragment>)}
+          </dl>
+        )}
         {rs.length > 0 && (
           <>
             <h3>Renglones de las órdenes</h3>
@@ -194,6 +226,28 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           </>
         )}
       </Plegable>
+
+      {(sustituye ?? []).length > 0 && (
+        <p className="aviso">Sustituye a: {(sustituye ?? []).map((x) => <Link key={x.id} href={`/compras/facturas/${x.id}`}>{x.folio}</Link>)}</p>
+      )}
+      {f.sustituido_por && <p className="aviso">Sustituido por <Link href={`/compras/facturas/${f.sustituido_por}`}>su CFDI</Link>.</p>}
+      {edita && (sinCfdi ?? []).length > 0 && (
+        <section className="seccion">
+          <h2>¿Sustituye a un gasto sin CFDI?</h2>
+          <form action={sustituirGastoManual} className="formulario">
+            <input type="hidden" name="id" value={f.id} />
+            <div className="campo">
+              <label htmlFor="manual_id">Gasto sin CFDI de este proveedor (este CFDI: {pesos(f.total)})</label>
+              <select id="manual_id" name="manual_id" required defaultValue="">
+                <option value="" disabled>Elige…</option>
+                {(sinCfdi ?? []).map((m) => <option key={m.id} value={m.id}>{m.folio} · {fechaTexto(m.fecha_emision)} · {pesos(m.total)}</option>)}
+              </select>
+              <small>Sus pagos pasan a esta factura y el gasto sin CFDI queda cancelado; así no se cuenta doble.</small>
+            </div>
+            <BotonEnviar className="boton boton-secundario" confirmar="¿Sustituir ese gasto sin CFDI con esta factura?">Sustituir</BotonEnviar>
+          </form>
+        </section>
+      )}
 
       {edita && (
         <section className="seccion">

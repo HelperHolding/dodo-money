@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { nombreFactura } from "@/lib/compras/facturas";
 import { notFound } from "next/navigation";
 import { Fragment } from "react";
 import { Aviso } from "@/components/Aviso";
@@ -13,7 +14,7 @@ type Pago = {
   id: string; fecha: string; monto: number; forma: FormaPago; cuenta_origen: string | null; referencia: string | null; comprobante_ruta: string | null;
   anulado_en: string | null; motivo_anulacion: string | null; proveedores: { razon_social: string; nombre_comercial: string | null } | null;
 };
-type Aplicacion = { id: number; monto: number; facturas: { id: string; serie: string | null; folio: string | null; uuid: string } | null };
+type Aplicacion = { id: number; monto: number; facturas: { id: string; serie: string | null; folio: string | null; uuid: string | null } | null };
 
 export default async function DetallePago({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> }) {
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
@@ -38,7 +39,7 @@ export default async function DetallePago({ params, searchParams }: { params: Pr
           {p.cuenta_origen && <><dt>Cuenta</dt><dd>{p.cuenta_origen}</dd></>}
           {p.referencia && <><dt>Referencia</dt><dd>{p.referencia}</dd></>}
           {(aplicaciones ?? []).map((a) => (
-            <Fragment key={a.id}><dt>{a.facturas ? <Link href={`/compras/facturas/${a.facturas.id}`}>{a.facturas.serie ?? ""}{a.facturas.folio ?? a.facturas.uuid.slice(0, 8)}</Link> : "Factura"}</dt><dd>{pesos(a.monto)}</dd></Fragment>
+            <Fragment key={a.id}><dt>{a.facturas ? <Link href={`/compras/facturas/${a.facturas.id}`}>{nombreFactura(a.facturas)}</Link> : "Factura"}</dt><dd>{pesos(a.monto)}</dd></Fragment>
           ))}
         </dl>
         {url && <a className="boton boton-secundario" href={url} target="_blank" rel="noreferrer">Ver comprobante</a>}

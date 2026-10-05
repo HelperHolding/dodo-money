@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { leerCfdi } from "@/lib/compras/cfdi";
 import { archivoYaSubido, baseArchivo, rutaArchivoFactura } from "@/lib/compras/facturas";
-import { fechaTexto, fechaMX, hoyCalendarioMX } from "@/lib/formato";
+import { fechaTexto, fechaMX, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { leerGastoManual, type GastoManual } from "@/lib/compras/gastoManual";
 import { CUENTAS_GASTO, CUENTAS_MEMO } from "@/lib/finanzas/cuentas";
 import { REGIMENES } from "@/lib/compras/proveedores";
@@ -153,4 +153,26 @@ export async function registrarGastoManual(fd: FormData) {
   if (error) volver(ruta, "error", error.message);
   revalidatePath("/compras", "layout");
   volver(`/compras/facturas/${id}`, "ok", "Gasto sin CFDI registrado. Cuando llegue el CFDI, súbelo y elige qué gasto sustituye.");
+}
+
+export async function guardarCuentasConceptos(fd: FormData) {
+  const ids = fd.getAll("concepto_id").map(String), cuentas = fd.getAll("concepto_cuenta").map(String);
+  await llamarFactura(fd, "asignar_cuentas_conceptos",
+    { p_factura: texto(fd, "id"), p_cuentas: ids.map((id, i) => ({ id: Number(id), cuenta: cuentas[i] ?? "" })) }, "Cuentas guardadas.");
+}
+
+/** El CFDI sustituye al gasto sin CFDI elegido: sus pagos pasan al CFDI; avisa si los totales difieren por más de $1. */
+export async function sustituirGastoManual(fd: FormData) {
+  const id = texto(fd, "id"), manual = texto(fd, "manual_id");
+  const supabase = await clienteAdmin(rutaFactura(id));
+  if (!manual) volver(rutaFactura(id), "error", "Elige el gasto sin CFDI que sustituye.");
+  const { data: totales } = await supabase.from("facturas").select("id, total").in("id", [id, manual]).returns<{ id: string; total: number }[]>();
+  const { data: faltan, error } = await supabase.rpc("sustituir_factura_manual", { p_cfdi: id, p_manual: manual });
+  if (error) volver(rutaFactura(id), "error", error.message);
+  const t = new Map((totales ?? []).map((x) => [x.id, Number(x.total)]));
+  const diferencia = Math.abs((t.get(id) ?? 0) - (t.get(manual) ?? 0));
+  revalidatePath("/compras", "layout");
+  volver(rutaFactura(id), "ok", `Sustituyó al gasto sin CFDI; sus pagos pasaron a esta factura.`
+    + `${diferencia > 1 ? ` Ojo: los totales difieren por ${pesos(diferencia)}.` : ""}`
+    + `${faltan ? " Asigna la cuenta de cada concepto (el gasto tenía varias)." : ""}`);
 }

@@ -2,12 +2,12 @@ import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { obtenerPerfil } from "@/lib/contexto";
 import { hoyCalendarioMX } from "@/lib/formato";
-import { NOMBRE_COTEJO, type Cotejo, type EstadoFactura } from "@/lib/compras/facturas";
+import { NOMBRE_COTEJO, nombreFactura, type Cotejo, type EstadoFactura } from "@/lib/compras/facturas";
 import type { FormaPago } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import { FormPago, type FacturaParaPagar } from "./FormPago";
 
-type Factura = { id: string; uuid: string; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null; estado: EstadoFactura; revisada: boolean };
+type Factura = { id: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null; estado: EstadoFactura; revisada: boolean };
 
 export default async function NuevoPago({ searchParams }: { searchParams: Promise<{ proveedor?: string; factura?: string; error?: string }> }) {
   const { proveedor = "", factura = null, error } = await searchParams;
@@ -26,7 +26,7 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
     facturas = abiertas.map((f, i) => {
       const c = cotejos[i];
       const bloqueada = c && c !== "cuadra" && c !== "sin_orden" && !f.revisada ? `${NOMBRE_COTEJO[c].texto}. Márcala como revisada en la factura para poder pagarla.` : null;
-      return { ...f, saldo: Number(f.saldo), nombre: `${f.serie ?? ""}${f.folio ?? f.uuid.slice(0, 8)}`, bloqueada };
+      return { ...f, saldo: Number(f.saldo), nombre: nombreFactura(f), bloqueada };
     });
   }
 

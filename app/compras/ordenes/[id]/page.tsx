@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { avanceFacturacion } from "@/lib/compras/facturas";
+import { avanceFacturacion, nombreFactura } from "@/lib/compras/facturas";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
@@ -74,7 +74,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const t = totalesOrden(rs);
   const { data: facturasLigadas } = await supabase.from("factura_ordenes")
     .select("facturas_saldo!inner(id, serie, folio, uuid, neto, estado, tipo)").eq("orden_id", o.id)
-    .returns<{ facturas_saldo: { id: string; serie: string | null; folio: string | null; uuid: string; neto: number; estado: string; tipo: string } }[]>();
+    .returns<{ facturas_saldo: { id: string; serie: string | null; folio: string | null; uuid: string | null; neto: number; estado: string; tipo: string } }[]>();
   const facturas = (facturasLigadas ?? []).map((x) => x.facturas_saldo).filter((x) => x.estado !== "cancelada" && x.tipo === "ingreso");
   const facturado = facturas.reduce((s, x) => s + Number(x.neto), 0);
 
@@ -113,7 +113,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
           })()}
           {(o.estado === "confirmada" || o.estado === "cerrada") && (
             <><dt>Facturación</dt><dd>{NOMBRE_AVANCE_FACTURA[avanceFacturacion(t.total, facturado)]} · {pesos(facturado)} de {pesos(t.total)}
-              {facturas.map((x) => <Fragment key={x.id}> · <Link href={`/compras/facturas/${x.id}`}>{x.serie ?? ""}{x.folio ?? x.uuid.slice(0, 8)}</Link></Fragment>)}</dd></>
+              {facturas.map((x) => <Fragment key={x.id}> · <Link href={`/compras/facturas/${x.id}`}>{nombreFactura(x)}</Link></Fragment>)}</dd></>
           )}
           {o.estado === "confirmada" && avanceOrden(rs) === "completa" && avanceFacturacion(t.total, facturado) === "completa" && (
             <><dt>Lista</dt><dd>Recibida y facturada: ya se puede cerrar.</dd></>

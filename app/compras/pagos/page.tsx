@@ -3,7 +3,7 @@ import { Aviso } from "@/components/Aviso";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
-import { vencida, type EstadoFactura } from "@/lib/compras/facturas";
+import { nombreFactura, vencida, type EstadoFactura } from "@/lib/compras/facturas";
 import { fechaDePago, grupoPorPagar, pagadoDelMes, resumenPagos } from "@/lib/compras/pagos";
 import { NOMBRE_FORMA_PAGO, type FormaPago } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
@@ -12,7 +12,7 @@ import { CalendarioPagos, type FacturaDelDia } from "./CalendarioPagos";
 import { FormComplementos } from "./FormComplementos";
 
 type Factura = {
-  id: string; uuid: string; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null;
+  id: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null;
   estado: EstadoFactura; proveedor_id: string; sucursal_id: string | null; falta_complemento: boolean;
   proveedores: { razon_social: string; nombre_comercial: string | null } | null;
 };
@@ -63,7 +63,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const pagado = pagadoDelMes(aplicadas.map((a) => ({ pago_id: a.pago_id, fecha: a.pagos.fecha, monto: Number(a.monto), anulado: !!a.pagos.anulado_en })), hoy);
   const idsDelFiltro = new Set(aplicadas.map((a) => a.pago_id));
   const pagosVisibles = proveedor || sucursal ? pagos.filter((p) => idsDelFiltro.has(p.id)) : pagos;
-  const nombre = (f: Factura) => `${f.serie ?? ""}${f.folio ?? f.uuid.slice(0, 8)}`;
+  const nombre = (f: Factura) => nombreFactura(f);
   const proveedorDe = (f: { proveedores: { razon_social: string; nombre_comercial: string | null } | null }) => f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social ?? "";
   const porDia: Record<string, FacturaDelDia[]> = {};
   for (const f of visibles) {
