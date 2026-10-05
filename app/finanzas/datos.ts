@@ -4,11 +4,12 @@ import type { CuentaGasto } from "@/lib/finanzas/cuentas";
 import { facturasAGastos, faltantesDe, sumarGastos } from "@/lib/finanzas/gastos";
 import { costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Puesto } from "@/lib/finanzas/nomina";
 import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
-import { acumuladoDe, anteriorDe, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
+import { acumuladoDe, anteriorDe, columnasComparativo, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
 import {
   calcularPL, entradaVacia, escalarMetas, INICIO_FECHA, sumarEntradas, sumarMetas,
   type ContextoMeta, type EntradaPL, type FilaPL, type Meta,
 } from "@/lib/finanzas/pl";
+import type { ColumnaPL } from "@/lib/finanzas/excel";
 import { prorratear } from "@/lib/finanzas/prorrateo";
 import { costearProductos, costeo, type Categoria, type Costo, type VentaDia, type VentaProducto } from "@/lib/ventas/calculos";
 import { leerTodo } from "@/lib/ventas/paginar";
@@ -242,4 +243,21 @@ export async function plConHistoria(supabase: SupabaseClient, p: Periodo, sucurs
     detalleDe: (renglon: string) => (vista.suc ? d.detalle.get(`${vista.suc.id}|${renglon}`) ?? [] : []),
     memoDetalle: (cuenta: "insumos" | "inversiones") => (vista.suc ? d.detalle.get(`${vista.suc.id}|memo_${cuenta}`) ?? [] : []),
   };
+}
+
+/** Vista comparativa: cada columna es un periodo (mes o semana) cargado en paralelo; el total es su suma. Sin metas. */
+export async function comparativoPL(supabase: SupabaseClient, p: Periodo, sucursalId: string | undefined) {
+  const { columnas, total, titulo } = columnasComparativo(p, hoyMX(), INICIO_FECHA);
+  const [res, cargas] = await Promise.all([
+    supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
+    Promise.all(columnas.map((c) => datosPL(supabase, c.rango))),
+  ]);
+  if (res.error) throw new Error(`No se pudieron cargar las sucursales: ${res.error.message}`);
+  const sucursales = res.data ?? [];
+  const suc = sucursales.find((s) => s.id === sucursalId) ?? null;
+  const filasDe = (e: EntradaPL) => calcularPL(e, [], { ventaNeta: e.ventaNeta, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } });
+  const entradas = cargas.map((d) => vistaPL(d, suc?.id).entrada);
+  const suma = sumarEntradas(entradas);
+  const cols: ColumnaPL[] = columnas.map((c, i) => ({ etiqueta: c.etiqueta, filas: filasDe(entradas[i]), entrada: entradas[i] }));
+  return { titulo: suc?.nombre ?? "Consolidado", suc, sucursales, periodoTitulo: titulo, columnas: cols, total: { etiqueta: total, filas: filasDe(suma), entrada: suma } };
 }

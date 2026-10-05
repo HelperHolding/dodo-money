@@ -621,3 +621,38 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   .tabla-renglones td[data-label="#"] { display: none; }
 }
 .tabla th.monto { text-align: right; }
+
+/* ─── P&L como estado de resultados: secciones con color, subtotales en barra, montos contables ─── */
+.tabla-pl { --pl-fondo: var(--papel-2); --pl-barra: #7f7f7f; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.tabla-pl .pl-venta { --pl-fondo: #bdd7ee; }
+.tabla-pl .pl-costo { --pl-fondo: #d9ead3; }
+.tabla-pl .pl-operacion { --pl-fondo: #fce4d6; }
+.tabla-pl .pl-oficina { --pl-fondo: #ead1dc; }
+.tabla-pl .pl-memo { --pl-fondo: #f2f2f2; }
+.tabla-pl .pl-seccion th {
+  background: var(--pl-fondo); color: var(--tinta); font-size: 0.85rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.03em; padding: 8px 10px; border-bottom: 0;
+}
+.tabla-pl tbody + tbody .pl-seccion th { border-top: 14px solid var(--blanco); }
+.tabla-pl .pl-total td, .tabla-pl .pl-total th[scope="row"] { background: var(--pl-barra); color: var(--blanco); font-weight: 800; border-bottom: 0; }
+.tabla-pl .pl-total td.celda-alerta { background: var(--alerta-fondo); color: var(--alerta-texto); }
+.tabla-pl .pl-informativo td, .tabla-pl .pl-informativo th { color: var(--tinta-2); }
+.importe { display: inline-flex; justify-content: space-between; gap: 10px; min-width: 8.5em; font-variant-numeric: tabular-nums; }
+.pl-pct { display: block; font-size: 0.78rem; font-weight: 500; color: var(--tinta-2); }
+.pl-total .pl-pct { color: var(--blanco); }
+/* Comparativo: la única tabla ancha; se desliza de lado con la columna de renglones fija. */
+.tabla-deslizable { overflow-x: auto; }
+.tabla-comparativo th[scope="row"], .tabla-comparativo thead th:first-child {
+  position: sticky; left: 0; z-index: 1; background: var(--blanco); text-align: left; white-space: nowrap;
+  font-size: 0.92rem; font-weight: 600; color: var(--tinta); padding: 10px; border-bottom: 1px solid var(--papel-2);
+}
+.tabla-comparativo .pl-col-total { border-left: 2px solid var(--linea); }
+.tabla-comparativo th.monto, .tabla-comparativo td.monto { min-width: 9.5em; }
+@media (max-width: 640px) {
+  .tabla-pl.tabla-tarjetas .pl-seccion { border: 0; padding: 0; margin: 18px 0 8px; background: none; }
+  .tabla-pl.tabla-tarjetas .pl-seccion th { display: block; border-radius: 8px; border-top: 0; }
+  .tabla-pl.tabla-tarjetas .pl-total { background: var(--pl-barra); border-color: var(--pl-barra); }
+  .tabla-pl.tabla-tarjetas .pl-total td { background: none; }
+  .tabla-pl.tabla-tarjetas .pl-total td::before { color: var(--blanco); }
+  .tabla-pl.tabla-tarjetas .pl-total td.celda-alerta { background: var(--alerta-fondo); }
+}
