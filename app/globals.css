@@ -661,4 +661,16 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   .tabla-pl.tabla-tarjetas .pl-total td { background: none; }
   .tabla-pl.tabla-tarjetas .pl-total td::before { color: var(--blanco); }
   .tabla-pl.tabla-tarjetas .pl-total td.celda-alerta { background: var(--alerta-fondo); }
+  .tabla-pl.tabla-tarjetas .pl-total td.celda-alerta::before { color: var(--alerta-texto); }
+}
+
+/* Al imprimir, la tabla del P&L cabe completa en la hoja: sin deslizar, sin anchos mínimos y con letra más chica. */
+@media print {
+  .tabla-deslizable, .tabla-contenedor:has(.tabla-pl) { overflow: visible; }
+  .tabla-pl { font-size: 0.72rem; }
+  .tabla-pl th, .tabla-pl td { padding: 4px 6px; }
+  .tabla-pl .importe { min-width: 0; gap: 6px; }
+  .tabla-comparativo th.monto, .tabla-comparativo td.monto { min-width: 0; }
+  .tabla-comparativo th[scope="row"], .tabla-comparativo thead th:first-child { position: static; white-space: normal; font-size: 0.72rem; padding: 4px 6px; }
+  .tabla-comparativo .pl-seccion-nombre { position: static; }
 }
