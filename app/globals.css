@@ -697,3 +697,5 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .pl-origen-cabecera a { text-underline-offset: 3px; }
 .pl-origen-monto { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pl-origen-nota { display: block; margin-top: 6px; color: var(--tinta-2); line-height: 1.5; font-size: .8rem; }
+
+.bom-recetas { grid-template-columns: minmax(0, 1fr); }

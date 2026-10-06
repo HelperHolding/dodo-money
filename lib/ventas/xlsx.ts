@@ -1,7 +1,7 @@
 import { inflateRawSync } from "node:zlib";
 
 /** Primera hoja de un libro: su nombre y sus celdas por referencia ("A1" → texto o número). */
-export type Hoja = { nombre: string; celdas: ReadonlyMap<string, string | number> };
+export type Hoja = { nombre: string; celdas: ReadonlyMap<string, string | number>; oculta?: boolean; formulas?: ReadonlyMap<string, string> };
 
 export const NO_ES_XLSX = "El archivo no es un Excel (.xlsx) válido.";
 /** Tope por archivo interno ya descomprimido: los reportes de Dodo IS pesan unos cuantos KB. */
@@ -95,10 +95,23 @@ function leerLibro(datos: Uint8Array): Hoja[] {
     const rutaHoja = destino.startsWith("/") ? destino.slice(1) : `xl/${destino}`;
 
     const celdas = new Map<string, string | number>();
+    const formulas = new Map<string, string>();
+    const compartidasFormula = new Map<string, { ref: string; formula: string }>();
     for (const m of leer(rutaHoja).matchAll(/<(?:\w+:)?c(\s[^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g)) {
       const [, attrs, cuerpo] = m;
       const ref = atributo(attrs, "r");
       if (!ref || cuerpo === undefined) continue;
+      const formula = /<(?:\w+:)?f(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?f>/.exec(cuerpo)?.[1];
+      if (formula !== undefined) formulas.set(ref, desescapar(formula));
+      const etiquetaF = /<(?:\w+:)?f(?:\s[^>]*?)?(?:\/>|>)/.exec(cuerpo)?.[0];
+      const compartida = etiquetaF && atributo(etiquetaF, "si");
+      if (compartida !== undefined) {
+        if (formula !== undefined) compartidasFormula.set(compartida, { ref, formula: desescapar(formula) });
+        else {
+          const base = compartidasFormula.get(compartida);
+          if (base) formulas.set(ref, trasladarFormula(base.formula, base.ref, ref));
+        }
+      }
       const tipo = atributo(attrs, "t");
       if (tipo === "inlineStr") { celdas.set(ref, textos(cuerpo)); continue; }
       const v = /<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/.exec(cuerpo)?.[1];
@@ -107,8 +120,19 @@ function leerLibro(datos: Uint8Array): Hoja[] {
       else if (tipo === "str" || tipo === "e") celdas.set(ref, desescapar(v));
       else celdas.set(ref, Number(v));
     }
-    return { nombre, celdas };
+    return { nombre, celdas, formulas, oculta: /^(hidden|veryHidden)$/.test(atributo(hoja, "state") ?? "") };
   });
+}
+
+/** Fórmulas compartidas de Excel: desplaza referencias relativas, conserva las absolutas. */
+function trasladarFormula(formula: string, origen: string, destino: string): string {
+  const indice = (s: string) => [...s].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0);
+  const ref = (s: string) => { const m = /^([A-Z]+)(\d+)$/.exec(s)!; return [indice(m[1]), Number(m[2])]; };
+  const [co, fo] = ref(origen), [cd, fd] = ref(destino);
+  const letras = (n: number) => { let s = ""; while (n > 0) { n--; s = String.fromCharCode(65 + n % 26) + s; n = Math.floor(n / 26); } return s; };
+  // Los textos entre comillas no son referencias (p. ej. SUMIF(..., ">0")).
+  return formula.split(/("(?:[^"]|"")*")/).map((s, n) => n % 2 ? s : s.replace(/(\$?)([A-Z]{1,3})(\$?)(\d+)\b/g,
+    (_, ac: string, c: string, af: string, f: string) => `${ac}${letras(indice(c) + (ac ? 0 : cd - co))}${af}${Number(f) + (af ? 0 : fd - fo)}`)).join("");
 }
 
 /** Número serial de Excel (sistema 1900) → "YYYY-MM-DD". */

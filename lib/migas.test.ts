@@ -18,7 +18,7 @@ test("pantallas anidadas y altas", () => {
   const comparar = migas("/compras/ordenes/0c5d2f0e-0000-4000-8000-000000000001/comparar", admin);
   assert.equal(texto(comparar), "Compras › Órdenes(/compras/ordenes) › Orden(/compras/ordenes/0c5d2f0e-0000-4000-8000-000000000001) › Comparar");
   assert.deepEqual(comparar.regresar, { texto: "Orden", href: "/compras/ordenes/0c5d2f0e-0000-4000-8000-000000000001" });
-  assert.equal(texto(migas("/ventas/costos/cargar", admin)), "Ventas › Costos(/ventas/costos) › Cargar costos");
+  assert.equal(texto(migas("/ventas/costos/cargar", admin)), "Ventas › Costeo(/ventas/costos) › Cargar costos");
   assert.equal(texto(migas("/checklists/amasado", menuLateral("gerente"))), "Sucursal › Checklists(/checklists) › Amasado de masa");
 });
 

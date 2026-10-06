@@ -20,6 +20,7 @@ type Filtro = keyof typeof FILTROS;
 export default async function PaginaCostos({ searchParams }: { searchParams: Promise<{ ver?: string; ok?: string; error?: string }> }) {
   const { ver, ok, error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
+  if (perfil.rol === "corporativo") redirect("/ventas/costos/materiales");
   if (!puedeImportarVentas(perfil.rol)) redirect("/ventas");
   const filtro: Filtro | undefined = ver === "sin-costo" || ver === "sin-categoria" ? ver : undefined;
   const hoy = hoyMX();
@@ -48,14 +49,14 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
   return (
     <>
       <div className="encabezado">
-        <h1>Costos</h1>
+        <h1>Costeo</h1>
         <p>
           Costo por producto con la fecha desde la que aplica. Un costo nuevo no borra el anterior: los días previos
           se siguen costeando con el que estaba vigente.
         </p>
       </div>
       <Aviso ok={ok} error={error} />
-      <div className="acciones"><Link className="boton" href="/ventas/costos/cargar">Cargar costos desde Excel</Link></div>
+      <div className="acciones"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link><Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link></div>
       <nav className="acciones" aria-label="Filtros">
         <Link className="boton boton-secundario" href="/ventas/costos" aria-current={!filtro ? "page" : undefined}>Todos</Link>
         {(Object.keys(FILTROS) as Filtro[]).map((f) => (
