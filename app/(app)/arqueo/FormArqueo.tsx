@@ -21,7 +21,7 @@ export function FormArqueo({
     momento, fondo: fondoInicial, ventas: ventas === "" ? null : Number(ventas) || 0, retiros: retirosBoveda, contado,
   });
   const veredicto =
-    estado === "pendiente" ? (conVentas ? "Cuenta el efectivo y escribe las ventas" : "Cuenta el efectivo del cajón")
+    estado === "pendiente" ? (conVentas ? "Cuenta el efectivo y escribe las ventas" : "Cuenta el efectivo del cajero")
     : estado === "cuadra" ? "La caja cuadra"
     : estado === "faltante" ? `Faltan ${pesos(-diferencia)}`
     : `Sobran ${pesos(diferencia)}`;
@@ -58,7 +58,7 @@ export function FormArqueo({
       </section>
 
       <section className="seccion" aria-labelledby="t-conteo">
-        <h2 id="t-conteo">Conteo del cajón</h2>
+        <h2 id="t-conteo">Conteo del cajero</h2>
         <div className="conteo">
           <table>
             <thead><tr><th>Billetes</th><th>Cantidad</th><th>Importe</th></tr></thead>
@@ -81,7 +81,7 @@ export function FormArqueo({
             <small>Reporte de ventas del turno, columna Efectivo.</small>
           </div>
         ) : (
-          <p className="saldo-nota">Al inicio del turno todavía no hay ventas: en el cajón debe estar solo el fondo.</p>
+          <p className="saldo-nota">Al inicio del turno todavía no hay ventas: en el cajero debe estar solo el fondo.</p>
         )}
         <div className="resultado" data-estado={estado} aria-live="polite">
           <div className="resultado-dato">

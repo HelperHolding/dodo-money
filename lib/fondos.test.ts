@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { problemaSalida, retiroABoveda, salidaSugerida } from "./fondos.ts";
+import { mensajeCierre, problemaSalida, retiroABoveda, salidaSugerida } from "./fondos.ts";
 
 test("retiroABoveda: todo lo que pase del fondo del cajón va a la bóveda", () => {
   assert.equal(retiroABoveda(9850.5, 500), 9350.5);
@@ -22,4 +22,10 @@ test("problemaSalida no deja dejar la bóveda debajo de su fondo", () => {
     "Con esa salida la bóveda quedaría con $4,499.99 y debe quedarse con $4,500.00. Lo más que puede salir es $23,800.00.");
   assert.equal(problemaSalida(100, { saldoBoveda: 4500, salidasPendientes: 0, fondoBoveda: 4500 }),
     "Con esa salida la bóveda quedaría con $4,400.00 y debe quedarse con $4,500.00. Ahora no puede salir nada.");
+});
+
+test("mensajeCierre: al cerrar, el retiro a la bóveda ya se registró solo", () => {
+  assert.equal(mensajeCierre(2115, 500), "Arqueo de cierre guardado y turno cerrado. Se pasaron $1,615.00 a la bóveda; el cajero queda con $500.00.");
+  assert.equal(mensajeCierre(500, 500), "Arqueo de cierre guardado y turno cerrado. El cajero no pasa de $500.00: no hubo retiro a la bóveda.");
+  assert.equal(mensajeCierre(320, 500), "Arqueo de cierre guardado y turno cerrado. El cajero no pasa de $500.00: no hubo retiro a la bóveda.");
 });

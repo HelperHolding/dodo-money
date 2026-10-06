@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { obtenerContextoParaEscribir, puedeGestionar } from "@/lib/contexto";
 import { totalConteo } from "@/lib/denominaciones";
-import { retiroABoveda } from "@/lib/fondos";
-import { numero, numeroOpcional, pesos } from "@/lib/formato";
+import { mensajeCierre } from "@/lib/fondos";
+import { numero, numeroOpcional } from "@/lib/formato";
 import type { MomentoArqueo } from "@/lib/tipos";
 import { pideVentas } from "@/lib/arqueo";
 import { fondoYRetirosDelTurno } from "./datos";
@@ -48,7 +48,7 @@ export async function registrarArqueo(formData: FormData) {
 
   revalidatePath("/", "layout");
   const texto = momento === "cierre"
-    ? `Arqueo de cierre guardado y turno cerrado. Retira ${pesos(retiroABoveda(total, Number(sucursal.fondo_caja_venta)))} a la bóveda para dejar ${pesos(Number(sucursal.fondo_caja_venta))} en el cajón.`
+    ? mensajeCierre(total, Number(sucursal.fondo_caja_venta))
     : "Arqueo guardado. Quien recibe debe confirmarlo con su usuario.";
   redirect("/arqueo?ok=" + encodeURIComponent(texto));
 }
