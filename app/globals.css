@@ -688,3 +688,12 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .migas-regresar:hover { text-decoration: underline; }
 @media (max-width: 640px) { .migas-ruta { display: none; } }
 @media print { .migas { display: none; } }
+
+.pl-origen { margin-top: 4px; font-weight: 400; }
+.pl-origen summary { cursor: pointer; }
+.pl-origen-lista { list-style: none; padding: 0; margin: 10px 0 2px; display: grid; gap: 8px; min-width: 220px; }
+.pl-origen-lista li { padding: 10px 12px; border: 1px solid var(--linea); border-radius: 8px; background: var(--papel-2); color: var(--tinta); }
+.pl-origen-cabecera { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; font-size: .9rem; }
+.pl-origen-cabecera a { text-underline-offset: 3px; }
+.pl-origen-monto { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pl-origen-nota { display: block; margin-top: 6px; color: var(--tinta-2); line-height: 1.5; font-size: .8rem; }

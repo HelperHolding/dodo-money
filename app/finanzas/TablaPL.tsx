@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { pesos, porcentaje } from "@/lib/formato";
 import { NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
 import type { Columnas } from "@/lib/finanzas/periodo";
@@ -5,14 +6,22 @@ import type { EntradaPL, FilaPL } from "@/lib/finanzas/pl";
 import { SECCIONES } from "@/lib/finanzas/secciones";
 import { Importe } from "./Importe";
 
-type Detalle = { texto: string; monto: number }[];
+type Detalle = { texto: string; monto: number; href?: string; nota?: string }[];
 const NOMBRE_MEMO = { insumos: NOMBRE_CUENTA.insumos, inversiones: NOMBRE_CUENTA.inversiones } as const;
 
 const desplegable = (items: Detalle, rotulo: string) =>
   items.length > 0 && (
-    <details>
+    <details className="pl-origen">
       <summary className="saldo-nota">{rotulo} ({items.length})</summary>
-      <ul className="lista-simple">{items.map((i, n) => <li key={n}>{i.texto} · {pesos(i.monto)}</li>)}</ul>
+      <ul className="pl-origen-lista">{items.map((i, n) => (
+        <li key={n}>
+          <div className="pl-origen-cabecera">
+            {i.href ? <Link href={i.href}>{i.texto}</Link> : <span>{i.texto}</span>}
+            <strong className="pl-origen-monto">{pesos(i.monto)}</strong>
+          </div>
+          {i.nota && <small className="pl-origen-nota">{i.nota}</small>}
+        </li>
+      ))}</ul>
     </details>
   );
 

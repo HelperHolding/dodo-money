@@ -19,7 +19,7 @@ import {cargarRappi} from "@/app/ventas/rappi/datos";
 import {ventasRappi} from "@/lib/ventas/rappi";
 
 type Fila = { sucursal_id: string | null };
-type Detalle = { texto: string; monto: number }[];
+type Detalle = { texto: string; monto: number; href?: string; nota?: string }[];
 const de = <T extends Fila>(filas: readonly T[], id: string | null) => filas.filter((f) => f.sucursal_id === id);
 const centavos = (n: number) => Math.round(n * 100) / 100;
 /** Renglón del P&L donde cae una cuenta (memo e "insumos/inversiones" no son renglón: van al memo). */
@@ -64,13 +64,13 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const sucursales = res[0].data ?? [], params = res[1].data ?? [], puestos = res[2].data ?? [], ajustes = res[3].data ?? [];
   const metas = res[4].data ?? [];
 
-  type FacturaPL = Fila & {
+  type FacturaPL = Fila & { id: string;
     tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
     nombre_emisor: string; fecha_emision: string; cubre_desde: string; cubre_hasta: string; creado_en: string; origen: "cfdi" | "manual"; factura_conceptos: { descripcion: string; importe: number; cuenta_pl: string | null }[];
   };
   const [facturasLeidas, cajaChica, cierres, arqueos, dias, desglose, ventas, catalogo, costos, datosRappi] = await Promise.all([
     desde > hasta ? Promise.resolve([] as FacturaPL[]) : leerTodo<FacturaPL>((d, h) => supabase.from("facturas")
-      .select("sucursal_id, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(descripcion, importe, cuenta_pl)")
+      .select("id, sucursal_id, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(descripcion, importe, cuenta_pl)")
       .lte("cubre_desde", hasta).gte("cubre_hasta", desde).order("id").range(d, h).returns<FacturaPL[]>()),
     leerTodo<Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null }>((d, h) => supabase.from("gastos_caja_chica")
       .select("sucursal_id, fecha, concepto, monto, cuenta_pl").gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h)
@@ -111,10 +111,10 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const vigente: Vigente = (clave, f) => valorVigente(params, clave, f);
   const agregadorDe = new Map(desglose.map((x) => [x.ventas_dia_id, x]));
   const detalle = new Map<string, Detalle>();
-  const anotar = (suc: string, renglon: string, texto: string, monto: number) => {
+  const anotar = (suc: string, renglon: string, texto: string, monto: number, extra: { href?: string; nota?: string } = {}) => {
     if (!monto) return;
     const k = `${suc}|${renglon}`;
-    detalle.set(k, [...(detalle.get(k) ?? []), { texto, monto: centavos(monto) }]);
+    detalle.set(k, [...(detalle.get(k) ?? []), { texto, monto: centavos(monto), ...extra }]);
   };
   const diasRango = diasEntre(desde, hasta);
 
@@ -140,15 +140,15 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       // Una línea por cuenta (no por concepto): una factura de insumos con 50 conceptos queda en una sola.
       const porCuenta = new Map<string | null, number>();
       for (const p of partesFactura(x, x.parte.fraccion)) porCuenta.set(p.cuenta, (porCuenta.get(p.cuenta) ?? 0) + p.monto);
-      const completo = (Number(x.subtotal) - Number(x.descuento)) * (x.tipo === "egreso" ? -1 : 1);
+      const bases = new Map<string | null, number>();
+      for (const p of partesFactura(x)) bases.set(p.cuenta, (bases.get(p.cuenta) ?? 0) + p.monto);
       const nombre = x.tipo === "egreso" ? "Nota de crédito" : x.origen === "manual" ? "Gasto sin CFDI" : "Factura";
       const cubre = { desde: x.cubre_desde, hasta: x.cubre_hasta };
-      const periodo = esMesDeEmision(cubre, x.fecha_emision) ? "" : ` · cubre ${textoCubre(cubre)}`;
-      const parte = x.parte.fraccion < 1 ? ` · ${pesos(completo)} × ${x.parte.dias}/${x.parte.total}` : "";
       for (const [cuenta, monto] of porCuenta) {
-        anotar(s.id, renglonDe(cuenta),
-          `${nombre} ${x.serie ?? ""}${x.folio ?? ""} · ${x.nombre_emisor} · ${x.fecha_emision}${porCuenta.size > 1 ? " · parte" : ""}${periodo}${parte}${cuenta ? "" : " · sin cuenta"}`,
-          monto);
+        const base = bases.get(cuenta) ?? 0;
+        const calculo = x.parte.fraccion < 1 ? `${pesos(base)} × ${x.parte.dias}/${x.parte.total} días` : pesos(base);
+        anotar(s.id, renglonDe(cuenta), `${nombre} ${x.serie ?? ""}${x.folio ?? ""}`.trim(), monto,
+          { href: `/compras/facturas/${x.id}`, nota: `${x.nombre_emisor} · ${x.fecha_emision} · Cubre ${textoCubre(cubre)} · ${calculo}${cuenta ? "" : " · sin cuenta"}` });
       }
     }
     const cc = de(cajaChica, s.id);
