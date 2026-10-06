@@ -101,6 +101,7 @@ export function menuLateral(rol: Rol): Menu {
         { href: "/finanzas", texto: "P&L" },
         { href: "/finanzas/nomina", texto: "Nómina" },
         { href: "/finanzas/retenciones", texto: "Retenciones" },
+        { href: "/finanzas/mermas", texto: "Mermas Dodo IS" },
         { href: "/finanzas/parametros", texto: "Parámetros y metas" },
       ],
     });
