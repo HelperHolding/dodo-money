@@ -177,6 +177,8 @@ input, select, textarea {
   border-radius: 6px;
   padding: 10px 12px;
   min-height: 48px;
+  /* Un select toma el ancho de su opción más larga: sin tope se sale de su celda o columna. */
+  max-width: 100%;
 }
 input:focus, select:focus, textarea:focus { border-color: var(--accion-oscuro); outline: none; box-shadow: 0 0 0 3px #ff4e0040; }
 input[type="number"] { text-align: right; }
