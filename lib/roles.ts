@@ -100,6 +100,7 @@ export function menuLateral(rol: Rol): Menu {
       enlaces: [
         { href: "/finanzas", texto: "P&L" },
         { href: "/finanzas/nomina", texto: "Nómina" },
+        { href: "/finanzas/retenciones", texto: "Retenciones" },
         { href: "/finanzas/parametros", texto: "Parámetros y metas" },
       ],
     });
