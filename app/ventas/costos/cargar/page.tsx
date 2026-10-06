@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { hoyMX } from "@/lib/formato";
@@ -11,7 +10,6 @@ export default async function CargarCostos() {
   return (
     <>
       <div className="encabezado">
-        <p><Link href="/ventas/costos">← Costos</Link></p>
         <h1>Cargar costos desde Excel</h1>
         <p>
           Sube el Excel del menú. Cada renglón se empareja con su producto de Dodo IS; las variantes Thin toman el costo de su tamaño
