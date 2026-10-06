@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export default async function LayoutVentas({ children }: { children: React.ReactNode }) {
   const { perfil } = await obtenerPerfil();
   if (!puedeVerVentas(perfil.rol)) redirect("/");
-  return <Marco perfil={perfil} titulo="Ventas" detalle="Importadas de Dodo IS">{children}</Marco>;
+  return <Marco perfil={perfil} titulo="Ventas" detalle="Dodo IS y Rappi">{children}</Marco>;
 }

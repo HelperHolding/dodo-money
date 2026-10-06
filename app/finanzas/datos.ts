@@ -15,6 +15,8 @@ import { leerTodo } from "@/lib/ventas/paginar";
 import { primerError } from "@/lib/corporativo";
 import { fechaMX, hoyMX, pesos } from "@/lib/formato";
 import { capturasTardias, esMesDeEmision, fraccionCubre, textoCubre } from "@/lib/finanzas/cubre";
+import {cargarRappi} from "@/app/ventas/rappi/datos";
+import {ventasRappi} from "@/lib/ventas/rappi";
 
 type Fila = { sucursal_id: string | null };
 type Detalle = { texto: string; monto: number }[];
@@ -66,7 +68,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
     nombre_emisor: string; fecha_emision: string; cubre_desde: string; cubre_hasta: string; creado_en: string; origen: "cfdi" | "manual"; factura_conceptos: { descripcion: string; importe: number; cuenta_pl: string | null }[];
   };
-  const [facturasLeidas, cajaChica, cierres, arqueos, dias, desglose, ventas, catalogo, costos] = await Promise.all([
+  const [facturasLeidas, cajaChica, cierres, arqueos, dias, desglose, ventas, catalogo, costos, datosRappi] = await Promise.all([
     desde > hasta ? Promise.resolve([] as FacturaPL[]) : leerTodo<FacturaPL>((d, h) => supabase.from("facturas")
       .select("sucursal_id, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(descripcion, importe, cuenta_pl)")
       .lte("cubre_desde", hasta).gte("cubre_hasta", desde).order("id").range(d, h).returns<FacturaPL[]>()),
@@ -90,7 +92,9 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       .returns<{ dodo_id: number; categoria: Categoria | null }[]>()),
     leerTodo<Costo & { dodo_id: number }>((d, h) => supabase.from("costos_producto").select("dodo_id, costo, vigente_desde").lte("vigente_desde", hasta)
       .order("dodo_id").order("vigente_desde").range(d, h).returns<(Costo & { dodo_id: number })[]>()),
+    cargarRappi(supabase,null,desde,hasta),
   ]);
+  const rappi=ventasRappi(datosRappi.ordenes,datosRappi.catalogo);
 
   // Cada factura entra por los días de su periodo que caen en el rango, repartida entre sus conceptos (con su cuenta, o la de la factura).
   const facturas = facturasLeidas
@@ -116,17 +120,17 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
 
   const porSucursal: SucursalPL[] = sucursales.map((s) => {
     const diasSuc = dias.filter((d) => d.sucursal_id === s.id);
-    const diasVenta: DiaVenta[] = diasSuc.map((d) => {
+    const diasVenta: DiaVenta[] = [...diasSuc.map((d) => {
       const ag = agregadorDe.get(d.id);
       return {
         fecha: d.fecha, total: Number(d.total), iva: Number(d.iva), tarjeta: Number(d.tarjeta), en_linea: Number(d.en_linea),
         agregador: { total: Number(ag?.total ?? 0), tarjeta: Number(ag?.tarjeta ?? 0), en_linea: Number(ag?.en_linea ?? 0) },
       };
-    });
+    }),...rappi.dias.filter(d=>d.sucursal_id===s.id).map(d=>({...d,agregador:{total:d.total,tarjeta:0,en_linea:d.total}}))];
     const ventaNeta = centavos(diasVenta.reduce((t, d) => t + d.total - d.iva, 0));
     const ventaRappi = centavos(diasVenta.reduce((t, d) => t + d.agregador.total, 0));
 
-    const renglones = costearProductos(ventas.filter((v) => v.sucursal_id === s.id), diasSuc, catalogo, costos);
+    const renglones = [...costearProductos(ventas.filter(v=>v.sucursal_id===s.id),diasSuc,catalogo,costos),...costearProductos(rappi.productos.filter(v=>v.sucursal_id===s.id),rappi.dias.filter(d=>d.sucursal_id===s.id),catalogo,costos)];
     const c = costeo(renglones);
     anotar(s.id, "alimento", `Costo teórico de ${renglones.reduce((t, r) => t + r.cantidad, 0)} piezas vendidas (receta + periférico)`, c.total.costo);
 
@@ -186,6 +190,8 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     };
 
     const avisos: string[] = [];
+    if(rappi.dias.some(d=>d.sucursal_id===s.id))avisos.push("Incluye ventas del historial Rappi por subtotal restaurante, antes del descuento de Rappi. Revisa la liquidación por separado.");
+    if(diasVenta.some(d=>d.agregador.total>0)&&rappi.dias.some(r=>r.sucursal_id===s.id&&diasSuc.some(d=>d.fecha===r.fecha&&Number(agregadorDe.get(d.id)?.total??0)>0)))avisos.push("Hay ventas de agregador en Dodo IS y órdenes Rappi importadas para los mismos días. Revisa su fuente en Ventas → Rappi para evitar duplicados.");
     if (diasSuc.length < diasRango) avisos.push(`Faltan ${diasRango - diasSuc.length} días de ventas por importar; los % son sobre lo importado.`);
     if (c.sinCosto.length) avisos.push(`${c.sinCosto.length} productos vendidos sin costo quedan fuera del alimento.`);
     const sinCuenta = facturasSuc.filter((x) => partesFactura(x).some((p) => !p.cuenta)).length;
