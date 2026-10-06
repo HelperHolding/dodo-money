@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MenuLateral } from "@/components/MenuLateral";
+import { MigasDePan } from "@/components/MigasDePan";
 import { cerrarSesion } from "@/app/login/actions";
 import { menuLateral, NOMBRE_ROL } from "@/lib/roles";
 import type { Rol } from "@/lib/tipos";
@@ -15,10 +16,11 @@ export function Marco({ perfil, titulo, detalle, aviso, children }: {
   aviso?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const menu = menuLateral(perfil.rol);
   return (
     <div className="marco">
       <MenuLateral
-        menu={menuLateral(perfil.rol)}
+        menu={menu}
         titulo={titulo}
         cabecera={
           <div className="lateral-identidad">
@@ -41,7 +43,7 @@ export function Marco({ perfil, titulo, detalle, aviso, children }: {
       />
       <div className="marco-contenido">
         {aviso}
-        <main className="pagina">{children}</main>
+        <main className="pagina"><MigasDePan menu={menu} />{children}</main>
       </div>
     </div>
   );
