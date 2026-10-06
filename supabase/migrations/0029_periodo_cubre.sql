@@ -50,6 +50,19 @@ begin
 end $$;
 create trigger facturas_periodo_cubre before insert on facturas for each row execute function periodo_cubre_factura();
 
+-- La factura que llega después de su nota de crédito: la nota toma su periodo (igual que cuenta y sucursal en 0025).
+create or replace function notas_siguen_periodo() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.tipo = 'ingreso' and new.uuid is not null then
+    update facturas set cubre_desde = new.cubre_desde, cubre_hasta = new.cubre_hasta
+     where tipo = 'egreso' and uuid_relacionado = new.uuid and estado <> 'cancelada'
+       and (cubre_desde, cubre_hasta) is distinct from (new.cubre_desde, new.cubre_hasta);
+  end if;
+  return null;
+end $$;
+create trigger facturas_notas_siguen_periodo after insert on facturas for each row execute function notas_siguen_periodo();
+
 -- Corregir el periodo (meses completos, de 1 a 24); sus notas de crédito vigentes lo siguen.
 create or replace function cambiar_periodo_factura(p_factura uuid, p_desde date, p_hasta date) returns void
 language plpgsql security definer set search_path = public as $$
@@ -68,6 +81,61 @@ begin
     update facturas set cubre_desde = v_desde, cubre_hasta = v_hasta
      where tipo = 'egreso' and uuid_relacionado = v_uuid and estado <> 'cancelada';
   end if;
+end $$;
+
+-- sustituir_factura_manual (0026) + el CFDI toma el periodo del gasto sin CFDI.
+-- El CFDI que llega sustituye al gasto sin CFDI: los pagos pasan al CFDI y el gasto queda cancelado.
+-- Devuelve {faltan_cuentas: el gasto tenía varias cuentas o renglones sin cuenta (asignar a mano en el CFDI),
+--           sucursal_cambio: el CFDI venía con otra sucursal y se dejó la elegida en el gasto}.
+create or replace function sustituir_factura_manual(p_cfdi uuid, p_manual uuid) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare c facturas; m facturas; v_cuentas integer; v_cuenta text; v_sin boolean;
+begin
+  perform exigir_admin_compras();
+  select * into c from facturas where id = p_cfdi for update;
+  if not found then raise exception 'Factura no encontrada'; end if;
+  select * into m from facturas where id = p_manual for update;
+  if not found then raise exception 'Gasto sin CFDI no encontrado'; end if;
+  if c.origen <> 'cfdi' or c.tipo <> 'ingreso' or c.estado = 'cancelada' then raise exception 'Solo una factura con CFDI vigente sustituye a un gasto sin CFDI.'; end if;
+  if m.origen <> 'manual' then raise exception 'Solo se sustituye un gasto sin CFDI.'; end if;
+  if m.estado = 'cancelada' then raise exception 'Ese gasto sin CFDI ya está cancelado o sustituido.'; end if;
+  if m.proveedor_id <> c.proveedor_id then raise exception 'El CFDI es de otro proveedor.'; end if;
+  if pagado_factura(p_manual) > saldo_factura(p_cfdi) + 0.005 then
+    raise exception 'Lo pagado al gasto (%) pasa el saldo del CFDI (%).', pagado_factura(p_manual), saldo_factura(p_cfdi);
+  end if;
+
+  -- Si un mismo pago ya estaba aplicado a los dos, se suma en el CFDI.
+  update pago_aplicaciones a set monto = a.monto + b.monto
+    from pago_aplicaciones b where a.factura_id = p_cfdi and b.factura_id = p_manual and a.pago_id = b.pago_id;
+  delete from pago_aplicaciones b
+   where b.factura_id = p_manual and exists (select 1 from pago_aplicaciones a where a.factura_id = p_cfdi and a.pago_id = b.pago_id);
+  update pago_aplicaciones set factura_id = p_cfdi where factura_id = p_manual;
+
+  -- Las órdenes ligadas al gasto pasan al CFDI (siguen facturadas).
+  insert into factura_ordenes (factura_id, orden_id) select p_cfdi, orden_id from factura_ordenes where factura_id = p_manual on conflict do nothing;
+  delete from factura_ordenes where factura_id = p_manual;
+
+  -- Manda la sucursal elegida en el gasto: la del CFDI pudo venir de la sucursal por omisión del proveedor.
+  update facturas set sucursal_id = m.sucursal_id where id = p_cfdi;
+  -- Y el periodo que cubre: el gasto se capturó con el que realmente cubre (la prefactura de la renta de octubre).
+  update facturas set cubre_desde = m.cubre_desde, cubre_hasta = m.cubre_hasta where id = p_cfdi;
+
+  -- Cuenta efectiva de cada renglón del gasto (la suya o la de la factura). Si todos tienen la misma, la toma el CFDI;
+  -- si hay varias o alguno sin cuenta, se asignan a mano.
+  select count(distinct coalesce(fc.cuenta_pl, m.cuenta_pl)), min(coalesce(fc.cuenta_pl, m.cuenta_pl)), bool_or(coalesce(fc.cuenta_pl, m.cuenta_pl) is null)
+    into v_cuentas, v_cuenta, v_sin from factura_conceptos fc where fc.factura_id = p_manual;
+  if v_cuentas = 0 then v_cuentas := case when m.cuenta_pl is null then 0 else 1 end; v_cuenta := m.cuenta_pl; v_sin := m.cuenta_pl is null; end if;
+  if v_cuentas = 1 and not coalesce(v_sin, false) then
+    update factura_conceptos set cuenta_pl = v_cuenta where factura_id = p_cfdi and cuenta_pl is null;
+    update facturas set cuenta_pl = v_cuenta where id = p_cfdi;
+  end if;
+
+  update facturas set estado = 'cancelada', sustituido_por = p_cfdi, cancelada_por = auth.uid(), cancelada_en = now(),
+         motivo_cancelacion = 'Sustituido por CFDI ' || coalesce(c.serie || '-', '') || coalesce(c.folio, c.uuid)
+   where id = p_manual;
+  perform actualizar_estado_factura(p_cfdi);
+  return jsonb_build_object('faltan_cuentas', v_cuentas > 1 or coalesce(v_sin, false),
+                            'sucursal_cambio', c.sucursal_id is distinct from m.sucursal_id);
 end $$;
 
 revoke execute on function periodo_cubre(date, integer, text), cambiar_periodo_factura(uuid, date, date) from public, anon;

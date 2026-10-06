@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "./gastos.ts";
+import { enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "./gastos.ts";
 
 test("facturasAGastos: subtotal − descuento; notas de crédito restan; canceladas fuera; memos aparte", () => {
   const r = facturasAGastos([
@@ -46,4 +46,8 @@ test("facturasAGastos reparte por conceptos", () => {
   const r = facturasAGastos([{ tipo: "ingreso", estado: "por_pagar", subtotal: 31200, descuento: 0, cuenta_pl: "renta",
     conceptos: [{ importe: 30000, cuenta_pl: "renta" }, { importe: 1200, cuenta_pl: "servicios" }] }]);
   assert.deepEqual(r, { gastos: { renta: 30000, servicios: 1200 }, sinCuenta: 0, memos: { insumos: 0, inversiones: 0 } });
+});
+
+test("enResultado: suma lo que mueve el resultado; insumos e inversiones (memo) no", () => {
+  assert.equal(enResultado([{ cuenta: "servicios", monto: 100 }, { cuenta: "insumos", monto: 900 }, { cuenta: null, monto: 5 }, { cuenta: "inversiones", monto: 50 }]), 105);
 });

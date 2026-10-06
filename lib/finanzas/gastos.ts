@@ -42,5 +42,9 @@ export function sumarGastos(...partes: Partial<Record<CuentaGasto, number>>[]): 
   return r;
 }
 
+/** Lo que mueve el resultado del P&L: todas las partes menos insumos e inversiones (van al memo). */
+export const enResultado = (partes: readonly { cuenta: string | null; monto: number }[]) =>
+  centavos(partes.filter((p) => p.cuenta !== "insumos" && p.cuenta !== "inversiones").reduce((t, p) => t + p.monto, 0));
+
 /** Faltantes de efectivo como gasto: −Σ diferencias (una diferencia negativa es faltante). */
 export const faltantesDe = (diferencias: readonly number[]) => centavos(-diferencias.reduce((s, d) => s + Number(d), 0));

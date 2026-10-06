@@ -4,7 +4,7 @@
 
 do $$
 declare
-  v_a uuid; v_c uuid; v_prov uuid; v_f uuid; v_ing uuid; v_nota uuid; v_p record; v_rfc text;
+  v_a uuid; v_c uuid; v_prov uuid; v_f uuid; v_ing uuid; v_nota uuid; v_m uuid; v_sus uuid; v_nota2 uuid; v_p record; v_rfc text;
   v_ok text[] := '{}';
   ren jsonb := jsonb_build_array(jsonb_build_object('descripcion', 'Luz', 'importe', 100, 'cuenta_pl', 'servicios'));
 begin
@@ -82,6 +82,31 @@ begin
     if sqlerrm <> 'Factura no encontrada o cancelada' then raise exception 'FALLÓ: mensaje inesperado (cancelada): %', sqlerrm; end if;
   end;
   v_ok := array_append(v_ok, 'rechaza al revés, más de 24 meses y canceladas');
+
+  -- El CFDI que sustituye a un gasto sin CFDI toma el periodo del gasto.
+  v_m := registrar_gasto_manual(jsonb_build_object('proveedor_id', v_prov, 'sucursal_id', null, 'fecha', hoy_mx(), 'folio', 'RENTA-OCT',
+    'renglones', ren, 'subtotal', 100, 'iva', 0, 'retencion_iva', 0, 'retencion_isr', 0, 'total', 100));
+  perform cambiar_periodo_factura(v_m, '2026-10-01', '2026-10-31');
+  insert into facturas (origen, uuid, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, rfc_receptor, subtotal, total, proveedor_id, vence_el, xml_ruta)
+  values ('cfdi', 'PRUEBA-0029-SUS', 'ingreso', '2026-09-28', 'PRUE800101AB2', 'Proveedor 0029', '601', v_rfc, 100, 100, v_prov, hoy_mx(), 'prueba-0029-sus.xml')
+  returning id into v_sus;
+  perform sustituir_factura_manual(v_sus, v_m);
+  if (select cubre_desde from facturas where id = v_sus) <> '2026-10-01' or (select cubre_hasta from facturas where id = v_sus) <> '2026-10-31' then
+    raise exception 'FALLÓ: el CFDI que sustituye toma el periodo del gasto sin CFDI';
+  end if;
+  v_ok := array_append(v_ok, 'el CFDI que sustituye toma el periodo del gasto');
+
+  -- Nota de crédito subida antes que su factura: al llegar la factura, la nota toma su periodo.
+  insert into facturas (origen, uuid, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, rfc_receptor, subtotal, total, proveedor_id, vence_el, xml_ruta, uuid_relacionado)
+  values ('cfdi', 'PRUEBA-0029-EGR2', 'egreso', '2026-11-03', 'PRUE800101AB2', 'Proveedor 0029', '601', v_rfc, 10, 10, v_prov, '2026-11-03', 'prueba-0029-nc2.xml', 'PRUEBA-0029-ING2')
+  returning id into v_nota2;
+  if (select cubre_desde from facturas where id = v_nota2) <> '2026-09-01' then raise exception 'FALLÓ: la nota sin factura usa la regla del proveedor'; end if;
+  insert into facturas (origen, uuid, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, rfc_receptor, subtotal, total, proveedor_id, vence_el, xml_ruta)
+  values ('cfdi', 'PRUEBA-0029-ING2', 'ingreso', '2026-10-05', 'PRUE800101AB2', 'Proveedor 0029', '601', v_rfc, 100, 100, v_prov, '2026-10-05', 'prueba-0029-ing2.xml');
+  if (select cubre_desde from facturas where id = v_nota2) <> '2026-08-01' or (select cubre_hasta from facturas where id = v_nota2) <> '2026-09-30' then
+    raise exception 'FALLÓ: la nota subida antes toma el periodo de su factura al llegar';
+  end if;
+  v_ok := array_append(v_ok, 'nota subida antes que su factura se alinea al llegar la factura');
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_c, 'role', 'authenticated')::text, true);
   begin

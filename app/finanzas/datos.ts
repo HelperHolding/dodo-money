@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { comisionesCobro, comisionRappi, regalias, type DiaVenta, type Vigente } from "@/lib/finanzas/comisiones";
-import { facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "@/lib/finanzas/gastos";
+import { enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "@/lib/finanzas/gastos";
 import { costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Puesto } from "@/lib/finanzas/nomina";
 import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
 import { acumuladoDe, anteriorDe, columnasComparativo, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
@@ -97,10 +97,10 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     .map((x) => ({ ...x, conceptos: x.factura_conceptos, parte: fraccionCubre({ desde: x.cubre_desde, hasta: x.cubre_hasta }, rango) }))
     .filter((x) => x.parte.dias > 0);
   const fraccionDe = (x: (typeof facturas)[number]) => x.parte.fraccion;
-  /** "2 recibos llegaron después del cierre del mes: $3,950.00." (capturados cuando el mes del rango ya había terminado). */
+  /** "2 recibos llegaron después del cierre del mes: $3,950.00." (capturados con el mes del rango ya terminado; sin insumos ni inversiones). */
   const avisoTardias = (lista: typeof facturas) => {
     const t = capturasTardias(lista.map((x) => ({
-      capturada: fechaMX(x.creado_en), monto: partesFactura(x, x.parte.fraccion).reduce((s, p) => s + p.monto, 0),
+      capturada: fechaMX(x.creado_en), monto: enResultado(partesFactura(x, x.parte.fraccion)),
     })), hasta);
     return t.n ? [`${t.n} ${t.n === 1 ? "recibo llegó" : "recibos llegaron"} después del cierre del mes: ${pesos(t.monto)}.`] : [];
   };
