@@ -19,12 +19,12 @@ test("sumarGastos y faltantes", () => {
   assert.equal(faltantesDe([-50, 20, -10.5]), 40.5);
 });
 
-test("facturasAGastos con fracción: cada factura por la parte de su mes", () => {
+test("facturasAGastos con fracción: cada factura por su propia fracción", () => {
   const r = facturasAGastos([
     { tipo: "ingreso", estado: "pagada", subtotal: 3000, descuento: 0, cuenta_pl: "renta", fecha_emision: "2026-09-05" },
     { tipo: "ingreso", estado: "pagada", subtotal: 3100, descuento: 0, cuenta_pl: "renta", fecha_emision: "2026-10-02" },
     { tipo: "egreso", estado: "pagada", subtotal: 310, descuento: 0, cuenta_pl: null, fecha_emision: "2026-10-20" },
-  ], (f) => (f.startsWith("2026-09") ? 0.1 : 4 / 31));
+  ], (f) => (f.fecha_emision?.startsWith("2026-09") ? 0.1 : 4 / 31));
   assert.deepEqual(r, { gastos: { renta: 700 }, sinCuenta: -40, memos: { insumos: 0, inversiones: 0 } });
 });
 

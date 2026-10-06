@@ -20,7 +20,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: p } = await supabase.from("proveedores")
-    .select("id, razon_social, nombre_comercial, numero_cliente, dias_entrega, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, cuenta_pl, sucursal_id, activo, motivo_desactivacion, desactivado_en")
+    .select("id, razon_social, nombre_comercial, numero_cliente, dias_entrega, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, cuenta_pl, sucursal_id, cubre_meses, cubre_inicio, activo, motivo_desactivacion, desactivado_en")
     .eq("id", id).maybeSingle<Proveedor>();
   if (!p) notFound();
   const edita = puedeEditarCompras(perfil.rol);
