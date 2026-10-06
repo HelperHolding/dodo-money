@@ -40,7 +40,7 @@ export function hojaPL(r: {
   const cuerpo = porSecciones(pre, (clave) => {
     const f = de.get(clave);
     return f ? [
-      f.nombre, f.monto === null ? "Sin dato" : contable(f.monto), pct(f.pct), contable(f.meta), pct(f.metaPct), contable(f.diferencia),
+      f.nombre, f.monto === null ? "Sin dato" : contable(f.monto), pct(f.pct), contable(f.meta), pct(f.metaPct), f.sinCapturar ? "Sin capturar" : contable(f.diferencia),
       r.anterior ? pct(r.anterior.get(f.clave)) : null, pct(r.acumulado.get(f.clave)),
     ] : null;
   }, {
