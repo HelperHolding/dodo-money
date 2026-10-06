@@ -9,6 +9,8 @@ import { NOMBRE_FORMA_PAGO, type FormaPago } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { CalendarioPagos, type FacturaDelDia } from "./CalendarioPagos";
+import { diaDePagoSugerido } from "@/lib/compras/diasPago";
+import { diasDePago } from "../servidor";
 import { FormComplementos } from "./FormComplementos";
 
 type Factura = {
@@ -24,7 +26,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const { proveedor = "", sucursal = "", complemento, ok, error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
   const hoy = hoyCalendarioMX();
-  const [facturas, pagos, ligas, { data: proveedores }, { data: sucursales }, { data: conComplemento }, aplicacionesMes] = await Promise.all([
+  const [facturasLeidas, pagos, ligas, { data: proveedores }, { data: sucursales }, { data: conComplemento }, aplicacionesMes] = await Promise.all([
     leerTodo<Factura>((d, h) => supabase.from("facturas_saldo")
       .select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
       .eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).order("vence_el").order("id").range(d, h).returns<Factura[]>()),
@@ -42,6 +44,10 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
       .select("pago_id, factura_id, monto, facturas(sucursal_id), pagos!inner(fecha, anulado_en, proveedor_id)")
       .gte("pagos.fecha", `${hoy.slice(0, 7)}-01`).order("id").range(d, h).returns<Aplicacion[]>()),
   ]);
+
+  // Sin fecha programada, una factura se paga en su día de pago sugerido (el autorizado anterior a su vencimiento).
+  const dias = await diasDePago(supabase);
+  const facturas = facturasLeidas.map((f) => ({ ...f, pago_sugerido_el: diaDePagoSugerido(f.vence_el, hoy, dias) }));
 
   // Sucursal de una factura: la de sus órdenes o, sin orden, su destino ("oficina" = sin sucursal).
   const sucursalesDe = new Map<string, Set<string>>();
@@ -99,7 +105,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
     <>
       <div className="encabezado">
         <h1>Pagos</h1>
-        <p>Lo que hay que pagar a proveedores, por fecha. {edita && <Link href="/compras/pagos/nuevo">Registrar un pago</Link>}</p>
+        <p>Lo que hay que pagar a proveedores, por fecha. <Link href="/compras/pagos/programar">Programar pagos</Link>{edita && <> · <Link href="/compras/pagos/nuevo">Registrar un pago</Link></>}</p>
       </div>
       <Aviso ok={ok} error={error} />
 

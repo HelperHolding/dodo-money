@@ -4,15 +4,20 @@ import { useState } from "react";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { fechaTexto, pesos } from "@/lib/formato";
 import { repartirConAjustes, revisarPago, type PorPagar } from "@/lib/compras/pagos";
+import { esDiaDePago, NOMBRE_DIA } from "@/lib/compras/diasPago";
 import { FORMAS_PAGO, NOMBRE_FORMA_PAGO, type FormaPago } from "@/lib/compras/proveedores";
 import { registrarPago } from "../acciones";
 
 export type FacturaParaPagar = PorPagar & { nombre: string; bloqueada: string | null };
 
 /** El monto se reparte solo por fecha de pago; cada factura se puede ajustar a mano. */
-export function FormPago({ proveedorId, facturas, forma, hoy, preseleccion }: {
+export function FormPago({ proveedorId, facturas, forma, hoy, preseleccion, dias }: {
   proveedorId: string; facturas: FacturaParaPagar[]; forma: FormaPago; hoy: string; preseleccion: string | null;
+  /** Días de pago autorizados (ISO): otro día pide motivo. */
+  dias: number[];
 }) {
+  const [fecha, setFecha] = useState(hoy);
+  const diaDePago = esDiaDePago(fecha, dias);
   const pagables = facturas.filter((f) => !f.bloqueada);
   const inicial = preseleccion ? String(pagables.find((f) => f.id === preseleccion)?.saldo ?? "") : "";
   const [monto, setMonto] = useState(inicial);
@@ -36,13 +41,20 @@ export function FormPago({ proveedorId, facturas, forma, hoy, preseleccion }: {
           <label htmlFor="monto">Monto pagado</label>
           <input id="monto" name="monto" inputMode="decimal" required value={monto} onChange={(e) => { setMonto(e.target.value); setManual(deLaElegida(e.target.value)); }} />
         </div>
-        <div className="campo"><label htmlFor="fecha">Fecha del pago</label><input id="fecha" name="fecha" type="date" defaultValue={hoy} max={hoy} required /></div>
+        <div className="campo"><label htmlFor="fecha">Fecha del pago</label><input id="fecha" name="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} max={hoy} required /></div>
         <div className="campo">
           <label htmlFor="forma">Forma</label>
           <select id="forma" name="forma" defaultValue={forma}>{FORMAS_PAGO.map((x) => <option key={x} value={x}>{NOMBRE_FORMA_PAGO[x]}</option>)}</select>
         </div>
         <div className="campo"><label htmlFor="cuenta_origen">Cuenta de origen</label><input id="cuenta_origen" name="cuenta_origen" placeholder="Ej. BBVA empresa" /></div>
         <div className="campo"><label htmlFor="referencia">Referencia o clave de rastreo</label><input id="referencia" name="referencia" /></div>
+        {!diaDePago && (
+          <div className="campo">
+            <label htmlFor="motivo_fuera_de_dia">Motivo: no es día de pago</label>
+            <input id="motivo_fuera_de_dia" name="motivo_fuera_de_dia" required placeholder="Ej. el proveedor corta el servicio" />
+            <small>Los días de pago son: {dias.map((d) => NOMBRE_DIA[d].toLowerCase()).join(", ")}.</small>
+          </div>
+        )}
         <div className="campo"><label htmlFor="comprobante">Comprobante (PDF o foto, opcional)</label><input id="comprobante" name="comprobante" type="file" accept="application/pdf,image/*" /></div>
       </div>
 

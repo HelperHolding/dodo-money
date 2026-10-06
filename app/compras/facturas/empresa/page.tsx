@@ -3,6 +3,7 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import type { DatosEmpresa } from "@/lib/compras/empresa";
 import { nombreRegimen, REGIMENES } from "@/lib/compras/proveedores";
+import { NOMBRE_DIA } from "@/lib/compras/diasPago";
 import { puedeEditarCompras } from "@/lib/roles";
 import { CampoConstancia } from "../../CampoConstancia";
 import { guardarEmpresa } from "../acciones";
@@ -10,8 +11,9 @@ import { guardarEmpresa } from "../acciones";
 export default async function Empresa({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
-  const { data: e } = await supabase.from("empresa").select("rfc, razon_social, regimen_fiscal, codigo_postal, domicilio, correo_compras")
-    .maybeSingle<DatosEmpresa>();
+  const { data: e } = await supabase.from("empresa").select("rfc, razon_social, regimen_fiscal, codigo_postal, domicilio, correo_compras, dias_pago")
+    .maybeSingle<DatosEmpresa & { dias_pago: number[] | null }>();
+  const diasPago = e?.dias_pago?.length ? e.dias_pago.map(Number) : [5];
   const edita = puedeEditarCompras(perfil.rol);
   const campo = (nombre: keyof DatosEmpresa, etiqueta: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <div className="campo"><label htmlFor={nombre}>{etiqueta}</label><input id={nombre} name={nombre} defaultValue={e?.[nombre] ?? ""} {...extra} /></div>
@@ -40,6 +42,15 @@ export default async function Empresa({ searchParams }: { searchParams: Promise<
             {campo("domicilio", "Domicilio", { placeholder: "Calle, número, colonia, ciudad" })}
             {campo("correo_compras", "Correo de compras", { type: "email" })}
           </div>
+          <fieldset className="campo">
+            <legend>Días de pago autorizados</legend>
+            <div className="acciones">
+              {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                <label key={d}><input type="checkbox" name="dias_pago" value={d} defaultChecked={diasPago.includes(d)} /> {NOMBRE_DIA[d]}</label>
+              ))}
+            </div>
+            <small>Los pagos a proveedores se programan solo en estos días; un pago otro día pide motivo.</small>
+          </fieldset>
           <BotonEnviar>Guardar</BotonEnviar>
         </form>
       ) : (

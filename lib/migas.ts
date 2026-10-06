@@ -18,6 +18,7 @@ const PAGINAS: readonly { patron: string; texto: string; sinRegresar?: boolean }
   { patron: "/compras/ordenes/:id", texto: "Orden" },
   { patron: "/compras/ordenes/:id/comparar", texto: "Comparar" },
   { patron: "/compras/pagos/nuevo", texto: "Nuevo pago" },
+  { patron: "/compras/pagos/programar", texto: "Programar pagos" },
   { patron: "/compras/pagos/:id", texto: "Pago" },
   { patron: "/ventas/costos/cargar", texto: "Cargar costos" },
   { patron: "/turnos/:id", texto: "Turno", sinRegresar: true },
