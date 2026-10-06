@@ -20,6 +20,8 @@ begin
   update perfiles set rol = 'gerente' where id = v_b;
   delete from empresa;
   insert into empresa (rfc, razon_social) values ('DPM010203XY9', 'Dodo Pizza Prueba');
+  -- Desde 0028 los pagos solo se programan en días autorizados: aquí todos los días lo son (se deshace al final).
+  update empresa set dias_pago = '{1,2,3,4,5,6,7}';
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_a, 'role', 'authenticated')::text, true);
   execute 'set local role authenticated';

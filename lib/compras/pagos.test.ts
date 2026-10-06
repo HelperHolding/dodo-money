@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fechaDePago, finDeSemana, grupoPorPagar, pagadoDelMes, repartirConAjustes, repartirPago, resumenPagos, revisarPago, type PorPagar } from "./pagos.ts";
+import { fechaDePago, finDeSemana, grupoPorPagar, pagadoDelMes, repartirConAjustes, repartirPago, resumenPagos, revisarPago, type PorPagar, agruparPorDiaDePago } from "./pagos.ts";
 
 const f = (id: string, saldo: number, vence_el: string, pago_programado_el: string | null = null): PorPagar =>
   ({ id, saldo, vence_el, pago_programado_el, estado: "por_pagar" });
@@ -75,4 +75,40 @@ test("pagado del mes desde lo aplicado: respeta el filtro y cuenta pagos distint
   ];
   assert.deepEqual(pagadoDelMes(aplicaciones, "2026-10-15"), { monto: 500.3, pagos: 2 });
   assert.deepEqual(pagadoDelMes([], "2026-10-15"), { monto: 0, pagos: 0 });
+});
+
+test("fechaDePago: programada, si no la sugerida, si no el vencimiento", () => {
+  assert.equal(fechaDePago({ vence_el: "2026-10-14", pago_programado_el: null, pago_sugerido_el: "2026-10-09" }), "2026-10-09");
+  assert.equal(fechaDePago({ vence_el: "2026-10-14", pago_programado_el: "2026-10-16", pago_sugerido_el: "2026-10-09" }), "2026-10-16");
+  assert.equal(fechaDePago({ vence_el: "2026-10-14", pago_programado_el: null }), "2026-10-14");
+});
+
+test("agruparPorDiaDePago: por día con su total; lo atrasado cae en el próximo día de pago", () => {
+  const f = (id: string, saldo: number, vence: string, programada: string | null, sugerida: string) =>
+    ({ id, saldo, vence_el: vence, pago_programado_el: programada, pago_sugerido_el: sugerida, estado: "por_pagar" as const });
+  const g = agruparPorDiaDePago([
+    f("a", 100, "2026-10-14", null, "2026-10-09"),
+    f("b", 50.5, "2026-10-16", "2026-10-16", "2026-10-16"),
+    f("c", 10, "2026-10-01", null, "2026-10-09"),
+    f("d", 20, "2026-10-20", "2026-10-02", "2026-10-16"),
+  ], "2026-10-06", "2026-10-09");
+  assert.deepEqual(g.map((x) => [x.dia, x.total, x.facturas.map((y) => `${y.id}${y.programada ? "P" : ""}${y.atrasada ? "!" : ""}`)]),
+    [["2026-10-09", 130, ["a", "c!", "dP!"]], ["2026-10-16", 50.5, ["bP"]]]);
+});
+
+test("agruparPorDiaDePago: una vencida sigue marcada aunque ya esté programada", () => {
+  const g = agruparPorDiaDePago([
+    { id: "v", saldo: 10, vence_el: "2026-10-01", pago_programado_el: "2026-10-09", pago_sugerido_el: "2026-10-09", estado: "por_pagar" as const },
+  ], "2026-10-06", "2026-10-09");
+  assert.deepEqual([g[0].facturas[0].programada, g[0].facturas[0].atrasada], [true, true]);
+});
+
+test("agruparPorDiaDePago: avisa cuando el día de pago cae después del vencimiento", () => {
+  // Sábado 17/10: vence el lunes 19 y el viernes 16 ya pasó, así que su día de pago es el 23 (tarde).
+  const g = agruparPorDiaDePago([
+    { id: "t", saldo: 10, vence_el: "2026-10-19", pago_programado_el: null, pago_sugerido_el: "2026-10-23", estado: "por_pagar" as const },
+    { id: "ok", saldo: 10, vence_el: "2026-10-30", pago_programado_el: null, pago_sugerido_el: "2026-10-30", estado: "por_pagar" as const },
+  ], "2026-10-17", "2026-10-23");
+  const t = g.flatMap((x) => x.facturas).map((x) => [x.id, x.tarde, x.atrasada]);
+  assert.deepEqual(t, [["t", true, false], ["ok", false, false]]);
 });

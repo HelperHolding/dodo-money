@@ -9,6 +9,8 @@ import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { cotejar, NOMBRE_COTEJO, nombreEstadoFactura, nombreFactura, valorRecibido, vencida, type EstadoFactura } from "@/lib/compras/facturas";
 import { avanceOrden, totalesOrden } from "@/lib/compras/ordenes";
 import { nombreRegimen, type TasaIva } from "@/lib/compras/proveedores";
+import { diaDePagoSugerido, proximosDiasDePago, textoDia } from "@/lib/compras/diasPago";
+import { diasDePago } from "../../servidor";
 import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA, esCuentaPl } from "@/lib/finanzas/cuentas";
 import { puedeEditarCompras } from "@/lib/roles";
 import {
@@ -85,6 +87,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const notasVigentes = f.tipo === "ingreso" ? (relacionadas ?? []).filter((n) => n.estado !== "cancelada").length : 0;
   const regimenDistinto = f.proveedores && f.regimen_emisor && f.regimen_emisor !== f.proveedores.regimen_fiscal;
   const hoy = hoyCalendarioMX();
+  const dias = await diasDePago(supabase);
+  const diasOpciones = proximosDiasDePago(hoy, dias, 8);
 
   return (
     <>
@@ -269,7 +273,14 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           {f.tipo === "ingreso" && (f.estado === "por_pagar" || f.estado === "parcial") && (
             <form action={programarPagoFactura} className="formulario">
               <input type="hidden" name="id" value={f.id} />
-              <div className="campo"><label htmlFor="programada">Fecha programada de pago (vacía = la del vencimiento)</label><input id="programada" name="pago_programado_el" type="date" defaultValue={f.pago_programado_el ?? ""} /></div>
+              <div className="campo">
+                <label htmlFor="programada">Día de pago</label>
+                <select id="programada" name="pago_programado_el" defaultValue={f.pago_programado_el ?? ""}>
+                  <option value="">Sin programar (sugerido: {textoDia(diaDePagoSugerido(f.vence_el, hoy, dias))})</option>
+                  {f.pago_programado_el && !diasOpciones.includes(f.pago_programado_el) && <option value={f.pago_programado_el}>{textoDia(f.pago_programado_el)}</option>}
+                  {diasOpciones.map((d) => <option key={d} value={d}>{textoDia(d)}</option>)}
+                </select>
+              </div>
               <BotonEnviar className="boton boton-secundario">Programar</BotonEnviar>
             </form>
           )}

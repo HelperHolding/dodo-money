@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { resumenPagos, type PorPagar } from "@/lib/compras/pagos";
+import { diaDePagoSugerido } from "@/lib/compras/diasPago";
+import { diasDePago } from "@/app/compras/servidor";
 import { obtenerPerfil } from "@/lib/contexto";
 import { alertasDeSucursal, fechaElegida, ordenarSucursales, type Alerta } from "@/lib/corporativo";
 import { diaOperativoMX } from "@/lib/franjas";
@@ -29,7 +31,9 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
       .returns<{ estado: EstadoMovimiento; recepcion: Recepcion | null; monto: number }[]>(),
   ]);
   const efectivo = resumenEnCamino(salidas ?? []);
-  const proveedoresResumen = resumenPagos(porPagar ?? [], (pagosMes ?? []).map((p) => ({ fecha: p.fecha, monto: Number(p.monto), anulado: !!p.anulado_en })), hoyCalendario);
+  const dias = await diasDePago(supabase);
+  const conSugerido = (porPagar ?? []).map((f) => ({ ...f, pago_sugerido_el: diaDePagoSugerido(f.vence_el, hoyCalendario, dias) }));
+  const proveedoresResumen = resumenPagos(conSugerido, (pagosMes ?? []).map((p) => ({ fecha: p.fecha, monto: Number(p.monto), anulado: !!p.anulado_en })), hoyCalendario);
   const filas = ordenarSucursales(datos.map((d) => ({ ...d, alertas: alertasDeSucursal(d, fecha < hoy) })));
   const conAlertas = filas.filter((f) => f.alertas.length > 0).length;
   const venta = filas.reduce((suma, f) => suma + (f.cierre?.ventaTotal ?? 0), 0);

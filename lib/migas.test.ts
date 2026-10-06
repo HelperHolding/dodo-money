@@ -38,3 +38,7 @@ test("el detalle de un turno no lleva botón genérico (la página regresa a los
   assert.equal(texto(r), "Sucursal › Turnos(/turnos) › Turno");
   assert.equal(r.regresar, null);
 });
+
+test("programar pagos queda bajo Pagos", () => {
+  assert.equal(texto(migas("/compras/pagos/programar", admin)), "Compras › Pagos(/compras/pagos) › Programar pagos");
+});

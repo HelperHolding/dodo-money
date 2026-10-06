@@ -6,6 +6,7 @@ import { NOMBRE_COTEJO, nombreFactura, type Cotejo, type EstadoFactura } from "@
 import type { FormaPago } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import { FormPago, type FacturaParaPagar } from "./FormPago";
+import { diasDePago } from "../../servidor";
 
 type Factura = { id: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null; estado: EstadoFactura; revisada: boolean };
 
@@ -46,7 +47,7 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
       </form>
       {elegido && (!facturas.length
         ? <p className="vacio">Este proveedor no tiene facturas por pagar.</p>
-        : <FormPago proveedorId={elegido.id} facturas={facturas} forma={elegido.forma_pago_habitual} hoy={hoyCalendarioMX()} preseleccion={factura} />)}
+        : <FormPago proveedorId={elegido.id} facturas={facturas} forma={elegido.forma_pago_habitual} hoy={hoyCalendarioMX()} preseleccion={factura} dias={await diasDePago(supabase)} />)}
     </>
   );
 }

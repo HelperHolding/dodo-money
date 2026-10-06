@@ -7,6 +7,7 @@ import { leerComplementoPago } from "@/lib/compras/cfdi";
 import { archivoYaSubido } from "@/lib/compras/facturas";
 import { revisarPago } from "@/lib/compras/pagos";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
+import { textoDia } from "@/lib/compras/diasPago";
 import { clienteAdmin, volver } from "../servidor";
 
 const BUCKET = "facturas";
@@ -76,7 +77,7 @@ export async function registrarPago(fd: FormData) {
   const { data: id, error } = await supabase.rpc("registrar_pago", {
     p_proveedor: proveedor, p_fecha: String(fd.get("fecha") ?? ""), p_monto: monto, p_forma: String(fd.get("forma") ?? "transferencia"),
     p_cuenta: String(fd.get("cuenta_origen") ?? ""), p_referencia: String(fd.get("referencia") ?? ""), p_comprobante: rutaComprobante,
-    p_aplicaciones: aplicaciones,
+    p_aplicaciones: aplicaciones, p_motivo_fuera_de_dia: String(fd.get("motivo_fuera_de_dia") ?? "").trim() || null,
   });
   if (error) volver(ruta, "error", error.message);
   revalidatePath("/compras", "layout");
@@ -91,4 +92,17 @@ export async function anularPago(fd: FormData) {
   if (error) volver(ruta, "error", error.message);
   revalidatePath("/compras", "layout");
   volver(ruta, "ok", "Pago anulado. Las facturas recuperaron su saldo.");
+}
+
+/** Programa en bloque las facturas marcadas para un día de pago autorizado. */
+export async function programarPagos(fd: FormData) {
+  const ruta = `/compras/pagos/programar${String(fd.get("volver") ?? "")}`;
+  const supabase = await clienteAdmin(ruta);
+  const facturas = fd.getAll("factura").map(String);
+  const dia = String(fd.get("dia") ?? "");
+  if (!facturas.length) volver(ruta, "error", "Marca al menos una factura.");
+  const { data: n, error } = await supabase.rpc("programar_pagos", { p_facturas: facturas, p_fecha: dia });
+  if (error) volver(ruta, "error", error.message);
+  revalidatePath("/compras", "layout");
+  volver(ruta, "ok", `${n} ${n === 1 ? "factura programada" : "facturas programadas"} para el ${textoDia(dia)}.`);
 }
