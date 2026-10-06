@@ -1,14 +1,22 @@
 /**
  * Fondos fijos del efectivo de cada sucursal:
- *   · cajón de venta: cada turno arranca con su fondo (500) y al cerrar todo lo demás va a la bóveda;
+ *   · cajero: cada turno arranca con su fondo (500) y al cerrar todo lo demás pasa solo a la bóveda;
  *   · bóveda: después de la salida a corporativo se queda con su fondo (4,500, de ellos 3,000 de emergencia).
  */
 
 const mxn = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 const centavos = (n: number) => Math.round(n * 100) / 100;
 
-/** Lo que se retira del cajón a la bóveda al cerrar el turno para dejarlo con su fondo. */
+/** Lo que pasa del cajero a la bóveda al cerrar el turno para dejarlo con su fondo. */
 export const retiroABoveda = (contado: number, fondoCajon: number) => Math.max(0, centavos(contado - fondoCajon));
+
+/** Mensaje al guardar el arqueo de cierre: el retiro a la bóveda ya lo registró la base (ver 0027). */
+export function mensajeCierre(contado: number, fondoCajero: number): string {
+  const retiro = retiroABoveda(contado, fondoCajero);
+  return retiro > 0
+    ? `Arqueo de cierre guardado y turno cerrado. Se pasaron ${mxn.format(retiro)} a la bóveda; el cajero queda con ${mxn.format(fondoCajero)}.`
+    : `Arqueo de cierre guardado y turno cerrado. El cajero no pasa de ${mxn.format(fondoCajero)}: no hubo retiro a la bóveda.`;
+}
 
 export type Boveda = { saldoBoveda: number; salidasPendientes: number; fondoBoveda: number };
 
