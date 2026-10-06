@@ -5,7 +5,7 @@ import { costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Pues
 import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
 import { acumuladoDe, anteriorDe, columnasComparativo, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
 import {
-  calcularPL, entradaVacia, escalarMetas, INICIO_FECHA, sumarEntradas, sumarMetas,
+  avisosSinCapturar, calcularPL, entradaVacia, escalarMetas, INICIO_FECHA, sumarEntradas, sumarMetas,
   type ContextoMeta, type EntradaPL, type FilaPL, type Meta,
 } from "@/lib/finanzas/pl";
 import type { ColumnaPL } from "@/lib/finanzas/excel";
@@ -214,11 +214,17 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
 /** P&L de una sucursal (o consolidado si no hay o no existe) en un periodo ya cargado. */
 export function vistaPL(d: DatosPeriodo, sucursalId: string | undefined) {
   const suc = d.porSucursal.find((s) => s.id === sucursalId) ?? null;
-  if (suc) return { suc, titulo: suc.nombre, entrada: suc.entrada, filas: calcularPL(suc.entrada, suc.metas, suc.ctx), avisos: suc.avisos };
+  if (suc) {
+    const filas = calcularPL(suc.entrada, suc.metas, suc.ctx);
+    return { suc, titulo: suc.nombre, entrada: suc.entrada, filas, avisos: [...avisosSinCapturar(filas), ...suc.avisos] };
+  }
+  // En el consolidado, los costos fijos sin capturar se avisan por sucursal (ahí es donde falta capturarlos).
+  const porSucursal = d.porSucursal.flatMap((s) =>
+    [...avisosSinCapturar(calcularPL(s.entrada, s.metas, s.ctx)), ...s.avisos].map((a) => `${s.nombre}: ${a}`));
   return {
     suc: null, titulo: "Consolidado", entrada: d.consolidado.entrada,
     filas: calcularPL(d.consolidado.entrada, sumarMetas(d.porSucursal), d.consolidado.ctx),
-    avisos: [...d.avisosOficina, ...d.porSucursal.flatMap((s) => s.avisos.map((a) => `${s.nombre}: ${a}`))],
+    avisos: [...d.avisosOficina, ...porSucursal],
   };
 }
 

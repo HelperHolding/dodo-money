@@ -66,7 +66,11 @@ export function sumarEntradas(entradas: readonly EntradaPL[]): EntradaPL {
   return s;
 }
 
-export type Meta = { renglon: string; tipo: "pct" | "monto" | "pct_rappi" | "plantilla"; valor: number };
+export type Meta = {
+  renglon: string; tipo: "pct" | "monto" | "pct_rappi" | "plantilla"; valor: number;
+  /** En el consolidado (todo pasa a monto): si en las sucursales era un monto fijo o plantilla. */
+  fijo?: boolean;
+};
 export type ContextoMeta = { ventaNeta: number; ventaRappi: number; plantilla: { cocina: number; gerencia: number } };
 
 export function metaMonto(meta: Meta, ctx: ContextoMeta): number {
@@ -80,6 +84,10 @@ export function metaMonto(meta: Meta, ctx: ContextoMeta): number {
 export type FilaPL = {
   clave: ClaveRenglon; nombre: string; tipo: "venta" | "gasto" | "total";
   monto: number | null; pct: number | null; meta: number | null; metaPct: number | null; diferencia: number | null;
+  /** La meta es un monto fijo (renta, servicios, plantilla de nómina…): se muestra en pesos. */
+  metaFija: boolean;
+  /** Costo fijo con meta y real en cero: falta capturarlo, no es un ahorro. */
+  sinCapturar: boolean;
 };
 
 export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMeta): FilaPL[] {
@@ -108,22 +116,35 @@ export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMe
   if (hayMetas) metaDe.set("margen_bruto", centavos(ctx.ventaNeta - (metaDe.get("alimento") ?? 0) - (metaDe.get("merma") ?? 0)));
 
   const pct = (n: number | null | undefined) => (n === null || n === undefined || e.ventaNeta <= 0 ? null : Math.round((n / e.ventaNeta) * 10000) / 10000);
+  const fija = new Set(metas.filter((m) => (m.tipo === "monto" || m.tipo === "plantilla") && m.fijo !== false).map((m) => m.renglon));
   return RENGLONES.map((r) => {
     const monto = montos[r.clave] ?? null;
     const meta = metaDe.has(r.clave) ? metaDe.get(r.clave) ?? null : null;
+    const metaFija = r.tipo === "gasto" && fija.has(r.clave);
     return {
       clave: r.clave, nombre: r.nombre, tipo: r.tipo, monto, pct: pct(monto), meta,
       metaPct: meta === null || ctx.ventaNeta <= 0 ? null : Math.round((meta / ctx.ventaNeta) * 10000) / 10000,
       diferencia: meta === null || monto === null ? null : centavos(monto - meta),
+      metaFija, sinCapturar: metaFija && (meta ?? 0) > 0 && monto === 0,
     };
   });
 }
 
+const mxn = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
+
+/** Avisos de costos fijos que tienen meta pero nada capturado en el periodo. */
+export const avisosSinCapturar = (filas: readonly FilaPL[]) =>
+  filas.filter((f) => f.sinCapturar).map((f) => `${f.nombre} sin capturar en este periodo (meta ${mxn.format(f.meta ?? 0)}).`);
+
 /** Metas del consolidado: por renglón, la suma de la meta en pesos de cada sucursal (como monto fijo). */
 export function sumarMetas(sucursales: readonly { metas: readonly Meta[]; ctx: ContextoMeta }[]): Meta[] {
   const suma = new Map<string, number>();
-  for (const s of sucursales) for (const m of s.metas) suma.set(m.renglon, centavos((suma.get(m.renglon) ?? 0) + metaMonto(m, s.ctx)));
-  return [...suma].map(([renglon, valor]) => ({ renglon, tipo: "monto" as const, valor }));
+  const fijo = new Set<string>();
+  for (const s of sucursales) for (const m of s.metas) {
+    suma.set(m.renglon, centavos((suma.get(m.renglon) ?? 0) + metaMonto(m, s.ctx)));
+    if (m.tipo === "monto" || m.tipo === "plantilla") fijo.add(m.renglon);
+  }
+  return [...suma].map(([renglon, valor]) => ({ renglon, tipo: "monto" as const, valor, fijo: fijo.has(renglon) }));
 }
 
 /** Primer mes con datos del P&L: el acumulado del año no va antes. */

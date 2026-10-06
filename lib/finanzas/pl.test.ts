@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { calcularPL, entradaVacia, escalarMetas, finDeMes, metaMonto, sumarEntradas, sumarMetas, type EntradaPL } from "./pl.ts";
+import { avisosSinCapturar, calcularPL, entradaVacia, escalarMetas, finDeMes, metaMonto, sumarEntradas, sumarMetas, type EntradaPL } from "./pl.ts";
 
 test("finDeMes", () => {
   assert.equal(finDeMes("2026-10"), "2026-10-31");
@@ -11,8 +11,8 @@ test("sumarMetas: el consolidado suma las metas en pesos de cada sucursal", () =
   const a = { metas: [{ renglon: "alimento", tipo: "pct" as const, valor: 0.3 }, { renglon: "renta", tipo: "monto" as const, valor: 30000 }], ctx: { ventaNeta: 100000, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } } };
   const b = { metas: [{ renglon: "alimento", tipo: "pct" as const, valor: 0.3 }], ctx: { ventaNeta: 50000, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } } };
   const m = sumarMetas([a, b]);
-  assert.deepEqual(m.find((x) => x.renglon === "alimento"), { renglon: "alimento", tipo: "monto", valor: 45000 });
-  assert.deepEqual(m.find((x) => x.renglon === "renta"), { renglon: "renta", tipo: "monto", valor: 30000 });
+  assert.deepEqual(m.find((x) => x.renglon === "alimento"), { renglon: "alimento", tipo: "monto", valor: 45000, fijo: false });
+  assert.deepEqual(m.find((x) => x.renglon === "renta"), { renglon: "renta", tipo: "monto", valor: 30000, fijo: true });
   assert.equal(m.some((x) => x.renglon === "marketing"), false);
 });
 
@@ -84,4 +84,29 @@ test("margen bruto: venta − alimento − merma, con su meta", () => {
   assert.deepEqual([mb.tipo, mb.monto, mb.pct, mb.meta, mb.diferencia], ["total", 675, 0.675, 680, -5]);
   const sinMerma = calcularPL({ ...entradaVacia(), ventaNeta: 100, alimento: 30 }, [], { ...ctx, ventaNeta: 100 });
   assert.equal(sinMerma.find((f) => f.clave === "margen_bruto")!.monto, 70);
+});
+
+test("meta fija en pesos y 'sin capturar': costo fijo con meta y real en cero", () => {
+  const ctx = { ventaNeta: 100000, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } };
+  const filas = calcularPL({ ...entradaVacia(), ventaNeta: 100000, alimento: 30000, gastos: { servicios: 4000 } }, [
+    { renglon: "renta", tipo: "monto", valor: 30000 }, { renglon: "servicios", tipo: "monto", valor: 20000 },
+    { renglon: "alimento", tipo: "pct", valor: 0.3 },
+  ], ctx);
+  const f = (c: string) => filas.find((x) => x.clave === c)!;
+  assert.deepEqual([f("renta").metaFija, f("renta").sinCapturar, f("renta").diferencia], [true, true, -30000]);
+  assert.deepEqual([f("servicios").metaFija, f("servicios").sinCapturar], [true, false]);
+  assert.deepEqual([f("alimento").metaFija, f("alimento").sinCapturar], [false, false]);
+  assert.deepEqual([f("marketing").metaFija, f("marketing").sinCapturar], [false, false]);
+  assert.deepEqual(avisosSinCapturar(filas), ["Renta sin capturar en este periodo (meta $30,000.00)."]);
+});
+
+test("consolidado: una meta que era en % no se vuelve fija; una de monto sí", () => {
+  const ctx = { ventaNeta: 150000, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } };
+  const metas = sumarMetas([
+    { metas: [{ renglon: "alimento", tipo: "pct", valor: 0.3 }, { renglon: "renta", tipo: "monto", valor: 30000 }], ctx: { ...ctx, ventaNeta: 100000 } },
+    { metas: [{ renglon: "alimento", tipo: "pct", valor: 0.3 }], ctx: { ...ctx, ventaNeta: 50000 } },
+  ]);
+  const filas = calcularPL({ ...entradaVacia(), ventaNeta: 150000, alimento: 1000 }, metas, ctx);
+  assert.equal(filas.find((x) => x.clave === "alimento")!.metaFija, false);
+  assert.deepEqual(avisosSinCapturar(filas), ["Renta sin capturar en este periodo (meta $30,000.00)."]);
 });

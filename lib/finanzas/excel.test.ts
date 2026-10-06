@@ -50,3 +50,10 @@ test("hojaComparativo: periodos lado a lado (monto y %) con su total", () => {
   ]);
   assert.deepEqual(h.estilos![h.filas.findIndex((f) => f[0] === "EBITDA")], BARRA);
 });
+
+test("hojaPL: un costo fijo sin capturar dice 'Sin capturar' en la diferencia", () => {
+  const filas = calcularPL({ ...entradaVacia(), ventaNeta: 1000 }, [{ renglon: "renta", tipo: "monto", valor: 300 }], ctx(1000));
+  const [h] = hojaPL({ titulo: "Zapopan-1", periodo: "Octubre 2026", generado: "S", filas, entrada: entradaVacia(), anterior: null,
+    acumulado: new Map(), columnas: { anterior: "Mes anterior %", acumulado: "Acumulado del año %" } }, PRESENTACION);
+  assert.equal(h.filas.find((f) => f[0] === "Renta")![5], "Sin capturar");
+});

@@ -41,8 +41,12 @@ export function TablaPL({ r, columnas, conDetalle = true }: {
         </td>
         <td data-label="Real" className="monto"><Importe n={f.monto} /></td>
         <td data-label="%" className="monto">{porcentaje(f.pct)}</td>
-        <td data-label="Meta %" className="monto">{porcentaje(f.metaPct)}</td>
-        <td data-label="Diferencia" className={`monto${pasa || falta ? " celda-alerta" : ""}`}>{f.diferencia === null ? "—" : <Importe n={f.diferencia} />}</td>
+        <td data-label="Meta" className="monto">
+          {f.metaFija ? <><Importe n={f.meta} /><small className="pl-pct">{porcentaje(f.metaPct)}</small></> : porcentaje(f.metaPct)}
+        </td>
+        <td data-label="Diferencia" className={`monto${pasa || falta || f.sinCapturar ? " celda-alerta" : ""}`}>
+          {f.sinCapturar ? "Sin capturar" : f.diferencia === null ? "—" : <Importe n={f.diferencia} />}
+        </td>
         <td data-label={columnas.anterior} className="monto">{pctDe(r.anterior, f.clave)}</td>
         <td data-label={columnas.acumulado} className="monto">{pctDe(r.acumulado, f.clave)}</td>
       </tr>
@@ -62,7 +66,7 @@ export function TablaPL({ r, columnas, conDetalle = true }: {
         <table className="tabla tabla-tarjetas tabla-pl">
           <thead>
             <tr>
-              <th>Renglón</th><th className="monto">Real</th><th className="monto">%</th><th className="monto">Meta %</th><th className="monto">Dif.</th>
+              <th>Renglón</th><th className="monto">Real</th><th className="monto">%</th><th className="monto" title="En pesos para los costos fijos; en % de la venta para los demás">Meta</th><th className="monto">Dif.</th>
               <th className="monto" title={columnas.anterior}>{columnas.anteriorCorto}</th><th className="monto" title={columnas.acumulado}>{columnas.acumuladoCorto}</th>
             </tr>
           </thead>
