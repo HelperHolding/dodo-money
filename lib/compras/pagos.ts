@@ -94,15 +94,16 @@ export function pagadoDelMes(aplicaciones: readonly { pago_id: string; fecha: st
 
 /**
  * Facturas por día de pago, con su total. Lo programado en una fecha que ya pasó o lo vencido sin programar cae en
- * `proximo` (el próximo día de pago desde hoy), marcado como atrasado.
+ * `proximo` (el próximo día de pago desde hoy). `atrasada`: ya venció o su fecha programada pasó (aunque se vuelva a
+ * programar). `tarde`: aún no vence, pero su día de pago cae después del vencimiento.
  */
 export function agruparPorDiaDePago<T extends PorPagar>(facturas: readonly T[], hoy: string, proximo: string) {
-  const grupos = new Map<string, (T & { programada: boolean; atrasada: boolean })[]>();
+  const grupos = new Map<string, (T & { programada: boolean; atrasada: boolean; tarde: boolean })[]>();
   for (const f of facturas) {
     const fecha = fechaDePago(f);
-    const atrasada = fecha < hoy || (!f.pago_programado_el && f.vence_el < hoy);
+    const atrasada = fecha < hoy || f.vence_el < hoy;
     const dia = fecha < hoy ? proximo : fecha;
-    grupos.set(dia, [...(grupos.get(dia) ?? []), { ...f, programada: !!f.pago_programado_el, atrasada }]);
+    grupos.set(dia, [...(grupos.get(dia) ?? []), { ...f, programada: !!f.pago_programado_el, atrasada, tarde: !atrasada && dia > f.vence_el }]);
   }
   return [...grupos].sort(([a], [b]) => a.localeCompare(b))
     .map(([dia, lista]) => ({ dia, total: lista.reduce((s, x) => s + centavos(x.saldo), 0) / 100, facturas: lista }));

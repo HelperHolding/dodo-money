@@ -34,6 +34,8 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
     .map((f) => ({ ...f, pago_sugerido_el: diaDePagoSugerido(f.vence_el, hoy, dias) }));
   const grupos = agruparPorDiaDePago(visibles, hoy, proximoDiaDePago(hoy, dias));
   const opciones = proximosDiasDePago(hoy, dias, 8);
+  // Cada grupo ofrece su propio día (aunque esté lejos) además de los próximos: nunca se adelanta un pago por omisión.
+  const opcionesDe = (dia: string) => [...new Set([...opciones, dia])].sort();
   const nombreProveedor = (f: Factura) => f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social ?? "";
 
   return (
@@ -42,7 +44,8 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
         <h1>Programar pagos</h1>
         <p>
           Días de pago autorizados: {dias.map((d) => NOMBRE_DIA[d].toLowerCase()).join(", ")} (se cambian en Facturas → Datos de la empresa).
-          Cada factura sin programar aparece en el día de pago anterior a su vencimiento.{edita && " Marca las que se pagan y prográmalas."}
+          Cada factura sin programar aparece en el último día de pago antes de su vencimiento; si ese día ya pasó, en el próximo, marcada
+          porque se pagaría después de vencer.{edita && " Marca las que se pagan y prográmalas."}
         </p>
       </div>
       <Aviso ok={ok} error={error} />
@@ -63,16 +66,16 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
             <input type="hidden" name="volver" value={proveedor ? `?proveedor=${proveedor}` : ""} />
             <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
               {g.facturas.map((f) => (
-                <li key={f.id} className="fila" data-alerta={f.atrasada ? "si" : undefined}>
+                <li key={f.id} className="fila" data-alerta={f.atrasada || f.tarde ? "si" : undefined}>
                   <div className="fila-nombre">
                     {edita
-                      ? <label><input type="checkbox" name="factura" value={f.id} defaultChecked={!f.programada} /> <strong>{nombreProveedor(f)}</strong></label>
+                      ? <label><input type="checkbox" name="factura" value={f.id} defaultChecked={!f.programada} aria-label={`${nombreProveedor(f)} ${nombreFactura(f)} ${pesos(f.saldo)}`} /> <strong>{nombreProveedor(f)}</strong></label>
                       : <strong>{nombreProveedor(f)}</strong>}
                     <small><Link href={`/compras/facturas/${f.id}`}>{nombreFactura(f)}</Link></small>
                   </div>
                   <div className="fila-datos">
                     <span>Vence {fechaTexto(f.vence_el)}</span>
-                    <span>{f.atrasada ? "Atrasada" : f.programada ? "Programada" : "Sugerida"}</span>
+                    <span>{f.atrasada ? "Vencida" : f.tarde ? "Se pagaría después de vencer" : f.programada ? "Programada" : "Sugerida"}{f.programada && (f.atrasada || f.tarde) ? " · programada" : ""}</span>
                     <span>{pesos(f.saldo)}</span>
                   </div>
                 </li>
@@ -81,8 +84,8 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
             {edita && (
               <div className="acciones">
                 <label htmlFor={`dia-${g.dia}`} className="etiqueta">Programar las marcadas para</label>
-                <select id={`dia-${g.dia}`} name="dia" defaultValue={opciones.includes(g.dia) ? g.dia : opciones[0]}>
-                  {opciones.map((d) => <option key={d} value={d}>{textoDia(d)}</option>)}
+                <select id={`dia-${g.dia}`} name="dia" defaultValue={g.dia}>
+                  {opcionesDe(g.dia).map((d) => <option key={d} value={d}>{textoDia(d)}</option>)}
                 </select>
                 <BotonEnviar className="boton boton-secundario">Programar</BotonEnviar>
               </div>

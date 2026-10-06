@@ -13,6 +13,8 @@ begin
   select id into v_c from perfiles where rol::text = 'corporativo' and activo limit 1;
   if v_c is null then raise exception 'FALTAN DATOS: se necesita un usuario corporativo activo.'; end if;
   if not exists (select 1 from empresa) then insert into empresa (rfc, razon_social) values ('DMX010101AB1', 'Empresa de prueba'); end if;
+  -- Desde 0028 los pagos solo se registran sin motivo en días autorizados: aquí todos los días lo son (se deshace al final).
+  update empresa set dias_pago = '{1,2,3,4,5,6,7}';
 
   insert into proveedores (razon_social, rfc, regimen_fiscal, cuenta_pl, sucursal_id, dias_credito)
   values ('Arrendador Prueba', 'PEPJ800101AB1', '606', 'renta', v_suc, 5) returning id into v_prov;
