@@ -8,6 +8,7 @@ import { fechaTexto, fechaMX, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { leerGastoManual, type GastoManual } from "@/lib/compras/gastoManual";
 import { leerDiasPago } from "@/lib/compras/diasPago";
 import { CUENTAS_GASTO, CUENTAS_MEMO } from "@/lib/finanzas/cuentas";
+import { leerPeriodoMeses } from "@/lib/finanzas/cubre";
 import { REGIMENES } from "@/lib/compras/proveedores";
 import { leerEmpresa } from "@/lib/compras/empresa";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
@@ -127,6 +128,15 @@ export async function asignarDestino(fd: FormData) {
 export async function asignarCuentaFactura(fd: FormData) {
   await llamarFactura(fd, "asignar_cuenta_factura", { p_factura: texto(fd, "id"), p_cuenta: texto(fd, "cuenta_pl") }, "Cuenta del P&L guardada.");
 }
+export async function cambiarPeriodoFactura(fd: FormData) {
+  const id = texto(fd, "id");
+  const r = leerPeriodoMeses(texto(fd, "cubre_desde"), texto(fd, "cubre_hasta"));
+  if ("error" in r) volver(rutaFactura(id), "error", r.error);
+  const { periodo } = r as { periodo: { desde: string; hasta: string } | null };
+  if (!periodo) volver(rutaFactura(id), "error", "Elige de qué mes a qué mes cubre.");
+  await llamarFactura(fd, "cambiar_periodo_factura", { p_factura: id, p_desde: periodo!.desde, p_hasta: periodo!.hasta },
+    "Periodo guardado: el P&L reparte la factura en esos meses.");
+}
 export async function marcarRevisada(fd: FormData) {
   await llamarFactura(fd, "marcar_factura_revisada", { p_id: texto(fd, "id"), p_nota: texto(fd, "nota") }, "Factura marcada como revisada.");
 }
@@ -152,6 +162,9 @@ export async function registrarGastoManual(fd: FormData) {
   const r = leerGastoManual((c) => String(fd.get(c) ?? ""), (c) => fd.getAll(c).map(String), [...CUENTAS_GASTO, ...CUENTAS_MEMO], hoyCalendarioMX());
   if ("error" in r) volver(ruta, "error", r.error);
   const { datos } = r as { datos: GastoManual };
+  const c = leerPeriodoMeses(texto(fd, "cubre_desde"), texto(fd, "cubre_hasta"));
+  if ("error" in c) volver(ruta, "error", c.error);
+  const { periodo } = c as { periodo: { desde: string; hasta: string } | null };
   let adjunto: string | null = null;
   const archivo = fd.get("adjunto");
   if (archivo instanceof File && archivo.size > 0) {
@@ -164,8 +177,14 @@ export async function registrarGastoManual(fd: FormData) {
   }
   const { data: id, error } = await supabase.rpc("registrar_gasto_manual", { p: { ...datos, adjunto } });
   if (error) volver(ruta, "error", error.message);
+  // La base ya le puso el periodo de la regla del proveedor; se guarda el del formulario (el admin pudo cambiarlo).
+  let aviso = "";
+  if (periodo) {
+    const { error: errorPeriodo } = await supabase.rpc("cambiar_periodo_factura", { p_factura: id, p_desde: periodo.desde, p_hasta: periodo.hasta });
+    if (errorPeriodo) aviso = ` El periodo no se guardó (${errorPeriodo.message}); corrígelo aquí.`;
+  }
   revalidatePath("/compras", "layout");
-  volver(`/compras/facturas/${id}`, "ok", "Gasto sin CFDI registrado. Cuando llegue el CFDI, súbelo y elige qué gasto sustituye.");
+  volver(`/compras/facturas/${id}`, "ok", `Gasto sin CFDI registrado.${aviso} Cuando llegue el CFDI, súbelo y elige qué gasto sustituye.`);
 }
 
 export async function guardarCuentasConceptos(fd: FormData) {
