@@ -674,3 +674,15 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   .tabla-comparativo th[scope="row"], .tabla-comparativo thead th:first-child { position: static; white-space: normal; font-size: 0.72rem; padding: 4px 6px; }
   .tabla-comparativo .pl-seccion-nombre { position: static; }
 }
+
+/* Migas de pan y regresar, arriba del título de cada página (en celular solo el botón de regresar). */
+.migas { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; margin-bottom: 12px; font-size: 0.88rem; }
+.migas-ruta { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; margin: 0; padding: 0; color: var(--tinta-2); }
+.migas-ruta li + li::before { content: "›"; margin-right: 4px; }
+.migas-ruta a { color: var(--tinta-2); }
+.migas-ruta a:hover { color: var(--tinta); }
+.migas-ruta [aria-current] { color: var(--tinta); font-weight: 600; }
+.migas-regresar { font-weight: 700; color: var(--tinta); text-decoration: none; }
+.migas-regresar:hover { text-decoration: underline; }
+@media (max-width: 640px) { .migas-ruta { display: none; } }
+@media print { .migas { display: none; } }
