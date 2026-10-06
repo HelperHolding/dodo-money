@@ -1,6 +1,6 @@
 import type { EstadoFactura } from "./facturas";
 
-export type PorPagar = { id: string; saldo: number; vence_el: string; pago_programado_el: string | null; estado: EstadoFactura };
+export type PorPagar = { id: string; saldo: number; vence_el: string; pago_programado_el: string | null; estado: EstadoFactura; pago_sugerido_el?: string | null };
 
 const centavos = (n: number) => Math.round(Number(n) * 100);
 const pesosTexto = (c: number) => `$${(c / 100).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -10,7 +10,9 @@ const sumarDias = (dia: string, n: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-export const fechaDePago = (f: { vence_el: string; pago_programado_el: string | null }) => f.pago_programado_el ?? f.vence_el;
+/** El día en que se paga: el programado; si no, el sugerido (día de pago autorizado); si no, el vencimiento. */
+export const fechaDePago = (f: { vence_el: string; pago_programado_el: string | null; pago_sugerido_el?: string | null }) =>
+  f.pago_programado_el ?? f.pago_sugerido_el ?? f.vence_el;
 
 /** Reparte el monto entre las facturas, primero las que se pagan antes, sin pasar el saldo de ninguna. En centavos. */
 export function repartirPago(monto: number, facturas: readonly PorPagar[]) {
@@ -88,4 +90,20 @@ export function repartirConAjustes(monto: number, facturas: readonly PorPagar[],
 export function pagadoDelMes(aplicaciones: readonly { pago_id: string; fecha: string; monto: number; anulado: boolean }[], hoy: string) {
   const delMes = aplicaciones.filter((a) => !a.anulado && a.fecha.slice(0, 7) === hoy.slice(0, 7));
   return { monto: delMes.reduce((s, a) => s + centavos(a.monto), 0) / 100, pagos: new Set(delMes.map((a) => a.pago_id)).size };
+}
+
+/**
+ * Facturas por día de pago, con su total. Lo programado en una fecha que ya pasó o lo vencido sin programar cae en
+ * `proximo` (el próximo día de pago desde hoy), marcado como atrasado.
+ */
+export function agruparPorDiaDePago<T extends PorPagar>(facturas: readonly T[], hoy: string, proximo: string) {
+  const grupos = new Map<string, (T & { programada: boolean; atrasada: boolean })[]>();
+  for (const f of facturas) {
+    const fecha = fechaDePago(f);
+    const atrasada = fecha < hoy || (!f.pago_programado_el && f.vence_el < hoy);
+    const dia = fecha < hoy ? proximo : fecha;
+    grupos.set(dia, [...(grupos.get(dia) ?? []), { ...f, programada: !!f.pago_programado_el, atrasada }]);
+  }
+  return [...grupos].sort(([a], [b]) => a.localeCompare(b))
+    .map(([dia, lista]) => ({ dia, total: lista.reduce((s, x) => s + centavos(x.saldo), 0) / 100, facturas: lista }));
 }
