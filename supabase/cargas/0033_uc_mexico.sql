@@ -24,3 +24,12 @@ begin
   raise notice 'CARGA OK: % insumos, % recetas, % costos actualizados desde %, % recetas pendientes/sin vincular.',jsonb_array_length(modelo->'insumos'),jsonb_array_length(modelo->'recetas'),n,fecha,pendientes;
 end $carga$;
 commit;
+
+select 'CARGA OK' as resultado, v.vigente_desde as fecha,
+       jsonb_array_length(v.modelo->'insumos') as insumos,
+       count(*) as recetas,
+       count(r.dodo_id) as costos_actualizados,
+       count(*) - count(r.dodo_id) as pendientes_o_sin_vincular
+from bom_versiones v join bom_recetas r on r.version_id=v.id
+where v.huella='e1a92d7c07b726b563e19906a0358e2333d877b281f2df8e641e4979df8392d5' and v.periferico
+group by v.id order by v.actualizado_en desc limit 1;
