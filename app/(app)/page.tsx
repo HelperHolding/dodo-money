@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto, puedeAbrirTurno } from "@/lib/contexto";
-import { hora, pesos } from "@/lib/formato";
+import { fechaTexto, hoyCalendarioMX, hora, pesos } from "@/lib/formato";
 import { avanceRenglon } from "@/lib/compras/ordenes";
-import { puedeRecibirCompras } from "@/lib/roles";
+import { puedeRecibirCompras, puedeVerVentas, puedeVerCompras, puedeVerFinanzas } from "@/lib/roles";
 import { NOMBRE_MOVIMIENTO, type Movimiento } from "@/lib/tipos";
 import { abrirTurno } from "./actions";
 import { confirmarMovimiento, rechazarMovimiento } from "./movimientos/actions";
@@ -24,6 +24,32 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   const ordenesPorRecibir = new Set(((porRecibir ?? []) as { orden_id: string; cantidad: number; recibido: number }[])
     .filter((r) => avanceRenglon(Number(r.cantidad), Number(r.recibido)) !== "completa").map((r) => r.orden_id)).size;
 
+  const accesos = [
+    ...(puedeVerVentas(perfil.rol) ? [
+      { titulo: "Ventas", nota: "Venta diaria, pedidos y productos", href: `/ventas?sucursal=${sucursal.id}` },
+      { titulo: "Rappi", nota: "Órdenes, descuentos y productos", href: `/ventas/rappi?sucursal=${sucursal.id}` },
+    ] : []),
+    ...(puedeVerCompras(perfil.rol) ? [{ titulo: "Compras y pagos", nota: "Facturas, gastos sin CFDI y proveedores", href: "/compras/facturas" }] : []),
+    ...(puedeVerFinanzas(perfil.rol) ? [
+      { titulo: "P&L", nota: "Resultados, gastos y metas", href: `/finanzas?sucursal=${sucursal.id}` },
+      { titulo: "Retenciones", nota: "Impuestos retenidos en pagos y enteros", href: "/finanzas/retenciones" },
+      { titulo: "Mermas", nota: "Cantidades y costos importados; todavía no se incluyen en el P&L", href: `/finanzas/mermas?sucursal=${sucursal.id}` },
+      { titulo: "Costeo y materiales", nota: "Insumos, recetas y costos por producto", href: "/ventas/costos/materiales" },
+    ] : []),
+    { titulo: "Checklists", nota: "Recorridos y controles de la operación", href: "/checklists" },
+  ];
+  const fuentes = [
+    ...(puedeVerVentas(perfil.rol) ? [
+      { tabla: "ventas_dia", nombre: "Ventas Dodo IS", href: `/ventas?sucursal=${sucursal.id}` },
+      { tabla: "rappi_ordenes", nombre: "Órdenes Rappi", href: `/ventas/rappi?sucursal=${sucursal.id}` },
+    ] : []),
+    ...(puedeVerFinanzas(perfil.rol) ? [{ tabla: "mermas_dodo_dias", nombre: "Mermas Dodo IS", href: `/finanzas/mermas?sucursal=${sucursal.id}` }] : []),
+  ];
+  const actualizacion = await Promise.all(fuentes.map(async (f) => {
+    const { data, error } = await supabase.from(f.tabla).select("fecha").eq("sucursal_id", sucursal.id)
+      .order("fecha", { ascending: false }).limit(1).maybeSingle<{ fecha: string }>();
+    return { ...f, fecha: data?.fecha, error: Boolean(error) };
+  }));
   const persona = new Map((nombres ?? []).map((p) => [p.id, p.nombre]));
   const caja = new Map(cajas.map((c) => [c.id, c.nombre]));
   const saldo = (tipo: string) => saldos?.find((s) => s.tipo === tipo)?.saldo ?? 0;
@@ -32,11 +58,25 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   return (
     <>
       <div className="encabezado">
-        <h1>Efectivo de la sucursal</h1>
-        <p>Saldos calculados con los movimientos confirmados. La caja de venta se revisa en cada arqueo de turno.</p>
+        <p className="saldo-nota">Inicio · {fechaTexto(hoyCalendarioMX())}</p>
+        <h1>{sucursal.nombre}</h1>
+        <p>Ventas, finanzas y operación en un solo lugar.</p>
       </div>
       <Aviso ok={ok} error={error} />
 
+      <section className="seccion" aria-labelledby="t-resumen">
+        <h2 id="t-resumen">Tu operación</h2>
+        <div className="inicio-accesos">{accesos.map((a) => <Link key={a.href} className="inicio-acceso" href={a.href}>
+          <strong>{a.titulo}<span aria-hidden="true">↗</span></strong><span>{a.nota}</span>
+        </Link>)}</div>
+      </section>
+      {actualizacion.length > 0 && <section className="seccion" aria-labelledby="t-datos">
+        <h2 id="t-datos">Hasta dónde tenemos datos</h2>
+        <p className="saldo-nota">Última fecha registrada en {sucursal.nombre}. No implica que todos los días anteriores estén completos.</p>
+        <div className="inicio-fuentes">{actualizacion.map((f) => <Link className="inicio-fuente" href={f.href} key={f.tabla}>
+          <span>{f.nombre}</span><strong>{f.error ? "No se pudo consultar" : f.fecha ? fechaTexto(f.fecha) : "Sin datos importados"}</strong>
+        </Link>)}</div>
+      </section>}
       <section className="seccion" aria-labelledby="t-turno">
         <h2 id="t-turno">Turno</h2>
         {turno ? (
@@ -58,7 +98,8 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       </section>
 
       <section className="seccion" aria-labelledby="t-saldos">
-        <h2 id="t-saldos">Saldos</h2>
+        <h2 id="t-saldos">Efectivo disponible</h2>
+        <p className="saldo-nota">Saldos de movimientos confirmados. La caja de venta se revisa en el arqueo de turno.</p>
         <div className="rejilla">
           <div className="saldo">
             <span>Bóveda</span>

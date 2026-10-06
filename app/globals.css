@@ -699,3 +699,15 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .pl-origen-nota { display: block; margin-top: 6px; color: var(--tinta-2); line-height: 1.5; font-size: .8rem; }
 
 .bom-recetas { grid-template-columns: minmax(0, 1fr); }
+
+/* Inicio: accesos y cobertura de datos de la sucursal. */
+.inicio-accesos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr)); gap: 12px; margin-top: 18px; }
+.inicio-acceso { display: flex; flex-direction: column; gap: 10px; padding: 20px; border: 1px solid var(--linea); border-radius: 12px; text-decoration: none; color: var(--tinta); min-width: 0; }
+.inicio-acceso strong { display: flex; justify-content: space-between; gap: 12px; }
+.inicio-acceso strong span { color: var(--accion-oscuro); }
+.inicio-acceso > span { color: var(--tinta-2); font-size: .9rem; }
+.inicio-acceso:hover { border-color: var(--accion); background: #fff8f4; }
+.inicio-fuentes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; margin-top: 16px; }
+.inicio-fuente { display: flex; flex-direction: column; gap: 6px; border-left: 3px solid var(--accion); padding: 8px 14px; text-decoration: none; color: var(--tinta); background: var(--papel-2); border-radius: 0 8px 8px 0; }
+.inicio-fuente span { color: var(--tinta-2); font-size: .85rem; }
+.inicio-fuente:hover strong { text-decoration: underline; }
