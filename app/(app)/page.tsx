@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IconoInicio } from "@/components/IconoInicio";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto, puedeAbrirTurno } from "@/lib/contexto";
@@ -67,6 +68,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       <section className="seccion" aria-labelledby="t-resumen">
         <h2 id="t-resumen">Tu operación</h2>
         <div className="inicio-accesos">{accesos.map((a) => <Link key={a.href} className="inicio-acceso" href={a.href}>
+          <IconoInicio nombre={a.titulo} />
           <strong>{a.titulo}<span aria-hidden="true">↗</span></strong><span>{a.nota}</span>
         </Link>)}</div>
       </section>

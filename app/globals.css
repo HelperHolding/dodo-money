@@ -711,3 +711,6 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .inicio-fuente { display: flex; flex-direction: column; gap: 6px; border-left: 3px solid var(--accion); padding: 8px 14px; text-decoration: none; color: var(--tinta); background: var(--papel-2); border-radius: 0 8px 8px 0; }
 .inicio-fuente span { color: var(--tinta-2); font-size: .85rem; }
 .inicio-fuente:hover strong { text-decoration: underline; }
+
+.inicio-acceso > .inicio-icono { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; border-radius: 12px; color: var(--accion-oscuro); background: var(--accion-suave); }
+.inicio-icono svg { display: block; }
