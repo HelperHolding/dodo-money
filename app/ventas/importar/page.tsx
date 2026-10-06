@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { puedeImportarVentas } from "@/lib/roles";
 import { FormImportar } from "./FormImportar";
+import Link from "next/link";
 
 export default async function PaginaImportar() {
   const { perfil } = await obtenerPerfil();
@@ -15,6 +16,7 @@ export default async function PaginaImportar() {
           Primero se revisa; nada se guarda hasta que presiones Guardar.
         </p>
       </div>
+      <p><Link className="boton boton-secundario" href="/ventas/rappi">Importar historial de Rappi</Link></p>
       <FormImportar />
     </>
   );

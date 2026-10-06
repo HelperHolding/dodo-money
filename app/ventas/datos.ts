@@ -6,6 +6,8 @@ import {
 import type { TipoDesglose } from "@/lib/ventas/extraer";
 import { leerTodo } from "@/lib/ventas/paginar";
 import type { LineaPedido, Pedido } from "@/lib/ventas/pedidos";
+import { cargarRappi } from "./rappi/datos";
+import { combinarDiasRappi, ventasRappi } from "@/lib/ventas/rappi";
 
 export type FilaDesglose = { tipo: TipoDesglose; pedidos: number; total: number };
 export type DiaConDesglose = VentaDia & { ventas_dia_desglose: FilaDesglose[] };
@@ -31,8 +33,11 @@ export async function ultimoDiaConDatos(supabase: SupabaseClient, sucursal: stri
   let q = supabase.from("ventas_dia").select("fecha");
   if (sucursal) q = q.eq("sucursal_id", sucursal);
   const { data, error } = await q.order("fecha", { ascending: false }).limit(1).maybeSingle<{ fecha: string }>();
+  let qr=supabase.from("rappi_ordenes").select("fecha").eq("sumar",true).eq("estado","Finalizado");if(sucursal)qr=qr.eq("sucursal_id",sucursal);
+  const rappi=await qr.order("fecha",{ascending:false}).limit(1).maybeSingle<{fecha:string}>();
+  if(rappi.error)throw Error(rappi.error.message);
   if (error) throw new Error(`No se pudieron cargar las ventas: ${error.message}`);
-  return data?.fecha ?? null;
+  return [data?.fecha,rappi.data?.fecha].filter((x):x is string=>!!x).sort().at(-1)??null;
 }
 
 /** Venta por día desde una fecha (sumando sucursales si sucursal es null), para el calendario. */
@@ -44,6 +49,8 @@ export async function ventaDiariaDesde(supabase: SupabaseClient, sucursal: strin
   });
   const venta: Record<string, number> = {};
   for (const f of filas) venta[f.fecha] = Math.round(((venta[f.fecha] ?? 0) + Number(f.total)) * 100) / 100;
+  const rappi=await leerTodo<{fecha:string;subtotal_restaurante:number}>((a,b)=>{let c=supabase.from("rappi_ordenes").select("fecha,subtotal_restaurante").gte("fecha",desde).eq("sumar",true).eq("estado","Finalizado");if(sucursal)c=c.eq("sucursal_id",sucursal);return c.order("rappi_id").range(a,b);});
+  for(const f of rappi)venta[f.fecha]=Math.round(((venta[f.fecha]??0)+Number(f.subtotal_restaurante))*100)/100;
   return venta;
 }
 
@@ -74,7 +81,7 @@ function leerProductos(supabase: SupabaseClient, sucursal: string | null, p: Per
  * aquí con el catálogo y los costos, que son tablas chicas. sucursal null = todas las sucursales visibles.
  */
 export async function datosVentas(supabase: SupabaseClient, sucursal: string | null, p: Periodo, anterior: Periodo): Promise<DatosVentas> {
-  const [dias, ventas, diasAnteriores, ventasAnteriores, catalogo, costos, cierres] = await Promise.all([
+  const [diasDodo, ventas, diasAnterioresDodo, ventasAnteriores, catalogo, costos, cierres, actualRappi, anteriorRappi] = await Promise.all([
     leerDias(supabase, sucursal, p),
     leerProductos(supabase, sucursal, p),
     leerDias(supabase, sucursal, anterior),
@@ -91,18 +98,22 @@ export async function datosVentas(supabase: SupabaseClient, sucursal: string | n
       if (sucursal) q = q.eq("sucursal_id", sucursal);
       return q.order("sucursal_id").order("fecha").range(desde, hasta).returns<CierreDia[]>();
     }),
+    cargarRappi(supabase,sucursal,p.desde,p.hasta),
+    cargarRappi(supabase,sucursal,anterior.desde,anterior.hasta),
   ]);
+  const rappi=ventasRappi(actualRappi.ordenes,actualRappi.catalogo),previo=ventasRappi(anteriorRappi.ordenes,anteriorRappi.catalogo);
+  const dias=combinarDiasRappi(diasDodo,rappi.dias),diasAnteriores=combinarDiasRappi(diasAnterioresDodo,previo.dias);
   return {
     dias,
-    renglones: costearProductos(ventas, dias, catalogo, costos),
-    anterior: { dias: diasAnteriores, renglones: costearProductos(ventasAnteriores, diasAnteriores, catalogo, costos) },
+    renglones: [...costearProductos(ventas,diasDodo,catalogo,costos),...costearProductos(rappi.productos,rappi.dias,catalogo,costos)],
+    anterior: { dias: diasAnteriores, renglones: [...costearProductos(ventasAnteriores,diasAnterioresDodo,catalogo,costos),...costearProductos(previo.productos,previo.dias,catalogo,costos)] },
     cierres,
   };
 }
 
 /** Pedidos del periodo y sus productos (solo existen para días importados con Datos brutos), en páginas. */
 export async function datosPedidos(supabase: SupabaseClient, sucursal: string | null, p: Periodo): Promise<{ pedidos: (Pedido & { sucursal_id: string })[]; lineas: LineaPedido[] }> {
-  const [pedidos, lineas] = await Promise.all([
+  const [pedidos, lineas,datosRappi] = await Promise.all([
     leerTodo<Pedido & { sucursal_id: string }>((desde, hasta) => {
       let q = supabase.from("pedidos")
         .select("dodo_id, sucursal_id, fecha, hora, pago, tipo, origen, para_llevar, estado, total, total_sin_descuento, agregador, inicio_coccion, listo, entregado")
@@ -117,10 +128,12 @@ export async function datosPedidos(supabase: SupabaseClient, sucursal: string | 
       if (sucursal) q = q.eq("pedidos.sucursal_id", sucursal);
       return q.order("pedido_id").order("renglon").range(desde, hasta).returns<LineaPedido[]>();
     }),
+    cargarRappi(supabase,sucursal,p.desde,p.hasta),
   ]);
+  const rappi=ventasRappi(datosRappi.ordenes,datosRappi.catalogo);
   return {
     // Postgres devuelve la hora como "13:05:00" y los montos pueden llegar como texto.
-    pedidos: pedidos.map((x) => ({ ...x, hora: x.hora.slice(0, 5), total: Number(x.total), total_sin_descuento: Number(x.total_sin_descuento) })),
-    lineas: lineas.map((l) => ({ pedido_id: l.pedido_id, nombre: l.nombre, precio: Number(l.precio), combo: l.combo })),
+    pedidos: [...pedidos.map((x) => ({ ...x, hora: x.hora.slice(0, 5), total: Number(x.total), total_sin_descuento: Number(x.total_sin_descuento) })),...rappi.pedidos],
+    lineas: [...lineas.map((l) => ({ pedido_id: l.pedido_id, nombre: l.nombre, precio: Number(l.precio), combo: l.combo })),...rappi.lineas],
   };
 }

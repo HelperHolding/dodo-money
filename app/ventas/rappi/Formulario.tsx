@@ -1,0 +1,13 @@
+"use client";
+import {useActionState,useState} from "react";
+import {importarRappi} from "./acciones";
+import {pesos} from "@/lib/formato";
+export function FormularioRappi({sucursales}:{sucursales:{id:string;nombre:string}[]}){
+  const [archivo,setArchivo]=useState<File|null>(null),[sucursal,setSucursal]=useState(sucursales.length===1?sucursales[0].id:"");
+  return <section className="seccion"><h2>Importar historial</h2><p>Usa el Excel construido con las hojas Ordenes y Productos del historial de Rappi.</p><div className="rejilla"><div className="campo"><label htmlFor="sucursal-rappi">Sucursal</label><select id="sucursal-rappi" value={sucursal} onChange={e=>setSucursal(e.target.value)}><option value="">Selecciona</option>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></div><div className="campo"><label htmlFor="archivo-rappi">Excel (hasta 4 MB)</label><input id="archivo-rappi" type="file" accept=".xlsx" onChange={e=>setArchivo(e.target.files?.[0]??null)}/></div></div>{archivo&&sucursal&&<Revision key={`${archivo.name}-${archivo.size}-${archivo.lastModified}-${sucursal}`} archivo={archivo} sucursal={sucursal}/>}</section>;
+}
+function Revision({archivo,sucursal}:{archivo:File;sucursal:string}){
+  const [r,accion,pendiente]=useActionState(async(e:Parameters<typeof importarRappi>[0],fd:FormData)=>{fd.set("archivo",archivo);fd.set("sucursal",sucursal);return importarRappi(e,fd);},{});
+  return <form action={accion} className="formulario">{r.error&&<p className="aviso aviso-error" role="alert">{r.error}</p>}{r.guardado?<p className="aviso aviso-ok" role="status">{r.guardado}</p>:<button name="etapa" value="revisar" disabled={pendiente}>Revisar archivo</button>}
+    {r.huella&&<><h3>{r.sucursal} · {r.nuevas} órdenes nuevas · {r.actualizadas} actualizadas</h3><p>{r.productos} renglones. Solo Finalizado suma a ventas. Se usa el subtotal restaurante, antes del descuento de Rappi; ambos descuentos y el total a facturar se conservan. Los cobros de Rappi no se registran en la caja del restaurante.</p><ul className="lista-filas" style={{"--columnas":3} as React.CSSProperties}>{r.ordenes?.map(o=><li className="fila" key={o.rappi_id}><div className="fila-nombre"><strong>#{o.rappi_id}</strong><small>{o.fecha} {o.hora} · {o.estado}</small></div><div className="fila-datos"><span>Productos {pesos(o.bruto)}</span><span>Subtotal {pesos(o.subtotal_restaurante)}</span><span>A facturar {pesos(o.facturar)}</span></div></li>)}</ul><input type="hidden" name="huella" value={r.huella}/><button name="etapa" value="guardar" disabled={pendiente}>Confirmar importación</button></>}{pendiente&&<p role="status">Procesando…</p>}</form>;
+}
