@@ -46,17 +46,19 @@ El periodo siempre empieza el día 1 y termina el último día del mes.
 - Trigger `before insert` en facturas: si no traen periodo, lo calcula con la regla del proveedor. Así cubre todas
   las altas (subir XML, gasto sin CFDI, sustitución) sin tocar cada función.
 - `cambiar_periodo_factura(p_factura uuid, p_desde date, p_hasta date)`: solo admin de compras; normaliza a meses
-  completos; rechaza desde > hasta y facturas canceladas.
-- `registrar_gasto_manual` acepta `cubre_desde` / `cubre_hasta` opcionales en su jsonb.
+  completos (1 a 24); rechaza desde > hasta y facturas canceladas; sus notas de crédito vigentes lo siguen.
+- La nota de crédito, al darse de alta, toma el periodo de la factura que corrige.
+- `registrar_gasto_manual` no cambia: la acción de "Agregar sin CFDI" guarda el periodo del formulario con
+  `cambiar_periodo_factura` justo después del alta.
 
 ## 5. Arquitectura
 
 - `lib/finanzas/cubre.ts` (puro, con pruebas): `periodoCubre(fecha, meses, inicio)` (el mismo cálculo que la función
   SQL, para mostrar la vista previa en formularios), `fraccionCubre(desde, hasta, rango)` (días de traslape / días del
-  periodo), `textoCubre(desde, hasta)` ("01/08–30/09" o "octubre" si es un mes).
+  periodo), `textoCubre(cubre)` ("agosto–septiembre 2026", "octubre 2026").
 - `app/finanzas/datos.ts`: lee facturas cuyo periodo se traslapa con el rango (`cubre_desde <= hasta` y
   `cubre_hasta >= desde`) en vez de por fecha de emisión; la fracción de cada factura sale de `fraccionCubre`; el
-  detalle dice "cubre 01/08–30/09 · $4,000 × 31/61"; calcula el aviso de capturas tardías.
+  detalle dice "cubre agosto–septiembre 2026 · $4,000.00 × 31/61"; calcula el aviso de capturas tardías.
 - P&L (mes, semana, comparativo, acumulado, Excel) usa `datosPL`, así que el cambio llega a todas las vistas; el aviso
   se muestra junto a los avisos de "sin capturar".
 - UI:
