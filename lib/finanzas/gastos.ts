@@ -21,13 +21,13 @@ export function partesFactura(f: FacturaGasto, fraccion = 1): { cuenta: string |
   return conceptos.map((c) => ({ cuenta: c.cuenta_pl ?? f.cuenta_pl, monto: (base * Number(c.importe)) / suma, concepto: c.descripcion ?? null }));
 }
 
-/** Facturas → gasto por cuenta (por concepto cuando los trae). Con `fraccionDe`, cada una por la parte de su mes que entra en el periodo. */
-export function facturasAGastos(facturas: readonly FacturaGasto[], fraccionDe?: (fecha: string) => number) {
+/** Facturas → gasto por cuenta (por concepto cuando los trae). Con `fraccionDe`, cada una por la parte que le toca al periodo. */
+export function facturasAGastos<F extends FacturaGasto>(facturas: readonly F[], fraccionDe?: (f: F) => number) {
   const gastos: Partial<Record<CuentaGasto, number>> = {};
   let sinCuenta = 0;
   const memos = { insumos: 0, inversiones: 0 };
   for (const f of facturas) {
-    for (const p of partesFactura(f, fraccionDe ? fraccionDe(f.fecha_emision ?? "") : 1)) {
+    for (const p of partesFactura(f, fraccionDe ? fraccionDe(f) : 1)) {
       if (p.cuenta === "insumos" || p.cuenta === "inversiones") memos[p.cuenta] = centavos(memos[p.cuenta] + p.monto);
       else if (p.cuenta && GASTO.includes(p.cuenta)) gastos[p.cuenta as CuentaGasto] = centavos((gastos[p.cuenta as CuentaGasto] ?? 0) + p.monto);
       else sinCuenta = centavos(sinCuenta + p.monto);
@@ -41,6 +41,10 @@ export function sumarGastos(...partes: Partial<Record<CuentaGasto, number>>[]): 
   for (const p of partes) for (const [k, v] of Object.entries(p) as [CuentaGasto, number][]) r[k] = centavos((r[k] ?? 0) + v);
   return r;
 }
+
+/** Lo que mueve el resultado del P&L: todas las partes menos insumos e inversiones (van al memo). */
+export const enResultado = (partes: readonly { cuenta: string | null; monto: number }[]) =>
+  centavos(partes.filter((p) => p.cuenta !== "insumos" && p.cuenta !== "inversiones").reduce((t, p) => t + p.monto, 0));
 
 /** Faltantes de efectivo como gasto: −Σ diferencias (una diferencia negativa es faltante). */
 export const faltantesDe = (diferencias: readonly number[]) => centavos(-diferencias.reduce((s, d) => s + Number(d), 0));

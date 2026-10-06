@@ -6,7 +6,7 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, fechaMX, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { estadoDocumentos, NOMBRE_DOCUMENTO, TIPOS_DOCUMENTO, vigentes, type TipoDocumento } from "@/lib/compras/documentos";
 import { nombreRegimen } from "@/lib/compras/proveedores";
-import { NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, type DatosProveedor } from "@/lib/compras/proveedores";
+import { NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, NOMBRE_INICIO_CUBRE, type DatosProveedor } from "@/lib/compras/proveedores";
 import { esCuentaPl, NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
 import { puedeEditarCompras } from "@/lib/roles";
 import { cambiarActivoProveedor, subirDocumentoProveedor } from "../../acciones";
@@ -20,7 +20,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: p } = await supabase.from("proveedores")
-    .select("id, razon_social, nombre_comercial, numero_cliente, dias_entrega, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, cuenta_pl, sucursal_id, activo, motivo_desactivacion, desactivado_en")
+    .select("id, razon_social, nombre_comercial, numero_cliente, dias_entrega, rfc, regimen_fiscal, contacto_nombre, telefono, correo, banco, clabe, cuenta, dias_credito, forma_pago_habitual, categorias, notas, cuenta_pl, sucursal_id, cubre_meses, cubre_inicio, activo, motivo_desactivacion, desactivado_en")
     .eq("id", id).maybeSingle<Proveedor>();
   if (!p) notFound();
   const edita = puedeEditarCompras(perfil.rol);
@@ -64,6 +64,8 @@ export default async function FichaProveedor({ params, searchParams }: { params:
           <dt>Surte</dt><dd>{p.categorias.map((c) => NOMBRE_CATEGORIA_COMPRA[c]).join(", ") || "Sin categoría"}</dd>
           <dt>Sucursal por omisión</dt><dd>{(sucursales ?? []).find((s) => s.id === p.sucursal_id)?.nombre ?? "Ninguna (Oficina)"}</dd>
           <dt>Cuenta del P&L</dt><dd>{p.cuenta_pl && esCuentaPl(p.cuenta_pl) ? NOMBRE_CUENTA[p.cuenta_pl] : "Sin cuenta (sus facturas van a Otros)"}</dd>
+          <dt>Periodo de cada recibo</dt>
+          <dd>{p.cubre_meses === 1 && p.cubre_inicio === "emision" ? "El mes de emisión" : `${p.cubre_meses} ${p.cubre_meses === 1 ? "mes" : "meses"} · ${NOMBRE_INICIO_CUBRE[p.cubre_inicio].toLowerCase()}`}</dd>
           {p.notas && <><dt>Notas</dt><dd>{p.notas}</dd></>}
           {!p.activo && <><dt>Desactivado</dt><dd>{p.motivo_desactivacion}{p.desactivado_en ? ` · ${fechaTexto(fechaMX(p.desactivado_en))}` : ""}</dd></>}
         </dl>

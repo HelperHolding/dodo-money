@@ -4,10 +4,12 @@ import { useState } from "react";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { CampoArchivo } from "@/components/CampoArchivo";
 import { calcularGasto, IMPUESTOS_ARRENDAMIENTO, type Impuestos } from "@/lib/compras/gastoManual";
+import type { InicioCubre } from "@/lib/compras/proveedores";
+import { periodoCubre } from "@/lib/finanzas/cubre";
 import { pesos } from "@/lib/formato";
 import { registrarGastoManual } from "../acciones";
 
-type Proveedor = { id: string; nombre: string; sucursal_id: string | null; cuenta_pl: string | null };
+type Proveedor = { id: string; nombre: string; sucursal_id: string | null; cuenta_pl: string | null; cubre_meses: number; cubre_inicio: InicioCubre };
 type Renglon = { descripcion: string; importe: string; cuenta: string };
 
 /** Alta de un gasto sin CFDI: renglones con su cuenta, IVA y retenciones con el total a la vista. */
@@ -16,6 +18,15 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy }: {
 }) {
   const [proveedor, setProveedor] = useState("");
   const [sucursal, setSucursal] = useState("oficina");
+  const [fecha, setFecha] = useState(hoy);
+  const [cubre, setCubre] = useState({ desde: hoy.slice(0, 7), hasta: hoy.slice(0, 7) });
+  /** El periodo sale de la regla del proveedor y la fecha; se puede cambiar a mano. */
+  const recalcular = (id: string, f: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return;
+    const p = proveedores.find((x) => x.id === id);
+    const c = periodoCubre(f, p?.cubre_meses ?? 1, p?.cubre_inicio ?? "emision");
+    setCubre({ desde: c.desde.slice(0, 7), hasta: c.hasta.slice(0, 7) });
+  };
   const [renglones, setRenglones] = useState<Renglon[]>([{ descripcion: "", importe: "", cuenta: "" }]);
   const [imp, setImp] = useState<Impuestos>({ iva: 0.16, retIva: "ninguna", retIsr: "ninguna" });
   const t = calcularGasto(renglones.map((r) => ({ importe: Number(r.importe.replace(/[$,\s]/g, "")) || 0 })), imp);
@@ -23,6 +34,7 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy }: {
     setRenglones((rs) => rs.map((r, j) => (j === i ? { ...r, [campo]: valor } : r)));
   const elegirProveedor = (id: string) => {
     setProveedor(id);
+    recalcular(id, fecha);
     const p = proveedores.find((x) => x.id === id);
     if (!p) return;
     setSucursal(p.sucursal_id ?? "oficina");
@@ -47,8 +59,17 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy }: {
           </select>
         </div>
         <div className="campo"><label htmlFor="folio">Referencia</label><input id="folio" name="folio" required placeholder="Ej. Prefactura renta octubre" /></div>
-        <div className="campo"><label htmlFor="fecha">Fecha</label><input id="fecha" name="fecha" type="date" defaultValue={hoy} max={hoy} required /></div>
+        <div className="campo"><label htmlFor="fecha">Fecha</label><input id="fecha" name="fecha" type="date" value={fecha} max={hoy} required onChange={(e) => { setFecha(e.target.value); recalcular(proveedor, e.target.value); }} /></div>
         <div className="campo"><label htmlFor="vence_el">Vence (opcional)</label><input id="vence_el" name="vence_el" type="date" /><small>Si no, la fecha + días de crédito del proveedor.</small></div>
+        <div className="campo">
+          <label htmlFor="cubre_desde">Cubre desde</label>
+          <input id="cubre_desde" name="cubre_desde" type="month" placeholder="AAAA-MM" value={cubre.desde} onChange={(e) => setCubre({ ...cubre, desde: e.target.value })} required />
+        </div>
+        <div className="campo">
+          <label htmlFor="cubre_hasta">Cubre hasta</label>
+          <input id="cubre_hasta" name="cubre_hasta" type="month" placeholder="AAAA-MM" value={cubre.hasta} onChange={(e) => setCubre({ ...cubre, hasta: e.target.value })} required />
+          <small>Sale de la regla del proveedor; el P&L reparte el gasto en esos meses.</small>
+        </div>
       </div>
 
       <h2>Renglones</h2>

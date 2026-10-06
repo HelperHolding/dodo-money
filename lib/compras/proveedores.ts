@@ -45,6 +45,15 @@ export const TASAS_IVA = ["16", "0", "exento"] as const;
 export type TasaIva = (typeof TASAS_IVA)[number];
 export const NOMBRE_TASA_IVA: Record<TasaIva, string> = { "16": "IVA 16 %", "0": "IVA 0 %", exento: "Exento" };
 
+/** Desde qué mes cubre cada recibo del proveedor (el P&L lo reparte en esos meses). */
+export const INICIOS_CUBRE = ["anteriores", "emision", "siguiente"] as const;
+export type InicioCubre = (typeof INICIOS_CUBRE)[number];
+export const NOMBRE_INICIO_CUBRE: Record<InicioCubre, string> = {
+  anteriores: "Los meses anteriores a la emisión (luz, agua, teléfono)",
+  emision: "Desde el mes de emisión",
+  siguiente: "Desde el mes siguiente (renta facturada a fin de mes)",
+};
+
 /** "Activo fijo" → "activo_fijo": minúsculas, sin acentos, espacios y guiones a "_". */
 export const clave = (t: string) =>
   t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/[\s-]+/g, "_");
@@ -75,6 +84,9 @@ export type DatosProveedor = {
   cuenta_pl: string | null;
   /** Sucursal a la que se cargan sus facturas cuando el XML no trae destino. */
   sucursal_id: string | null;
+  /** Cada recibo cubre N meses (1–12) desde `cubre_inicio`. */
+  cubre_meses: number;
+  cubre_inicio: InicioCubre;
 };
 
 /** Cuentas del P&L válidas para un proveedor (igual que lib/finanzas/cuentas.ts y el check de la base). */
@@ -119,6 +131,12 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
   const sucursal_id = opcional(valor("sucursal_id"));
   if (sucursal_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sucursal_id)) return { error: "Elige la sucursal de la lista." };
 
+  const textoMeses = valor("cubre_meses").trim();
+  const cubre_meses = textoMeses === "" ? 1 : Number(textoMeses);
+  if (!Number.isInteger(cubre_meses) || cubre_meses < 1 || cubre_meses > 12) return { error: "Cada recibo cubre de 1 a 12 meses." };
+  const textoInicio = valor("cubre_inicio").trim() || "emision";
+  if (!(INICIOS_CUBRE as readonly string[]).includes(textoInicio)) return { error: "Elige desde qué mes cubre cada recibo." };
+
   const categorias: CategoriaCompra[] = [];
   for (const parte of valor("categorias").split(",").map((p) => p.trim()).filter(Boolean)) {
     const c = clave(parte);
@@ -131,7 +149,7 @@ export function leerProveedor(valor: (campo: string) => string): Resultado<Datos
       razon_social, nombre_comercial: opcional(valor("nombre_comercial")), rfc, regimen_fiscal,
       contacto_nombre: opcional(valor("contacto_nombre")), telefono: opcional(valor("telefono")), correo,
       banco: opcional(valor("banco")), clabe, cuenta: opcional(valor("cuenta")),
-      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")), numero_cliente, dias_entrega, cuenta_pl, sucursal_id,
+      dias_credito, forma_pago_habitual: forma as FormaPago, categorias, notas: opcional(valor("notas")), numero_cliente, dias_entrega, cuenta_pl, sucursal_id, cubre_meses, cubre_inicio: textoInicio as InicioCubre,
     },
   };
 }

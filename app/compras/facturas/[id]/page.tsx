@@ -12,9 +12,10 @@ import { nombreRegimen, type TasaIva } from "@/lib/compras/proveedores";
 import { diaDePagoSugerido, proximosDiasDePago, textoDia } from "@/lib/compras/diasPago";
 import { diasDePago } from "../../servidor";
 import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA, esCuentaPl } from "@/lib/finanzas/cuentas";
+import { textoCubre } from "@/lib/finanzas/cubre";
 import { puedeEditarCompras } from "@/lib/roles";
 import {
-  asignarCuentaFactura, asignarDestino, cambiarVencimientoFactura, cancelarFacturaAccion, guardarCuentasConceptos, ligarOrdenes, marcarRevisada,
+  asignarCuentaFactura, asignarDestino, cambiarPeriodoFactura, cambiarVencimientoFactura, cancelarFacturaAccion, guardarCuentasConceptos, ligarOrdenes, marcarRevisada,
   programarPagoFactura, sustituirGastoManual,
 } from "../acciones";
 
@@ -22,6 +23,7 @@ type Factura = {
   id: string; uuid: string | null; origen: "cfdi" | "manual"; sustituido_por: string | null; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string;
   rfc_emisor: string; nombre_emisor: string; regimen_emisor: string; metodo_pago: string | null; forma_pago: string | null;
   subtotal: number; descuento: number; iva: number; retenciones: number; total: number; saldo: number; proveedor_id: string; sucursal_id: string | null; cuenta_pl: string | null;
+  cubre_desde: string; cubre_hasta: string;
   uuid_relacionado: string | null; vence_el: string; estado: EstadoFactura; revisada: boolean; revision_nota: string | null;
   pagado: number; falta_complemento: boolean; pago_programado_el: string | null;
   xml_ruta: string | null; pdf_ruta: string | null; motivo_cancelacion: string | null;
@@ -36,7 +38,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: f } = await supabase.from("facturas_saldo")
-    .select("id, uuid, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal)")
+    .select("id, uuid, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, cubre_desde, cubre_hasta, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal)")
     .eq("id", id).maybeSingle<Factura>();
   if (!f) notFound();
 
@@ -112,6 +114,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           {regimenDistinto && <><dt>Aviso</dt><dd>El régimen del XML ({f.regimen_emisor}) no es el de la cartera ({f.proveedores!.regimen_fiscal}).</dd></>}
           {f.revisada && <><dt>Revisada</dt><dd>{f.revision_nota}</dd></>}
           <dt>Cuenta del P&L</dt><dd>{f.cuenta_pl && esCuentaPl(f.cuenta_pl) ? NOMBRE_CUENTA[f.cuenta_pl] : "Sin cuenta (va a Otros)"}</dd>
+          <dt>Cubre</dt><dd>{textoCubre({ desde: f.cubre_desde, hasta: f.cubre_hasta })}</dd>
         </dl>
         {edita && (
           <form action={asignarCuentaFactura} className="acciones">
@@ -121,6 +124,16 @@ export default async function DetalleFactura({ params, searchParams }: { params:
               {[...CUENTAS_GASTO, ...CUENTAS_MEMO].map((c) => <option key={c} value={c}>{NOMBRE_CUENTA[c]}</option>)}
             </select>
             <BotonEnviar className="boton boton-secundario">Guardar cuenta</BotonEnviar>
+          </form>
+        )}
+        {edita && (
+          <form action={cambiarPeriodoFactura} className="acciones">
+            <input type="hidden" name="id" value={f.id} />
+            <label htmlFor="cubre_desde" className="etiqueta">Cubre desde</label>
+            <input id="cubre_desde" name="cubre_desde" type="month" defaultValue={f.cubre_desde.slice(0, 7)} placeholder="AAAA-MM" required />
+            <label htmlFor="cubre_hasta" className="etiqueta">hasta</label>
+            <input id="cubre_hasta" name="cubre_hasta" type="month" defaultValue={f.cubre_hasta.slice(0, 7)} placeholder="AAAA-MM" required />
+            <BotonEnviar className="boton boton-secundario">Guardar periodo</BotonEnviar>
           </form>
         )}
         <div className="acciones">

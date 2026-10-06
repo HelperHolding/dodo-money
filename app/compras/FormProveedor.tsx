@@ -1,5 +1,5 @@
 import { BotonEnviar } from "@/components/BotonEnviar";
-import { CATEGORIAS_COMPRA, FORMAS_PAGO, NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, REGIMENES, type DatosProveedor } from "@/lib/compras/proveedores";
+import { CATEGORIAS_COMPRA, FORMAS_PAGO, INICIOS_CUBRE, NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, NOMBRE_INICIO_CUBRE, REGIMENES, type DatosProveedor } from "@/lib/compras/proveedores";
 import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
 import { guardarProveedor } from "./acciones";
 import { CampoConstancia } from "./CampoConstancia";
@@ -65,6 +65,17 @@ export function FormProveedor({ id, inicial, sucursales }: { id?: string; inicia
             {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
           <small>Sus facturas se cargan aquí si no se elige otra.</small>
+        </div>
+        <div className="campo">
+          <label htmlFor="cubre_meses">Cada recibo cubre (meses)</label>
+          <input id="cubre_meses" name="cubre_meses" type="number" inputMode="numeric" min={1} max={12} step={1} defaultValue={String(inicial?.cubre_meses ?? 1)} />
+          <small>Ej. CFE 2, fumigación 3, renta 1. El P&L reparte cada recibo en esos meses.</small>
+        </div>
+        <div className="campo">
+          <label htmlFor="cubre_inicio">Desde qué mes</label>
+          <select id="cubre_inicio" name="cubre_inicio" defaultValue={inicial?.cubre_inicio ?? "emision"}>
+            {INICIOS_CUBRE.map((i) => <option key={i} value={i}>{NOMBRE_INICIO_CUBRE[i]}</option>)}
+          </select>
         </div>
       </div>
       <fieldset className="campo">

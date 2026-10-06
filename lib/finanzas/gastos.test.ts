@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "./gastos.ts";
+import { enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "./gastos.ts";
 
 test("facturasAGastos: subtotal − descuento; notas de crédito restan; canceladas fuera; memos aparte", () => {
   const r = facturasAGastos([
@@ -19,12 +19,12 @@ test("sumarGastos y faltantes", () => {
   assert.equal(faltantesDe([-50, 20, -10.5]), 40.5);
 });
 
-test("facturasAGastos con fracción: cada factura por la parte de su mes", () => {
+test("facturasAGastos con fracción: cada factura por su propia fracción", () => {
   const r = facturasAGastos([
     { tipo: "ingreso", estado: "pagada", subtotal: 3000, descuento: 0, cuenta_pl: "renta", fecha_emision: "2026-09-05" },
     { tipo: "ingreso", estado: "pagada", subtotal: 3100, descuento: 0, cuenta_pl: "renta", fecha_emision: "2026-10-02" },
     { tipo: "egreso", estado: "pagada", subtotal: 310, descuento: 0, cuenta_pl: null, fecha_emision: "2026-10-20" },
-  ], (f) => (f.startsWith("2026-09") ? 0.1 : 4 / 31));
+  ], (f) => (f.fecha_emision?.startsWith("2026-09") ? 0.1 : 4 / 31));
   assert.deepEqual(r, { gastos: { renta: 700 }, sinCuenta: -40, memos: { insumos: 0, inversiones: 0 } });
 });
 
@@ -46,4 +46,8 @@ test("facturasAGastos reparte por conceptos", () => {
   const r = facturasAGastos([{ tipo: "ingreso", estado: "por_pagar", subtotal: 31200, descuento: 0, cuenta_pl: "renta",
     conceptos: [{ importe: 30000, cuenta_pl: "renta" }, { importe: 1200, cuenta_pl: "servicios" }] }]);
   assert.deepEqual(r, { gastos: { renta: 30000, servicios: 1200 }, sinCuenta: 0, memos: { insumos: 0, inversiones: 0 } });
+});
+
+test("enResultado: suma lo que mueve el resultado; insumos e inversiones (memo) no", () => {
+  assert.equal(enResultado([{ cuenta: "servicios", monto: 100 }, { cuenta: "insumos", monto: 900 }, { cuenta: null, monto: 5 }, { cuenta: "inversiones", monto: 50 }]), 105);
 });

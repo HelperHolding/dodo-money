@@ -37,7 +37,7 @@ test("proveedor mínimo: defaults de crédito, forma de pago y categorías", () 
   assert.deepEqual(r.datos, {
     razon_social: "Lácteos del Bajío SA de CV", nombre_comercial: null, rfc: "LBA010203AB1", regimen_fiscal: "601",
     contacto_nombre: null, telefono: null, correo: null, banco: null, clabe: null, cuenta: null,
-    dias_credito: 0, forma_pago_habitual: "transferencia", categorias: [], notas: null, numero_cliente: null, dias_entrega: null, cuenta_pl: null, sucursal_id: null,
+    dias_credito: 0, forma_pago_habitual: "transferencia", categorias: [], notas: null, numero_cliente: null, dias_entrega: null, cuenta_pl: null, sucursal_id: null, cubre_meses: 1, cubre_inicio: "emision",
   });
 });
 
@@ -134,4 +134,15 @@ test("sucursal por omisión del proveedor: opcional y de la lista", () => {
   assert.ok("datos" in r);
   assert.equal(r.datos.sucursal_id, "22222222-2222-2222-2222-222222222222");
   assert.deepEqual(leerProveedor(campos({ ...base, sucursal_id: "Zapopan" })), { error: "Elige la sucursal de la lista." });
+});
+
+test("regla del periodo del proveedor: por omisión 1 mes desde la emisión; de 1 a 12 meses", () => {
+  const r = leerProveedor(campos({ ...base, cubre_meses: "2", cubre_inicio: "anteriores" }));
+  assert.ok("datos" in r);
+  assert.equal(r.datos.cubre_meses, 2);
+  assert.equal(r.datos.cubre_inicio, "anteriores");
+  for (const malo of ["0", "13", "1.5", "dos"]) {
+    assert.deepEqual(leerProveedor(campos({ ...base, cubre_meses: malo })), { error: "Cada recibo cubre de 1 a 12 meses." });
+  }
+  assert.deepEqual(leerProveedor(campos({ ...base, cubre_inicio: "despues" })), { error: "Elige desde qué mes cubre cada recibo." });
 });
