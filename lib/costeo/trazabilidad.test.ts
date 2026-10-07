@@ -3,6 +3,20 @@ import assert from "node:assert/strict";
 import {insumoDeMaterial,preciosRappi} from "./trazabilidad.ts";
 import type {Insumo,Material} from "./bom";
 import type {RappiGuardada} from "../ventas/rappi";
+import {margenProducto,precioParaMargen} from './margenes.ts';
+
+test('margen usa venta sin IVA, admite pérdida y no duplica periféricos',()=>{
+ const m=margenProducto(116,40)!;assert.equal(m.neto,100);assert.equal(m.utilidad,60);assert.equal(m.margenPct,60);assert.equal(m.costoPct,40);
+ assert.equal(margenProducto(116,120)!.margenPct,-20);
+ assert.equal(margenProducto(116,0)!.margenPct,100);
+ for(const [p,c] of [[null,40],[116,null],[0,40],[116,-1],[NaN,40]])assert.equal(margenProducto(p,c),null);
+});
+test('precio objetivo usa margen sobre venta y redondea hacia arriba',()=>{
+ assert.equal(precioParaMargen(40,60),116);assert.equal(precioParaMargen(40,0),46.4);
+ const precio=precioParaMargen(63.72,65)!;assert.ok(margenProducto(precio,63.72)!.margenPct>=65);
+ for(const pct of [-1,100,101,NaN])assert.equal(precioParaMargen(40,pct),null);
+ assert.equal(precioParaMargen(null,60),null);
+});
 test("material solo enlaza a insumo exacto y único, sin semejanzas",()=>{
  const i:Insumo={nombre:"Piña",precio:80,unidad:"kg",medida:"kg",merma:0,referencia:"ingredients!G3",avisos:[]};
  const m:Material={nombre:"PINA",cantidad:20,unidad:"g",precio:80,importe:1.6,porciones:null,medida:"g",referencia:"Pizza!E15"};
