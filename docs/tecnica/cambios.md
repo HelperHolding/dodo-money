@@ -9,3 +9,7 @@ Inventario por unidad para sucursales existentes y aperturas. Costo de adquisici
 Manuales con audiencia, borradores, versiones y edición de administración. Q&A visible a usuarios activos; todos preguntan y administración responde oficialmente. Ocho manuales iniciales sin reemplazar ediciones existentes. Documentación técnica en `docs/tecnica`.
 
 Chat con Anthropic preparado para ventas, costos, cortes, manuales y P&L de oficina. Gerentes quedan fijados a su sucursal. Clave solo servidor, herramientas de lectura, fuentes verificables, cuotas y registro de consumo. Validación: 418 pruebas locales, TypeScript, build y PRUEBAS OK de Supabase reportado por el usuario. Pendiente: configuración Anthropic, validación real con proveedor y prueba de producción.
+
+## 2026-10-07 · Diseño del chat
+
+Vista de conversación con burbujas, sugerencias, fuentes por respuesta, indicador de consulta y compositor integrado. Enter envía; Shift + Enter agrega una línea. Las consultas fallidas conservan el borrador. Selector de sucursal y aviso de conexión compactos; privacidad desplegable. Sin cambio de permisos ni migración. Validación: escritorio y celular con datos ficticios, 418 pruebas, TypeScript y build. La conexión real con Anthropic sigue pendiente.
