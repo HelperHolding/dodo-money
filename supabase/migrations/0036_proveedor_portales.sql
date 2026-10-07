@@ -3,11 +3,9 @@ create extension if not exists supabase_vault with schema vault;
 -- Vault no se expone a clientes: las únicas lecturas de contraseña pasan por el RPC admin.
 revoke all on schema vault from public, anon, authenticated;
 revoke all on all tables in schema vault from public, anon, authenticated;
-revoke all on all functions in schema vault from public, anon, authenticated;
--- El propietario de los RPC conserva acceso incluso si la extensión tiene otro propietario.
-grant usage on schema vault to current_user;
-grant select,insert,update,delete on all tables in schema vault to current_user;
-grant execute on all functions in schema vault to current_user;
+-- No cambiar permisos de las funciones internas: postgres no tiene GRANT OPTION
+-- sobre cifrado/nonce. create_secret y update_secret ejecutan como supabase_admin;
+-- postgres ya tiene EXECUTE sobre esos wrappers y SELECT/DELETE sobre secrets.
 
 create table public.proveedor_portales (
  proveedor_id uuid primary key references public.proveedores(id),
