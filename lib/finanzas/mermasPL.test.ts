@@ -7,11 +7,21 @@ import type {MermaDodo} from "./mermasDodo";
 const producto:MermaDodo={sucursal_id:"s",fecha:"2026-10-01",tipo:"producto",clave:"pizza",nombre:"Pizza",unidad:"piezas",categoria:"Producto terminado",cantidad:2,costo:40,sin_costo:false};
 const costo:CostoMerma={id:"c",orden:1,sucursal_id:"s",clave:"pizza",vigente_desde:"2026-10-01",costo_unitario:30,fuente:"Receta sin IVA confirmada",registrado_en:"2026-10-01T12:00:00Z",anulado_en:null};
 const dia={sucursal_id:"s",fecha:"2026-10-01",productos_completos:true};
-test("merma P&L incorpora productos una vez y excluye insumos",()=>{
+test("merma P&L separa productos e insumos adicionales al BOM",()=>{
  const insumo={...producto,tipo:"insumo" as const,clave:"queso",costo:100};
  const filas=valorarMermas([producto,insumo],[]);
  const r=mermaParaPL(filas,[dia],dia.fecha,dia.fecha);
  assert.equal(r.monto,40);assert.equal(r.insumos,1);assert.equal(r.productos.length,1);assert.equal(r.parcial,false);
+ assert.equal(r.insumosMonto,100);assert.equal(r.insumosParcial,false);
+});
+test("insumos desconocidos no son cero; solo suma costos conocidos y conserva pendientes",()=>{
+ const insumo={...producto,tipo:"insumo" as const,clave:"queso",costo:100};
+ const desconocido={...insumo,clave:"salsa",costo:0,sin_costo:true};
+ const r=mermaParaPL(valorarMermas([insumo,desconocido],[]),[dia],dia.fecha,dia.fecha);
+ assert.equal(r.insumosMonto,100);assert.equal(r.sinCostoInsumos,1);assert.equal(r.insumosParcial,true);
+ assert.equal(mermaParaPL(valorarMermas([desconocido],[]),[dia],dia.fecha,dia.fecha).insumosMonto,null);
+ assert.equal(mermaParaPL([],[dia],dia.fecha,dia.fecha).insumosMonto,0);
+ assert.equal(mermaParaPL([],[],dia.fecha,dia.fecha).insumosMonto,null);
 });
 test("sin costo o sin importación no se interpreta como cero",()=>{
  const r=mermaParaPL(valorarMermas([{...producto,costo:0,sin_costo:true}],[]),[{...dia,productos_completos:false}],dia.fecha,dia.fecha);

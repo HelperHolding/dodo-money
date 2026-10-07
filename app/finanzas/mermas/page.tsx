@@ -26,14 +26,15 @@ export default async function Mermas({searchParams}:{searchParams:Promise<{mes?:
  const valoradas=valorarMermas(filas,datos.costos),nombres=new Map((sucursales??[]).map(s=>[s.id,s.nombre]));
  // Un formulario por producto/sucursal; la vigencia mantiene el costo de los días anteriores.
  const productos=[...new Map(valoradas.filter(r=>r.tipo==="producto").map(r=>[`${r.sucursal_id}|${r.clave}`,r])).values()];
- return <><div className="encabezado"><h1>Mermas Dodo IS</h1><p>Productos terminados al P&L. Los insumos permanecen pendientes hasta separar las pérdidas ya incluidas en el BOM.</p></div><Aviso ok={q.ok} error={q.error}/>
+ return <><div className="encabezado"><h1>Mermas Dodo IS</h1><p>Productos terminados e insumos adicionales al BOM descuentan del P&L, separados y sin IVA. Los costos desconocidos quedan pendientes.</p></div><Aviso ok={q.ok} error={q.error}/>
   {!datos.disponible&&<p className="aviso aviso-error">Falta aplicar 0035_mermas_pl.sql para completar cobertura y registrar costos sin IVA.</p>}
   <form className="seccion formulario"><div className="rejilla"><div className="campo"><label htmlFor="mes">Mes</label><input id="mes" name="mes" type="month" defaultValue={mes} required/></div><div className="campo"><label htmlFor="sucursal">Sucursal</label><select id="sucursal" name="sucursal" defaultValue={sucursal??""}><option value="">Todas</option>{sucursales?.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></div></div><button className="boton boton-secundario">Consultar</button><Link href={`/finanzas?mes=${mes}${sucursal?`&sucursal=${sucursal}`:""}`}>Ver P&L</Link></form>
   <section className="seccion"><h2>Importes incorporados al P&L</h2>
    {(sucursales??[]).filter(s=>!sucursal||s.id===sucursal).map(s=>{
     const r=mermaParaPL(valoradas.filter(r=>r.sucursal_id===s.id),dias.filter(d=>d.sucursal_id===s.id),desde,hasta);
     return <div key={s.id}><h3>{s.nombre}</h3><p>Productos terminados: <strong>{r.monto===null?"Sin dato":pesos(r.monto)}</strong>{r.parcial?" · parcial/pendiente":" · cobertura completa"}</p>
-     <p className="saldo-nota">{r.sinImportar} días sin importar · {r.sinCobertura} días sin cobertura de productos confirmada · {r.sinCosto} renglones sin costo · {r.insumos} renglones de insumos pendientes y excluidos.</p>
+     <p>Insumos: <strong>{r.insumosMonto===null?"Sin dato":pesos(r.insumosMonto)}</strong>{r.insumosParcial?" · parcial/pendiente":" · cobertura completa"}</p>
+     <p className="saldo-nota">{r.sinImportar} días sin importar · {r.sinCobertura} días sin cobertura de productos confirmada · {r.sinCosto} renglones de productos sin costo · {r.sinCostoInsumos} renglones de insumos sin costo.</p>
     </div>;
    })}
    <p className="saldo-nota">Los costos desconocidos no cuentan como cero. Si falta cobertura o costo, el margen y EBITDA muestran que el resultado es provisional. El P&L usa su propio periodo, que puede terminar antes de hoy.</p>
@@ -60,11 +61,12 @@ export default async function Mermas({searchParams}:{searchParams:Promise<{mes?:
   {resumirMermas(filas,dias).map(d=>{
    const origen=dias.find(x=>x.sucursal_id===d.sucursal_id&&x.fecha===d.fecha)!,dia=valoradas.filter(r=>r.sucursal_id===d.sucursal_id&&r.fecha===d.fecha);
    const resultado=mermaParaPL(dia,[origen],d.fecha,d.fecha);
-   return <section className="seccion" key={`${d.sucursal_id}-${d.fecha}`}><h2>{d.fecha} · {nombres.get(d.sucursal_id)}</h2><p>Productos al P&L: <strong>{resultado.monto===null?"Sin dato":pesos(resultado.monto)}</strong>{resultado.parcial?" · parcial/pendiente":""} · Insumos excluidos (importe reportado): {pesos(d.costoInsumos)}</p>
+   return <section className="seccion" key={`${d.sucursal_id}-${d.fecha}`}><h2>{d.fecha} · {nombres.get(d.sucursal_id)}</h2><p>Productos al P&L: <strong>{resultado.monto===null?"Sin dato":pesos(resultado.monto)}</strong>{resultado.parcial?" · parcial/pendiente":""} · Insumos al P&L: <strong>{resultado.insumosMonto===null?"Sin dato":pesos(resultado.insumosMonto)}</strong>{resultado.insumosParcial?" · parcial/pendiente":""}</p>
     {!origen.productos_completos&&<p className="aviso aviso-error">Reimporta el reporte completo para confirmar que este día incluye la hoja de productos terminados, aun cuando no tenga bajas.</p>}
     {resultado.sinCosto>0&&<p className="aviso aviso-error">{resultado.sinCosto} renglones de productos sin costo confirmado quedan pendientes.</p>}
+    {resultado.sinCostoInsumos>0&&<p className="aviso aviso-error">{resultado.sinCostoInsumos} renglones de insumos sin costo quedan pendientes.</p>}
     <p><small>{origen.archivo} · Importado {new Date(origen.registrado_en).toLocaleString("es-MX",{timeZone:"America/Mexico_City"})}{origen.desde!==origen.hasta?" · Costo de insumos del periodo repartido por cantidad":""}</small></p>
-    {(["producto","insumo"] as const).map(tipo=><details key={tipo}><summary>{tipo==="producto"?"Productos terminados · al P&L":"Insumos · pendientes, fuera del P&L"}</summary><ul className="lista-filas">{dia.filter(r=>r.tipo===tipo).map(r=>{const ref=referenciaBOM(r,versiones);return <li className="fila" key={r.clave}><div className="fila-nombre"><strong>{r.nombre}</strong><small>{r.categoria}</small>
+    {(["producto","insumo"] as const).map(tipo=><details key={tipo}><summary>{tipo==="producto"?"Productos terminados · al P&L":"Insumos · al P&L"}</summary><ul className="lista-filas">{dia.filter(r=>r.tipo===tipo).map(r=>{const ref=referenciaBOM(r,versiones);return <li className="fila" key={r.clave}><div className="fila-nombre"><strong>{r.nombre}</strong><small>{r.categoria}</small>
       {tipo==="insumo"&&ref&&<small><Link href={`/ventas/costos/materiales?version=${ref.version}&ver=insumos&q=${encodeURIComponent(ref.nombre)}`}>Insumo BOM</Link> · {pesos(ref.precio)} / {ref.unidad}{ref.merma!==null?` · ajuste del BOM ${(ref.merma*100).toFixed(2)} %`:""}. Confirma la unidad; no convertimos litros a kg.</small>}
       </div><div className="fila-datos"><span>{r.cantidad} {r.unidad}</span><span>{tipo==="producto"?(r.costo_pl===null?"Costo pendiente":pesos(r.costo_pl)):(r.sin_costo?"Costo pendiente":pesos(r.costo))}</span>{r.costo_manual&&<small>Importado {pesos(r.costo)} · costo confirmado</small>}{tipo==="producto"&&<small>{r.fuente_costo}</small>}</div></li>;})}</ul></details>)}
    </section>;

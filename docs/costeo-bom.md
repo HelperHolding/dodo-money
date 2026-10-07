@@ -26,7 +26,7 @@ Las equivalencias se conservan para cargas posteriores. La reimportación del mi
 - Se conserva el 1 % adicional de periféricos por decisión del usuario. El BOM ya incluye cajas y otros componentes de empaque. El extra se calcula con el precio de venta directa de `registry` D, no con el precio de agregador E, al que algunas recetas apuntan por error.
 - Las unidades de precios de insumos sin uso verificable en un BOM se muestran pendientes de confirmar. La etiqueta `ingredients` H es una medida de producción y no siempre representa la unidad del precio.
 - Los vínculos de nombres son exactos o manuales. Un nombre ambiguo queda sin vincular. No se asignan por similitud aproximada.
-- Los BOM son versiones del archivo, no un editor de recetas. Para cambiar cantidades o precios se corrige y vuelve a importar el Excel. Las bajas de productos terminados se incorporan al P&L con la regla de `docs/mermas-pl.md`; los insumos continúan pendientes y excluidos.
+- Los BOM son versiones del archivo, no un editor de recetas. Para cambiar cantidades o precios se corrige y vuelve a importar el Excel. Las bajas de productos terminados e insumos adicionales al BOM se incorporan al P&L con la regla de `docs/mermas-pl.md`; los costos desconocidos quedan pendientes.
 
 ## Verificación
 

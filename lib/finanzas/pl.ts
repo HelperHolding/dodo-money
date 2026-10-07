@@ -3,7 +3,7 @@ import type { CuentaGasto } from "./cuentas";
 
 export type ClaveRenglon =
   | "venta_bruta" | "venta_bruta_dodo" | "venta_bruta_rappi" | "venta_neta_dodo" | "venta_neta_rappi" | "alimento_dodo" | "alimento_rappi"
-  | "venta_neta" | "alimento" | "merma" | "nomina_cocina" | "nomina_gerencia" | "repartidores" | "agregadores"
+  | "venta_neta" | "alimento" | "merma" | "merma_productos" | "merma_insumos" | "nomina_cocina" | "nomina_gerencia" | "repartidores" | "agregadores"
   | "marketing_agregadores" | "marketing" | "renta" | "servicios" | "mantenimiento" | "consumibles_equipo"
   | "regalias" | "otros" | "ebitda_tienda" | "oficina" | "ebitda" | "margen_bruto";
 
@@ -18,6 +18,8 @@ export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "v
   { clave: "alimento_dodo", nombre: "Dodo IS / POS · alimento y empaque", tipo: "detalle" },
   { clave: "alimento_rappi", nombre: "Rappi · alimento y empaque", tipo: "detalle" },
   { clave: "merma", nombre: "Merma", tipo: "gasto" },
+  { clave: "merma_productos", nombre: "Merma de productos terminados", tipo: "detalle" },
+  { clave: "merma_insumos", nombre: "Merma de insumos", tipo: "detalle" },
   { clave: "margen_bruto", nombre: "Margen bruto", tipo: "total" },
   { clave: "nomina_cocina", nombre: "Nómina cocina", tipo: "gasto" },
   { clave: "nomina_gerencia", nombre: "Nómina gerencia", tipo: "gasto" },
@@ -59,6 +61,8 @@ export function resumenCanalPL(
 export type EntradaPL = {
   canales: { dodo: CanalPL; rappi: CanalPL };
   ventaNeta: number; descuentos: number; alimento: number; merma: number | null; mermaPendiente: boolean;
+  mermaProductos: number | null; mermaInsumos: number | null;
+  mermaProductosPendiente: boolean; mermaInsumosPendiente: boolean;
   nomina: { cocina: number; gerencia: number };
   /** Gastos sin IVA por cuenta: facturas (− notas de crédito), caja chica y gastos del mes. */
   gastos: Partial<Record<CuentaGasto, number>>;
@@ -73,6 +77,7 @@ export type EntradaPL = {
 export const entradaVacia = (): EntradaPL => ({
   canales: { dodo: { bruta: 0, neta: 0, alimento: 0 }, rappi: { bruta: 0, neta: 0, alimento: 0 } },
   ventaNeta: 0, descuentos: 0, alimento: 0, merma: null, mermaPendiente: false, nomina: { cocina: 0, gerencia: 0 }, gastos: {}, sinCuenta: 0,
+  mermaProductos:null,mermaInsumos:null,mermaProductosPendiente:false,mermaInsumosPendiente:false,
   agregadores: 0, comisionesCobro: 0, faltantes: 0, regalias: 0, oficina: 0, memos: { insumos: 0, inversiones: 0 },
 });
 
@@ -88,6 +93,9 @@ export function sumarEntradas(entradas: readonly EntradaPL[]): EntradaPL {
     }
     s.ventaNeta += e.ventaNeta; s.descuentos += e.descuentos; s.alimento += e.alimento;
     s.mermaPendiente ||= e.mermaPendiente;
+    s.mermaProductosPendiente ||= e.mermaProductosPendiente;
+    s.mermaInsumosPendiente ||= e.mermaInsumosPendiente;
+    for(const k of ["mermaProductos","mermaInsumos"] as const)if(e[k]!==null)s[k]=centavos((s[k]??0)+e[k]);
     if (e.merma !== null) s.merma = (s.merma ?? 0) + e.merma;
     s.nomina.cocina += e.nomina.cocina; s.nomina.gerencia += e.nomina.gerencia;
     for (const [k, v] of Object.entries(e.gastos) as [CuentaGasto, number][]) s.gastos[k] = centavos((s.gastos[k] ?? 0) + v);
@@ -134,6 +142,7 @@ export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMe
     venta_neta_dodo: e.canales.dodo.neta, venta_neta_rappi: e.canales.rappi.neta,
     alimento_dodo: e.canales.dodo.alimento, alimento_rappi: e.canales.rappi.alimento,
     venta_neta: e.ventaNeta, alimento: e.alimento, merma: e.merma,
+    merma_productos:e.mermaProductos,merma_insumos:e.mermaInsumos,
     nomina_cocina: e.nomina.cocina, nomina_gerencia: e.nomina.gerencia,
     repartidores: g("repartidores"), agregadores: e.agregadores, marketing_agregadores: g("marketing_agregadores"),
     marketing: g("marketing"), renta: g("renta"), servicios: g("servicios"), mantenimiento: g("mantenimiento"),
@@ -162,7 +171,7 @@ export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMe
     const meta = metaDe.has(r.clave) ? metaDe.get(r.clave) ?? null : null;
     const metaFija = r.tipo === "gasto" && fija.has(r.clave);
     return {
-      clave: r.clave, nombre: e.mermaPendiente && r.tipo === "total" ? `${r.nombre} (provisional)` : e.mermaPendiente && r.clave === "merma" ? "Merma de productos terminados (pendiente/parcial)" : r.nombre, tipo: r.tipo, monto, pct: pct(monto), meta,
+      clave: r.clave, nombre: e.mermaPendiente && r.tipo === "total" ? `${r.nombre} (provisional)` : ((r.clave==="merma"&&e.mermaPendiente)||(r.clave==="merma_productos"&&e.mermaProductosPendiente)||(r.clave==="merma_insumos"&&e.mermaInsumosPendiente)) ? `${r.nombre} (pendiente/parcial)` : r.nombre, tipo: r.tipo, monto, pct: pct(monto), meta,
       metaPct: meta === null || ctx.ventaNeta <= 0 ? null : Math.round((meta / ctx.ventaNeta) * 10000) / 10000,
       diferencia: meta === null || monto === null ? null : centavos(monto - meta),
       metaFija, sinCapturar: metaFija && (meta ?? 0) > 0 && monto === 0,

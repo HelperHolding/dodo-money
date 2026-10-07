@@ -16,10 +16,11 @@ export function valorarMermas(filas:readonly MermaDodo[],costos:readonly CostoMe
  });
 }
 
-/** Productos terminados solamente: insumos excluidos hasta separar las pérdidas del BOM. */
+/** Bajas de productos e insumos adicionales al BOM, separadas y solo con costo conocido. */
 export function mermaParaPL(filas:readonly MermaValorada[],dias:readonly DiaMerma[],desde:string,hasta:string) {
  const dentro=(f:string)=>f>=desde&&f<=hasta;
  const productos=filas.filter(r=>r.tipo==="producto"&&dentro(r.fecha));
+ const insumosFilas=filas.filter(r=>r.tipo==="insumo"&&dentro(r.fecha));
  const fechas=new Set(dias.filter(d=>dentro(d.fecha)).map(d=>d.fecha));
  const completos=new Set(dias.filter(d=>dentro(d.fecha)&&d.productos_completos).map(d=>d.fecha));
  const esperados=desde<=hasta?Math.floor((Date.parse(`${hasta}T00:00:00Z`)-Date.parse(`${desde}T00:00:00Z`))/86400000)+1:0;
@@ -28,6 +29,9 @@ export function mermaParaPL(filas:readonly MermaValorada[],dias:readonly DiaMerm
  const suma=redondear(conCosto.reduce((t,r)=>t+Number(r.costo_pl),0));
  const conProductos=new Set(productos.map(r=>r.fecha));
  const hayDiaVacioCompleto=[...completos].some(f=>!conProductos.has(f));
+ const insumosConCosto=insumosFilas.filter(r=>r.costo_pl!==null),sinCostoInsumos=insumosFilas.length-insumosConCosto.length;
+ const diasConInsumos=new Set(insumosFilas.map(r=>r.fecha));
+ const insumosMonto=insumosConCosto.length||[...fechas].some(f=>!diasConInsumos.has(f))?redondear(insumosConCosto.reduce((t,r)=>t+Number(r.costo_pl),0)):null;
  return { monto:conCosto.length||hayDiaVacioCompleto?suma:null,parcial:sinImportar>0||sinCobertura>0||sinCosto>0,sinImportar,sinCobertura,sinCosto,
-  insumos:filas.filter(r=>r.tipo==="insumo"&&dentro(r.fecha)).length,productos,completos:completos.size };
+  insumos:insumosFilas.length,insumosFilas,insumosMonto,sinCostoInsumos,insumosParcial:sinImportar>0||sinCostoInsumos>0,productos,completos:completos.size };
 }

@@ -17,11 +17,11 @@ const TAMANO: Record<Tamano, string> = { pequeno: "Pequeña", mediano: "Mediana"
 const FILTROS = { "sin-costo": "Sin costo", "sin-categoria": "Sin categoría" } as const;
 type Filtro = keyof typeof FILTROS;
 
-export default async function PaginaCostos({ searchParams }: { searchParams: Promise<{ ver?: string; ok?: string; error?: string }> }) {
-  const { ver, ok, error } = await searchParams;
+export default async function PaginaCostos({ searchParams }: { searchParams: Promise<{ ver?: string; vista?:string;q?:string;ok?: string; error?: string }> }) {
+  const { ver,vista,q, ok, error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
-  if (perfil.rol === "corporativo") redirect("/ventas/costos/materiales");
-  if (!puedeImportarVentas(perfil.rol)) redirect("/ventas");
+  if (!["admin","corporativo"].includes(perfil.rol)) redirect("/ventas");
+  const edita=puedeImportarVentas(perfil.rol);
   const filtro: Filtro | undefined = ver === "sin-costo" || ver === "sin-categoria" ? ver : undefined;
   const hoy = hoyMX();
 
@@ -41,7 +41,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
   for (const c of costos) costosDe.set(c.dodo_id, [...(costosDe.get(c.dodo_id) ?? []), c]);
   const vigente = (p: Producto) => costoVigente(costosDe.get(p.dodo_id) ?? [], hoy);
   const visibles = productos.filter((p) =>
-    filtro === "sin-costo" ? !vigente(p) : filtro === "sin-categoria" ? !p.categoria : true);
+    (filtro === "sin-costo" ? !vigente(p) : filtro === "sin-categoria" ? !p.categoria : true)&&(!q||p.nombre.toLocaleLowerCase("es-MX").includes(q.toLocaleLowerCase("es-MX"))||String(p.dodo_id).includes(q)));
   const grupos = ([null, ...CATEGORIAS] as (Categoria | null)[])
     .map((c) => ({ categoria: c, productos: visibles.filter((p) => p.categoria === c) }))
     .filter((g) => g.productos.length > 0);
@@ -56,18 +56,20 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
         </p>
       </div>
       <Aviso ok={ok} error={error} />
-      <div className="acciones"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link><Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link></div>
+      <div className="acciones"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>
       <nav className="acciones" aria-label="Filtros">
-        <Link className="boton boton-secundario" href="/ventas/costos" aria-current={!filtro ? "page" : undefined}>Todos</Link>
+        <Link className="boton boton-secundario" href={`/ventas/costos?vista=${vista==="lista"?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={!filtro ? "page" : undefined}>Todos</Link>
         {(Object.keys(FILTROS) as Filtro[]).map((f) => (
-          <Link key={f} className="boton boton-secundario" href={`/ventas/costos?ver=${f}`} aria-current={filtro === f ? "page" : undefined}>
+          <Link key={f} className="boton boton-secundario" href={`/ventas/costos?ver=${f}&vista=${vista==="lista"?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={filtro === f ? "page" : undefined}>
             {FILTROS[f]}
           </Link>
         ))}
       </nav>
+      <form className="acciones"><input type="hidden" name="ver" value={filtro??""}/><label htmlFor="costos-vista">Vista</label><select id="costos-vista" name="vista" defaultValue={vista==="lista"?"lista":"tarjetas"}><option value="tarjetas">Tarjetas</option><option value="lista">Lista</option></select><label className="solo-lector" htmlFor="costos-buscar">Buscar producto o ID</label><input id="costos-buscar" name="q" defaultValue={q??""} placeholder="Buscar producto o ID"/><button className="boton boton-secundario">Consultar</button></form>
+      {vista==="lista"&&<section className="seccion"><h2>Productos · {visibles.length}</h2><div className="tabla-contenedor"><table className="tabla tabla-tarjetas"><thead><tr><th>Producto</th><th>ID</th><th>Categoría</th><th>Tamaño</th><th className="monto">Costo vigente</th><th>Desde / fuente</th></tr></thead><tbody>{visibles.map(p=>{const c=vigente(p);return <tr key={p.dodo_id}><td data-label="Producto"><Link href={`/ventas/costos/productos/${p.dodo_id}`}>{p.nombre}</Link></td><td data-label="ID">{p.dodo_id}</td><td data-label="Categoría">{p.categoria?NOMBRE_CATEGORIA[p.categoria]:"Sin categoría"}</td><td data-label="Tamaño">{p.tamano?TAMANO[p.tamano]:"—"}</td><td data-label="Costo vigente" className="monto">{c?pesos(c.costo):"Sin costo"}</td><td data-label="Desde / fuente">{c?`${fechaTexto(c.vigente_desde)} · ${c.fuente??"Fuente no indicada"}`:"—"}{c?.nota&&<small className="alerta-texto">{c.nota}</small>}</td></tr>;})}</tbody></table></div></section>}
 
       {!grupos.length && <p className="vacio">{filtro ? "No hay productos con ese filtro." : "Aún no hay productos. Se agregan solos al importar ventas."}</p>}
-      {grupos.map((g) => (
+      {vista!=="lista"&&grupos.map((g) => (
         <section key={g.categoria ?? "sin"} className="seccion" aria-labelledby={`g-${g.categoria ?? "sin"}`}>
           <h2 id={`g-${g.categoria ?? "sin"}`}>{g.categoria ? NOMBRE_CATEGORIA[g.categoria] : "Sin categoría"} · {g.productos.length}</h2>
           <div className="tarjetas">
@@ -78,7 +80,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
                 <article key={p.dodo_id} id={`p-${p.dodo_id}`} className="tarjeta" data-alerta={!actual || actual.nota ? "si" : undefined}>
                   <div className="tarjeta-encabezado">
                     <div>
-                      <h3>{p.nombre}</h3>
+                      <h3><Link href={`/ventas/costos/productos/${p.dodo_id}`}>{p.nombre}</Link></h3>
                       <p className="tarjeta-estado">
                         {actual ? `${pesos(actual.costo)} desde ${fechaTexto(actual.vigente_desde)}` : "Sin costo"}
                       </p>
@@ -87,7 +89,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
                   </div>
                   {actual?.nota && <p className="alerta-texto">⚠ {actual.nota}</p>}
 
-                  <form action={asignarCategoria} className="acciones">
+                  {edita&&<form action={asignarCategoria} className="acciones">
                     <input type="hidden" name="dodo_id" value={p.dodo_id} />
                     <input type="hidden" name="ver" value={filtro ?? ""} />
                     <label className="etiqueta" htmlFor={`cat-${p.dodo_id}`}>Categoría</label>
@@ -96,9 +98,9 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
                       {CATEGORIAS.map((c) => <option key={c} value={c}>{NOMBRE_CATEGORIA[c]}</option>)}
                     </select>
                     <BotonEnviar className="boton boton-secundario">Guardar</BotonEnviar>
-                  </form>
+                  </form>}
 
-                  <details>
+                  {edita&&<details>
                     <summary>Nuevo costo{historial.length ? ` · historial (${historial.length})` : ""}</summary>
                     <form action={registrarCosto} className="formulario">
                       <input type="hidden" name="dodo_id" value={p.dodo_id} />
@@ -142,7 +144,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
                         ))}
                       </ul>
                     )}
-                  </details>
+                  </details>}
                 </article>
               );
             })}

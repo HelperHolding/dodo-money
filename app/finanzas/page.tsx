@@ -39,7 +39,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
       </div>
       <p className="saldo-nota">El desglose Dodo IS / POS y Rappi corresponde a la fuente de importación. Los subtotales por fuente ya están incluidos en los totales. Los porcentajes son sobre la venta neta total.</p>
       <p><Link href="/ventas/conciliacion">Revisar diferencias y conciliaciones de Dodo IS →</Link></p>
-      <p className="saldo-nota">Merma: bajas de productos terminados. Los insumos siguen pendientes de separar del ajuste incluido en el BOM.</p>
+      <p className="saldo-nota">Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los costos desconocidos quedan pendientes.</p>
       <nav className="acciones" aria-label="Periodo y vista">
         {pestana(p.tipo === "mes", `/finanzas?${new URLSearchParams({ periodo: "mes", ...suc, ...vista })}`, "Mes")}
         {pestana(p.tipo === "semana", `/finanzas?${new URLSearchParams({ periodo: "semana", ...suc, ...vista })}`, "Semana")}

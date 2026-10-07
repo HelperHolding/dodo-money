@@ -1,6 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { avisosSinCapturar, calcularPL, entradaVacia, escalarMetas, finDeMes, metaMonto, resumenCanalPL, sumarEntradas, sumarMetas, type EntradaPL } from "./pl.ts";
+test("merma de productos e insumos descuenta una sola vez; meta compara total y conserva pendientes",()=>{
+ const e={...entradaVacia(),ventaNeta:1000,alimento:200,merma:140,mermaProductos:40,mermaInsumos:100,mermaPendiente:true,mermaInsumosPendiente:true};
+ const filas=calcularPL(e,[{renglon:"merma",tipo:"pct",valor:.02}],{ventaNeta:1000,ventaRappi:0,plantilla:{cocina:0,gerencia:0}});
+ assert.equal(filas.find(f=>f.clave==="merma")!.meta,20);
+ for(const k of ["margen_bruto","ebitda_tienda","ebitda"])assert.equal(filas.find(f=>f.clave===k)!.monto,660);
+ assert.equal(filas.find(f=>f.clave==="merma_insumos")!.monto,100);
+ assert.match(filas.find(f=>f.clave==="merma_insumos")!.nombre,/pendiente/);
+ const total=sumarEntradas([e,e]);assert.equal(total.mermaInsumos,200);assert.equal(total.mermaProductos,80);assert.equal(total.merma,280);assert.equal(total.mermaInsumosPendiente,true);
+});
 
 test("finDeMes", () => {
   assert.equal(finDeMes("2026-10"), "2026-10-31");

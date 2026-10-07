@@ -14,7 +14,7 @@ function RevisionArchivo({archivo}:{archivo:File}) {
     {revision.error && <p className="aviso aviso-error" role="alert">{revision.error}</p>}
     <button name="etapa" value="revisar" disabled={pendiente}>Revisar archivo</button>
     {revision.huella && <><h3>Vista previa: {revision.archivo}</h3><p>{revision.dias?.length} días. Se reemplazarán {revision.reemplazados} días ya importados; se conservará el resto del historial.</p>
-      <p>Los costos de insumos se reparten por cantidad usando el costo de todo el reporte. Los costos $0 requieren revisión. Los productos terminados con costo confirmado entran al P&L; los insumos siguen pendientes y fuera del resultado. Incluye también la hoja de productos terminados, aunque esté vacía.</p>
+      <p>Los costos de insumos se reparten por cantidad usando el costo de todo el reporte. Los costos $0 requieren revisión. Los productos terminados e insumos con costo conocido descuentan del P&L; los costos desconocidos quedan pendientes. Incluye también la hoja de productos terminados, aunque esté vacía.</p>
       <ul className="lista-filas">{revision.dias?.map(d=><li className="fila" key={`${d.sucursal_id}-${d.fecha}`}><div className="fila-nombre"><strong>{d.fecha} · {revision.nombres?.[d.sucursal_id]}</strong></div><div className="fila-datos"><span>{d.insumos} insumos · {pesos(d.costoInsumos)}</span><span>{d.productos} productos · {pesos(d.costoProductos)}</span><span>{d.sinCosto} renglones sin costo</span></div></li>)}</ul>
       <input type="hidden" name="huella" value={revision.huella}/><button name="etapa" value="guardar" disabled={pendiente}>Confirmar importación</button></>}
     {pendiente && <p role="status">Procesando Excel…</p>}

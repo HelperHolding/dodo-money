@@ -1,6 +1,6 @@
 # Mermas en el P&L
 
-Regla acordada: bajas de productos terminados se incorporan como Merma; los insumos siguen pendientes y excluidos hasta separar la pérdida de proceso ya incluida en el BOM. No se calcula aquí consumo real menos teórico ni se restan automáticamente porcentajes de pérdida de los ingredientes. No se añade el 1 % de periféricos a las bajas.
+Regla acordada: las bajas de productos terminados y de insumos son adicionales al BOM y descuentan del P&L. Merma es el total; los dos tipos se muestran como desglose y no se descuentan dos veces. Los insumos se valoran con el costo sin IVA del reporte; los renglones sin costo quedan pendientes. No se calcula aquí consumo real menos teórico ni se restan automáticamente porcentajes de pérdida de los ingredientes. No se añade el 1 % de periféricos a las bajas.
 
 ## Activación
 

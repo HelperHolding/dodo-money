@@ -157,9 +157,11 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       anotar(s.id, `alimento_${canal}`, `${nombre} · costo teórico de las piezas vendidas`, c.alimento);
     }
     const merma = mermaParaPL(mermasValoradas.filter(r=>r.sucursal_id===s.id),datosMerma.dias.filter(d=>d.sucursal_id===s.id),desde,hasta);
-    for (const r of merma.productos.filter(r=>r.costo_pl!==null)) {
+    for (const r of [...merma.productos,...merma.insumosFilas].filter(r=>r.costo_pl!==null)) {
       const origen = datosMerma.dias.find(d=>d.sucursal_id===s.id&&d.fecha===r.fecha);
-      anotar(s.id,"merma",r.nombre,Number(r.costo_pl),{href:`/finanzas/mermas?mes=${r.fecha.slice(0,7)}&sucursal=${s.id}`,nota:`${r.fecha} · ${r.cantidad} piezas · ${r.fuente_costo} · ${origen?.archivo??"Reporte importado"}`});
+      const detalle={href:`/finanzas/mermas?mes=${r.fecha.slice(0,7)}&sucursal=${s.id}`,nota:`${r.fecha} · ${r.cantidad} ${r.unidad} · ${r.fuente_costo} · ${origen?.archivo??"Reporte importado"}`};
+      anotar(s.id,"merma",r.nombre,Number(r.costo_pl),detalle);
+      anotar(s.id,r.tipo==="producto"?"merma_productos":"merma_insumos",r.nombre,Number(r.costo_pl),detalle);
     }
     const facturasSuc = de(facturas, s.id);
     const f = facturasAGastos(facturasSuc, fraccionDe);
@@ -211,7 +213,9 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     const entrada: EntradaPL = {
       ...entradaVacia(), canales,
       ventaNeta, descuentos: centavos(renglones.reduce((t, r) => t + r.importe_sin_descuento - r.importe, 0)),
-      alimento: c.total.costo, merma: merma.monto, mermaPendiente: merma.parcial, nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia },
+      alimento: c.total.costo, merma: merma.monto===null&&merma.insumosMonto===null?null:centavos((merma.monto??0)+(merma.insumosMonto??0)), mermaPendiente: merma.parcial||merma.insumosParcial,
+      mermaProductos:merma.monto,mermaInsumos:merma.insumosMonto,mermaProductosPendiente:merma.parcial,mermaInsumosPendiente:merma.insumosParcial,
+      nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia },
       gastos: sumarGastos(f.gastos, caja.gastos), sinCuenta: centavos(f.sinCuenta + caja.sinCuenta),
       agregadores, comisionesCobro: cobro.total, faltantes, regalias: regaliasPeriodo, memos: f.memos,
     };
@@ -220,6 +224,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     if(merma.sinImportar)avisos.push(`Mermas: faltan ${merma.sinImportar} días por importar; el resultado es provisional.`);
     if(merma.sinCobertura)avisos.push(`Mermas: ${merma.sinCobertura} días sin cobertura confirmada de productos terminados. Reimporta el reporte completo; el resultado es provisional.`);
     if(merma.sinCosto)avisos.push(`Mermas: ${merma.sinCosto} renglones de productos sin costo confirmado quedan pendientes y fuera del monto conocido; el resultado es provisional.`);
+    if(merma.sinCostoInsumos)avisos.push(`Mermas: ${merma.sinCostoInsumos} renglones de insumos sin costo quedan pendientes y fuera del monto conocido; el resultado es provisional.`);
     for (const c of conciliaciones.filas.filter(c=>c.sucursal_id===s.id)) {
       avisos.push(`Conciliación manual ${c.fecha}: ${c.motivo}${c.conciliar_productos?" · venta bruta según productos; diferencia justificada":""}.`);
     }

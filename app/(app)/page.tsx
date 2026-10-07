@@ -34,7 +34,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
     ...(puedeVerFinanzas(perfil.rol) ? [
       { titulo: "P&L", nota: "Resultados, gastos y metas", href: `/finanzas?sucursal=${sucursal.id}` },
       { titulo: "Retenciones", nota: "Impuestos retenidos en pagos y enteros", href: "/finanzas/retenciones" },
-      { titulo: "Mermas", nota: "Productos terminados al P&L; insumos pendientes", href: `/finanzas/mermas?sucursal=${sucursal.id}` },
+      { titulo: "Mermas", nota: "Productos terminados e insumos al P&L", href: `/finanzas/mermas?sucursal=${sucursal.id}` },
       { titulo: "Costeo y materiales", nota: "Insumos, recetas y costos por producto", href: "/ventas/costos/materiales" },
     ] : []),
     { titulo: "Checklists", nota: "Recorridos y controles de la operación", href: "/checklists" },
