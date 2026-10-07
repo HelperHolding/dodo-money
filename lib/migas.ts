@@ -8,6 +8,8 @@ export type Miga = { texto: string; href: string | null };
 
 /** Pantallas que no están en el menú. ":id" es un registro. `sinRegresar`: la página trae su propio regreso. */
 const PAGINAS: readonly { patron: string; texto: string; sinRegresar?: boolean }[] = [
+  { patron: "/aperturas/:id", texto: "Proyecto de apertura" },
+  { patron: "/aperturas/:id/items/:id", texto: "Seguimiento" },
   { patron: "/compras/proveedores/nuevo", texto: "Nuevo proveedor" },
   { patron: "/compras/proveedores/:id", texto: "Proveedor" },
   { patron: "/compras/facturas/subir", texto: "Subir facturas" },

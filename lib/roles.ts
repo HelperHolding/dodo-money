@@ -111,7 +111,7 @@ export function menuLateral(rol: Rol): Menu {
   }
   return {
     inicio: corporativo ? { href: "/corporativo", texto: "Vista general" } : { href: "/", texto: "Inicio" },
-    grupos,
+    grupos: puedeVerCompras(rol) ? [...grupos,{titulo:"Aperturas",enlaces:[{href:"/aperturas",texto:"Proyectos"}]}] : grupos,
   };
 }
 
