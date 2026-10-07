@@ -62,11 +62,11 @@ const grupos = (rol: R) => menuLateral(rol).grupos.map((g) => g.titulo);
 const grupo = (rol: R, titulo: string) => menuLateral(rol).grupos.find((g) => g.titulo === titulo)?.enlaces.map((e) => e.href);
 
 test("menú lateral: cada puesto ve solo sus grupos", () => {
-  assert.deepEqual(grupos("operacion"), ["Sucursal"]);
-  assert.deepEqual(grupos("encargado"), ["Sucursal"]);
-  assert.deepEqual(grupos("gerente"), ["Sucursal", "Ventas"]);
-  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Aperturas", "Activos"]);
-  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Aperturas", "Activos"]);
+  assert.deepEqual(grupos("operacion"), ["Sucursal", "Conocimiento"]);
+  assert.deepEqual(grupos("encargado"), ["Sucursal", "Conocimiento"]);
+  assert.deepEqual(grupos("gerente"), ["Sucursal", "Ventas", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Aperturas", "Activos", "Conocimiento"]);
+  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Aperturas", "Activos", "Conocimiento"]);
 });
 
 test("menú lateral: Inicio arriba; corporativo empieza en la vista general", () => {

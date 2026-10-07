@@ -5,6 +5,8 @@ checklists, ventas importadas de Dodo IS y compras (proveedores, órdenes, recep
 
 Next.js 15 (TypeScript) + Supabase (Postgres, autenticación y seguridad por renglón). Se publica en Vercel.
 
+La [documentación técnica actual](docs/tecnica/README.md) reúne arquitectura, módulos, permisos, migraciones, registro de cambios y configuración del asistente Anthropic. Los manuales de uso y Q&A viven en **Conocimiento** dentro de DODO MX; consulta allí la versión publicada para tu puesto.
+
 ## Cómo funciona
 
 Cada sucursal tiene cuatro cajas y corporativo como destino:

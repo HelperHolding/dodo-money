@@ -111,7 +111,7 @@ export function menuLateral(rol: Rol): Menu {
   }
   return {
     inicio: corporativo ? { href: "/corporativo", texto: "Vista general" } : { href: "/", texto: "Inicio" },
-    grupos: puedeVerCompras(rol) ? [...grupos,{titulo:"Aperturas",enlaces:[{href:"/aperturas",texto:"Proyectos"}]},{titulo:"Activos",enlaces:[{href:"/activos",texto:"Inventario y mantenimiento"}]}] : grupos,
+    grupos: [...grupos,...(puedeVerCompras(rol)?[{titulo:"Aperturas",enlaces:[{href:"/aperturas",texto:"Proyectos"}]},{titulo:"Activos",enlaces:[{href:"/activos",texto:"Inventario y mantenimiento"}]}]:[]),{titulo:"Conocimiento",enlaces:[{href:"/conocimiento",texto:"Manuales y Q&A"},...(puedeVerVentas(rol)?[{href:"/asistente",texto:"Asistente IA"}]:[])]}],
   };
 }
 
