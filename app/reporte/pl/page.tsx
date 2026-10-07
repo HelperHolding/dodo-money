@@ -20,6 +20,7 @@ export default async function ReportePLPdf({ searchParams }: { searchParams: Pro
       <EncabezadoReporte titulo={comparativo ? "P&L comparativo" : "P&L"} sucursal={r.titulo}
         detalle={`${r.comp ? r.comp.periodoTitulo : `${p.titulo}${enCurso ? ` · hasta el ${fechaTexto(p.hasta)}` : ""}`} · venta bruta con IVA; resultado sin IVA, criterio devengado`}
         generadoPor={r.generadoPor} />
+      <p className="saldo-nota">Merma: bajas de productos terminados. Insumos pendientes de separar del BOM; los importes parciales muestran un resultado provisional.</p>
       {r.comp ? (
         r.comp.columnas.length ? <TablaComparativo columnas={r.comp.columnas} total={r.comp.total} /> : vacio
       ) : r.meta && (p.vacio ? vacio : (

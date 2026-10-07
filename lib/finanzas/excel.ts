@@ -26,7 +26,7 @@ function porSecciones(pre: Presentacion, fila: (clave: ClaveRenglon) => Celda[] 
 }
 
 const encabezado = (titulo: string, periodo: string, generado: string, columnas: Celda[]): Celda[][] =>
-  [[titulo], [`${periodo} · venta bruta con IVA; resultado sin IVA, criterio devengado`], [`Generado por ${generado}`], [], columnas];
+  [[titulo], [`${periodo} · venta bruta con IVA; resultado sin IVA, criterio devengado · merma solo de productos terminados; insumos pendientes`], [`Generado por ${generado}`], [], columnas];
 
 /** Hoja "Contra meta": real, %, meta, diferencia y las dos comparaciones, por secciones. */
 export function hojaPL(r: {
@@ -56,7 +56,7 @@ export function hojaComparativo(r: { titulo: string; periodo: string; generado: 
   const arriba = encabezado(`P&L comparativo · ${r.titulo}`, r.periodo, r.generado, ["Renglón", ...todas.flatMap((c) => [c.etiqueta, "%"])]);
   const cuerpo = porSecciones(pre, (clave) => {
     const fs = todas.map((c) => c.filas.find((f) => f.clave === clave));
-    return fs[0] ? [fs[0].nombre, ...fs.flatMap((f) => [contable(f?.monto ?? null), pct(f?.pct)])] : null;
+    return fs[0] ? [r.total.filas.find(f=>f.clave===clave)?.nombre ?? fs[0].nombre, ...fs.flatMap((f) => [contable(f?.monto ?? null), pct(f?.pct)])] : null;
   }, {
     venta: [["Descuentos (informativo)", ...todas.flatMap((c) => [contable(c.entrada.descuentos), null])]],
     memo: [

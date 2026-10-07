@@ -721,3 +721,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .tabla-pl .pl-desglose th[scope="row"] { padding-left: 28px; color: var(--tinta-2); font-weight: 500; font-size: .9rem; }
 
 .conciliacion-casilla input[type="checkbox"] { flex: none; }
+
+.merma-producto { padding: 16px 0; border-bottom: 1px solid var(--linea); }
+.merma-producto > summary { cursor: pointer; font-weight: 650; }
+.merma-producto[open] > summary { margin-bottom: 12px; }

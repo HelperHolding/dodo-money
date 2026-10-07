@@ -58,7 +58,7 @@ export function resumenCanalPL(
 
 export type EntradaPL = {
   canales: { dodo: CanalPL; rappi: CanalPL };
-  ventaNeta: number; descuentos: number; alimento: number; merma: number | null;
+  ventaNeta: number; descuentos: number; alimento: number; merma: number | null; mermaPendiente: boolean;
   nomina: { cocina: number; gerencia: number };
   /** Gastos sin IVA por cuenta: facturas (− notas de crédito), caja chica y gastos del mes. */
   gastos: Partial<Record<CuentaGasto, number>>;
@@ -72,7 +72,7 @@ export type EntradaPL = {
 
 export const entradaVacia = (): EntradaPL => ({
   canales: { dodo: { bruta: 0, neta: 0, alimento: 0 }, rappi: { bruta: 0, neta: 0, alimento: 0 } },
-  ventaNeta: 0, descuentos: 0, alimento: 0, merma: null, nomina: { cocina: 0, gerencia: 0 }, gastos: {}, sinCuenta: 0,
+  ventaNeta: 0, descuentos: 0, alimento: 0, merma: null, mermaPendiente: false, nomina: { cocina: 0, gerencia: 0 }, gastos: {}, sinCuenta: 0,
   agregadores: 0, comisionesCobro: 0, faltantes: 0, regalias: 0, oficina: 0, memos: { insumos: 0, inversiones: 0 },
 });
 
@@ -87,6 +87,7 @@ export function sumarEntradas(entradas: readonly EntradaPL[]): EntradaPL {
       a.neta = centavos(a.neta + b.neta); a.alimento = centavos(a.alimento + b.alimento);
     }
     s.ventaNeta += e.ventaNeta; s.descuentos += e.descuentos; s.alimento += e.alimento;
+    s.mermaPendiente ||= e.mermaPendiente;
     if (e.merma !== null) s.merma = (s.merma ?? 0) + e.merma;
     s.nomina.cocina += e.nomina.cocina; s.nomina.gerencia += e.nomina.gerencia;
     for (const [k, v] of Object.entries(e.gastos) as [CuentaGasto, number][]) s.gastos[k] = centavos((s.gastos[k] ?? 0) + v);
@@ -161,7 +162,7 @@ export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMe
     const meta = metaDe.has(r.clave) ? metaDe.get(r.clave) ?? null : null;
     const metaFija = r.tipo === "gasto" && fija.has(r.clave);
     return {
-      clave: r.clave, nombre: r.nombre, tipo: r.tipo, monto, pct: pct(monto), meta,
+      clave: r.clave, nombre: e.mermaPendiente && r.tipo === "total" ? `${r.nombre} (provisional)` : e.mermaPendiente && r.clave === "merma" ? "Merma de productos terminados (pendiente/parcial)" : r.nombre, tipo: r.tipo, monto, pct: pct(monto), meta,
       metaPct: meta === null || ctx.ventaNeta <= 0 ? null : Math.round((meta / ctx.ventaNeta) * 10000) / 10000,
       diferencia: meta === null || monto === null ? null : centavos(monto - meta),
       metaFija, sinCapturar: metaFija && (meta ?? 0) > 0 && monto === 0,

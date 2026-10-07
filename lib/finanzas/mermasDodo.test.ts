@@ -11,3 +11,12 @@ test("mermas: conserva días vacíos y señala costos cero",()=>{const r=leer([i
 for(const [titulo,cambios] of Object.entries({"cantidades que no suman":{D9:4},"costo negativo":{F9:-1},"sucursal desconocida":{C2:"Otra"},"reporte parcial":{C3:"Marketing"},"fechas futuras":{C4:"21/09/2026 : 23/09/2027"},"periodo imposible":{C4:"31/09/2026 : 01/10/2026"},"IVA incluido":{E7:"Precio (Con IVA)"},"reporte por razones":{C5:"Por motivos de deducciones"},"día que falta":{H7:"24 de septiembre"}})) test(`mermas: rechaza ${titulo}`,()=>{const r=leer([insumos(cambios)]);assert.ok(r.errores.length);assert.equal(r.filas.length,0);assert.equal(r.dias.length,0);});
 test("mermas: rechaza hojas repetidas y productos fuera del periodo",()=>{assert.ok(leer([insumos(),insumos()]).errores.length);assert.ok(leer([insumos(),productos(),productos()]).errores.length);assert.ok(leer([insumos(),productos({B8:"24/09/2026"})]).errores.length);});
 test("mermas: admite cruce de año",()=>{const r=leerMermasDodo([insumos({C4:"31/12/2025 : 02/01/2026",G7:"31 de diciembre",H7:"1 de enero",I7:"2 de enero"})],sucursales,"2026-10-06");assert.deepEqual(r.errores,[]);assert.equal(r.dias[2].fecha,"2026-01-02");});
+
+
+test("cobertura distingue hoja de productos vacía, ausente y periodo parcial",()=>{
+ const ausente=leer([insumos()]);assert.ok(ausente.dias.every(d=>d.productos_completos===false));
+ const vacia=leer([insumos(),productos({A8:"",B8:"",C8:"",D8:"",E8:"",A9:"",B9:"",C9:"",D9:"",E9:""})]);
+ assert.deepEqual(vacia.errores,[]);assert.ok(vacia.dias.every(d=>d.productos_completos===true));
+ const parcial=leer([insumos(),productos({D4:"21/09/2026-21/09/2026"})]);
+ assert.deepEqual(parcial.errores,[]);assert.deepEqual(parcial.dias.map(d=>d.productos_completos),[true,false,false]);
+});

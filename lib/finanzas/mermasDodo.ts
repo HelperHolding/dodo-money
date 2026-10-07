@@ -1,6 +1,6 @@
 import type { Hoja } from "../ventas/xlsx";
 
-export type DiaMerma = { sucursal_id: string; fecha: string };
+export type DiaMerma = { sucursal_id: string; fecha: string; productos_completos?: boolean };
 export type MermaDodo = DiaMerma & { tipo: "insumo" | "producto"; clave: string; nombre: string; unidad: string; categoria: string;
   cantidad: number; costo: number; sin_costo: boolean };
 export type LecturaMermas = { dias: DiaMerma[]; filas: MermaDodo[]; errores: string[] };
@@ -19,9 +19,10 @@ function filasHoja(hoja: Hoja) {
 const indiceColumna = (v: string) => [...v].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0);
 const numero = (v: unknown): number => typeof v === "number" ? v : typeof v === "string" && /^\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : NaN;
 
-/** Exportación española de Bajas: todas las razones, por días y sin IVA. No alimenta aún el P&L. */
+/** Exportación española de Bajas: todas las razones, por días y sin IVA. Los productos terminados se valoran aparte para el P&L. */
 export function leerMermasDodo(hojas: readonly Hoja[], sucursales: readonly { id: string; nombre: string }[], hoy: string): LecturaMermas {
   const filas: MermaDodo[] = [], dias = new Map<string, DiaMerma>(), errores: string[] = [], porSucursal = new Map(sucursales.map((s) => [normal(s.nombre), s.id]));
+  const coberturaProductos = new Set<string>();
   const claves = new Set<string>(), hojasProducto = new Set<string>(); let materiales = 0;
   for (const hoja of hojas) {
     const tabla = filasHoja(hoja);
@@ -63,6 +64,7 @@ export function leerMermasDodo(hojas: readonly Hoja[], sucursales: readonly { id
       if (hojasProducto.has(sucursal_id)) { errores.push(`Productos repetidos para la sucursal "${nombreSucursal}".`); continue; }
       hojasProducto.add(sucursal_id);
       if (normal(producto[1].get("D")) !== "cogs (sin iva)" || normal(producto[1].get("E")) !== "importe (sin iva)") { errores.push(`Exporta los productos de "${hoja.nombre}" sin IVA.`); continue; }
+      for (const fecha of fechasPeriodo) coberturaProductos.add(`${sucursal_id}|${fecha}`);
       const agrupados = new Map<string, MermaDodo>();
       for (const [n, r] of tabla.filter(([n]) => n > producto[0])) {
         if (![...r.values()].some((v) => texto(v))) continue;
@@ -80,7 +82,7 @@ export function leerMermasDodo(hojas: readonly Hoja[], sucursales: readonly { id
   if (filas.length > 50000) errores.push("El archivo tiene demasiados renglones; exporta un periodo más corto.");
   if (dias.size > 10000) errores.push("El archivo tiene demasiados días y sucursales; exporta un periodo más corto.");
   if (filas.some(r=>r.nombre.length>500 || r.clave.length>500 || r.unidad.length>60 || r.categoria.length>100 || r.cantidad>=1000000000 || r.costo>=1000000000000)) errores.push("El archivo contiene valores fuera de los límites de importación.");
-  return errores.length ? { filas: [], dias: [], errores: [...new Set(errores)] } : { filas, dias: [...dias.values()], errores: [] };
+  return errores.length ? { filas: [], dias: [], errores: [...new Set(errores)] } : { filas, dias: [...dias.values()].map(d => ({...d, productos_completos: coberturaProductos.has(`${d.sucursal_id}|${d.fecha}`)})), errores: [] };
 }
 
 export function resumirMermas(filas: readonly MermaDodo[], dias: readonly DiaMerma[]) {

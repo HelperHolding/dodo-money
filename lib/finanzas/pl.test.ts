@@ -155,3 +155,13 @@ test("bruta: tolerancia de $1 y diferencia histórica justificada con productos"
  assert.equal(resumenCanalPL(dias,[{...productos[0],importe:99}],20).bruta,120);
  assert.equal(resumenCanalPL(dias,[{...productos[0],importe:98.99}],20).bruta,null);
 });
+
+
+test("merma parcial resta una vez y etiqueta resultados provisionales al consolidar",()=>{
+ const e={...entradaVacia(),ventaNeta:1000,alimento:300,merma:40,mermaPendiente:true};
+ const suma=sumarEntradas([e,{...entradaVacia(),ventaNeta:1000,alimento:300,merma:0}]);
+ assert.equal(suma.merma,40);assert.equal(suma.mermaPendiente,true);
+ const f=new Map(calcularPL(suma,[],{ventaNeta:2000,ventaRappi:0,plantilla:{cocina:0,gerencia:0}}).map(f=>[f.clave,f]));
+ assert.equal(f.get("margen_bruto")!.monto,1360);assert.equal(f.get("ebitda")!.monto,1360);
+ assert.match(f.get("ebitda")!.nombre,/provisional/);assert.match(f.get("merma")!.nombre,/parcial/);
+});

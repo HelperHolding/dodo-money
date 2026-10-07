@@ -16,7 +16,7 @@ test("hojaPL: secciones con color, barras de total, montos contables y memo al f
   }, PRESENTACION);
   const fila = (t: string) => h.filas.findIndex((f) => f[0] === t);
   assert.equal(h.nombre, "Contra meta");
-  assert.equal(h.filas[1][0], "Semana 41 · 5 al 11 oct 2026 · venta bruta con IVA; resultado sin IVA, criterio devengado");
+  assert.equal(h.filas[1][0], "Semana 41 · 5 al 11 oct 2026 · venta bruta con IVA; resultado sin IVA, criterio devengado · merma solo de productos terminados; insumos pendientes");
   assert.deepEqual(h.filas[4], ["Renglón", "Real", "% de venta", "Meta", "Meta %", "Diferencia", "Semana anterior %", "Acumulado del mes %"]);
   assert.deepEqual(h.estilos![fila("VENTA")], { fondo: "BDD7EE", negrita: true });
   assert.deepEqual(h.estilos![fila("GASTOS DE OPERACIÓN")], { fondo: "FCE4D6", negrita: true });
@@ -71,4 +71,15 @@ test("Excel P&L y comparativo incluyen la venta bruta y los costos por fuente", 
     assert.deepEqual(hoja.filas.find(f => f[0] === "Venta bruta (antes de descuentos, con IVA)")![1], { valor: 440, formato: "contable" });
     assert.deepEqual(hoja.filas.find(f => f[0] === "Rappi · alimento y empaque")![1], { valor: 60, formato: "contable" });
   }
+});
+
+
+test("exportaciones conservan el estado provisional de merma en comparativo",()=>{
+ const e={...entradaVacia(),ventaNeta:1000,alimento:300,merma:40,mermaPendiente:true};
+ const filas=calcularPL(e,[],ctx(1000)),col={etiqueta:"Octubre",entrada:e,filas};
+ const [h]=hojaComparativo({titulo:"Sucursal",periodo:"Octubre",generado:"S",columnas:[col],total:col},PRESENTACION);
+ assert.ok(h.filas.some(f=>f[0]==="EBITDA (provisional)"));
+ assert.ok(h.filas.some(f=>f[0]==="Merma de productos terminados (pendiente/parcial)"));
+ const fila=h.filas.find(f=>f[0]==="EBITDA (provisional)")!;
+ assert.deepEqual(fila[1],{valor:660,formato:"contable"});
 });
