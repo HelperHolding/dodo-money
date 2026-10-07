@@ -1,3 +1,5 @@
+import { aplicarConciliaciones } from "@/lib/ventas/conciliacion";
+import { leerConciliaciones } from "./conciliacion/datos";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   costearProductos,
@@ -10,7 +12,7 @@ import { cargarRappi } from "./rappi/datos";
 import { combinarDiasRappi, ventasRappi } from "@/lib/ventas/rappi";
 
 export type FilaDesglose = { tipo: TipoDesglose; pedidos: number; total: number };
-export type DiaConDesglose = VentaDia & { ventas_dia_desglose: FilaDesglose[] };
+export type DiaConDesglose = VentaDia & { importacion_id?: string; ventas_dia_desglose: FilaDesglose[] };
 
 export type DatosVentas = {
   dias: DiaConDesglose[];
@@ -56,12 +58,12 @@ export async function ventaDiariaDesde(supabase: SupabaseClient, sucursal: strin
 
 /** Días de un periodo con su desglose, en páginas ordenadas por la llave primaria. */
 function leerDias(supabase: SupabaseClient, sucursal: string | null, p: Periodo) {
-  return leerTodo<DiaConDesglose>((desde, hasta) => {
+  return leerTodo<DiaConDesglose & { importacion_id: string }>((desde, hasta) => {
     let q = supabase.from("ventas_dia")
-      .select("sucursal_id, fecha, pedidos, total, efectivo, tarjeta, en_linea, iva, venta_m2, ventas_dia_desglose(tipo, pedidos, total)")
+      .select("importacion_id, sucursal_id, fecha, pedidos, total, efectivo, tarjeta, en_linea, iva, venta_m2, ventas_dia_desglose(tipo, pedidos, total)")
       .gte("fecha", p.desde).lte("fecha", p.hasta);
     if (sucursal) q = q.eq("sucursal_id", sucursal);
-    return q.order("sucursal_id").order("fecha").range(desde, hasta).returns<DiaConDesglose[]>();
+    return q.order("sucursal_id").order("fecha").range(desde, hasta).returns<(DiaConDesglose & { importacion_id: string })[]>();
   });
 }
 
@@ -102,7 +104,8 @@ export async function datosVentas(supabase: SupabaseClient, sucursal: string | n
     cargarRappi(supabase,sucursal,anterior.desde,anterior.hasta),
   ]);
   const rappi=ventasRappi(actualRappi.ordenes,actualRappi.catalogo),previo=ventasRappi(anteriorRappi.ordenes,anteriorRappi.catalogo);
-  const dias=combinarDiasRappi(diasDodo,rappi.dias),diasAnteriores=combinarDiasRappi(diasAnterioresDodo,previo.dias);
+  const [concActual,concAnterior] = await Promise.all([leerConciliaciones(supabase,p.desde,p.hasta),leerConciliaciones(supabase,anterior.desde,anterior.hasta)]);
+  const dias=combinarDiasRappi(aplicarConciliaciones(diasDodo,concActual.filas),rappi.dias),diasAnteriores=combinarDiasRappi(aplicarConciliaciones(diasAnterioresDodo,concAnterior.filas),previo.dias);
   return {
     dias,
     renglones: [...costearProductos(ventas,diasDodo,catalogo,costos),...costearProductos(rappi.productos,rappi.dias,catalogo,costos)],

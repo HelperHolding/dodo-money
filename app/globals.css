@@ -719,3 +719,5 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .tabla-pl .pl-desglose td:first-child strong { font-weight: 500; font-size: .9rem; }
 
 .tabla-pl .pl-desglose th[scope="row"] { padding-left: 28px; color: var(--tinta-2); font-weight: 500; font-size: .9rem; }
+
+.conciliacion-casilla input[type="checkbox"] { flex: none; }

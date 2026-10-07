@@ -1,3 +1,5 @@
+import { aplicarConciliaciones } from "@/lib/ventas/conciliacion";
+import { leerConciliaciones } from "@/app/ventas/conciliacion/datos";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { comisionesCobro, comisionRappi, regalias, type DiaVenta, type Vigente } from "@/lib/finanzas/comisiones";
 import { enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "@/lib/finanzas/gastos";
@@ -80,8 +82,8 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     leerTodo<{ diferencia: number; turnos: { sucursal_id: string } }>((d, h) => supabase.from("arqueos").select("diferencia, turnos!inner(sucursal_id, fecha)")
       .eq("momento", "cierre").is("anulado_en", null).gte("turnos.fecha", desde).lte("turnos.fecha", hasta).order("id").range(d, h)
       .returns<{ diferencia: number; turnos: { sucursal_id: string } }[]>()),
-    leerTodo<VentaDia & { id: string }>((d, h) => supabase.from("ventas_dia").select("id, sucursal_id, fecha, pedidos, total, efectivo, tarjeta, en_linea, iva, venta_m2")
-      .gte("fecha", desde).lte("fecha", hasta).order("sucursal_id").order("fecha").range(d, h).returns<(VentaDia & { id: string })[]>()),
+    leerTodo<VentaDia & { id: string; importacion_id: string }>((d, h) => supabase.from("ventas_dia").select("id, importacion_id, sucursal_id, fecha, pedidos, total, efectivo, tarjeta, en_linea, iva, venta_m2")
+      .gte("fecha", desde).lte("fecha", hasta).order("sucursal_id").order("fecha").range(d, h).returns<(VentaDia & { id: string; importacion_id: string })[]>()),
     leerTodo<{ ventas_dia_id: string; total: number; tarjeta: number; en_linea: number }>((d, h) => supabase.from("ventas_dia_desglose")
       .select("ventas_dia_id, total, tarjeta, en_linea, ventas_dia!inner(fecha)").eq("tipo", "agregador")
       .gte("ventas_dia.fecha", desde).lte("ventas_dia.fecha", hasta).order("ventas_dia_id").range(d, h)
@@ -94,6 +96,8 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       .order("dodo_id").order("vigente_desde").range(d, h).returns<(Costo & { dodo_id: number })[]>()),
     cargarRappi(supabase,null,desde,hasta),
   ]);
+  const conciliaciones = await leerConciliaciones(supabase,desde,hasta);
+  const diasConciliados = aplicarConciliaciones(dias,conciliaciones.filas);
   const rappi=ventasRappi(datosRappi.ordenes,datosRappi.catalogo);
 
   // Cada factura entra por los días de su periodo que caen en el rango, repartida entre sus conceptos (con su cuenta, o la de la factura).
@@ -119,7 +123,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const diasRango = diasEntre(desde, hasta);
 
   const porSucursal: SucursalPL[] = sucursales.map((s) => {
-    const diasSuc = dias.filter((d) => d.sucursal_id === s.id);
+    const diasSuc = diasConciliados.filter((d) => d.sucursal_id === s.id);
     const diasVenta: DiaVenta[] = [...diasSuc.map((d) => {
       const ag = agregadorDe.get(d.id);
       return {
@@ -205,6 +209,9 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     };
 
     const avisos: string[] = [];
+    for (const c of conciliaciones.filas.filter(c=>c.sucursal_id===s.id)) {
+      avisos.push(`Conciliación manual ${c.fecha}: ${c.motivo}${c.conciliar_productos?" · venta bruta según productos; diferencia justificada":""}.`);
+    }
     if (canales.dodo.bruta === null) avisos.push("Venta bruta Dodo IS / POS sin dato: el detalle por producto no cuadra con la venta diaria o está incompleto.");
     if(rappi.dias.some(d=>d.sucursal_id===s.id))avisos.push("Incluye ventas del historial Rappi por subtotal restaurante, antes del descuento de Rappi. Revisa la liquidación por separado.");
     if(diasVenta.some(d=>d.agregador.total>0)&&rappi.dias.some(r=>r.sucursal_id===s.id&&diasSuc.some(d=>d.fecha===r.fecha&&Number(agregadorDe.get(d.id)?.total??0)>0)))avisos.push("Hay ventas de agregador en Dodo IS y órdenes Rappi importadas para los mismos días. Revisa su fuente en Ventas → Rappi para evitar duplicados.");
