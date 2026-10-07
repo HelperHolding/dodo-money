@@ -312,6 +312,9 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   margin: 0; padding: 10px clamp(16px, 4vw, 40px);
   background: var(--papel-2); border-bottom: 1px solid var(--linea); font-weight: 700;
 }
+.franja-sucursal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-weight: 400; }
+.franja-sucursal label { font-weight: 700; }
+.franja-sucursal select { min-height: 40px; padding: 6px 10px; }
 .tarjetas { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
 .tarjeta {
   background: var(--blanco); border: 1px solid var(--linea); border-top: 4px solid var(--cuadra);

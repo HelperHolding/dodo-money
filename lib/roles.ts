@@ -11,6 +11,10 @@ export const NOMBRE_ROL: Record<Rol, string> = {
 export const puedeEntrar = (perfil: { activo: boolean }) => perfil.activo;
 
 export const esCorporativo = (rol: Rol) => rol === "corporativo";
+/** El admin elige en qué sucursal opera (cambia su sucursal activa); los demás quedan en la suya. */
+export const puedeCambiarSucursal = (rol: Rol) => rol === "admin";
+/** Vista general de todas las sucursales del día: admin (para elegir dónde operar) y corporativo (solo lectura). */
+export const puedeVerVistaGeneral = (rol: Rol) => rol === "admin" || rol === "corporativo";
 export const puedeAbrirTurno = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
 /** Recorrido de supervisor y cierre de mermas. */
 export const puedeSupervisar = puedeAbrirTurno;
@@ -62,6 +66,7 @@ export function menuLateral(rol: Rol): Menu {
     enlaces: [
       // Corporativo entra por la vista general; el inicio de la sucursal que está viendo va dentro del grupo.
       ...(corporativo ? [{ href: "/", texto: "Inicio de sucursal" }] : []),
+      ...(puedeCambiarSucursal(rol) ? [{ href: "/corporativo", texto: "Vista general" }] : []),
       ENLACE_ARQUEO,
       ...(puedeVerTurnos(rol) ? [{ href: "/turnos", texto: "Turnos" }] : []),
       ...ENLACES_SUCURSAL,

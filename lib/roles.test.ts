@@ -3,8 +3,7 @@ import assert from "node:assert/strict";
 import {
   enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
-  puedeVerFinanzas, puedeEditarFinanzas,
-} from "./roles.ts";
+  puedeVerFinanzas, puedeEditarFinanzas, puedeCambiarSucursal, puedeVerVistaGeneral } from "./roles.ts";
 
 test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () => {
   assert.equal(esCorporativo("corporativo"), true);
@@ -79,9 +78,11 @@ test("menú lateral: grupo Sucursal por puesto (Recepciones solo para quien reci
   assert.deepEqual(grupo("operacion", "Sucursal"), ["/arqueo", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
   assert.equal(puedeVerTurnos("operacion"), false);
   for (const rol of ["encargado", "gerente", "admin", "corporativo"] as const) assert.equal(puedeVerTurnos(rol), true);
-  for (const rol of ["encargado", "gerente", "admin"] as const) {
+  for (const rol of ["encargado", "gerente"] as const) {
     assert.deepEqual(grupo(rol, "Sucursal"), ["/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists", "/recepciones"]);
   }
+  // El admin entra por la vista general y opera en la sucursal que elija.
+  assert.deepEqual(grupo("admin", "Sucursal"), ["/corporativo", "/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists", "/recepciones"]);
   assert.deepEqual(grupo("corporativo", "Sucursal"), ["/", "/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
 });
 
@@ -150,4 +151,11 @@ test("finanzas: admin y corporativo ven; solo admin edita; grupo Finanzas", () =
   assert.deepEqual(grupo("admin", "Finanzas"), ["/finanzas", "/finanzas/nomina", "/finanzas/retenciones", "/finanzas/mermas", "/finanzas/parametros"]);
   assert.deepEqual(grupo("corporativo", "Finanzas"), grupo("admin", "Finanzas"));
   assert.equal(grupo("gerente", "Finanzas"), undefined);
+});
+
+test("cambiar de sucursal y vista general: el admin cambia y opera; corporativo solo ve", () => {
+  assert.equal(puedeCambiarSucursal("admin"), true);
+  for (const rol of ["operacion", "encargado", "gerente", "corporativo"] as const) assert.equal(puedeCambiarSucursal(rol), false);
+  for (const rol of ["admin", "corporativo"] as const) assert.equal(puedeVerVistaGeneral(rol), true);
+  for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerVistaGeneral(rol), false);
 });
