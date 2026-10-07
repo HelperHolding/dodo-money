@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { avisosSinCapturar, calcularPL, entradaVacia, escalarMetas, finDeMes, metaMonto, sumarEntradas, sumarMetas, type EntradaPL } from "./pl.ts";
+import { avisosSinCapturar, calcularPL, entradaVacia, escalarMetas, finDeMes, metaMonto, resumenCanalPL, sumarEntradas, sumarMetas, type EntradaPL } from "./pl.ts";
 
 test("finDeMes", () => {
   assert.equal(finDeMes("2026-10"), "2026-10-31");
@@ -109,4 +109,38 @@ test("consolidado: una meta que era en % no se vuelve fija; una de monto sí", (
   const filas = calcularPL({ ...entradaVacia(), ventaNeta: 150000, alimento: 1000 }, metas, ctx);
   assert.equal(filas.find((x) => x.clave === "alimento")!.metaFija, false);
   assert.deepEqual(avisosSinCapturar(filas), ["Renta sin capturar en este periodo (meta $30,000.00)."]);
+});
+
+
+test("P&L por fuente: bruto con IVA, neto sin IVA y costo sin doble resta", () => {
+  const dodo = resumenCanalPL([{ fecha: "2026-10-01", total: 116, iva: 16 }],
+    [{ fecha: "2026-10-01", importe: 116, importe_sin_descuento: 140 }], 30);
+  const rappi = resumenCanalPL([{ fecha: "2026-10-01", total: 232, iva: 32 }],
+    [{ fecha: "2026-10-01", importe: 232, importe_sin_descuento: 300 }], 60);
+  const e = { ...entradaVacia(), canales: { dodo, rappi }, ventaNeta: 300, alimento: 90 };
+  const f = new Map(calcularPL(e, [], { ventaNeta: 300, ventaRappi: 232, plantilla: { cocina: 0, gerencia: 0 } }).map(f => [f.clave, f]));
+  assert.equal(f.get("venta_bruta")!.monto, 440);
+  assert.equal(f.get("venta_bruta_dodo")!.monto, 140);
+  assert.equal(f.get("venta_neta_rappi")!.monto, 200);
+  assert.equal(f.get("alimento_rappi")!.monto, 60);
+  assert.equal(f.get("alimento")!.monto, 90);
+  assert.equal(f.get("ebitda")!.monto, 210);
+  assert.equal(f.get("margen_bruto")!.monto, 210);
+  const suma = sumarEntradas([e, e]);
+  assert.deepEqual(suma.canales.rappi, { bruta: 600, neta: 400, alimento: 120 });
+});
+
+test("Venta bruta incompleta: no se inventa; el consolidado conserva sin dato", () => {
+  const dodo = resumenCanalPL([{ fecha: "2026-10-01", total: 116, iva: 16 }], [], 0);
+  assert.deepEqual(dodo, { bruta: null, neta: 100, alimento: 0 });
+  const e = { ...entradaVacia(), canales: { dodo, rappi: { bruta: 300, neta: 200, alimento: 60 } } };
+  const suma = sumarEntradas([entradaVacia(), e]);
+  assert.equal(suma.canales.dodo.bruta, null);
+  const filas = calcularPL(suma, [], { ventaNeta: 0, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } });
+  assert.equal(filas.find(f => f.clave === "venta_bruta")!.monto, null);
+  assert.equal(filas.find(f => f.clave === "venta_bruta_rappi")!.monto, 300);
+  assert.equal(resumenCanalPL([], [], 0).bruta, 0);
+  // Un faltante no se compensa con un sobrante en otro día.
+  assert.equal(resumenCanalPL([{ fecha: "a", total: 100, iva: 0 }, { fecha: "b", total: 100, iva: 0 }],
+    [{ fecha: "a", importe: 90, importe_sin_descuento: 100 }, { fecha: "b", importe: 110, importe_sin_descuento: 120 }], 0).bruta, null);
 });

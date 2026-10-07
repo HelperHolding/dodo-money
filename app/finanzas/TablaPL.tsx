@@ -44,7 +44,7 @@ export function TablaPL({ r, columnas, conDetalle = true }: {
     const pasa = f.tipo === "gasto" && f.diferencia !== null && f.diferencia > 0;
     const falta = total && f.diferencia !== null && f.diferencia < 0;
     return (
-      <tr key={f.clave} className={total ? "pl-total" : undefined}>
+      <tr key={f.clave} className={total ? "pl-total" : f.tipo === "detalle" ? "pl-desglose" : undefined}>
         <td data-label="Renglón">
           <span className="celda-pila"><strong>{f.nombre}</strong>{conDetalle && desplegable(r.detalleDe(f.clave), "De dónde sale")}</span>
         </td>

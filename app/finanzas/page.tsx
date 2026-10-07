@@ -33,10 +33,11 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
       <div className="encabezado">
         <h1>P&L · {titulo}</h1>
         <p>
-          {comp ? comp.periodoTitulo : <>{p.titulo}{enCurso && ` · hasta el ${fechaTexto(p.hasta)}`}</>}. Montos sin IVA, criterio devengado.
+          {comp ? comp.periodoTitulo : <>{p.titulo}{enCurso && ` · hasta el ${fechaTexto(p.hasta)}`}</>}. Venta bruta antes de descuentos y con IVA; resultado sin IVA, criterio devengado.
           {meta && " Meta: PL Base del modelo de Dodo."}{meta && !meta.suc && " Elige una sucursal para ver de dónde sale cada renglón."}
         </p>
       </div>
+      <p className="saldo-nota">El desglose Dodo IS / POS y Rappi corresponde a la fuente de importación. Los subtotales por fuente ya están incluidos en los totales. Los porcentajes son sobre la venta neta total.</p>
       <nav className="acciones" aria-label="Periodo y vista">
         {pestana(p.tipo === "mes", `/finanzas?${new URLSearchParams({ periodo: "mes", ...suc, ...vista })}`, "Mes")}
         {pestana(p.tipo === "semana", `/finanzas?${new URLSearchParams({ periodo: "semana", ...suc, ...vista })}`, "Semana")}

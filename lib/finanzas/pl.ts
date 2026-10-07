@@ -2,13 +2,21 @@
 import type { CuentaGasto } from "./cuentas";
 
 export type ClaveRenglon =
+  | "venta_bruta" | "venta_bruta_dodo" | "venta_bruta_rappi" | "venta_neta_dodo" | "venta_neta_rappi" | "alimento_dodo" | "alimento_rappi"
   | "venta_neta" | "alimento" | "merma" | "nomina_cocina" | "nomina_gerencia" | "repartidores" | "agregadores"
   | "marketing_agregadores" | "marketing" | "renta" | "servicios" | "mantenimiento" | "consumibles_equipo"
   | "regalias" | "otros" | "ebitda_tienda" | "oficina" | "ebitda" | "margen_bruto";
 
-export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "venta" | "gasto" | "total" }[] = [
+export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "venta" | "gasto" | "total" | "detalle" }[] = [
+  { clave: "venta_bruta", nombre: "Venta bruta (antes de descuentos, con IVA)", tipo: "venta" },
+  { clave: "venta_bruta_dodo", nombre: "Dodo IS / POS · venta bruta", tipo: "detalle" },
+  { clave: "venta_bruta_rappi", nombre: "Rappi · venta bruta", tipo: "detalle" },
   { clave: "venta_neta", nombre: "Venta neta", tipo: "venta" },
+  { clave: "venta_neta_dodo", nombre: "Dodo IS / POS · venta neta", tipo: "detalle" },
+  { clave: "venta_neta_rappi", nombre: "Rappi · venta neta", tipo: "detalle" },
   { clave: "alimento", nombre: "Alimento y empaque", tipo: "gasto" },
+  { clave: "alimento_dodo", nombre: "Dodo IS / POS · alimento y empaque", tipo: "detalle" },
+  { clave: "alimento_rappi", nombre: "Rappi · alimento y empaque", tipo: "detalle" },
   { clave: "merma", nombre: "Merma", tipo: "gasto" },
   { clave: "margen_bruto", nombre: "Margen bruto", tipo: "total" },
   { clave: "nomina_cocina", nombre: "Nómina cocina", tipo: "gasto" },
@@ -28,7 +36,28 @@ export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "v
   { clave: "ebitda", nombre: "EBITDA", tipo: "total" },
 ];
 
+export type CanalPL = { bruta: number | null; neta: number; alimento: number };
+
+/** La venta bruta exige que el detalle por producto cubra el total de cada día. */
+export function resumenCanalPL(
+  dias: readonly { fecha: string; total: number; iva: number }[],
+  productos: readonly { fecha: string; importe: number; importe_sin_descuento: number }[],
+  alimento: number,
+): CanalPL {
+  const detalle = new Map<string, { cobrada: number; bruta: number }>();
+  for (const p of productos) {
+    const d = detalle.get(p.fecha) ?? { cobrada: 0, bruta: 0 };
+    d.cobrada += Number(p.importe); d.bruta += Number(p.importe_sin_descuento); detalle.set(p.fecha, d);
+  }
+  const completo = dias.every(d => Math.abs(Number(d.total) - (detalle.get(d.fecha)?.cobrada ?? 0)) < .025);
+  return {
+    bruta: completo ? centavos(dias.reduce((t, d) => t + (detalle.get(d.fecha)?.bruta ?? 0), 0)) : null,
+    neta: centavos(dias.reduce((t, d) => t + Number(d.total) - Number(d.iva), 0)), alimento,
+  };
+}
+
 export type EntradaPL = {
+  canales: { dodo: CanalPL; rappi: CanalPL };
   ventaNeta: number; descuentos: number; alimento: number; merma: number | null;
   nomina: { cocina: number; gerencia: number };
   /** Gastos sin IVA por cuenta: facturas (− notas de crédito), caja chica y gastos del mes. */
@@ -42,6 +71,7 @@ export type EntradaPL = {
 };
 
 export const entradaVacia = (): EntradaPL => ({
+  canales: { dodo: { bruta: 0, neta: 0, alimento: 0 }, rappi: { bruta: 0, neta: 0, alimento: 0 } },
   ventaNeta: 0, descuentos: 0, alimento: 0, merma: null, nomina: { cocina: 0, gerencia: 0 }, gastos: {}, sinCuenta: 0,
   agregadores: 0, comisionesCobro: 0, faltantes: 0, regalias: 0, oficina: 0, memos: { insumos: 0, inversiones: 0 },
 });
@@ -51,6 +81,11 @@ const centavos = (n: number) => Math.round(n * 100) / 100;
 export function sumarEntradas(entradas: readonly EntradaPL[]): EntradaPL {
   const s = entradaVacia();
   for (const e of entradas) {
+    for (const canal of ["dodo", "rappi"] as const) {
+      const a = s.canales[canal], b = e.canales[canal];
+      a.bruta = a.bruta === null || b.bruta === null ? null : centavos(a.bruta + b.bruta);
+      a.neta = centavos(a.neta + b.neta); a.alimento = centavos(a.alimento + b.alimento);
+    }
     s.ventaNeta += e.ventaNeta; s.descuentos += e.descuentos; s.alimento += e.alimento;
     if (e.merma !== null) s.merma = (s.merma ?? 0) + e.merma;
     s.nomina.cocina += e.nomina.cocina; s.nomina.gerencia += e.nomina.gerencia;
@@ -82,7 +117,7 @@ export function metaMonto(meta: Meta, ctx: ContextoMeta): number {
 }
 
 export type FilaPL = {
-  clave: ClaveRenglon; nombre: string; tipo: "venta" | "gasto" | "total";
+  clave: ClaveRenglon; nombre: string; tipo: "venta" | "gasto" | "total" | "detalle";
   monto: number | null; pct: number | null; meta: number | null; metaPct: number | null; diferencia: number | null;
   /** La meta es un monto fijo (renta, servicios, plantilla de nómina…): se muestra en pesos. */
   metaFija: boolean;
@@ -93,6 +128,10 @@ export type FilaPL = {
 export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMeta): FilaPL[] {
   const g = (k: CuentaGasto) => e.gastos[k] ?? 0;
   const montos: Partial<Record<ClaveRenglon, number | null>> = {
+    venta_bruta: e.canales.dodo.bruta === null || e.canales.rappi.bruta === null ? null : centavos(e.canales.dodo.bruta + e.canales.rappi.bruta),
+    venta_bruta_dodo: e.canales.dodo.bruta, venta_bruta_rappi: e.canales.rappi.bruta,
+    venta_neta_dodo: e.canales.dodo.neta, venta_neta_rappi: e.canales.rappi.neta,
+    alimento_dodo: e.canales.dodo.alimento, alimento_rappi: e.canales.rappi.alimento,
     venta_neta: e.ventaNeta, alimento: e.alimento, merma: e.merma,
     nomina_cocina: e.nomina.cocina, nomina_gerencia: e.nomina.gerencia,
     repartidores: g("repartidores"), agregadores: e.agregadores, marketing_agregadores: g("marketing_agregadores"),

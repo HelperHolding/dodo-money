@@ -26,7 +26,7 @@ function porSecciones(pre: Presentacion, fila: (clave: ClaveRenglon) => Celda[] 
 }
 
 const encabezado = (titulo: string, periodo: string, generado: string, columnas: Celda[]): Celda[][] =>
-  [[titulo], [`${periodo} · sin IVA, criterio devengado`], [`Generado por ${generado}`], [], columnas];
+  [[titulo], [`${periodo} · venta bruta con IVA; resultado sin IVA, criterio devengado`], [`Generado por ${generado}`], [], columnas];
 
 /** Hoja "Contra meta": real, %, meta, diferencia y las dos comparaciones, por secciones. */
 export function hojaPL(r: {

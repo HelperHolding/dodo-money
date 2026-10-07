@@ -18,7 +18,7 @@ export default async function ReportePLPdf({ searchParams }: { searchParams: Pro
     <main className="pagina">
       {comparativo && <style>{"@page { size: landscape; }"}</style>}
       <EncabezadoReporte titulo={comparativo ? "P&L comparativo" : "P&L"} sucursal={r.titulo}
-        detalle={`${r.comp ? r.comp.periodoTitulo : `${p.titulo}${enCurso ? ` · hasta el ${fechaTexto(p.hasta)}` : ""}`} · sin IVA, criterio devengado`}
+        detalle={`${r.comp ? r.comp.periodoTitulo : `${p.titulo}${enCurso ? ` · hasta el ${fechaTexto(p.hasta)}` : ""}`} · venta bruta con IVA; resultado sin IVA, criterio devengado`}
         generadoPor={r.generadoPor} />
       {r.comp ? (
         r.comp.columnas.length ? <TablaComparativo columnas={r.comp.columnas} total={r.comp.total} /> : vacio

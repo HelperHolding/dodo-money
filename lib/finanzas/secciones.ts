@@ -5,8 +5,8 @@ export type ClaveSeccion = "venta" | "costo" | "operacion" | "oficina";
 export type Seccion = { clave: ClaveSeccion; nombre: string; fondo: string; renglones: readonly ClaveRenglon[]; total: ClaveRenglon | null };
 
 export const SECCIONES: readonly Seccion[] = [
-  { clave: "venta", nombre: "Venta", fondo: "BDD7EE", renglones: ["venta_neta"], total: null },
-  { clave: "costo", nombre: "Costo de venta", fondo: "D9EAD3", renglones: ["alimento", "merma"], total: "margen_bruto" },
+  { clave: "venta", nombre: "Venta", fondo: "BDD7EE", renglones: ["venta_bruta", "venta_bruta_dodo", "venta_bruta_rappi", "venta_neta", "venta_neta_dodo", "venta_neta_rappi"], total: null },
+  { clave: "costo", nombre: "Costo de venta", fondo: "D9EAD3", renglones: ["alimento", "alimento_dodo", "alimento_rappi", "merma"], total: "margen_bruto" },
   {
     clave: "operacion", nombre: "Gastos de operación", fondo: "FCE4D6",
     renglones: ["nomina_cocina", "nomina_gerencia", "repartidores", "agregadores", "marketing_agregadores", "marketing", "renta", "servicios", "mantenimiento", "consumibles_equipo", "regalias", "otros"],

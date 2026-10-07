@@ -13,7 +13,7 @@ export function TablaComparativo({ columnas, total }: { columnas: ColumnaPL[]; t
   const ancho = todas.length + 1;
   const clase = (i: number) => `monto${i === columnas.length ? " pl-col-total" : ""}`;
   const renglon = (clave: ClaveRenglon, esTotal: boolean) => (
-    <tr key={clave} className={esTotal ? "pl-total" : undefined}>
+    <tr key={clave} className={esTotal ? "pl-total" : RENGLONES.find(r => r.clave === clave)?.tipo === "detalle" ? "pl-desglose" : undefined}>
       <th scope="row">{NOMBRE.get(clave)}</th>
       {todas.map((c, i) => {
         const f = c.filas.find((x) => x.clave === clave);

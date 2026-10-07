@@ -5,7 +5,7 @@ import { costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Pues
 import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
 import { acumuladoDe, anteriorDe, columnasComparativo, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
 import {
-  avisosSinCapturar, calcularPL, entradaVacia, escalarMetas, INICIO_FECHA, sumarEntradas, sumarMetas,
+  avisosSinCapturar, calcularPL, resumenCanalPL, entradaVacia, escalarMetas, INICIO_FECHA, sumarEntradas, sumarMetas,
   type ContextoMeta, type EntradaPL, type FilaPL, type Meta,
 } from "@/lib/finanzas/pl";
 import type { ColumnaPL } from "@/lib/finanzas/excel";
@@ -130,10 +130,25 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     const ventaNeta = centavos(diasVenta.reduce((t, d) => t + d.total - d.iva, 0));
     const ventaRappi = centavos(diasVenta.reduce((t, d) => t + d.agregador.total, 0));
 
-    const renglones = [...costearProductos(ventas.filter(v=>v.sucursal_id===s.id),diasSuc,catalogo,costos),...costearProductos(rappi.productos.filter(v=>v.sucursal_id===s.id),rappi.dias.filter(d=>d.sucursal_id===s.id),catalogo,costos)];
+    const productosDodo = ventas.filter(v => v.sucursal_id === s.id);
+    const productosRappi = rappi.productos.filter(v => v.sucursal_id === s.id);
+    const diasRappi = rappi.dias.filter(d => d.sucursal_id === s.id);
+    const renglonesDodo = costearProductos(productosDodo, diasSuc, catalogo, costos);
+    const renglonesRappi = costearProductos(productosRappi, diasRappi, catalogo, costos);
+    const canales = {
+      dodo: resumenCanalPL(diasSuc, productosDodo, costeo(renglonesDodo).total.costo),
+      rappi: resumenCanalPL(diasRappi, productosRappi, costeo(renglonesRappi).total.costo),
+    };
+    const renglones = [...renglonesDodo, ...renglonesRappi];
     const c = costeo(renglones);
     anotar(s.id, "alimento", `Costo teórico de ${renglones.reduce((t, r) => t + r.cantidad, 0)} piezas vendidas (receta + periférico)`, c.total.costo);
 
+    for (const [canal, nombre] of [["dodo", "Dodo IS / POS"], ["rappi", "Rappi"]] as const) {
+      const c = canales[canal];
+      anotar(s.id, `venta_bruta_${canal}`, `${nombre} · antes de descuentos, con IVA`, c.bruta ?? 0);
+      anotar(s.id, `venta_neta_${canal}`, `${nombre} · después de descuentos, sin IVA`, c.neta);
+      anotar(s.id, `alimento_${canal}`, `${nombre} · costo teórico de las piezas vendidas`, c.alimento);
+    }
     const facturasSuc = de(facturas, s.id);
     const f = facturasAGastos(facturasSuc, fraccionDe);
     for (const x of facturasSuc) {
@@ -182,7 +197,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     anotar(s.id, "otros", "Faltantes de efectivo, neto (arqueos de cierre y bóveda)", faltantes);
 
     const entrada: EntradaPL = {
-      ...entradaVacia(),
+      ...entradaVacia(), canales,
       ventaNeta, descuentos: centavos(renglones.reduce((t, r) => t + r.importe_sin_descuento - r.importe, 0)),
       alimento: c.total.costo, nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia },
       gastos: sumarGastos(f.gastos, caja.gastos), sinCuenta: centavos(f.sinCuenta + caja.sinCuenta),
@@ -190,6 +205,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     };
 
     const avisos: string[] = [];
+    if (canales.dodo.bruta === null) avisos.push("Venta bruta Dodo IS / POS sin dato: el detalle por producto no cuadra con la venta diaria o está incompleto.");
     if(rappi.dias.some(d=>d.sucursal_id===s.id))avisos.push("Incluye ventas del historial Rappi por subtotal restaurante, antes del descuento de Rappi. Revisa la liquidación por separado.");
     if(diasVenta.some(d=>d.agregador.total>0)&&rappi.dias.some(r=>r.sucursal_id===s.id&&diasSuc.some(d=>d.fecha===r.fecha&&Number(agregadorDe.get(d.id)?.total??0)>0)))avisos.push("Hay ventas de agregador en Dodo IS y órdenes Rappi importadas para los mismos días. Revisa su fuente en Ventas → Rappi para evitar duplicados.");
     if (diasSuc.length < diasRango) avisos.push(`Faltan ${diasRango - diasSuc.length} días de ventas por importar; los % son sobre lo importado.`);
