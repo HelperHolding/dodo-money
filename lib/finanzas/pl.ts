@@ -40,7 +40,7 @@ export type CanalPL = { bruta: number | null; neta: number; alimento: number };
 
 /** La venta bruta exige que el detalle por producto cubra el total de cada día. */
 export function resumenCanalPL(
-  dias: readonly { fecha: string; total: number; iva: number }[],
+  dias: readonly { fecha: string; total: number; iva: number; conciliada?: boolean }[],
   productos: readonly { fecha: string; importe: number; importe_sin_descuento: number }[],
   alimento: number,
 ): CanalPL {
@@ -49,7 +49,7 @@ export function resumenCanalPL(
     const d = detalle.get(p.fecha) ?? { cobrada: 0, bruta: 0 };
     d.cobrada += Number(p.importe); d.bruta += Number(p.importe_sin_descuento); detalle.set(p.fecha, d);
   }
-  const completo = dias.every(d => Math.abs(Number(d.total) - (detalle.get(d.fecha)?.cobrada ?? 0)) < .025);
+  const completo = dias.every(d => (detalle.has(d.fecha) || Number(d.total) === 0) && (Math.abs(Number(d.total) - (detalle.get(d.fecha)?.cobrada ?? 0)) <= 1 || d.conciliada === true));
   return {
     bruta: completo ? centavos(dias.reduce((t, d) => t + (detalle.get(d.fecha)?.bruta ?? 0), 0)) : null,
     neta: centavos(dias.reduce((t, d) => t + Number(d.total) - Number(d.iva), 0)), alimento,

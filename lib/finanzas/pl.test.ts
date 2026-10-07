@@ -144,3 +144,14 @@ test("Venta bruta incompleta: no se inventa; el consolidado conserva sin dato", 
   assert.equal(resumenCanalPL([{ fecha: "a", total: 100, iva: 0 }, { fecha: "b", total: 100, iva: 0 }],
     [{ fecha: "a", importe: 90, importe_sin_descuento: 100 }, { fecha: "b", importe: 110, importe_sin_descuento: 120 }], 0).bruta, null);
 });
+
+
+test("bruta: tolerancia de $1 y diferencia histórica justificada con productos",()=>{
+ const dias=[{fecha:"2026-10-01",total:100,iva:16}];
+ const productos=[{fecha:"2026-10-01",importe:80,importe_sin_descuento:120}];
+ assert.equal(resumenCanalPL(dias,productos,20).bruta,null);
+ assert.equal(resumenCanalPL([{...dias[0],conciliada:true}],productos,20).bruta,120);
+ assert.equal(resumenCanalPL([{...dias[0],conciliada:true}],[],20).bruta,null);
+ assert.equal(resumenCanalPL(dias,[{...productos[0],importe:99}],20).bruta,120);
+ assert.equal(resumenCanalPL(dias,[{...productos[0],importe:98.99}],20).bruta,null);
+});

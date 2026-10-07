@@ -17,6 +17,7 @@ export default async function PaginaImportar() {
         </p>
       </div>
       <p><Link className="boton boton-secundario" href="/ventas/rappi">Importar historial de Rappi</Link></p>
+      <p><Link href="/ventas/conciliacion">Conciliar diferencias de días históricos →</Link></p>
       <FormImportar />
     </>
   );
