@@ -12,6 +12,8 @@ import { puedeEditarCompras } from "@/lib/roles";
 import { cambiarActivoProveedor, subirDocumentoProveedor } from "../../acciones";
 import { CampoDocumento } from "./CampoDocumento";
 import { FormProveedor } from "../../FormProveedor";
+import { PortalProveedor } from "./PortalProveedor";
+import type { PortalProveedor as DatosPortal } from "@/lib/compras/portal";
 
 type Doc = { id: string; tipo: TipoDocumento; fecha: string; ruta: string; subido_en: string };
 type Proveedor = DatosProveedor & { id: string; activo: boolean; motivo_desactivacion: string | null; desactivado_en: string | null };
@@ -24,6 +26,8 @@ export default async function FichaProveedor({ params, searchParams }: { params:
     .eq("id", id).maybeSingle<Proveedor>();
   if (!p) notFound();
   const edita = puedeEditarCompras(perfil.rol);
+  const acceso = edita ? await supabase.from("proveedor_portales")
+    .select("url, usuario, notas, tiene_password").eq("proveedor_id", id).maybeSingle<DatosPortal>() : null;
   const [{ data: surte }, { data: precios }, { data: sucursales }, { data: documentos }] = await Promise.all([
     supabase.from("articulo_proveedores").select("articulo_id, principal, articulos(nombre, unidad, activo)").eq("proveedor_id", id)
       .returns<{ articulo_id: string; principal: boolean; articulos: { nombre: string; unidad: string; activo: boolean } | null }[]>(),
@@ -52,6 +56,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
         <p>{p.rfc}{p.activo ? "" : " · inactivo"}</p>
       </div>
       <Aviso ok={ok} error={error} />
+      {edita && <PortalProveedor id={id} portal={acceso?.data ?? null} disponible={!acceso?.error} />}
       <section className="seccion">
         <dl className="tarjeta-datos">
           <dt>Razón social</dt><dd>{p.razon_social}</dd>
