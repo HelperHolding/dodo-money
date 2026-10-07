@@ -1,0 +1,41 @@
+-- PRUEBAS OK revierte todo el ensayo; ejecutar después de migración y carga.
+do $$
+declare a uuid;c uuid;p integer;v uuid;r uuid;r2 uuid;items jsonb;f date:='2099-01-01';antes numeric;despues numeric;
+begin
+ select id into a from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' limit 1;
+ select id into c from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
+ select dodo_id into p from public.productos_venta order by dodo_id limit 1;
+ if a is null or c is null or p is null then raise exception 'FALTAN DATOS: administración y corporativo activos, sin contraseña pendiente, y un producto.';end if;
+ if (select count(*) from public.menu_rappi_productos m join public.menu_rappi_versiones v on v.id=m.version_id where v.vigente_desde='2026-10-01' and v.archivo='MENU DODO FINAL  (2).xlsx')<>56 then raise exception 'FALTAN DATOS: carga real de 56 productos.';end if;
+ while exists(select 1 from public.menu_rappi_versiones where vigente_desde=f) loop f:=f+1;end loop;
+ select coalesce(sum(costo),0) into antes from public.costos_producto;
+ items:='[{"fila":3,"nombre":"Producto de prueba","categoria":"Prueba","tamano":"n/a","descripcion":"Fuente intacta","precio":116,"costo_referencia":40,"pos_referencia":99,"referencia":"Sheet3!H3"},{"fila":4,"nombre":"Sin costo de prueba","categoria":"Prueba","tamano":"n/a","descripcion":"Costo desconocido","precio":174,"costo_referencia":null,"pos_referencia":null,"referencia":"Sheet3!H4"}]';
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ set local role authenticated;
+ v:=public.importar_menu_rappi(f,'prueba.xlsx',repeat('a',64),items);
+ if public.importar_menu_rappi(f,'prueba.xlsx',repeat('a',64),items)<>v or (select count(*) from public.menu_rappi_productos where version_id=v)<>2 then raise exception 'FALLÓ: reimportación';end if;
+ begin perform public.importar_menu_rappi(f,'otra.xlsx',repeat('b',64),items);raise exception 'FALLÓ: sobrescribe';exception when others then if sqlerrm<>'Ya existe otra versión para esa fecha. No se sobrescribió.' then raise;end if;end;
+ begin perform public.importar_menu_rappi(f+1,'prueba.xlsx',repeat('a',64),jsonb_set(items,'{0,precio}','-1'));raise exception 'FALLÓ: precio negativo';exception when check_violation then null;end;
+ if exists(select 1 from public.menu_rappi_versiones where vigente_desde=f+1) then raise exception 'FALLÓ: importación parcial';end if;
+ begin perform public.importar_menu_rappi(f+1,'prueba.xlsx',repeat('a',64),jsonb_set(items,'{0,precio}','"116"'));raise exception 'FALLÓ: monto de texto';exception when others then if sqlerrm<>'Renglón inválido.' then raise;end if;end;
+ select id into r from public.menu_rappi_productos where version_id=v and fila=3;
+ select id into r2 from public.menu_rappi_productos where version_id=v and fila=4;
+ perform public.vincular_menu_rappi(r,1,p);
+ begin perform public.vincular_menu_rappi(r,1,null);raise exception 'FALLÓ: revisión';exception when others then if sqlerrm<>'El vínculo cambió. Recarga antes de guardar.' then raise;end if;end;
+ begin perform public.vincular_menu_rappi(r2,1,p);raise exception 'FALLÓ: vínculo ambiguo';exception when unique_violation then null;end;
+ if (select origen from public.menu_rappi_versiones where id=v)<>items or not exists(select 1 from public.menu_rappi_productos where id=r and precio=116 and costo_referencia=40 and referencia='Sheet3!H3') then raise exception 'FALLÓ: conserva origen';end if;
+ if not exists(select 1 from public.menu_rappi_productos where id=r2 and costo_referencia is null) then raise exception 'FALLÓ: costo faltante';end if;
+ perform public.vincular_menu_rappi(r,2,null);
+ if (select count(*) from public.menu_rappi_historial where producto_id=r)<>2 then raise exception 'FALLÓ: historial';end if;
+ select coalesce(sum(costo),0) into despues from public.costos_producto;
+ if antes<>despues then raise exception 'FALLÓ: cambió costos vigentes';end if;
+ perform set_config('request.jwt.claims',json_build_object('sub',c,'role','authenticated')::text,true);
+ if not exists(select 1 from public.menu_rappi_versiones where id=v) then raise exception 'FALLÓ: corporativo consulta';end if;
+ begin perform public.vincular_menu_rappi(r,3,p);raise exception 'FALLÓ: corporativo escribe';exception when others then if sqlerrm<>'Solo administración vincula productos.' then raise;end if;end;
+ begin perform public.importar_menu_rappi(f+1,'prueba.xlsx',repeat('a',64),items);raise exception 'FALLÓ: corporativo importa';exception when others then if sqlerrm<>'Solo administración carga el menú.' then raise;end if;end;
+ begin update public.menu_rappi_productos set precio=1 where id=r;raise exception 'FALLÓ: escritura directa';exception when insufficient_privilege then null;end;
+ if has_table_privilege('authenticated','public.menu_rappi_versiones','INSERT') or has_table_privilege('authenticated','public.menu_rappi_historial','DELETE') then raise exception 'FALLÓ: privilegios directos';end if;
+ perform set_config('request.jwt.claims','{"role":"authenticated"}',true);
+ if exists(select 1 from public.menu_rappi_productos) then raise exception 'FALLÓ: sin perfil';end if;
+ raise exception 'PRUEBAS OK — 56 precios · importación admin · vigencia y reimportación · evita sobrescritura · montos y carga atómica · vínculos únicos · revisión e historial · conserva fuente · costo faltante · costos vigentes intactos · corporativo consulta · sin escritura directa';
+end $$;

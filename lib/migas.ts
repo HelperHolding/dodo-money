@@ -29,6 +29,7 @@ const PAGINAS: readonly { patron: string; texto: string; sinRegresar?: boolean }
   { patron: "/compras/pagos/:id", texto: "Pago" },
   { patron: "/ventas/costos/cargar", texto: "Cargar costos" },
   { patron: "/ventas/costos/materiales", texto: "Insumos y BOM" },
+  { patron: "/ventas/costos/menu-rappi", texto: "Menú Rappi" },
   { patron: "/turnos/:id", texto: "Turno", sinRegresar: true },
   { patron: "/checklists/amasado", texto: "Amasado de masa" },
   { patron: "/checklists/limpieza-profunda", texto: "Limpieza profunda" },

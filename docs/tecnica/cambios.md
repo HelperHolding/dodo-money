@@ -17,3 +17,7 @@ Vista de conversación con burbujas, sugerencias, fuentes por respuesta, indicad
 ## 2026-10-07 · Márgenes de productos
 
 Ficha de producto con margen bruto porcentual y en pesos por POS y Rappi, calculado sobre precio sin IVA (16 %) y costo vigente. Precio POS proviene de la versión BOM seleccionada; Rappi usa la última orden observada y conserva fecha, tienda y opciones. Referencias comparadas con costo de hoy, no utilidad histórica ni neta. Simulador de precio para un margen sobre venta, sin guardar objetivos ni modificar precios. Costos ausentes permanecen pendientes; pérdidas admitidas. Sin migración. Validación: 420 pruebas, TypeScript, build y vista con datos ficticios.
+
+## 2026-10-07 · Menú Rappi · 0040 · pendiente de Supabase
+
+56 precios de Sheet3 del archivo MENU DODO FINAL  (2).xlsx, vigentes desde 2026-10-01. Costos (55) y precios POS de EDITADO se conservan como referencias de otro escenario, sin modificar costos vigentes ni BOM. Trío Ganador no tiene costo numérico. Carga atómica e idempotente; versiones no se sobrescriben. Solo nombres completos únicos se vinculan inicialmente; pendientes se resuelven en Costeo > Menú Rappi. Vínculos de administración con revisión e historial, corporativo solo consulta. La ficha usa el precio del menú vigente si tiene vínculo; conserva observaciones históricas de Rappi. Validación: extracción contrastada con el archivo, 420 pruebas, TypeScript, build y revisión visual con catálogo ficticio. Pendiente: carga/pruebas en Supabase y despliegue.

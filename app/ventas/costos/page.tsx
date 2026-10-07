@@ -57,7 +57,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
       </div>
       <Aviso ok={ok} error={error} />
       <div className="acciones"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>
-      <nav className="acciones" aria-label="Filtros">
+      <p><Link href="/ventas/costos/menu-rappi">Menú y precios Rappi</Link></p><nav className="acciones" aria-label="Filtros">
         <Link className="boton boton-secundario" href={`/ventas/costos?vista=${vista==="lista"?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={!filtro ? "page" : undefined}>Todos</Link>
         {(Object.keys(FILTROS) as Filtro[]).map((f) => (
           <Link key={f} className="boton boton-secundario" href={`/ventas/costos?ver=${f}&vista=${vista==="lista"?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={filtro === f ? "page" : undefined}>

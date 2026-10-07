@@ -29,3 +29,7 @@ Las herramientas usan el mismo cliente Supabase autenticado, por lo que RLS se c
 ## Secretos
 
 La clave Anthropic vive en `ANTHROPIC_API_KEY`, solo servidor. Nunca publicarla en variables `NEXT_PUBLIC_*`, manuales, foro, Git, logs o mensajes de error. Los portales de proveedores mantienen su mecanismo separado con Vault y revelado auditado; no se conectan al chat.
+
+## Menú Rappi
+
+Las tablas menu_rappi_versiones, menu_rappi_productos y menu_rappi_historial se leen por administración y corporativo activos. Solo administración ejecuta importar_menu_rappi y vincular_menu_rappi. No hay escritura directa de authenticated. Los vínculos no modifican el origen del Excel. Una fecha tiene una sola versión; una reimportación idéntica conserva vínculos y revisiones. Los precios publicados en Rappi no se modifican desde esta función.
