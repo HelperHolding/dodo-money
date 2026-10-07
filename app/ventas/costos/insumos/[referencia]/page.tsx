@@ -3,9 +3,10 @@ import {notFound} from "next/navigation";
 import {catalogoCosteo,fichaReceta,fichaInsumo} from "../../catalogo";
 import {insumoDeMaterial} from "@/lib/costeo/trazabilidad";
 import {pesos,fechaTexto} from "@/lib/formato";
+import {buscarPorRuta} from "@/lib/costeo/rutas";
 export default async function Insumo({params,searchParams}:{params:Promise<{referencia:string}>;searchParams:Promise<{version?:string}>}){
  const [p,q]=await Promise.all([params,searchParams]);const {v,recetas,versiones}=await catalogoCosteo(q.version);
- const i=v?.modelo.insumos.find(i=>i.referencia===p.referencia);if(!v||!i)notFound();
+ const i=v?buscarPorRuta(v.modelo.insumos,p.referencia,i=>i.referencia):undefined;if(!v||!i)notFound();
  const usos=recetas.filter(r=>r.receta.materiales.some(m=>insumoDeMaterial(m,v.modelo.insumos)?.referencia===i.referencia));
  // El historial usa el nombre exacto y único, nunca el número de fila que puede cambiar entre archivos.
  const historia=versiones.flatMap(x=>{const candidatos=x.modelo.insumos.filter(a=>a.nombre===i.nombre);return candidatos.length===1?[{v:x,i:candidatos[0]}]:[];});
