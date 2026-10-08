@@ -785,3 +785,39 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .orden-acciones-encabezado details[open] > summary { display:inline-block; margin-bottom:14px; }
 .orden-acciones-encabezado .formulario { margin:0; max-width:650px; }
 @media(max-width:700px) { .orden-acciones-encabezado { gap:8px; } .orden-acciones-encabezado .boton, .orden-acciones-encabezado details > summary { font-size:.85rem; } }
+/* Indicadores y roadmap de aperturas. */
+.ap-indicadores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.ap-indicador { display:flex; flex-direction:column; gap:10px; padding:20px; border:1px solid var(--linea); border-top:3px solid #3977cc; border-radius:10px; color:var(--tinta); text-decoration:none; background:var(--blanco); min-width:0; }
+.ap-indicador:hover { border-color:#3977cc; box-shadow:0 3px 12px #172b4d0c; }
+.ap-indicador > span { color:var(--tinta-2); font-size:.9rem; font-weight:600; }
+.ap-indicador > strong { font-size:clamp(1.4rem,2.2vw,2rem); overflow-wrap:anywhere; }
+.ap-indicador small, .ap-nota { color:var(--tinta-2); font-size:.85rem; line-height:1.5; }
+.ap-indicador[data-alerta="true"] { border-top-color:#c84343; }
+.ap-indicador[data-alerta="true"] > strong { color:#af3030; }
+.ap-indicadores progress, .ap-roadmap progress { width:100%; height:8px; border:0; border-radius:6px; overflow:hidden; accent-color:#3977cc; background:#edf0f4; }
+.ap-indicadores progress::-webkit-progress-bar, .ap-roadmap progress::-webkit-progress-bar { background:#edf0f4; border-radius:6px; }
+.ap-indicadores progress::-webkit-progress-value, .ap-roadmap progress::-webkit-progress-value { background:var(--ap-color,#3977cc); border-radius:6px; }
+.ap-graficas { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.ap-panel { border:1px solid var(--linea); border-radius:12px; padding:24px; min-width:0; background:var(--blanco); }
+.ap-panel h2 { font-size:1.1rem; margin-bottom:20px; }
+.ap-distribucion { display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+.ap-dona { position:relative; width:150px; height:150px; flex:0 0 150px; }
+.ap-dona svg { width:100%; height:100%; }
+.ap-dona > div { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
+.ap-dona strong { font-size:1.8rem; }.ap-dona small { color:var(--tinta-2); font-size:.8rem; }
+.ap-leyenda { list-style:none; padding:0; margin:0; flex:1 1 180px; display:flex; flex-direction:column; gap:12px; }
+.ap-leyenda a { display:flex; align-items:center; gap:9px; color:var(--tinta); text-decoration:none; font-size:.85rem; }
+.ap-leyenda a:hover { text-decoration:underline; }.ap-leyenda a > span:nth-child(2) { flex:1; }.ap-leyenda small { min-width:38px; text-align:right; color:var(--tinta-2); }
+.ap-punto { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.ap-titulo { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
+.ap-titulo h2 { margin:0; }.ap-titulo > span { font-size:.85rem; color:var(--tinta-2); }
+.ap-roadmap { padding:0; margin:24px 0 0; list-style:none; display:flex; flex-direction:column; gap:0; }
+.ap-roadmap li { --ap-color:#8b93a3; display:grid; grid-template-columns:36px minmax(0,1fr); gap:16px; padding:0 0 24px; position:relative; }
+.ap-roadmap li:not(:last-child)::before { content:''; position:absolute; top:36px; bottom:0; left:17px; width:2px; background:#edf0f4; }
+.ap-roadmap li:last-child { padding-bottom:0; }.ap-roadmap li[data-tono="verde"] { --ap-color:#23845b; }.ap-roadmap li[data-tono="azul"] { --ap-color:#3977cc; }.ap-roadmap li[data-tono="rojo"] { --ap-color:#c84343; }.ap-roadmap li[data-tono="ambar"] { --ap-color:#ae7a13; }
+.ap-numero { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; color:var(--ap-color); border:2px solid var(--ap-color); font-weight:700; background:white; z-index:1; }
+.ap-roadmap a { color:var(--tinta); font-weight:600; text-decoration:none; }.ap-roadmap a:hover { text-decoration:underline; }.ap-roadmap progress { margin:12px 0 8px; accent-color:var(--ap-color); }
+.ap-estado { display:inline-block; padding:4px 9px; border-radius:6px; font-size:.85rem; background:#edf0f4; color:#525b6b; }
+.ap-estado[data-tono="bloqueado"] { background:#fbe9e9; color:#af3030; }.ap-estado[data-tono="en_curso"] { background:#e8f0fd; color:#24528d; }.ap-estado[data-tono="terminado"] { background:#e7f5ed; color:#216a49; }.ap-estado[data-tono="recibido"] { background:#e3f5f5; color:#1a7070; }
+@media(max-width:1100px) { .ap-indicadores { grid-template-columns:repeat(2,minmax(0,1fr)); } .ap-graficas { grid-template-columns:1fr; } }
+@media(max-width:520px) { .ap-indicadores { gap:10px; }.ap-indicador { padding:14px; }.ap-panel { padding:16px; }.ap-distribucion { gap:16px; }.ap-dona { width:120px; height:120px; flex-basis:120px; }.ap-roadmap li { gap:10px; } }

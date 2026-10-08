@@ -18,3 +18,23 @@ export const estadosPara = (tipo:ItemApertura['tipo']) => tipo==='actividad'||ti
 export function ventanaEtapa(items:ItemApertura[]) {
  return {desde:items.flatMap(i=>i.inicio?[i.inicio]:[]).sort()[0],hasta:items.flatMap(i=>i.fin?[i.fin]:[]).sort().at(-1)};
 }
+
+export function grupoApertura(i:ItemApertura) {
+ if(i.estado==='bloqueado')return 'bloqueado';
+ if(i.estado==='completado'||i.estado==='verificado')return 'terminado';
+ if(['recibido','instalado'].includes(i.estado))return 'recibido';
+ if(['en_curso','aprobado','pedido','recibido_parcial'].includes(i.estado))return 'en_curso';
+ return 'pendiente';
+}
+export function indicadoresApertura(items:ItemApertura[],hoy:string) {
+ const aplicables=items.filter(i=>i.estado!=='no_aplica');
+ const actividades=aplicables.filter(i=>i.tipo==='actividad');
+ const equipo=aplicables.filter(i=>i.tipo==='equipo'&&i.estado!=='por_validar');
+ const terminadas=actividades.filter(i=>i.estado==='completado').length;
+ const conCantidad=equipo.filter(i=>i.cantidad!==null&&Number(i.cantidad)>0);
+ const unidades=conCantidad.reduce((s,i)=>s+Number(i.cantidad),0);
+ const recibidas=conCantidad.reduce((s,i)=>s+Math.min(Number(i.cantidad),Math.max(0,Number(i.recibido))),0);
+ const atrasados=aplicables.filter(i=>i.fin&&i.fin<hoy&&!['completado','verificado'].includes(i.estado));
+ const bloqueados=aplicables.filter(i=>i.estado==='bloqueado');
+ return {actividades,equipo,terminadas,avance:actividades.length?Math.round(terminadas/actividades.length*100):null,unidades,recibidas,recepcion:unidades?Math.round(recibidas/unidades*100):null,sinCantidad:equipo.length-conCantidad.length,porValidar:aplicables.filter(i=>['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar').length,atrasados,bloqueados,alertas:aplicables.filter(i=>i.estado==='bloqueado'||atrasados.includes(i))};
+}
