@@ -2,6 +2,7 @@ import { datosReporteVentas } from "@/app/ventas/reporte-datos";
 import { fechaTexto, pesos, porcentaje } from "@/lib/formato";
 import { totalesDias, type RenglonResumen } from "@/lib/ventas/reporte";
 import { EncabezadoReporte } from "../Encabezado";
+import { VentasPorCanal } from "@/components/VentasPorCanal";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function ReporteVentasPdf({ searchParams }: { searchParams:
         detalle={`${fechaTexto(r.periodo.desde)} a ${fechaTexto(r.periodo.hasta)} · ${r.dias.length} ${r.dias.length === 1 ? "día" : "días"} con datos`}
         generadoPor={r.generadoPor} />
 
+      <VentasPorCanal canales={r.canales} detalle />
       <section className="seccion">
         <h2>Resumen</h2>
         <div className="tabla-contenedor">

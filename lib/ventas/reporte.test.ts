@@ -1,5 +1,30 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+
+test("reporte separa POS y Rappi por día, pedidos y costo; conserva el combinado",()=>{
+ const pos=filasPorDia([dia("a","2026-10-01",2,116,116,0,0,16)]);
+ const rappi=filasPorDia([dia("a","2026-10-01",1,232,0,0,232,32),dia("b","2026-10-02",1,116,0,0,116,16)]);
+ const resumenPos={total:116,neta:100,iva:16,pedidos:2,ticket:58,costoPct:0.3};
+ const resumenRappi={total:348,neta:300,iva:48,pedidos:2,ticket:174,costoPct:0.4};
+ const hojas=hojasVentas({titulo:"Consolidado",periodo:{desde:"2026-10-01",hasta:"2026-10-02"},generado:"Ensayo",
+ resumen:[],dias:filasPorDia([dia("a","2026-10-01",3,348,116,0,232,48),dia("b","2026-10-02",1,116,0,0,116,16)]),
+ canales:[{clave:"pos",nombre:"POS / Dodo IS",actual:resumenPos,anterior:null,dias:pos},{clave:"rappi",nombre:"Rappi",actual:resumenRappi,anterior:null,dias:rappi}]});
+ assert.deepEqual(hojas.map(h=>h.nombre),["Resumen","Por día","Resumen POS","Por día POS","Resumen Rappi","Por día Rappi"]);
+ assert.deepEqual(hojas[1].filas.at(-1)![2],{valor:464,formato:"pesos"});
+ assert.deepEqual(hojas[3].filas.at(-1)![2],{valor:116,formato:"pesos"});
+ assert.deepEqual(hojas[5].filas.at(-1)![2],{valor:348,formato:"pesos"});
+ assert.equal(hojas[3].filas.length,3);assert.equal(hojas[5].filas.length,4);
+ assert.deepEqual(hojas[4].filas.find(f=>f[0]==="Costo teórico")![1],{valor:0.4,formato:"porcentaje"});
+});
+
+test("canal sin ventas conserva hoja vacía y total cero, sin inventar ticket",()=>{
+ const vacio={total:0,neta:0,iva:0,pedidos:0,ticket:null,costoPct:null};
+ const h=hojasVentas({titulo:"Sucursal",periodo:{desde:"2026-10-01",hasta:"2026-10-01"},generado:"",resumen:[],dias:[],
+ canales:[{clave:"rappi",nombre:"Rappi",actual:vacio,anterior:null,dias:[]}]});
+ assert.equal(h[3].nombre,"Por día Rappi");
+ assert.deepEqual(h[3].filas.at(-1)![2],{valor:0,formato:"pesos"});
+ assert.equal(h[3].filas.at(-1)!.at(-1),null);
+});
 import { filasPorDia, hojasVentas, nombreArchivo, renglonesResumen, totalesDias } from "./reporte.ts";
 
 const dia = (sucursal_id: string, fecha: string, pedidos: number, total: number, efectivo: number, tarjeta: number, en_linea: number, iva: number) =>

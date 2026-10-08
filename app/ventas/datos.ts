@@ -15,12 +15,14 @@ export type FilaDesglose = { tipo: TipoDesglose; pedidos: number; total: number 
 export type DiaConDesglose = VentaDia & { importacion_id?: string; ventas_dia_desglose: FilaDesglose[] };
 
 export type DatosVentas = {
+  canales: CanalesVentas;
   dias: DiaConDesglose[];
   renglones: RenglonCosteo[];
   /** El periodo anterior del mismo largo, para comparar indicadores y productos. */
-  anterior: { dias: VentaDia[]; renglones: RenglonCosteo[] };
+  anterior: { dias: VentaDia[]; renglones: RenglonCosteo[]; canales:CanalesVentas };
   cierres: CierreDia[];
 };
+export type CanalesVentas=Record<"pos"|"rappi",{dias:VentaDia[];renglones:RenglonCosteo[]}>;
 
 /**
  * Qué sucursal se ve. Gerente: siempre la suya (la base de datos tampoco le deja ver otra).
@@ -106,10 +108,19 @@ export async function datosVentas(supabase: SupabaseClient, sucursal: string | n
   const rappi=ventasRappi(actualRappi.ordenes,actualRappi.catalogo),previo=ventasRappi(anteriorRappi.ordenes,anteriorRappi.catalogo);
   const [concActual,concAnterior] = await Promise.all([leerConciliaciones(supabase,p.desde,p.hasta),leerConciliaciones(supabase,anterior.desde,anterior.hasta)]);
   const dias=combinarDiasRappi(aplicarConciliaciones(diasDodo,concActual.filas),rappi.dias),diasAnteriores=combinarDiasRappi(aplicarConciliaciones(diasAnterioresDodo,concAnterior.filas),previo.dias);
+  const canales:CanalesVentas={
+    pos:{dias:aplicarConciliaciones(diasDodo,concActual.filas),renglones:costearProductos(ventas,diasDodo,catalogo,costos)},
+    rappi:{dias:rappi.dias,renglones:costearProductos(rappi.productos,rappi.dias,catalogo,costos)},
+  };
+  const canalesAnteriores:CanalesVentas={
+    pos:{dias:aplicarConciliaciones(diasAnterioresDodo,concAnterior.filas),renglones:costearProductos(ventasAnteriores,diasAnterioresDodo,catalogo,costos)},
+    rappi:{dias:previo.dias,renglones:costearProductos(previo.productos,previo.dias,catalogo,costos)},
+  };
   return {
+    canales,
     dias,
-    renglones: [...costearProductos(ventas,diasDodo,catalogo,costos),...costearProductos(rappi.productos,rappi.dias,catalogo,costos)],
-    anterior: { dias: diasAnteriores, renglones: [...costearProductos(ventasAnteriores,diasAnterioresDodo,catalogo,costos),...costearProductos(previo.productos,previo.dias,catalogo,costos)] },
+    renglones: [...canales.pos.renglones,...canales.rappi.renglones],
+    anterior: { dias: diasAnteriores, renglones: [...canalesAnteriores.pos.renglones,...canalesAnteriores.rappi.renglones],canales:canalesAnteriores },
     cierres,
   };
 }

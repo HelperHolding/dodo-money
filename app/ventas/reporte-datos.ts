@@ -2,12 +2,17 @@ import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { puedeVerVentas, veVentasDeTodas } from "@/lib/roles";
 import { costeo, periodoAnterior, periodoElegido, periodoPorDefecto, resumenVentas, type Periodo } from "@/lib/ventas/calculos";
-import { filasPorDia, renglonesResumen, type FilaDia, type RenglonResumen } from "@/lib/ventas/reporte";
-import { datosVentas, sucursalElegida, ultimoDiaConDatos } from "./datos";
+import { filasPorDia, renglonesResumen, type FilaDia, type RenglonResumen,type CanalReporte } from "@/lib/ventas/reporte";
+import { datosVentas, sucursalElegida, ultimoDiaConDatos,type CanalesVentas } from "./datos";
 
 export type ReporteVentas = {
   titulo: string; periodo: Periodo; generadoPor: string; resumen: RenglonResumen[]; dias: FilaDia[];
+  canales:CanalReporte[];
 };
+export function reporteCanales(actual:CanalesVentas,anterior:CanalesVentas):CanalReporte[]{
+  const resumen=(c:CanalesVentas["pos"])=>{const s=resumenVentas(c.dias);return{total:s.total,neta:s.neta,iva:s.iva,pedidos:s.pedidos,ticket:s.ticket,costoPct:costeo(c.renglones).total.costoPct};};
+  return (["pos","rappi"] as const).map(clave=>({clave,nombre:clave==="pos"?"POS / Dodo IS":"Rappi",actual:resumen(actual[clave]),anterior:anterior[clave].dias.length?resumen(anterior[clave]):null,dias:filasPorDia(actual[clave].dias)}));
+}
 
 /**
  * Lo que llevan el PDF y el Excel de ventas, con el mismo periodo y la misma sucursal que el tablero.
@@ -29,6 +34,7 @@ export async function datosReporteVentas(q: { desde?: string; hasta?: string; su
   const resumen = resumenVentas(d.dias);
   const previo = resumenVentas(d.anterior.dias);
   return {
+    canales:reporteCanales(d.canales,d.anterior.canales),
     titulo: sucursal ? nombreDe.get(sucursal) ?? "Sucursal" : "Todas las sucursales",
     periodo,
     generadoPor: perfil.nombre,
