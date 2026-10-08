@@ -43,13 +43,13 @@ export default async function Empresa({ searchParams }: { searchParams: Promise<
             {campo("correo_compras", "Correo de compras", { type: "email" })}
           </div>
           <fieldset className="campo">
-            <legend>Días de pago autorizados</legend>
+            <legend>Días de pago recomendados</legend>
             <div className="acciones">
               {[1, 2, 3, 4, 5, 6, 7].map((d) => (
                 <label key={d}><input type="checkbox" name="dias_pago" value={d} defaultChecked={diasPago.includes(d)} /> {NOMBRE_DIA[d]}</label>
               ))}
             </div>
-            <small>Los pagos a proveedores se programan solo en estos días; un pago otro día pide motivo.</small>
+            <small>Se sugieren estos días al programar. Puedes elegir cualquier fecha; al registrar un pago fuera de los días recomendados se pide motivo.</small>
           </fieldset>
           <BotonEnviar>Guardar</BotonEnviar>
         </form>

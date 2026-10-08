@@ -9,7 +9,7 @@ import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { cotejar, NOMBRE_COTEJO, nombreEstadoFactura, nombreFactura, valorRecibido, vencida, type EstadoFactura } from "@/lib/compras/facturas";
 import { avanceOrden, totalesOrden } from "@/lib/compras/ordenes";
 import { nombreRegimen, type TasaIva } from "@/lib/compras/proveedores";
-import { diaDePagoSugerido, proximosDiasDePago, textoDia } from "@/lib/compras/diasPago";
+import { diaDePagoSugerido, textoDia } from "@/lib/compras/diasPago";
 import { diasDePago } from "../../servidor";
 import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA, esCuentaPl } from "@/lib/finanzas/cuentas";
 import { textoCubre } from "@/lib/finanzas/cubre";
@@ -90,7 +90,6 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const regimenDistinto = f.proveedores && f.regimen_emisor && f.regimen_emisor !== f.proveedores.regimen_fiscal;
   const hoy = hoyCalendarioMX();
   const dias = await diasDePago(supabase);
-  const diasOpciones = proximosDiasDePago(hoy, dias, 8);
 
   return (
     <>
@@ -289,11 +288,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
               <input type="hidden" name="id" value={f.id} />
               <div className="campo">
                 <label htmlFor="programada">Día de pago</label>
-                <select id="programada" name="pago_programado_el" defaultValue={f.pago_programado_el ?? ""}>
-                  <option value="">Sin programar (sugerido: {textoDia(diaDePagoSugerido(f.vence_el, hoy, dias))})</option>
-                  {f.pago_programado_el && !diasOpciones.includes(f.pago_programado_el) && <option value={f.pago_programado_el}>{textoDia(f.pago_programado_el)}</option>}
-                  {diasOpciones.map((d) => <option key={d} value={d}>{textoDia(d)}</option>)}
-                </select>
+                <input id="programada" name="pago_programado_el" type="date" min={hoy} defaultValue={f.pago_programado_el ?? ""} />
+                <small>Recomendado: {textoDia(diaDePagoSugerido(f.vence_el, hoy, dias))}. Puedes elegir cualquier día desde hoy; deja vacío para quitar la programación.</small>
               </div>
               <BotonEnviar className="boton boton-secundario">Programar</BotonEnviar>
             </form>

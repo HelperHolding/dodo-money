@@ -4,7 +4,7 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { nombreFactura, type EstadoFactura } from "@/lib/compras/facturas";
-import { diaDePagoSugerido, NOMBRE_DIA, proximoDiaDePago, proximosDiasDePago, textoDia } from "@/lib/compras/diasPago";
+import { diaDePagoSugerido, NOMBRE_DIA, proximoDiaDePago, textoDia } from "@/lib/compras/diasPago";
 import { agruparPorDiaDePago } from "@/lib/compras/pagos";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
@@ -16,7 +16,7 @@ type Factura = {
   estado: EstadoFactura; proveedor_id: string; proveedores: { razon_social: string; nombre_comercial: string | null } | null;
 };
 
-/** Facturas por pagar agrupadas por día de pago autorizado: se marcan y se programan juntas. */
+/** Facturas por pagar agrupadas por día de pago sugerido: se marcan y se programan juntas. */
 export default async function ProgramarPagos({ searchParams }: { searchParams: Promise<{ proveedor?: string; ok?: string; error?: string }> }) {
   const { proveedor = "", ok, error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
@@ -33,9 +33,6 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
     .filter((f) => Number(f.saldo) > 0 && (!proveedor || f.proveedor_id === proveedor))
     .map((f) => ({ ...f, pago_sugerido_el: diaDePagoSugerido(f.vence_el, hoy, dias) }));
   const grupos = agruparPorDiaDePago(visibles, hoy, proximoDiaDePago(hoy, dias));
-  const opciones = proximosDiasDePago(hoy, dias, 8);
-  // Cada grupo ofrece su propio día (aunque esté lejos) además de los próximos: nunca se adelanta un pago por omisión.
-  const opcionesDe = (dia: string) => [...new Set([...opciones, dia])].sort();
   const nombreProveedor = (f: Factura) => f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social ?? "";
 
   return (
@@ -43,7 +40,7 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
       <div className="encabezado">
         <h1>Programar pagos</h1>
         <p>
-          Días de pago autorizados: {dias.map((d) => NOMBRE_DIA[d].toLowerCase()).join(", ")} (se cambian en Facturas → Datos de la empresa).
+          Días de pago recomendados: {dias.map((d) => NOMBRE_DIA[d].toLowerCase()).join(", ")} (se cambian en Facturas → Datos de la empresa). Puedes programar para cualquier día desde hoy.
           Cada factura sin programar aparece en el último día de pago antes de su vencimiento; si ese día ya pasó, en el próximo, marcada
           porque se pagaría después de vencer.{edita && " Marca las que se pagan y prográmalas."}
         </p>
@@ -84,9 +81,7 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
             {edita && (
               <div className="acciones">
                 <label htmlFor={`dia-${g.dia}`} className="etiqueta">Programar las marcadas para</label>
-                <select id={`dia-${g.dia}`} name="dia" defaultValue={g.dia}>
-                  {opcionesDe(g.dia).map((d) => <option key={d} value={d}>{textoDia(d)}</option>)}
-                </select>
+                <input id={`dia-${g.dia}`} name="dia" type="date" min={hoy} defaultValue={g.dia < hoy ? hoy : g.dia} required />
                 <BotonEnviar className="boton boton-secundario">Programar</BotonEnviar>
               </div>
             )}

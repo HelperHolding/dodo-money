@@ -103,7 +103,7 @@ export async function anularPago(fd: FormData) {
   volver(ruta, "ok", "Pago anulado. Las facturas recuperaron su saldo.");
 }
 
-/** Programa en bloque las facturas marcadas para un día de pago autorizado. */
+/** Programa en bloque las facturas marcadas para cualquier fecha desde hoy. */
 export async function programarPagos(fd: FormData) {
   const ruta = `/compras/pagos/programar${String(fd.get("volver") ?? "")}`;
   const supabase = await clienteAdmin(ruta);
