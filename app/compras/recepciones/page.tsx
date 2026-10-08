@@ -27,6 +27,8 @@ type OrdenConfirmada = {
   proveedores: { razon_social: string; nombre_comercial: string | null } | null; sucursales: { nombre: string } | null;
 };
 
+type FacturaPrevista = {id:string;folio:string|null;serie:string|null;uuid:string|null;recepcion_programada_el:string;proveedores:{razon_social:string;nombre_comercial:string|null}|null;sucursales:{nombre:string}|null};
+
 const NOMBRE_CLASE = { pendiente: "Por revisar", orden: "Ligada a orden", sin_orden: "Compra sin orden", traspaso: "Traspaso" } as const;
 
 export default async function Recepciones({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
@@ -45,6 +47,9 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
     supabase.from("ordenes_compra").select("id, folio, entrega_esperada, proveedores(razon_social, nombre_comercial), sucursales(nombre)")
       .eq("estado", "confirmada").order("entrega_esperada", { nullsFirst: false }).returns<OrdenConfirmada[]>(),
   ]);
+  const agendaFacturas = await leerTodo<FacturaPrevista>((d,h)=>supabase.from("facturas")
+    .select("id,folio,serie,uuid,recepcion_programada_el,proveedores(razon_social,nombre_comercial),sucursales(nombre)")
+    .eq("tipo","ingreso").neq("estado","cancelada").not("recepcion_programada_el","is",null).order("recepcion_programada_el").order("id").range(d,h).returns<FacturaPrevista[]>());
   // Recepciones esperadas: órdenes confirmadas que no se han recibido completas.
   const hoy = hoyCalendarioMX();
   const esperadas = (confirmadas ?? []).map((o) => {
@@ -91,6 +96,11 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
           </ul>
         </section>
       )}
+      {agendaFacturas.length>0 && <section className="seccion">
+        <h2>Recepciones programadas desde facturas</h2>
+        <p className="saldo-nota">Fechas previstas; no confirman la recepción. Las órdenes vinculadas siguen mostrando su avance real en el calendario de entregas.</p>
+        <ul>{agendaFacturas.map(f=><li key={f.id}><Link href={`/compras/facturas/${f.id}`}>{f.serie??""}{f.folio??f.uuid??"Factura"}</Link> · {f.proveedores?.nombre_comercial??f.proveedores?.razon_social} · {f.sucursales?.nombre??"Oficina"} · {fechaTexto(f.recepcion_programada_el)}</li>)}</ul>
+      </section>}
       {edita && <FormImportarRecepciones />}
 
       <section className="seccion" aria-labelledby="t-pendientes">

@@ -15,7 +15,7 @@ import { FormComplementos } from "./FormComplementos";
 
 type Factura = {
   id: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null;
-  estado: EstadoFactura; proveedor_id: string; sucursal_id: string | null; falta_complemento: boolean;
+  pago_programado_forma:FormaPago|null; estado: EstadoFactura; proveedor_id: string; sucursal_id: string | null; falta_complemento: boolean;
   proveedores: { razon_social: string; nombre_comercial: string | null } | null;
 };
 type Pago = { id: string; fecha: string; monto: number; forma: FormaPago; referencia: string | null; anulado_en: string | null; proveedores: { razon_social: string; nombre_comercial: string | null } | null };
@@ -28,7 +28,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const hoy = hoyCalendarioMX();
   const [facturasLeidas, pagos, ligas, { data: proveedores }, { data: sucursales }, { data: conComplemento }, aplicacionesMes] = await Promise.all([
     leerTodo<Factura>((d, h) => supabase.from("facturas_saldo")
-      .select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
+      .select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el,pago_programado_forma, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
       .eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).order("vence_el").order("id").range(d, h).returns<Factura[]>()),
     leerTodo<Pago>((d, h) => supabase.from("pagos").select("id, fecha, monto, forma, referencia, anulado_en, proveedores(razon_social, nombre_comercial)")
       .gte("fecha", `${hoy.slice(0, 7)}-01`).order("fecha", { ascending: false }).order("id").range(d, h).returns<Pago[]>()),
@@ -37,7 +37,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     // Falta complemento: cualquier estado (lo normal es una PPD ya pagada completa).
     supabase.from("facturas_saldo")
-      .select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
+      .select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el,pago_programado_forma, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
       .eq("falta_complemento", true).order("vence_el").returns<Factura[]>(),
     // Lo aplicado en el mes, para que "Pagado este mes" respete los filtros.
     leerTodo<Aplicacion>((d, h) => supabase.from("pago_aplicaciones")
@@ -74,7 +74,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const porDia: Record<string, FacturaDelDia[]> = {};
   for (const f of visibles) {
     const d = fechaDePago(f);
-    (porDia[d] ??= []).push({ id: f.id, nombre: nombre(f), proveedor: proveedorDe(f), saldo: Number(f.saldo), vencida: vencida(f, hoy) });
+    (porDia[d] ??= []).push({ id: f.id, nombre: nombre(f), proveedor: proveedorDe(f), saldo: Number(f.saldo), vencida: vencida(f, hoy),formaPrevista:f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:undefined });
   }
   const grupos = { vencidas: [] as Factura[], semana: [] as Factura[], despues: [] as Factura[] };
   for (const f of visibles) grupos[grupoPorPagar(f, hoy)].push(f);
@@ -92,7 +92,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
           </div>
           <dl className="tarjeta-datos">
             <dt>Vence</dt><dd>{fechaTexto(f.vence_el)}{vencida(f, hoy) ? " · vencida" : ""}</dd>
-            {f.pago_programado_el && <><dt>Programada</dt><dd>{fechaTexto(f.pago_programado_el)}</dd></>}
+            {f.pago_programado_el && <><dt>Programada</dt><dd>{fechaTexto(f.pago_programado_el)} · {f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:"Forma por definir"}</dd></>}
             {f.falta_complemento && <><dt>Aviso</dt><dd>Falta complemento de pago</dd></>}
           </dl>
           {edita && Number(f.saldo) > 0 && <Link className="boton boton-secundario" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FORMAS_PAGO,NOMBRE_FORMA_PAGO,type FormaPago } from "@/lib/compras/proveedores";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
@@ -13,7 +14,7 @@ import { programarPagos } from "../acciones";
 
 type Factura = {
   id: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null;
-  estado: EstadoFactura; proveedor_id: string; proveedores: { razon_social: string; nombre_comercial: string | null } | null;
+  pago_programado_forma:FormaPago|null; estado: EstadoFactura; proveedor_id: string; proveedores: { razon_social: string; nombre_comercial: string | null } | null;
 };
 
 /** Facturas por pagar agrupadas por día de pago sugerido: se marcan y se programan juntas. */
@@ -24,7 +25,7 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
   const [dias, facturas, { data: proveedores }] = await Promise.all([
     diasDePago(supabase),
     leerTodo<Factura>((d, h) => supabase.from("facturas_saldo")
-      .select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el, estado, proveedor_id, proveedores(razon_social, nombre_comercial)")
+      .select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el,pago_programado_forma, estado, proveedor_id, proveedores(razon_social, nombre_comercial)")
       .eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).order("vence_el").order("id").range(d, h).returns<Factura[]>()),
     supabase.from("proveedores").select("id, razon_social, nombre_comercial").order("razon_social").returns<{ id: string; razon_social: string; nombre_comercial: string | null }[]>(),
   ]);
@@ -72,6 +73,7 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
                   </div>
                   <div className="fila-datos">
                     <span>Vence {fechaTexto(f.vence_el)}</span>
+                    <span>Forma prevista: {f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:"Por definir"}</span>
                     <span>{f.atrasada ? "Vencida" : f.tarde ? "Se pagaría después de vencer" : f.programada ? "Programada" : "Sugerida"}{f.programada && (f.atrasada || f.tarde) ? " · programada" : ""}</span>
                     <span>{pesos(f.saldo)}</span>
                   </div>
@@ -82,6 +84,11 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
               <div className="acciones">
                 <label htmlFor={`dia-${g.dia}`} className="etiqueta">Programar las marcadas para</label>
                 <input id={`dia-${g.dia}`} name="dia" type="date" min={hoy} defaultValue={g.dia < hoy ? hoy : g.dia} required />
+                <label htmlFor={`forma-${g.dia}`} className="etiqueta">Forma de pago prevista</label>
+                <select id={`forma-${g.dia}`} name="forma_programada" required defaultValue="">
+                  <option value="" disabled>Elige…</option>
+                  {FORMAS_PAGO.map(forma=><option key={forma} value={forma}>{NOMBRE_FORMA_PAGO[forma]}</option>)}
+                </select>
                 <BotonEnviar className="boton boton-secundario">Programar</BotonEnviar>
               </div>
             )}

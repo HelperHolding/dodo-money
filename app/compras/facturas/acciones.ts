@@ -113,6 +113,7 @@ async function llamarFactura(fd: FormData, funcion: string, argumentos: Record<s
   const { error } = await supabase.rpc(funcion, argumentos);
   if (error) volver(rutaFactura(id), "error", error.message);
   revalidatePath("/compras", "layout");
+  if (funcion === "programar_recepcion_factura") revalidatePath("/recepciones");
   volver(rutaFactura(id), "ok", mensaje);
 }
 
@@ -148,7 +149,7 @@ export async function cancelarFacturaAccion(fd: FormData) {
 }
 
 export async function programarPagoFactura(fd: FormData) {
-  await llamarFactura(fd, "programar_pago", { p_factura: texto(fd, "id"), p_fecha: texto(fd, "pago_programado_el") || null },
+  await llamarFactura(fd, "programar_pago_detalle", { p_factura: texto(fd, "id"), p_fecha: texto(fd, "pago_programado_el") || null, p_forma: texto(fd,"pago_programado_forma") || null },
     texto(fd, "pago_programado_el") ? "Pago programado." : "Se quitó la fecha programada.");
 }
 
@@ -208,4 +209,9 @@ export async function sustituirGastoManual(fd: FormData) {
     + `${diferencia > 1 ? ` Ojo: los totales difieren por ${pesos(diferencia)}.` : ""}`
     + `${resultado?.sucursal_cambio ? " Se dejó la sucursal que elegiste en el gasto sin CFDI." : ""}`
     + `${resultado?.faltan_cuentas ? " Revisa la cuenta de cada concepto (el gasto tenía varias o renglones sin cuenta)." : ""}`);
+}
+
+export async function programarRecepcionFactura(fd: FormData) {
+  await llamarFactura(fd, "programar_recepcion_factura", {p_factura:texto(fd,"id"),p_fecha:texto(fd,"recepcion_programada_el")||null},
+    texto(fd,"recepcion_programada_el")?"Recepción programada.":"Se quitó la recepción programada.");
 }

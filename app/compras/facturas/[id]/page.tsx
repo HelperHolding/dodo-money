@@ -8,15 +8,16 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { cotejar, NOMBRE_COTEJO, nombreEstadoFactura, nombreFactura, valorRecibido, vencida, type EstadoFactura } from "@/lib/compras/facturas";
 import { avanceOrden, totalesOrden } from "@/lib/compras/ordenes";
-import { nombreRegimen, type TasaIva } from "@/lib/compras/proveedores";
+import { FORMAS_PAGO, NOMBRE_FORMA_PAGO, nombreRegimen, type FormaPago, type TasaIva } from "@/lib/compras/proveedores";
 import { diaDePagoSugerido, textoDia } from "@/lib/compras/diasPago";
+import { fechaEsperada } from "@/lib/compras/entregas";
 import { diasDePago } from "../../servidor";
 import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA, esCuentaPl } from "@/lib/finanzas/cuentas";
 import { textoCubre } from "@/lib/finanzas/cubre";
 import { puedeEditarCompras } from "@/lib/roles";
 import {
   asignarCuentaFactura, asignarDestino, cambiarPeriodoFactura, cambiarVencimientoFactura, cancelarFacturaAccion, guardarCuentasConceptos, ligarOrdenes, marcarRevisada,
-  programarPagoFactura, sustituirGastoManual,
+  programarPagoFactura, programarRecepcionFactura, sustituirGastoManual,
 } from "../acciones";
 
 type Factura = {
@@ -25,9 +26,10 @@ type Factura = {
   subtotal: number; descuento: number; iva: number; retenciones: number; total: number; saldo: number; proveedor_id: string; sucursal_id: string | null; cuenta_pl: string | null;
   cubre_desde: string; cubre_hasta: string;
   uuid_relacionado: string | null; vence_el: string; estado: EstadoFactura; revisada: boolean; revision_nota: string | null;
+  recepcion_programada_el:string|null; pago_programado_forma:FormaPago|null;
   pagado: number; falta_complemento: boolean; pago_programado_el: string | null;
   xml_ruta: string | null; pdf_ruta: string | null; motivo_cancelacion: string | null;
-  proveedores: { razon_social: string; nombre_comercial: string | null; regimen_fiscal: string } | null;
+  proveedores: { razon_social: string; nombre_comercial: string | null; regimen_fiscal: string; dias_entrega:number|null } | null;
 };
 type Concepto = { id: number; descripcion: string; cantidad: number; unidad: string; valor_unitario: number; importe: number; cuenta_pl: string | null };
 type Orden = { id: string; folio: string; estado: string; sucursales: { nombre: string } | null };
@@ -38,7 +40,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: f } = await supabase.from("facturas_saldo")
-    .select("id, uuid, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, cubre_desde, cubre_hasta, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal)")
+    .select("id, uuid, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, cubre_desde, cubre_hasta, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, recepcion_programada_el,pago_programado_forma, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal,dias_entrega)")
     .eq("id", id).maybeSingle<Factura>();
   if (!f) notFound();
 
@@ -90,6 +92,9 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const regimenDistinto = f.proveedores && f.regimen_emisor && f.regimen_emisor !== f.proveedores.regimen_fiscal;
   const hoy = hoyCalendarioMX();
   const dias = await diasDePago(supabase);
+  const plazo = f.proveedores?.dias_entrega;
+  const recepcionSugerida=fechaEsperada(hoy,plazo??null);
+
 
   return (
     <>
@@ -107,7 +112,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           <dt>Total</dt><dd><strong>{pesos(f.total)}</strong>{f.tipo === "ingreso" ? ` · saldo ${pesos(f.saldo)}` : ""}</dd>
           {f.tipo === "ingreso" && <><dt>Vence</dt><dd>{fechaTexto(f.vence_el)}{vencida(f, hoy) ? " · vencida" : ""}</dd></>}
           {f.tipo === "ingreso" && Number(f.pagado) > 0 && <><dt>Pagado</dt><dd>{pesos(f.pagado)}</dd></>}
-          {f.pago_programado_el && <><dt>Programada</dt><dd>{fechaTexto(f.pago_programado_el)}</dd></>}
+          {f.pago_programado_el && <><dt>Pago programado</dt><dd>{fechaTexto(f.pago_programado_el)} · {f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:"Forma por definir"}</dd></>}
+          {f.recepcion_programada_el && <><dt>Recepción programada</dt><dd>{fechaTexto(f.recepcion_programada_el)}</dd></>}
           {f.falta_complemento && <><dt>Aviso</dt><dd>Falta el complemento de pago del proveedor (factura PPD).</dd></>}
           <dt>Emisor</dt><dd>{f.nombre_emisor} · {f.rfc_emisor} · {f.regimen_emisor} {nombreRegimen(f.regimen_emisor)}</dd>
           {regimenDistinto && <><dt>Aviso</dt><dd>El régimen del XML ({f.regimen_emisor}) no es el de la cartera ({f.proveedores!.regimen_fiscal}).</dd></>}
@@ -291,9 +297,25 @@ export default async function DetalleFactura({ params, searchParams }: { params:
                 <input id="programada" name="pago_programado_el" type="date" min={hoy} defaultValue={f.pago_programado_el ?? ""} />
                 <small>Recomendado: {textoDia(diaDePagoSugerido(f.vence_el, hoy, dias))}. Puedes elegir cualquier día desde hoy; deja vacío para quitar la programación.</small>
               </div>
-              <BotonEnviar className="boton boton-secundario">Programar</BotonEnviar>
+              <div className="campo"><label htmlFor="pago_programado_forma">Forma de pago prevista</label>
+                <select id="pago_programado_forma" name="pago_programado_forma" defaultValue={f.pago_programado_forma??""}>
+                  <option value="">Elige al programar una fecha…</option>
+                  {FORMAS_PAGO.map(forma=><option key={forma} value={forma}>{NOMBRE_FORMA_PAGO[forma]}</option>)}
+                </select><small>Es una previsión; no registra el pago ni reserva efectivo.</small>
+              </div>
+              <BotonEnviar className="boton boton-secundario">Programar pago</BotonEnviar>
             </form>
           )}
+          {f.tipo==="ingreso" && <form action={programarRecepcionFactura} className="formulario">
+            <h3>Programar recepción de insumos</h3>
+            <input type="hidden" name="id" value={f.id}/>
+            <div className="campo"><label htmlFor="recepcion_programada_el">Fecha de recepción prevista</label>
+              <input id="recepcion_programada_el" name="recepcion_programada_el" type="date" min={hoy} defaultValue={f.recepcion_programada_el??""}/>
+              <small>{plazo!=null?`Recomendado: ${fechaTexto(recepcionSugerida??hoy)} (hoy + ${plazo} días naturales del proveedor).`:"El proveedor no tiene plazo de entrega configurado."} Puedes elegir cualquier día desde hoy; deja vacío para quitar la programación.</small>
+            </div>
+            <p className="saldo-nota">Actualiza también la entrega esperada de todas las órdenes vinculadas que siguen pendientes. No registra cantidades recibidas ni entradas de inventario.</p>
+            <BotonEnviar className="boton boton-secundario">Guardar recepción prevista</BotonEnviar>
+          </form>}
           <details>
             <summary>Cancelar</summary>
             <form action={cancelarFacturaAccion} className="formulario">

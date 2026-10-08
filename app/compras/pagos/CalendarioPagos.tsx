@@ -5,7 +5,7 @@ import { useState } from "react";
 import { fechaTexto, pesos, pesosCortos } from "@/lib/formato";
 import { mesDe, moverMes, semanasDelMes } from "@/lib/ventas/calendario";
 
-export type FacturaDelDia = { id: string; nombre: string; proveedor: string; saldo: number; vencida: boolean };
+export type FacturaDelDia = { id: string; nombre: string; proveedor: string; saldo: number; vencida: boolean; formaPrevista?:string };
 
 const DIAS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 const nombreMes = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -49,7 +49,7 @@ export function CalendarioPagos({ hoy, porDia }: { hoy: string; porDia: Record<s
           <ul style={{ listStyle: "none", paddingLeft: 0, display: "grid", gap: 6 }}>
             {lista.map((f) => (
               <li key={f.id} style={{ overflowWrap: "anywhere" }}>
-                <Link href={`/compras/facturas/${f.id}`}>{f.nombre}</Link> · {f.proveedor} · {pesos(f.saldo)}{f.vencida ? " · vencida" : ""}
+                <Link href={`/compras/facturas/${f.id}`}>{f.nombre}</Link> · {f.proveedor} · {pesos(f.saldo)}{f.formaPrevista?` · ${f.formaPrevista}`:""}{f.vencida ? " · vencida" : ""}
               </li>
             ))}
           </ul>

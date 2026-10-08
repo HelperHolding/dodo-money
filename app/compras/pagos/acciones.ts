@@ -110,7 +110,7 @@ export async function programarPagos(fd: FormData) {
   const facturas = fd.getAll("factura").map(String);
   const dia = String(fd.get("dia") ?? "");
   if (!facturas.length) volver(ruta, "error", "Marca al menos una factura.");
-  const { data: n, error } = await supabase.rpc("programar_pagos", { p_facturas: facturas, p_fecha: dia });
+  const { data: n, error } = await supabase.rpc("programar_pagos_detalle", { p_facturas: facturas, p_fecha: dia, p_forma: String(fd.get("forma_programada")??"") });
   if (error) volver(ruta, "error", error.message);
   revalidatePath("/compras", "layout");
   volver(ruta, "ok", `${n} ${n === 1 ? "factura programada" : "facturas programadas"} para el ${textoDia(dia)}.`);
