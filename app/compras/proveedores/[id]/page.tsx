@@ -14,6 +14,8 @@ import { CampoDocumento } from "./CampoDocumento";
 import { FormProveedor } from "../../FormProveedor";
 import { PortalProveedor } from "./PortalProveedor";
 import type { PortalProveedor as DatosPortal } from "@/lib/compras/portal";
+import { ContactosProveedor } from "./ContactosProveedor";
+import type { ContactoProveedor } from "@/lib/compras/contactos";
 
 type Doc = { id: string; tipo: TipoDocumento; fecha: string; ruta: string; subido_en: string };
 type Proveedor = DatosProveedor & { id: string; activo: boolean; motivo_desactivacion: string | null; desactivado_en: string | null };
@@ -26,6 +28,8 @@ export default async function FichaProveedor({ params, searchParams }: { params:
     .eq("id", id).maybeSingle<Proveedor>();
   if (!p) notFound();
   const edita = puedeEditarCompras(perfil.rol);
+  const contactos = await supabase.from("proveedor_contactos").select("id,nombre,puesto,telefono,correo,activo")
+    .eq("proveedor_id",id).order("activo",{ascending:false}).order("nombre").returns<ContactoProveedor[]>();
   const acceso = edita ? await supabase.from("proveedor_portales")
     .select("url, usuario, notas, tiene_password").eq("proveedor_id", id).maybeSingle<DatosPortal>() : null;
   const [{ data: surte }, { data: precios }, { data: sucursales }, { data: documentos }] = await Promise.all([
@@ -75,6 +79,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
           {!p.activo && <><dt>Desactivado</dt><dd>{p.motivo_desactivacion}{p.desactivado_en ? ` · ${fechaTexto(fechaMX(p.desactivado_en))}` : ""}</dd></>}
         </dl>
       </section>
+      <ContactosProveedor proveedor={id} contactos={contactos.data??[]} edita={edita} disponible={!contactos.error}/>
       <section className="seccion" aria-labelledby="t-docs">
         <h2 id="t-docs">Documentos</h2>
         {estadoDocs.pendiente && <p className="aviso aviso-error">Faltan: {estadoDocs.faltan.map((t) => NOMBRE_DOCUMENTO[t]).join(", ")}.</p>}
