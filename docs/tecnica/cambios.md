@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-07 · Reporte de ventas por canal
+
+Tablero y PDF con ventas, pedidos, ticket y costo teórico separados POS/Dodo IS y Rappi. PDF añade detalle diario por fuente; Excel conserva hojas combinadas y agrega Resumen/Por día de POS y Rappi. Se separan las fuentes antes de combinarlas, conservando conciliaciones manuales de POS y las reglas existentes de inclusión de Rappi (Finalizado y sumar). La separación identifica la fuente importada, no el método de cobro ni el depósito bancario. No cambia P&L ni importaciones. Sin migración.
+
 ## 2026-10-07 · Pagos extraordinarios y reserva de bóveda · 0042 · pendiente de Supabase
 
 Origen explícito transferencia o bóveda, motivo fuera de calendario y reserva de efectivo adicional al fondo para una factura. Salidas a corporativo conservan reserva y fondo; el pago parcial consume la reserva y afecta bóveda y corte sin doble gasto. Anulación con devolución actual e historial, y reintento del formulario sin duplicados. Administración gestiona y corporativo consulta. 422 pruebas locales y TypeScript; ensayo Supabase preparado. Flujo y límites documentados en pagos-boveda.md.

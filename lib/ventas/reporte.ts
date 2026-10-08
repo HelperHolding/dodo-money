@@ -34,6 +34,7 @@ export function totalesDias(filas: readonly FilaDia[]): Omit<FilaDia, "fecha"> {
 }
 
 export type ResumenReporte = { total: number; neta: number; iva: number; pedidos: number; ticket: number | null; costoPct: number | null };
+export type CanalReporte={clave:"pos"|"rappi";nombre:string;actual:ResumenReporte;anterior:ResumenReporte|null;dias:FilaDia[]};
 export type RenglonResumen = {
   concepto: string; actual: number | null; anterior: number | null;
   /** Fracción (0.1 = +10 %); para el costo, diferencia en puntos como fracción (0.02 = +2 pts). */
@@ -72,7 +73,7 @@ const valor = (n: number | null, formato: RenglonResumen["formato"]): Celda =>
   n === null ? null : formato === "numero" ? n : { valor: n, formato };
 
 /** Las dos hojas del Excel: Resumen y Por día (con renglón de totales). */
-export function hojasVentas(r: { titulo: string; periodo: Periodo; generado: string; resumen: RenglonResumen[]; dias: FilaDia[] }): HojaXlsx[] {
+export function hojasVentas(r: { titulo: string; periodo: Periodo; generado: string; resumen: RenglonResumen[]; dias: FilaDia[];canales?:CanalReporte[] }): HojaXlsx[] {
   const pesos = (n: number | null): Celda => (n === null ? null : { valor: n, formato: "pesos" });
   const t = totalesDias(r.dias);
   const porDia: Celda[][] = [
@@ -99,5 +100,9 @@ export function hojasVentas(r: { titulo: string; periodo: Periodo; generado: str
       anchos: [28, 18, 18, 12],
     },
     { nombre: "Por día", filas: porDia, negritas: [0, porDia.length - 1], anchos: [12, 10, 16, 16, 16, 16, 14, 16] },
+    ...(r.canales??[]).flatMap(c=>hojasVentas({
+      titulo:`${r.titulo} · ${c.nombre}`,periodo:r.periodo,generado:r.generado,
+      resumen:renglonesResumen(c.actual,c.anterior),dias:c.dias,
+    }).map(h=>({...h,nombre:`${h.nombre} ${c.clave==="pos"?"POS":"Rappi"}`}))),
   ];
 }

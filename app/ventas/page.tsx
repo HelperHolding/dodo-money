@@ -17,6 +17,8 @@ import { indicadores } from "@/lib/ventas/tablero";
 import { moverMes } from "@/lib/ventas/calendario";
 import { datosPedidos, datosVentas, sucursalElegida, ultimoDiaConDatos, ventaDiariaDesde } from "./datos";
 import { SeccionesPedidos } from "./SeccionesPedidos";
+import { VentasPorCanal } from "@/components/VentasPorCanal";
+import { reporteCanales } from "./reporte-datos";
 
 const categoria = (c: Categoria | null) => (c ? NOMBRE_CATEGORIA[c] : "Sin categoría");
 const cambio = (f: number | null) => (f === null ? "nuevo" : `${f >= 0 ? "▲" : "▼"} ${porcentaje(Math.abs(f))}`);
@@ -87,6 +89,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         <a className="boton boton-secundario" href={`/reporte/ventas/excel?${filtroReporte}`} download>Descargar Excel</a>
       </div>
 
+      <VentasPorCanal canales={reporteCanales(d.canales,d.anterior.canales)} />
       <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
         maxDias={MAX_DIAS} sucursal={sucursal} sucursales={todas ? sucursales ?? [] : null} />
 
