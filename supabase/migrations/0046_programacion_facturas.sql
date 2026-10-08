@@ -1,4 +1,8 @@
 begin;
+-- La vista se bloquea antes de su tabla: una lectura normal toma los bloqueos en ese orden.
+-- NOWAIT aborta si hay consultas en curso; no deja un ciclo de espera con la aplicación.
+set local lock_timeout = '5s';
+lock table public.facturas_saldo, public.facturas in access exclusive mode nowait;
 alter table public.facturas add column recepcion_programada_el date,
  add column pago_programado_forma public.forma_pago;
 -- Añadir al final evita cambiar la posición de columnas usadas por otras vistas.

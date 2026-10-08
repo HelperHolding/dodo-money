@@ -9,3 +9,9 @@ La programación individual y en bloque exige una forma prevista: transferencia,
 Se conserva historial de programación con usuario y fecha, consultable por compras y sin escritura directa. Las órdenes mantienen su historial de entrega. Si un CFDI sustituye una prefactura, hereda la programación cuando no tiene ya una propia.
 
 Ejecutar migración 0046 y prueba 0046 en Supabase. PRUEBAS OK revierte el ensayo. Pendiente de esa confirmación antes de fusionar a main.
+
+## Concurrencia al migrar
+
+La migración toma primero un bloqueo exclusivo sobre facturas_saldo y sus relaciones, antes de alterar facturas. Evita el orden inverso tabla → vista que puede formar un deadlock con una consulta de la aplicación. NOWAIT falla inmediatamente si existen consultas activas: volver a ejecutar la migración completa cuando terminen, sin ejecutar la prueba en paralelo. lock_timeout local de 5 segundos limita otras esperas de DDL. Si SQL Editor conserva la transacción abortada, ejecutar ROLLBACK antes del nuevo intento. No se cancelan sesiones de otros usuarios.
+
+La validación de concurrencia real sigue pendiente en Supabase; los números de relación del error requieren consultar pg_class para identificar sus nombres.
