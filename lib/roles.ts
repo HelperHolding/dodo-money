@@ -29,7 +29,7 @@ export const puedeImportarVentas = (rol: Rol) => rol === "admin";
 /** Aviso de productos sin costo en el tablero de Ventas (para revisar datos; el gerente no lo ve). */
 export const veAvisoSinCosto = (rol: Rol) => rol === "admin" || rol === "corporativo";
 
-export type Enlace = { href: string; texto: string };
+export type Enlace = { href: string; texto: string; aliases?:readonly string[] };
 
 /** Compras (proveedores, órdenes, facturas, pagos): oficina central. Admin edita; corporativo consulta. */
 export const puedeVerCompras = (rol: Rol) => rol === "admin" || rol === "corporativo";
@@ -94,9 +94,8 @@ export function menuLateral(rol: Rol): Menu {
       enlaces: [
         { href: "/compras", texto: "Proveedores" },
         { href: "/compras/articulos", texto: "Artículos" },
-        { href: "/compras/ordenes", texto: "Órdenes" },
+        { href: "/compras/documentos", texto: "Compras y facturas", aliases:["/compras/ordenes","/compras/facturas"] },
         { href: "/compras/recepciones", texto: "Recepciones" },
-        { href: "/compras/facturas", texto: "Facturas" },
         { href: "/compras/pagos", texto: "Pagos" },
         { href: "/compras/pagos/reservas", texto: "Reservas de bóveda" },
         ...(puedeEditarCompras(rol) ? [{ href: "/compras/cargar", texto: "Cargar Excel" }] : []),
@@ -133,5 +132,5 @@ export function grupoAbierto(menu: Menu, ruta: string): string | undefined {
 /** El enlace activo es el de ruta más larga que contiene a la actual: en /ventas/costos se marca Costos, no Ventas. */
 export function enlaceActivo(ruta: string, enlaces: readonly Enlace[]): string | undefined {
   const contiene = (href: string) => ruta === href || (href !== "/" && ruta.startsWith(`${href}/`));
-  return enlaces.map((e) => e.href).filter(contiene).sort((a, b) => b.length - a.length)[0];
+  return enlaces.filter(e=>contiene(e.href)||e.aliases?.some(contiene)).map(e=>e.href).sort((a,b)=>b.length-a.length)[0];
 }

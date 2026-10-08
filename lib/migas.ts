@@ -17,6 +17,8 @@ const PAGINAS: readonly { patron: string; texto: string; sinRegresar?: boolean }
   { patron: "/aperturas/:id/items/:id", texto: "Seguimiento" },
   { patron: "/compras/proveedores/nuevo", texto: "Nuevo proveedor" },
   { patron: "/compras/proveedores/:id", texto: "Proveedor" },
+  { patron: "/compras/facturas", texto: "Facturas" },
+  { patron: "/compras/ordenes", texto: "Órdenes de compra" },
   { patron: "/compras/facturas/subir", texto: "Subir facturas" },
   { patron: "/compras/facturas/nueva", texto: "Agregar sin CFDI" },
   { patron: "/compras/facturas/empresa", texto: "Datos de la empresa" },
@@ -55,7 +57,7 @@ export function migas(ruta: string, menu: Menu): { migas: Miga[]; regresar: Miga
   // La pantalla del menú que contiene la página: la de dirección más larga.
   let grupo: string | null = null, enlace: Enlace | null = null;
   for (const g of menu.grupos) for (const e of g.enlaces) {
-    const contiene = limpia === e.href || (e.href !== "/" && limpia.startsWith(`${e.href}/`));
+    const contiene = [e.href,...(e.aliases??[])].some(href=>limpia===href||(href!=="/"&&limpia.startsWith(`${href}/`)));
     if (contiene && (!enlace || e.href.length > enlace.href.length)) { grupo = g.titulo; enlace = e; }
   }
   if (!enlace || !grupo) return nada;
@@ -66,6 +68,7 @@ export function migas(ruta: string, menu: Menu): { migas: Miga[]; regresar: Miga
 
   // Cada tramo de la dirección después de la pantalla del menú; los que no son página se saltan.
   const segmentos = partes(limpia), base = partes(enlace.href).length;
+  if(segmentos.length===base) lista.push({texto:pagina(limpia)?.texto??"Documentos",href:null});
   for (let i = base + 1; i <= segmentos.length; i++) {
     const tramo = `/${segmentos.slice(0, i).join("/")}`;
     const p = pagina(tramo);

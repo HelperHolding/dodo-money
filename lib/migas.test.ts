@@ -13,10 +13,10 @@ test("detalle de un registro: grupo › pantalla del menú › registro; regresa
 });
 
 test("pantallas anidadas y altas", () => {
-  assert.equal(texto(migas("/compras/facturas/subir", admin)), "Compras › Facturas(/compras/facturas) › Subir facturas");
-  assert.equal(texto(migas("/compras/facturas/nueva", admin)), "Compras › Facturas(/compras/facturas) › Agregar sin CFDI");
+  assert.equal(texto(migas("/compras/facturas/subir", admin)), "Compras › Compras y facturas(/compras/documentos) › Subir facturas");
+  assert.equal(texto(migas("/compras/facturas/nueva", admin)), "Compras › Compras y facturas(/compras/documentos) › Agregar sin CFDI");
   const comparar = migas("/compras/ordenes/0c5d2f0e-0000-4000-8000-000000000001/comparar", admin);
-  assert.equal(texto(comparar), "Compras › Órdenes(/compras/ordenes) › Orden(/compras/ordenes/0c5d2f0e-0000-4000-8000-000000000001) › Comparar");
+  assert.equal(texto(comparar), "Compras › Compras y facturas(/compras/documentos) › Orden(/compras/ordenes/0c5d2f0e-0000-4000-8000-000000000001) › Comparar");
   assert.deepEqual(comparar.regresar, { texto: "Orden", href: "/compras/ordenes/0c5d2f0e-0000-4000-8000-000000000001" });
   assert.equal(texto(migas("/ventas/costos/cargar", admin)), "Ventas › Costeo(/ventas/costos) › Cargar costos");
   assert.equal(texto(migas("/checklists/amasado", menuLateral("gerente"))), "Sucursal › Checklists(/checklists) › Amasado de masa");
@@ -24,8 +24,8 @@ test("pantallas anidadas y altas", () => {
 
 test("pantalla del menú: solo migas, sin botón de regresar", () => {
   const r = migas("/compras/facturas", admin);
-  assert.equal(texto(r), "Compras › Facturas");
-  assert.equal(r.regresar, null);
+  assert.equal(texto(r), "Compras › Compras y facturas(/compras/documentos) › Facturas");
+  assert.deepEqual(r.regresar, {texto:"Compras y facturas",href:"/compras/documentos"});
 });
 
 test("fuera del menú o en el inicio: nada", () => {

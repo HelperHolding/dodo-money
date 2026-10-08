@@ -728,3 +728,49 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .merma-producto { padding: 16px 0; border-bottom: 1px solid var(--linea); }
 .merma-producto > summary { cursor: pointer; font-weight: 650; }
 .merma-producto[open] > summary { margin-bottom: 12px; }
+/* Documentos de compra: etapas y estados legibles sin depender solo del color. */
+.compra-cabecera { display:flex; flex-direction:row; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px; }
+.compra-cabecera > div:first-child { flex:1 1 380px; }
+.compra-cabecera h1 { margin:5px 0 10px; }
+.compra-sobretitulo { font-size:.72rem; letter-spacing:.12em; font-weight:750; color:var(--tinta-2); }
+.compra-etapas { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:20px 0; }
+.compra-etapas a { text-decoration:none; color:var(--tinta); border:1px solid var(--linea); border-radius:12px; padding:16px; display:flex; align-items:center; gap:10px; background:var(--papel); }
+.compra-etapas a strong { margin-left:auto; font-size:1.2rem; }
+.compra-etapas a:hover { background:var(--papel-2); }
+.compra-etapas a[aria-current="page"] { box-shadow:inset 0 0 0 2px var(--accion); background:#fff6f1; }
+.compra-paso { display:grid; place-items:center; width:28px; height:28px; flex:none; border-radius:50%; background:var(--papel-2); font-size:.8rem; font-weight:700; }
+.compra-etapas [data-etapa="cotizacion"] .compra-paso { background:#fff0c7; color:#795200; }
+.compra-etapas [data-etapa="orden"] .compra-paso { background:#e7efff; color:#24528d; }
+.compra-etapas [data-etapa="factura"] .compra-paso { background:#f0e9ff; color:#67408d; }
+.compra-barra { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin:18px 0; }
+.compra-barra p { color:var(--tinta-2); font-size:.88rem; }
+.compra-tabla-marco { width:100%; overflow-x:auto; border:1px solid var(--linea); border-radius:12px; }
+.compra-tabla { width:100%; border-collapse:collapse; font-size:.88rem; min-width:780px; }
+.compra-tabla th { background:#f7f7f7; color:var(--tinta-2); font-size:.75rem; text-align:left; font-weight:700; padding:14px 18px; white-space:nowrap; }
+.compra-tabla td { padding:18px; border-top:1px solid var(--linea); vertical-align:middle; }
+.compra-tabla tbody tr:hover { background:#fffaf7; }
+.compra-tabla .compra-numero { text-align:right; white-space:nowrap; }
+.compra-folio { color:var(--tinta); font-weight:750; text-decoration:none; }
+.compra-folio:hover { color:var(--accion-oscuro); text-decoration:underline; }
+.compra-origen { display:block; font-size:.76rem; color:var(--tinta-2); margin-top:5px; }
+.compra-origen a { display:inline-block; margin-right:8px; }
+.compra-etiquetas { display:flex; align-items:center; flex-wrap:wrap; gap:6px; max-width:260px; }
+.compra-etapa,.compra-estado,.compra-vencida,.compra-meta { display:inline-block; font-size:.72rem; line-height:1.4; font-weight:700; border-radius:6px; padding:4px 8px; }
+.compra-etapa[data-tono="ambar"],.compra-estado[data-tono="ambar"] { background:#fff0c7; color:#795200; }
+.compra-etapa[data-tono="azul"],.compra-estado[data-tono="azul"] { background:#e7efff; color:#24528d; }
+.compra-etapa[data-tono="violeta"],.compra-estado[data-tono="violeta"] { background:#f0e9ff; color:#67408d; }
+.compra-estado[data-tono="verde"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); }
+.compra-etapa[data-tono="gris"],.compra-estado[data-tono="gris"],.compra-meta { background:#efefef; color:#525252; }
+.compra-vencida { background:var(--alerta-fondo); color:var(--alerta-texto); }
+.compra-tarjeta { gap:12px; border-top:3px solid var(--linea); }
+.compra-tarjeta[data-tono="ambar"] { border-top-color:#ae7b11; }
+.compra-tarjeta[data-tono="azul"] { border-top-color:#3c6fad; }
+.compra-tarjeta[data-tono="violeta"] { border-top-color:#8864b0; }
+.compra-tarjeta[data-tono="verde"] { border-top-color:var(--cuadra); }
+.compra-regreso { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:10px 0 18px; font-size:.85rem; }
+@media(max-width:700px) {
+ .compra-etapas { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .compra-etapas a { padding:12px; font-size:.85rem; }
+ .compra-cabecera .acciones { width:100%; }
+ .compra-cabecera .boton { flex:1 1 auto; }
+}

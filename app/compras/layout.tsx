@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { NavegacionDocumentos } from "./NavegacionDocumentos";
 import { Marco } from "@/components/Marco";
 import { obtenerPerfil } from "@/lib/contexto";
 import { puedeEditarCompras, puedeVerCompras } from "@/lib/roles";
@@ -11,6 +12,7 @@ export default async function LayoutCompras({ children }: { children: React.Reac
   if (!puedeVerCompras(perfil.rol)) redirect("/");
   return (
     <Marco perfil={perfil} titulo="Compras" detalle={puedeEditarCompras(perfil.rol) ? "Oficina central" : "Oficina central · solo lectura"}>
+      <NavegacionDocumentos />
       {children}
     </Marco>
   );
