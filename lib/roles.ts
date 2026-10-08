@@ -98,6 +98,7 @@ export function menuLateral(rol: Rol): Menu {
         { href: "/compras/recepciones", texto: "Recepciones" },
         { href: "/compras/facturas", texto: "Facturas" },
         { href: "/compras/pagos", texto: "Pagos" },
+        { href: "/compras/pagos/reservas", texto: "Reservas de bóveda" },
         ...(puedeEditarCompras(rol) ? [{ href: "/compras/cargar", texto: "Cargar Excel" }] : []),
       ],
     });

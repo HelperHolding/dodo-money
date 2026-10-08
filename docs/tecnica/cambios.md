@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-07 · Pagos extraordinarios y reserva de bóveda · 0042 · pendiente de Supabase
+
+Origen explícito transferencia o bóveda, motivo fuera de calendario y reserva de efectivo adicional al fondo para una factura. Salidas a corporativo conservan reserva y fondo; el pago parcial consume la reserva y afecta bóveda y corte sin doble gasto. Anulación con devolución actual e historial, y reintento del formulario sin duplicados. Administración gestiona y corporativo consulta. 422 pruebas locales y TypeScript; ensayo Supabase preparado. Flujo y límites documentados en pagos-boveda.md.
+
 ## 2026-10-07 · P&L sin venta bruta
 
 Se retiran venta bruta total y sus desgloses POS/Rappi del P&L, comparativo, PDF y Excel. Venta neta y costos por fuente permanecen; margen y EBITDA no cambian. Las consultas y fuentes originales de Ventas se conservan. Sin migración. Validación: 421 pruebas y TypeScript. Banco (Excel Banregio) y Balance general (balance existente) pendientes de recibir los archivos; alcance preparado en banco-balance.md.
