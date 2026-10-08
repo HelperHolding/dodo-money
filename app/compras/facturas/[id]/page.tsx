@@ -272,7 +272,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           {!f.revisada && NOMBRE_COTEJO[cotejo].alerta && f.tipo === "ingreso" && (
             <form action={marcarRevisada} className="formulario">
               <input type="hidden" name="id" value={f.id} />
-              <div className="campo"><label htmlFor="nota">Revisada: ¿qué verificaste?</label><input id="nota" name="nota" required placeholder="Ej. el proveedor aplicó un aumento autorizado" /></div>
+              {(cotejo==='nada_recibido'||cotejo==='facturado_de_mas')&&<p className="aviso">Todavía falta recibir todo lo facturado. Para registrar un anticipo, revisa la orden y el monto, escribe el motivo de autorización y marca la factura como revisada. Esto permite pagar; no registra una recepción ni cierra la orden.</p>}
+              <div className="campo"><label htmlFor="nota">Revisada: ¿qué verificaste?</label><input id="nota" name="nota" required placeholder={cotejo==='nada_recibido'||cotejo==='facturado_de_mas'?'Ej. anticipo autorizado; orden y monto verificados':'Ej. el proveedor aplicó un aumento autorizado'} /></div>
               <BotonEnviar className="boton boton-secundario">Marcar como revisada</BotonEnviar>
             </form>
           )}
