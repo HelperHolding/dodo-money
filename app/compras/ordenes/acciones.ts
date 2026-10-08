@@ -9,6 +9,14 @@ const ruta = (id: string) => `/compras/ordenes/${id}`;
 const texto = (fd: FormData, campo: string) => String(fd.get(campo) ?? "").trim();
 const sucursalDe = (valor: string) => (valor === "oficina" || valor === "" ? null : valor);
 
+export async function facturarOrden(fd:FormData) {
+  const id=texto(fd,'id'),supabase=await clienteAdmin(ruta(id));
+  const {data:factura,error}=await supabase.rpc('facturar_orden',{p_orden:id});
+  if(error)volver(ruta(id),'error',error.message);
+  revalidatePath('/compras','layout');
+  volver(`/compras/facturas/${factura}`,'ok','Factura de la orden disponible. Revisa sus cuentas y registra el pago. Si está Sin CFDI, podrás sustituirla al recibir el XML.');
+}
+
 function listo(id: string, mensaje: string): never {
   revalidatePath("/compras", "layout");
   revalidatePath("/recepciones");

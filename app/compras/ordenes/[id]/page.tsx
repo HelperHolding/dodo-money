@@ -14,7 +14,7 @@ import {
 import { NOMBRE_TASA_IVA, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import {
-  agregarRenglon, anularRecepcionApp, cancelarOrden, cerrarOrden, confirmarOrden, copiarOrden, editarOrden, editarRenglon, enviarOrden, quitarRenglon, cambiarEntregaEsperada,
+  agregarRenglon, anularRecepcionApp, cancelarOrden, cerrarOrden, confirmarOrden, copiarOrden, editarOrden, editarRenglon, enviarOrden, quitarRenglon, cambiarEntregaEsperada, facturarOrden,
 } from "../acciones";
 import { CamposRenglon } from "../CamposRenglon";
 
@@ -72,9 +72,10 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const conRecepcion = o.estado !== "borrador" && o.estado !== "enviada";
   const puedeEditar = acciones.includes("editar");
   const t = totalesOrden(rs);
-  const { data: facturasLigadas } = await supabase.from("factura_ordenes")
+  const { data: facturasLigadas, error:errorFacturas } = await supabase.from("factura_ordenes")
     .select("facturas_saldo!inner(id, serie, folio, uuid, neto, estado, tipo)").eq("orden_id", o.id)
     .returns<{ facturas_saldo: { id: string; serie: string | null; folio: string | null; uuid: string | null; neto: number; estado: string; tipo: string } }[]>();
+  if(errorFacturas)throw Error('No se pudieron consultar las facturas de esta orden.');
   const facturas = (facturasLigadas ?? []).map((x) => x.facturas_saldo).filter((x) => x.estado !== "cancelada" && x.tipo === "ingreso");
   const facturado = facturas.reduce((s, x) => s + Number(x.neto), 0);
 
@@ -131,6 +132,8 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
           </form>
         )}
         <div className="acciones">
+          {edita && o.estado === 'confirmada' && facturas.length===0 && <form action={facturarOrden}><input type="hidden" name="id" value={o.id}/><BotonEnviar pendiente="Creando factura…" confirmar={`Crear una prefactura sin CFDI por ${pesos(t.total)}, copiando el proveedor, la sucursal y los renglones de esta orden. Después podrás registrar el pago. ¿Continuar?`}>Crear factura para pagar</BotonEnviar></form>}
+          {edita && facturas.map(f=><Link key={f.id} className="boton" href={`/compras/facturas/${f.id}`}>Ver {nombreFactura(f)} y pagos</Link>)}
           <Link className="boton boton-secundario" href={`/orden-compra/${o.id}`} target="_blank">Ver PDF</Link>
           {(grupo?.length ?? 0) > 1 && <Link className="boton boton-secundario" href={`/compras/ordenes/${o.id}/comparar`}>Comparar {grupo!.length} cotizaciones</Link>}
         </div>

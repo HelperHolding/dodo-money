@@ -29,3 +29,7 @@ Las herramientas usan el mismo cliente Supabase autenticado, por lo que RLS se c
 ## Secretos
 
 La clave Anthropic vive en `ANTHROPIC_API_KEY`, solo servidor. Nunca publicarla en variables `NEXT_PUBLIC_*`, manuales, foro, Git, logs o mensajes de error. Los portales de proveedores mantienen su mecanismo separado con Vault y revelado auditado; no se conectan al chat.
+
+## Facturar orden
+
+facturar_orden(uuid) valida administración mediante exigir_admin_compras y bloquea la orden al crear. No recibe montos ni proveedor del cliente: copia la orden confirmada en el servidor. Creación de factura y vínculo son atómicos. No registra pagos automáticamente. El pago mantiene las validaciones y permisos existentes de Compras.
