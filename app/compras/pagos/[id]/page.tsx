@@ -13,7 +13,7 @@ import { anularPago } from "../acciones";
 type Pago = {
   id: string; fecha: string; monto: number; forma: FormaPago; cuenta_origen: string | null; referencia: string | null; comprobante_ruta: string | null;
   anulado_en: string | null; motivo_anulacion: string | null; motivo_fuera_de_dia: string | null; proveedores: { razon_social: string; nombre_comercial: string | null } | null;
-  origen_fondos:string|null;reserva_boveda_id:string|null;
+  nota_boveda:string|null;origen_fondos:string|null;reserva_boveda_id:string|null;
 };
 type Aplicacion = { id: number; monto: number; facturas: { id: string; serie: string | null; folio: string | null; uuid: string | null } | null };
 
@@ -21,7 +21,7 @@ export default async function DetallePago({ params, searchParams }: { params: Pr
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: p } = await supabase.from("pagos")
-    .select("id, fecha, monto, forma, cuenta_origen, referencia, comprobante_ruta, anulado_en, motivo_anulacion, motivo_fuera_de_dia, origen_fondos,reserva_boveda_id,proveedores(razon_social, nombre_comercial)")
+    .select("id, fecha, monto, forma, cuenta_origen, referencia, comprobante_ruta, anulado_en, motivo_anulacion, motivo_fuera_de_dia, nota_boveda,origen_fondos,reserva_boveda_id,proveedores(razon_social, nombre_comercial)")
     .eq("id", id).maybeSingle<Pago>();
   if (!p) notFound();
   const { data: aplicaciones } = await supabase.from("pago_aplicaciones").select("id, monto, facturas(id, serie, folio, uuid)").eq("pago_id", id).order("id").returns<Aplicacion[]>();
@@ -37,7 +37,8 @@ export default async function DetallePago({ params, searchParams }: { params: Pr
       <Aviso ok={ok} error={error} />
       <section className="seccion">
         <dl className="tarjeta-datos">
-          <dt>Origen del dinero</dt><dd>{p.origen_fondos==="boveda"?<Link href="/compras/pagos/reservas">Bóveda · reserva autorizada</Link>:p.origen_fondos==="transferencia"?"Transferencia bancaria":"Sin identificar · registro anterior"}</dd>
+          <dt>Origen del dinero</dt><dd>{p.origen_fondos==="boveda"?<Link href="/compras/pagos/reservas">{p.nota_boveda?"Bóveda · efectivo acumulado":"Bóveda · reserva autorizada"}</Link>:p.origen_fondos==="transferencia"?"Transferencia bancaria":"Sin identificar · registro anterior"}</dd>
+          {p.nota_boveda && <><dt>Anotación importante</dt><dd>{p.nota_boveda}</dd></>}
           {p.cuenta_origen && <><dt>Cuenta</dt><dd>{p.cuenta_origen}</dd></>}
           {p.referencia && <><dt>Referencia</dt><dd>{p.referencia}</dd></>}
           {p.motivo_fuera_de_dia && <><dt>Fuera de día de pago</dt><dd>{p.motivo_fuera_de_dia}</dd></>}
