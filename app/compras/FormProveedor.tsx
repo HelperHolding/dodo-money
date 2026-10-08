@@ -4,6 +4,8 @@ import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA } from "@/lib/finanzas/cuent
 import { guardarProveedor } from "./acciones";
 import { CampoConstancia } from "./CampoConstancia";
 import { FormValidado } from "./FormValidado";
+import { DOCUMENTOS_ALTA, NOMBRE_DOCUMENTO } from "@/lib/compras/documentos";
+import { hoyCalendarioMX } from "@/lib/formato";
 
 export function FormProveedor({ id, inicial, sucursales }: { id?: string; inicial?: DatosProveedor; sucursales: { id: string; nombre: string }[] }) {
   const v = (c: keyof DatosProveedor) => (inicial?.[c] ?? "") as string;
@@ -17,6 +19,15 @@ export function FormProveedor({ id, inicial, sucursales }: { id?: string; inicia
     <FormValidado tipo="proveedor" action={guardarProveedor} className="seccion formulario">
       {id && <input type="hidden" name="id" value={id} />}
       {!id && <CampoConstancia />}
+      {!id && <fieldset className="seccion">
+        <legend>Documentos para el alta</legend>
+        <p>Adjunta la carátula bancaria y la opinión de cumplimiento. Se guardarán en el expediente del proveedor.</p>
+        <p className="saldo-nota">PDF o foto (JPG, PNG o WebP). Máximo 4 MB entre estos documentos y la constancia fiscal.</p>
+        {DOCUMENTOS_ALTA.map(tipo => <div className="rejilla" key={tipo}>
+          <div className="campo"><label htmlFor={tipo}>{NOMBRE_DOCUMENTO[tipo]}</label><input id={tipo} name={tipo} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required/></div>
+          <div className="campo"><label htmlFor={`${tipo}_fecha`}>Fecha de {tipo === "caratula_banco" ? "la carátula" : "la opinión"}</label><input id={`${tipo}_fecha`} name={`${tipo}_fecha`} type="date" required max={hoyCalendarioMX()}/></div>
+        </div>)}
+      </fieldset>}
       <h2>Datos fiscales</h2>
       <div className="rejilla">
         {campo("razon_social", "Razón social", { required: true })}

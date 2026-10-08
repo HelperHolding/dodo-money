@@ -6,7 +6,7 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { leerArticulo, leerDesactivacion, leerProveedor, leerSeleccionProveedores, REGIMENES, type DatosArticulo, type DatosProveedor } from "@/lib/compras/proveedores";
 import { leerConstancia, regimenPropuesto } from "@/lib/compras/constancia";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
-import { extensionDocumento, leerDocumento, MAX_BYTES_DOCUMENTO, rutaDocumento, type TipoDocumento } from "@/lib/compras/documentos";
+import { DOCUMENTOS_ALTA, NOMBRE_DOCUMENTO, validarDocumentosAlta, extensionDocumento, leerDocumento, MAX_BYTES_DOCUMENTO, rutaDocumento, type TipoDocumento } from "@/lib/compras/documentos";
 import { hoyCalendarioMX } from "@/lib/formato";
 
 const volver = (ruta: string, clave: "ok" | "error", texto: string): never =>
@@ -27,24 +27,40 @@ export async function guardarProveedor(fd: FormData) {
   if ("error" in r) volver(ruta, "error", r.error);
   const { datos } = r as { datos: DatosProveedor };
 
+  const adjuntos: {tipo: TipoDocumento; fecha: string; archivo: File}[] = [];
+  if (!id) {
+    const problema = validarDocumentosAlta(fd, hoyCalendarioMX());
+    if (problema) volver(ruta, "error", problema);
+    for (const tipo of DOCUMENTOS_ALTA) adjuntos.push({tipo,fecha:String(fd.get(`${tipo}_fecha`)),archivo:archivoDe(fd,tipo)!});
+    const constancia = archivoDe(fd, "constancia");
+    if (constancia) {
+      const c = await constanciaDe(constancia);
+      if ("error" in c) volver(ruta,"error",c.error);
+      else if (c.datos.rfc !== datos.rfc) volver(ruta,"error",`La constancia es del RFC ${c.datos.rfc}, no del proveedor ${datos.rfc}.`);
+      else {
+        const fecha = leerDocumento("constancia_fiscal",c.datos.fecha_emision,hoyCalendarioMX());
+        if ("error" in fecha) volver(ruta,"error",`Constancia fiscal: ${fecha.error}`);
+        adjuntos.push({tipo:"constancia_fiscal",fecha:c.datos.fecha_emision,archivo:constancia});
+      }
+    }
+  }
+
   const { data, error } = id
     ? await supabase.from("proveedores").update(datos).eq("id", id).select("id").single()
     : await supabase.from("proveedores").insert(datos).select("id").single();
   if (error) volver(ruta, "error", error.code === "23505" ? `Ya hay un proveedor con el RFC ${datos.rfc}.` : error.message);
 
-  // Alta con constancia: queda como su primer documento (si es de este RFC y se puede leer su fecha).
-  let aviso = "";
-  const constancia = id ? null : archivoDe(fd, "constancia");
-  if (constancia) {
-    const c = await constanciaDe(constancia);
-    const problema = "error" in c ? c.error
-      : c.datos.rfc !== datos.rfc ? `es del RFC ${c.datos.rfc}.`
-      : await guardarArchivoDocumento(supabase, data!.id, "constancia_fiscal", c.datos.fecha_emision, constancia);
-    aviso = problema ? ` La constancia no se guardó: ${problema} Súbela en Documentos.` : " Su constancia quedó en Documentos.";
+  const pendientes: string[] = [];
+  for (const adjunto of adjuntos) {
+    try {
+      const problema = await guardarArchivoDocumento(supabase,data!.id,adjunto.tipo,adjunto.fecha,adjunto.archivo);
+      if (problema) pendientes.push(NOMBRE_DOCUMENTO[adjunto.tipo]);
+    } catch { pendientes.push(NOMBRE_DOCUMENTO[adjunto.tipo]); }
   }
 
   revalidatePath("/compras", "layout");
-  volver(`/compras/proveedores/${data!.id}`, "ok", (id ? "Proveedor actualizado." : "Proveedor dado de alta.") + aviso);
+  if (pendientes.length) volver(`/compras/proveedores/${data!.id}`,"error",`El proveedor se dio de alta, pero no se guardó: ${pendientes.join(", ")}. Súbelos en Documentos de esta ficha; no vuelvas a dar de alta al proveedor.`);
+  volver(`/compras/proveedores/${data!.id}`, "ok", id ? "Proveedor actualizado." : "Proveedor dado de alta. Sus documentos quedaron guardados en el expediente.");
 }
 
 type Cliente = Awaited<ReturnType<typeof clienteAdmin>>;

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { leerArticulo, leerProveedor } from "@/lib/compras/proveedores";
+import { validarDocumentosAlta } from "@/lib/compras/documentos";
+import { hoyCalendarioMX } from "@/lib/formato";
 
 const VALIDAR = {
   proveedor: (fd: FormData) => leerProveedor((c) => (c === "categorias" ? fd.getAll("categorias").join(",") : String(fd.get(c) ?? ""))),
@@ -21,7 +23,12 @@ export function FormValidado({ tipo, action, className, children }: {
       action={action}
       className={className}
       onSubmit={(e) => {
-        const r = VALIDAR[tipo](new FormData(e.currentTarget));
+        const fd = new FormData(e.currentTarget);
+        if (tipo === "proveedor" && !fd.get("id")) {
+          const problema = validarDocumentosAlta(fd, hoyCalendarioMX());
+          if (problema) { e.preventDefault(); setError(problema); return; }
+        }
+        const r = VALIDAR[tipo](fd);
         if ("error" in r) { e.preventDefault(); setError(r.error); } else setError(null);
       }}
     >

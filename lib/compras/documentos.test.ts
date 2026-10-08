@@ -1,6 +1,31 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { estadoDocumentos, extensionDocumento, leerDocumento, rutaDocumento, vigentes } from "./documentos.ts";
+import { estadoDocumentos, extensionDocumento, leerDocumento, rutaDocumento, vigentes, validarDocumentosAlta, MAX_BYTES_ALTA } from "./documentos.ts";
+
+function alta() {
+ const fd=new FormData();
+ for(const tipo of ['caratula_banco','opinion_cumplimiento']) {
+  fd.set(tipo,new File(['archivo'],`${tipo}.pdf`,{type:'application/pdf'}));
+  fd.set(`${tipo}_fecha`,'2026-10-01');
+ }
+ return fd;
+}
+test('alta: exige ambos documentos con sus fechas, permite constancia opcional',()=>{
+ assert.equal(validarDocumentosAlta(alta(),'2026-10-08'),null);
+ const fd=alta();fd.delete('caratula_banco');assert.match(validarDocumentosAlta(fd,'2026-10-08')!,/carátula/);
+ const otro=alta();otro.delete('opinion_cumplimiento');assert.match(validarDocumentosAlta(otro,'2026-10-08')!,/opinión/);
+ const vacio=alta();vacio.set('opinion_cumplimiento',new File([],''));assert.ok(validarDocumentosAlta(vacio,'2026-10-08'));
+});
+test('alta: valida fecha real, futura y formato de adjuntos antes de crear proveedor',()=>{
+ for(const fecha of ['','2026-02-30','2026-99-01','2026-10-09']) {const fd=alta();fd.set('caratula_banco_fecha',fecha);assert.ok(validarDocumentosAlta(fd,'2026-10-08'));}
+ const fd=alta();fd.set('opinion_cumplimiento',new File(['x'],'opinion.exe',{type:'application/octet-stream'}));assert.ok(validarDocumentosAlta(fd,'2026-10-08'));
+ const foto=alta();foto.set('caratula_banco',new File(['foto'],'caratula.jpg',{type:'image/jpeg'}));assert.equal(validarDocumentosAlta(foto,'2026-10-08'),null);
+ foto.set('constancia',new File(['foto'],'constancia.jpg',{type:'image/jpeg'}));assert.match(validarDocumentosAlta(foto,'2026-10-08')!,/constancia/);
+});
+test('alta: límite conjunto incluye la constancia y evita exceder la petición de Vercel',()=>{
+ const fd=alta();fd.set('constancia',new File([new Uint8Array(MAX_BYTES_ALTA)],'csf.pdf',{type:'application/pdf'}));
+ assert.match(validarDocumentosAlta(fd,'2026-10-08')!,/juntos/);
+});
 
 const doc = (id: string, tipo: string, fecha: string, subido_en = "2026-10-01T10:00:00Z") => ({ id, tipo: tipo as never, fecha, subido_en });
 
