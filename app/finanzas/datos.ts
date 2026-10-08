@@ -152,7 +152,6 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
 
     for (const [canal, nombre] of [["dodo", "Dodo IS / POS"], ["rappi", "Rappi"]] as const) {
       const c = canales[canal];
-      anotar(s.id, `venta_bruta_${canal}`, `${nombre} · antes de descuentos, con IVA`, c.bruta ?? 0);
       anotar(s.id, `venta_neta_${canal}`, `${nombre} · después de descuentos, sin IVA`, c.neta);
       anotar(s.id, `alimento_${canal}`, `${nombre} · costo teórico de las piezas vendidas`, c.alimento);
     }
@@ -226,9 +225,8 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     if(merma.sinCosto)avisos.push(`Mermas: ${merma.sinCosto} renglones de productos sin costo confirmado quedan pendientes y fuera del monto conocido; el resultado es provisional.`);
     if(merma.sinCostoInsumos)avisos.push(`Mermas: ${merma.sinCostoInsumos} renglones de insumos sin costo quedan pendientes y fuera del monto conocido; el resultado es provisional.`);
     for (const c of conciliaciones.filas.filter(c=>c.sucursal_id===s.id)) {
-      avisos.push(`Conciliación manual ${c.fecha}: ${c.motivo}${c.conciliar_productos?" · venta bruta según productos; diferencia justificada":""}.`);
+      avisos.push(`Conciliación manual ${c.fecha}: ${c.motivo}${c.conciliar_productos?" · diferencia de productos justificada":""}.`);
     }
-    if (canales.dodo.bruta === null) avisos.push("Venta bruta Dodo IS / POS sin dato: el detalle por producto no cuadra con la venta diaria o está incompleto.");
     if(rappi.dias.some(d=>d.sucursal_id===s.id))avisos.push("Incluye ventas del historial Rappi por subtotal restaurante, antes del descuento de Rappi. Revisa la liquidación por separado.");
     if(diasVenta.some(d=>d.agregador.total>0)&&rappi.dias.some(r=>r.sucursal_id===s.id&&diasSuc.some(d=>d.fecha===r.fecha&&Number(agregadorDe.get(d.id)?.total??0)>0)))avisos.push("Hay ventas de agregador en Dodo IS y órdenes Rappi importadas para los mismos días. Revisa su fuente en Ventas → Rappi para evitar duplicados.");
     if (diasSuc.length < diasRango) avisos.push(`Faltan ${diasRango - diasSuc.length} días de ventas por importar; los % son sobre lo importado.`);

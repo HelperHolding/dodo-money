@@ -18,7 +18,7 @@ export default async function ReportePLPdf({ searchParams }: { searchParams: Pro
     <main className="pagina">
       {comparativo && <style>{"@page { size: landscape; }"}</style>}
       <EncabezadoReporte titulo={comparativo ? "P&L comparativo" : "P&L"} sucursal={r.titulo}
-        detalle={`${r.comp ? r.comp.periodoTitulo : `${p.titulo}${enCurso ? ` · hasta el ${fechaTexto(p.hasta)}` : ""}`} · venta bruta con IVA; resultado sin IVA, criterio devengado`}
+        detalle={`${r.comp ? r.comp.periodoTitulo : `${p.titulo}${enCurso ? ` · hasta el ${fechaTexto(p.hasta)}` : ""}`} · venta neta sin IVA, después de descuentos; criterio devengado`}
         generadoPor={r.generadoPor} />
       <p className="saldo-nota">Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los importes parciales muestran un resultado provisional.</p>
       {r.comp ? (

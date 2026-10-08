@@ -128,8 +128,8 @@ test("P&L por fuente: bruto con IVA, neto sin IVA y costo sin doble resta", () =
     [{ fecha: "2026-10-01", importe: 232, importe_sin_descuento: 300 }], 60);
   const e = { ...entradaVacia(), canales: { dodo, rappi }, ventaNeta: 300, alimento: 90 };
   const f = new Map(calcularPL(e, [], { ventaNeta: 300, ventaRappi: 232, plantilla: { cocina: 0, gerencia: 0 } }).map(f => [f.clave, f]));
-  assert.equal(f.get("venta_bruta")!.monto, 440);
-  assert.equal(f.get("venta_bruta_dodo")!.monto, 140);
+  assert.equal(f.has("venta_bruta"), false);
+  assert.equal(f.has("venta_bruta_dodo"), false);
   assert.equal(f.get("venta_neta_rappi")!.monto, 200);
   assert.equal(f.get("alimento_rappi")!.monto, 60);
   assert.equal(f.get("alimento")!.monto, 90);
@@ -146,8 +146,7 @@ test("Venta bruta incompleta: no se inventa; el consolidado conserva sin dato", 
   const suma = sumarEntradas([entradaVacia(), e]);
   assert.equal(suma.canales.dodo.bruta, null);
   const filas = calcularPL(suma, [], { ventaNeta: 0, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } });
-  assert.equal(filas.find(f => f.clave === "venta_bruta")!.monto, null);
-  assert.equal(filas.find(f => f.clave === "venta_bruta_rappi")!.monto, 300);
+  assert.equal(filas.some(f => f.clave.startsWith("venta_bruta")), false);
   assert.equal(resumenCanalPL([], [], 0).bruta, 0);
   // Un faltante no se compensa con un sobrante en otro día.
   assert.equal(resumenCanalPL([{ fecha: "a", total: 100, iva: 0 }, { fecha: "b", total: 100, iva: 0 }],

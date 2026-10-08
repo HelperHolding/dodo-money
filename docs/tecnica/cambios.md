@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-07 · P&L sin venta bruta
+
+Se retiran venta bruta total y sus desgloses POS/Rappi del P&L, comparativo, PDF y Excel. Venta neta y costos por fuente permanecen; margen y EBITDA no cambian. Las consultas y fuentes originales de Ventas se conservan. Sin migración. Validación: 421 pruebas y TypeScript. Banco (Excel Banregio) y Balance general (balance existente) pendientes de recibir los archivos; alcance preparado en banco-balance.md.
+
 ## 2026-10-07 · Activos · 0038
 
 Inventario por unidad para sucursales existentes y aperturas. Costo de adquisición separado de valuaciones; historial de traslados, revisiones y servicios. Recepción de Aperturas limita unidades registrables. Administración captura; corporativo consulta. Validación reportada: 410 pruebas locales, TypeScript, build y PRUEBAS OK de Supabase. Main `4318228`; despliegue en producción no verificado en este registro.

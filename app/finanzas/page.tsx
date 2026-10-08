@@ -33,7 +33,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
       <div className="encabezado">
         <h1>P&L · {titulo}</h1>
         <p>
-          {comp ? comp.periodoTitulo : <>{p.titulo}{enCurso && ` · hasta el ${fechaTexto(p.hasta)}`}</>}. Venta bruta antes de descuentos y con IVA; resultado sin IVA, criterio devengado.
+          {comp ? comp.periodoTitulo : <>{p.titulo}{enCurso && ` · hasta el ${fechaTexto(p.hasta)}`}</>}. Venta neta sin IVA, después de descuentos; criterio devengado.
           {meta && " Meta: PL Base del modelo de Dodo."}{meta && !meta.suc && " Elige una sucursal para ver de dónde sale cada renglón."}
         </p>
       </div>

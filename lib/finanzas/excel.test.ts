@@ -16,7 +16,7 @@ test("hojaPL: secciones con color, barras de total, montos contables y memo al f
   }, PRESENTACION);
   const fila = (t: string) => h.filas.findIndex((f) => f[0] === t);
   assert.equal(h.nombre, "Contra meta");
-  assert.equal(h.filas[1][0], "Semana 41 · 5 al 11 oct 2026 · venta bruta con IVA; resultado sin IVA, criterio devengado · merma de productos terminados e insumos adicionales al BOM");
+  assert.equal(h.filas[1][0], "Semana 41 · 5 al 11 oct 2026 · venta neta sin IVA, después de descuentos; criterio devengado · merma de productos terminados e insumos adicionales al BOM");
   assert.deepEqual(h.filas[4], ["Renglón", "Real", "% de venta", "Meta", "Meta %", "Diferencia", "Semana anterior %", "Acumulado del mes %"]);
   assert.deepEqual(h.estilos![fila("VENTA")], { fondo: "BDD7EE", negrita: true });
   assert.deepEqual(h.estilos![fila("GASTOS DE OPERACIÓN")], { fondo: "FCE4D6", negrita: true });
@@ -59,7 +59,7 @@ test("hojaPL: un costo fijo sin capturar dice 'Sin capturar' en la diferencia", 
 });
 
 
-test("Excel P&L y comparativo incluyen la venta bruta y los costos por fuente", () => {
+test("Excel P&L y comparativo excluyen venta bruta y conservan ventas netas y costos por fuente", () => {
   const entrada = { ...entradaVacia(), ventaNeta: 300, alimento: 90,
     canales: { dodo: { bruta: 140, neta: 100, alimento: 30 }, rappi: { bruta: 300, neta: 200, alimento: 60 } } };
   const filas = calcularPL(entrada, [], ctx(300));
@@ -68,7 +68,8 @@ test("Excel P&L y comparativo incluyen la venta bruta y los costos por fuente", 
   const col = { etiqueta: "Octubre", entrada, filas };
   const [comp] = hojaComparativo({ titulo: "Sucursal", periodo: "Octubre", generado: "S", columnas: [col], total: col }, PRESENTACION);
   for (const hoja of [meta, comp]) {
-    assert.deepEqual(hoja.filas.find(f => f[0] === "Venta bruta (antes de descuentos, con IVA)")![1], { valor: 440, formato: "contable" });
+    assert.equal(hoja.filas.some(f => typeof f[0] === "string" && f[0].toLowerCase().includes("venta bruta")), false);
+    assert.deepEqual(hoja.filas.find(f => f[0] === "Venta neta")![1], { valor: 300, formato: "contable" });
     assert.deepEqual(hoja.filas.find(f => f[0] === "Rappi · alimento y empaque")![1], { valor: 60, formato: "contable" });
   }
 });

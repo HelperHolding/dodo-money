@@ -8,9 +8,6 @@ export type ClaveRenglon =
   | "regalias" | "otros" | "ebitda_tienda" | "oficina" | "ebitda" | "margen_bruto";
 
 export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "venta" | "gasto" | "total" | "detalle" }[] = [
-  { clave: "venta_bruta", nombre: "Venta bruta (antes de descuentos, con IVA)", tipo: "venta" },
-  { clave: "venta_bruta_dodo", nombre: "Dodo IS / POS · venta bruta", tipo: "detalle" },
-  { clave: "venta_bruta_rappi", nombre: "Rappi · venta bruta", tipo: "detalle" },
   { clave: "venta_neta", nombre: "Venta neta", tipo: "venta" },
   { clave: "venta_neta_dodo", nombre: "Dodo IS / POS · venta neta", tipo: "detalle" },
   { clave: "venta_neta_rappi", nombre: "Rappi · venta neta", tipo: "detalle" },
