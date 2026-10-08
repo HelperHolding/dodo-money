@@ -23,6 +23,13 @@ begin
  if (select estado from public.ordenes_compra where id=o)<>'confirmada' then raise exception 'FALLÓ: cerró sin recepción';end if;
  if public.facturar_orden(o)<>f or (select count(*) from public.factura_ordenes where orden_id=o)<>1 then raise exception 'FALLÓ: doble factura';end if;
  if (select count(*) from public.orden_historial where orden_id=o and evento='facturada')<>1 then raise exception 'FALLÓ: historial duplicado';end if;
+ if public.cotejo_factura(f)<>'nada_recibido' then raise exception 'FALLÓ: cotejo sin recepción';end if;
+ begin
+  perform public.registrar_pago(p,public.hoy_mx(),100,'transferencia',null,'Prueba orden-factura',null,jsonb_build_array(jsonb_build_object('factura_id',f,'monto',100)),'Ensayo de pago desde orden');
+  raise exception 'FALLÓ: pagó sin recepción ni revisión';
+ exception when others then if sqlerrm not like 'La factura % no cuadra con su orden: márcala como revisada antes de pagarla' then raise;end if;end;
+ if public.pagado_factura(f)<>0 then raise exception 'FALLÓ: pago bloqueado dejó aplicación';end if;
+ perform public.marcar_factura_revisada(f,'Anticipo autorizado antes de recepción. Orden y montos verificados en el ensayo.');
  pago:=public.registrar_pago(p,public.hoy_mx(),100,'transferencia',null,'Prueba orden-factura',null,jsonb_build_array(jsonb_build_object('factura_id',f,'monto',100)),'Ensayo de pago desde orden');
  if public.pagado_factura(f)<>100 or (select estado from public.facturas where id=f)<>'parcial' then raise exception 'FALLÓ: pago';end if;
  if public.facturar_orden(o)<>f then raise exception 'FALLÓ: factura parcialmente pagada';end if;
@@ -31,5 +38,5 @@ begin
  begin perform public.facturar_orden(o);raise exception 'FALLÓ: corporativo factura';exception when others then if sqlerrm<>'Corporativo solo puede consultar.' then raise;end if;end;
  if not exists(select 1 from public.factura_ordenes where factura_id=f and orden_id=o) then raise exception 'FALLÓ: corporativo consulta';end if;
  if has_function_privilege('anon','public.facturar_orden(uuid)','EXECUTE') then raise exception 'FALLÓ: RPC anónima';end if;
- raise exception 'PRUEBAS OK — orden confirmada · copia proveedor y sucursal · conserva Oficina · IVA mixto · cantidades y precios · cuenta por concepto · vínculo automático · sin duplicados · pago parcial · corporativo consulta';
+ raise exception 'PRUEBAS OK — orden confirmada · copia proveedor y sucursal · conserva Oficina · IVA mixto · cantidades y precios · cuenta por concepto · vínculo automático · sin duplicados · sin recepción exige revisión · anticipo revisado y pago parcial · corporativo consulta';
 end $$;
