@@ -17,3 +17,16 @@ test("Rappi: solo finalizadas de fuente Rappi; el cobro no entra a caja",()=>{co
 test("Rappi: vincula al SKU Dodo y reparte descuentos conservando centavos",()=>{const o={...guardada(),subtotal_restaurante:1,rappi_lineas:[{...guardada().rappi_lineas[0],cantidad:3,importe:1,producto_id:1},{...guardada().rappi_lineas[0],linea:2,cantidad:1,importe:2,producto_id:2}],bruto:3};const r=ventasRappi([o],[{id:1,clave:"a",nombre:"Pizza",dodo_id:123}]);assert.equal(r.productos[0].dodo_id,123);assert.equal(r.productos.reduce((s,p)=>s+p.importe,0),1);assert.equal(Math.round(r.lineas.reduce((s,p)=>s+p.precio,0)*100),100);assert.equal(r.productos.reduce((s,p)=>s+p.cantidad,0),4);});
 test("Rappi: combina total, pedidos y canal sin tocar el original; admite días solo Rappi",()=>{const d={sucursal_id:"s",fecha:"2026-10-05",pedidos:10,total:116,efectivo:16,tarjeta:100,en_linea:0,iva:16,venta_m2:1,ventas_dia_desglose:[]};const r=ventasRappi([guardada()],[]);const combinado=combinarDiasRappi([d],r.dias);assert.equal(combinado[0].total,215);assert.equal(combinado[0].efectivo,16);assert.equal(combinado[0].pedidos,11);assert.equal(combinado[0].ventas_dia_desglose.find(x=>x.tipo==="agregador")?.total,99);assert.equal(d.total,116);assert.equal(combinarDiasRappi([],r.dias)[0].total,99);});
 test("Rappi: P&L cobra comisión Rappi y regalías, sin comisión de terminal/app; costo vigente del SKU",()=>{const r=ventasRappi([guardada()],[{id:1,clave:"x",nombre:"Pizza",dodo_id:123}]);const dias=r.dias.map(d=>({...d,agregador:{total:d.total,tarjeta:0,en_linea:d.total}}));assert.equal(comisionesCobro(dias,()=>.1).total,0);assert.equal(comisionRappi(dias,()=>.18),17.82);assert.equal(regalias(dias,()=>.05),4.27);const c=costeo(costearProductos(r.productos,r.dias,[{dodo_id:123,categoria:"pizza"}],[{dodo_id:123,costo:20,vigente_desde:"2026-10-01"},{dodo_id:123,costo:30,vigente_desde:"2026-11-01"}]));assert.equal(c.total.costo,20);assert.equal(c.sinCosto.length,0);assert.equal(costeo(costearProductos(r.productos,r.dias,[],[])).sinCosto.length,1);});
+
+import {resumenPanelRappi} from './rappi.ts';
+test('panel Rappi: separa historial de ventas sumadas y conserva descuentos',()=>{
+ const r=resumenPanelRappi([guardada(),{...guardada(),sumar:false},{...guardada(),estado:'Cancelado'},{...guardada(),estado:'Con reclamo'}]);
+ assert.equal(r.cantidad,1);assert.equal(r.total,99);assert.equal(r.ticket,99);assert.equal(r.enDodo,1);
+ assert.equal(r.descuentoRestaurante,60);assert.equal(r.descuentoRappi,70);assert.equal(r.estados[0].cantidad,2);assert.equal(r.estados[1].cantidad,1);assert.equal(r.estados[2].cantidad,1);
+ assert.equal(r.productos[0].cantidad,1);assert.equal(r.dias[0].ordenes,1);
+});
+test('panel Rappi: días ordenados, variantes separadas y periodo vacío',()=>{
+ const a=guardada(),b={...guardada(),fecha:'2026-10-04',rappi_lineas:[{...a.rappi_lineas[0],opciones:'Otra variante',cantidad:2}]};
+ const r=resumenPanelRappi([a,b]);assert.deepEqual(r.dias.map(d=>d.fecha),['2026-10-04','2026-10-05']);assert.equal(r.productos.length,2);assert.equal(r.productos[0].cantidad,2);
+ const vacio=resumenPanelRappi([]);assert.equal(vacio.ticket,null);assert.equal(vacio.total,0);assert.equal(vacio.productos.length,0);
+});

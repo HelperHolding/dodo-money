@@ -821,3 +821,18 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .ap-estado[data-tono="bloqueado"] { background:#fbe9e9; color:#af3030; }.ap-estado[data-tono="en_curso"] { background:#e8f0fd; color:#24528d; }.ap-estado[data-tono="terminado"] { background:#e7f5ed; color:#216a49; }.ap-estado[data-tono="recibido"] { background:#e3f5f5; color:#1a7070; }
 @media(max-width:1100px) { .ap-indicadores { grid-template-columns:repeat(2,minmax(0,1fr)); } .ap-graficas { grid-template-columns:1fr; } }
 @media(max-width:520px) { .ap-indicadores { gap:10px; }.ap-indicador { padding:14px; }.ap-panel { padding:16px; }.ap-distribucion { gap:16px; }.ap-dona { width:120px; height:120px; flex-basis:120px; }.ap-roadmap li { gap:10px; } }
+
+/* Resumen visual del historial Rappi. */
+.rappi-barras { display:flex; flex-direction:column; gap:12px; margin-top:18px; max-height:430px; overflow:auto; }
+.rappi-barra-fila { display:grid; grid-template-columns:100px minmax(30px,1fr) auto; gap:6px 12px; align-items:center; font-size:.85rem; }
+.rappi-barra-fila > small { grid-column:3; text-align:right; color:var(--tinta-2); }
+.rappi-barra { height:8px; background:#edf0f4; border-radius:5px; overflow:hidden; }
+.rappi-barra > span { display:block; height:100%; background:#3977cc; border-radius:5px; }
+.rappi-leyenda { display:flex; align-items:center; gap:9px; font-size:.85rem; }
+.rappi-leyenda > span:nth-child(2) { flex:1; }.rappi-leyenda small { min-width:38px; text-align:right; color:var(--tinta-2); }
+.rappi-top-titulo { font-size:1rem; margin-top:26px; }
+.rappi-producto { display:flex; flex-direction:column; gap:7px; margin-top:14px; font-size:.85rem; }.rappi-producto > div:first-child { display:flex; justify-content:space-between; gap:12px; }.rappi-producto strong { white-space:nowrap; }.rappi-producto .rappi-barra > span { background:#23845b; }
+.rappi-acordeon > summary { cursor:pointer; color:var(--tinta); font-weight:600; }
+.rappi-acordeon > summary > span { display:inline-block; color:var(--tinta-2); font-size:.9rem; font-weight:400; margin-left:14px; }.rappi-acordeon[open] > summary { margin-bottom:18px; }
+.rappi-archivo::file-selector-button { font:inherit; font-weight:600; border:1px solid var(--accion-oscuro); color:var(--accion-oscuro); background:var(--blanco); padding:8px 12px; border-radius:5px; margin-right:12px; cursor:pointer; }
+@media(max-width:520px) { .rappi-barra-fila { grid-template-columns:80px minmax(20px,1fr) auto; gap:6px; }.rappi-acordeon > summary > span { margin:8px 0 0; display:block; } }
