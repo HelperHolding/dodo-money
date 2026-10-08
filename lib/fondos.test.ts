@@ -2,6 +2,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mensajeCierre, problemaSalida, retiroABoveda, salidaSugerida } from "./fondos.ts";
 
+test("reserva adicional conserva fondo, salida comprometida y efectivo para el proveedor",()=>{
+ const b={saldoBoveda:20000,fondoBoveda:4500,salidasPendientes:1000,reservas:6000};
+ assert.equal(salidaSugerida(b),8500);
+ assert.equal(problemaSalida(8500,b),null);
+ assert.match(problemaSalida(8500.01,b)!,/reservados para pagos/);
+ // Consumir una parte de la reserva reduce efectivo y compromiso en el mismo importe.
+ assert.equal(salidaSugerida({...b,saldoBoveda:17000,reservas:3000}),8500);
+ assert.equal(salidaSugerida({...b,reservas:0}),14500);
+});
+
 test("retiroABoveda: todo lo que pase del fondo del cajón va a la bóveda", () => {
   assert.equal(retiroABoveda(9850.5, 500), 9350.5);
   assert.equal(retiroABoveda(500, 500), 0);

@@ -5,13 +5,13 @@ import { hoyCalendarioMX } from "@/lib/formato";
 import { NOMBRE_COTEJO, nombreFactura, type Cotejo, type EstadoFactura } from "@/lib/compras/facturas";
 import type { FormaPago } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
-import { FormPago, type FacturaParaPagar } from "./FormPago";
+import { FormPago, type FacturaParaPagar, type ReservaPago } from "./FormPago";
 import { diasDePago } from "../../servidor";
 
 type Factura = { id: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null; estado: EstadoFactura; revisada: boolean };
 
-export default async function NuevoPago({ searchParams }: { searchParams: Promise<{ proveedor?: string; factura?: string; error?: string }> }) {
-  const { proveedor = "", factura = null, error } = await searchParams;
+export default async function NuevoPago({ searchParams }: { searchParams: Promise<{ proveedor?: string; factura?: string; reserva?:string; error?: string }> }) {
+  const { proveedor = "", factura = null, reserva=null, error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
   if (!puedeEditarCompras(perfil.rol)) redirect("/compras/pagos");
   const { data: proveedores } = await supabase.from("proveedores").select("id, razon_social, nombre_comercial, forma_pago_habitual").order("razon_social")
@@ -19,6 +19,7 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
   const elegido = (proveedores ?? []).find((p) => p.id === proveedor);
 
   let facturas: FacturaParaPagar[] = [];
+  let reservas:ReservaPago[]=[];
   if (elegido) {
     const { data } = await supabase.from("facturas_saldo").select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el, estado, revisada")
       .eq("proveedor_id", elegido.id).eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).order("vence_el").returns<Factura[]>();
@@ -29,6 +30,10 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
       const bloqueada = c && c !== "cuadra" && c !== "sin_orden" && !f.revisada ? `${NOMBRE_COTEJO[c].texto}. Márcala como revisada en la factura para poder pagarla.` : null;
       return { ...f, saldo: Number(f.saldo), nombre: nombreFactura(f), bloqueada };
     });
+    if(facturas.length){
+      const {data,error:e}=await supabase.from("reservas_boveda_saldo").select("id,factura_id,pendiente,sucursal_id,sucursales(nombre)").is("anulado_en",null).gt("pendiente",0).in("factura_id",facturas.map(f=>f.id)).returns<ReservaPago[]>();
+      if(e)throw new Error(e.message);reservas=data??[];
+    }
   }
 
   return (
@@ -47,7 +52,7 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
       </form>
       {elegido && (!facturas.length
         ? <p className="vacio">Este proveedor no tiene facturas por pagar.</p>
-        : <FormPago proveedorId={elegido.id} facturas={facturas} forma={elegido.forma_pago_habitual} hoy={hoyCalendarioMX()} preseleccion={factura} dias={await diasDePago(supabase)} />)}
+        : <FormPago proveedorId={elegido.id} facturas={facturas} forma={elegido.forma_pago_habitual} hoy={hoyCalendarioMX()} preseleccion={factura} dias={await diasDePago(supabase)} reservas={reservas} reservaInicial={reserva} solicitud={crypto.randomUUID()} />)}
     </>
   );
 }

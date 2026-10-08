@@ -18,16 +18,16 @@ export function mensajeCierre(contado: number, fondoCajero: number): string {
     : `Arqueo de cierre guardado y turno cerrado. El cajero no pasa de ${mxn.format(fondoCajero)}: no hubo retiro a la bóveda.`;
 }
 
-export type Boveda = { saldoBoveda: number; salidasPendientes: number; fondoBoveda: number };
+export type Boveda = { saldoBoveda: number; salidasPendientes: number; fondoBoveda: number; reservas?: number };
 
 /** Lo que puede salir a corporativo: el saldo de la bóveda menos su fondo y menos las salidas que aún no se recogen. */
-export const salidaSugerida = (b: Boveda) => Math.max(0, centavos(b.saldoBoveda - b.salidasPendientes - b.fondoBoveda));
+export const salidaSugerida = (b: Boveda) => Math.max(0, centavos(b.saldoBoveda - b.salidasPendientes - b.fondoBoveda - (b.reservas ?? 0)));
 
 /** null si la salida deja la bóveda con su fondo completo; si no, el mensaje con lo más que puede salir. */
 export function problemaSalida(monto: number, b: Boveda): string | null {
   const queda = centavos(b.saldoBoveda - b.salidasPendientes - monto);
-  if (queda >= b.fondoBoveda) return null;
+  if (queda >= b.fondoBoveda + (b.reservas ?? 0)) return null;
   const maximo = salidaSugerida(b);
-  return `Con esa salida la bóveda quedaría con ${mxn.format(queda)} y debe quedarse con ${mxn.format(b.fondoBoveda)}. `
+  return `Con esa salida la bóveda quedaría con ${mxn.format(queda)} y debe quedarse con ${mxn.format(b.fondoBoveda)}.${b.reservas ? ` Además, hay ${mxn.format(b.reservas)} reservados para pagos.` : ""} `
     + (maximo > 0 ? `Lo más que puede salir es ${mxn.format(maximo)}.` : "Ahora no puede salir nada.");
 }

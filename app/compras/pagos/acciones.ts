@@ -74,13 +74,15 @@ export async function registrarPago(fd: FormData) {
     if (errorArchivo) volver(ruta, "error", `No se pudo subir el comprobante: ${errorArchivo.message}`);
   }
 
-  const { data: id, error } = await supabase.rpc("registrar_pago", {
-    p_proveedor: proveedor, p_fecha: String(fd.get("fecha") ?? ""), p_monto: monto, p_forma: String(fd.get("forma") ?? "transferencia"),
-    p_cuenta: String(fd.get("cuenta_origen") ?? ""), p_referencia: String(fd.get("referencia") ?? ""), p_comprobante: rutaComprobante,
-    p_aplicaciones: aplicaciones, p_motivo_fuera_de_dia: String(fd.get("motivo_fuera_de_dia") ?? "").trim() || null,
-  });
+  const { data: id, error } = await supabase.rpc("registrar_pago_con_origen", {p_datos:{
+    solicitud:String(fd.get("solicitud")??""),proveedor,fecha:String(fd.get("fecha")??""),monto,origen:String(fd.get("origen")??""),
+    cuenta:String(fd.get("cuenta_origen")??""),reserva:String(fd.get("reserva")??"")||null,
+    referencia:String(fd.get("referencia")??""),comprobante:rutaComprobante,aplicaciones,
+    motivo:String(fd.get("motivo_fuera_de_dia")??"").trim()||null,
+  }});
   if (error) volver(ruta, "error", error.message);
   revalidatePath("/compras", "layout");
+  revalidatePath("/", "layout");
   redirect(`/compras/pagos/${id as string}?ok=${encodeURIComponent("Pago registrado.")}`);
 }
 
@@ -91,6 +93,7 @@ export async function anularPago(fd: FormData) {
   const { error } = await supabase.rpc("anular_pago", { p_id: id, p_motivo: String(fd.get("motivo") ?? "") });
   if (error) volver(ruta, "error", error.message);
   revalidatePath("/compras", "layout");
+  revalidatePath("/", "layout");
   volver(ruta, "ok", "Pago anulado. Las facturas recuperaron su saldo.");
 }
 

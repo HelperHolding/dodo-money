@@ -91,9 +91,9 @@ test("menú lateral: Ventas y Compras por puesto", () => {
   assert.deepEqual(grupo("gerente", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion"]);
   assert.deepEqual(grupo("corporativo", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/costos"]);
   assert.deepEqual(grupo("admin", "Compras"),
-    ["/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos", "/compras/cargar"]);
+    ["/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos", "/compras/pagos/reservas", "/compras/cargar"]);
   assert.deepEqual(grupo("corporativo", "Compras"),
-    ["/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos"]);
+    ["/compras", "/compras/articulos", "/compras/ordenes", "/compras/recepciones", "/compras/facturas", "/compras/pagos", "/compras/pagos/reservas"]);
 });
 
 test("enlaceActivo elige la ruta más larga de todo el menú", () => {

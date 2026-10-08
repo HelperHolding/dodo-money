@@ -73,6 +73,7 @@ export function FormMovimiento({ limiteRetiro, fondoCajon, boveda, fondoEmergenc
           ? ` La bóveda se queda con ${pesos(boveda.fondoBoveda)} (de ellos ${pesos(fondoEmergencia)} de emergencia): pueden salir hasta ${pesos(maximoSalida)}.`
           : ` La bóveda tiene ${pesos(boveda.saldoBoveda - boveda.salidasPendientes)} y debe quedarse con ${pesos(boveda.fondoBoveda)}: ahora no puede salir nada.`)}
       </p>
+      {tipo==="salida_corporativo"&&Number(boveda.reservas)>0&&<p className="aviso">Se conservan también {pesos(boveda.reservas)} reservados para pagos, además del fondo.</p>}
       <div className="rejilla">
         <div className="campo">
           <label htmlFor="folio">{tipo === "salida_corporativo" ? "Folio o recibo" : "Folio o referencia"}</label>
