@@ -95,6 +95,92 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
         <h1>{o.folio} · {o.proveedores?.nombre_comercial ?? o.proveedores?.razon_social}</h1>
         <p>{NOMBRE_ESTADO_ORDEN[o.estado]} · para {o.sucursales?.nombre ?? "Oficina"}{o.motivo ? ` · ${o.motivo}` : ""}</p>
       </div>
+      <section className="seccion orden-acciones-encabezado" aria-label="Acciones de la orden">
+        {edita && o.estado === "confirmada" && (
+          <details className="orden-programar-entrega"><summary>Programar entrega</summary><form action={cambiarEntregaEsperada} className="acciones">
+            <input type="hidden" name="id" value={o.id} />
+            <div className="campo">
+              <label htmlFor="entrega_esperada">{o.entrega_esperada ? "Cambiar la entrega esperada" : "Poner la entrega esperada"}</label>
+              <input id="entrega_esperada" name="entrega_esperada" type="date" defaultValue={o.entrega_esperada ?? ""} required />
+            </div>
+            <BotonEnviar className="boton boton-secundario" pendiente="Guardando…">Guardar fecha</BotonEnviar>
+          </form></details>
+        )}
+        <div className="acciones">
+          {edita && o.estado === 'confirmada' && facturas.length===0 && <form action={facturarOrden}><input type="hidden" name="id" value={o.id}/><BotonEnviar pendiente="Creando factura…" confirmar={`Crear una prefactura sin CFDI por ${pesos(t.total)}, copiando el proveedor, la sucursal y los renglones de esta orden. Después podrás registrar el pago. ¿Continuar?`}>Crear factura para pagar</BotonEnviar></form>}
+          {edita && facturas.map(f=><Link key={f.id} className="boton" href={`/compras/facturas/${f.id}`}>Ver {nombreFactura(f)} y pagos</Link>)}
+          <Link className="boton boton-secundario" href={`/orden-compra/${o.id}`} target="_blank">Ver PDF</Link>
+          {(grupo?.length ?? 0) > 1 && <Link className="boton boton-secundario" href={`/compras/ordenes/${o.id}/comparar`}>Comparar {grupo!.length} cotizaciones</Link>}
+        </div>
+      {acciones.length > 0 && (
+        <div className="orden-acciones-secundarias" aria-labelledby="t-acciones">
+          <h2 id="t-acciones" className="solo-lector">Más acciones</h2>
+          <div className="acciones">
+            {acciones.includes("enviar") && (
+              <form action={enviarOrden}><input type="hidden" name="id" value={o.id} /><BotonEnviar className="boton boton-secundario">Marcar como enviada</BotonEnviar></form>
+            )}
+            {acciones.includes("confirmar") && (
+              <form action={confirmarOrden}>
+                <input type="hidden" name="id" value={o.id} />
+                <BotonEnviar confirmar="¿Confirmar como orden de compra? Los renglones ya no cambian y se cancelan las otras cotizaciones del grupo.">Confirmar orden de compra</BotonEnviar>
+              </form>
+            )}
+          </div>
+          {acciones.includes("copiar") && (
+            <form action={copiarOrden} className="formulario">
+              <input type="hidden" name="id" value={o.id} />
+              <div className="campo">
+                <label htmlFor="otro">Pedir lo mismo a otro proveedor</label>
+                <select id="otro" name="proveedor_id" required defaultValue="">
+                  <option value="" disabled>Elige…</option>
+                  {(proveedores.data ?? []).filter((p) => p.id !== o.proveedor_id).map((p) => <option key={p.id} value={p.id}>{p.nombre_comercial ?? p.razon_social}</option>)}
+                </select>
+              </div>
+              <BotonEnviar className="boton boton-secundario">Crear cotización alternativa</BotonEnviar>
+            </form>
+          )}
+          {puedeEditar && (
+            <details>
+              <summary>Cambiar proveedor, destino o notas</summary>
+              <form action={editarOrden} className="formulario">
+                <input type="hidden" name="id" value={o.id} />
+                <div className="rejilla">
+                  <div className="campo">
+                    <label htmlFor="e-prov">Proveedor</label>
+                    <select id="e-prov" name="proveedor_id" defaultValue={o.proveedor_id}>
+                      {(proveedores.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.nombre_comercial ?? p.razon_social}</option>)}
+                    </select>
+                  </div>
+                  <div className="campo">
+                    <label htmlFor="e-suc">Para</label>
+                    <select id="e-suc" name="sucursal_id" defaultValue={o.sucursal_id ?? "oficina"}>
+                      {(sucursales.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                      <option value="oficina">Oficina</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="campo"><label htmlFor="e-notas">Notas</label><textarea id="e-notas" name="notas" rows={2} defaultValue={o.notas ?? ""} /></div>
+                <BotonEnviar>Guardar</BotonEnviar>
+              </form>
+            </details>
+          )}
+          {(["cancelar", "cerrar"] as const).filter((a) => acciones.includes(a)).map((a) => (
+            <details key={a}>
+              <summary>{a === "cancelar" ? "Cancelar" : "Cerrar la orden"}</summary>
+              <form action={a === "cancelar" ? cancelarOrden : cerrarOrden} className="formulario">
+                <input type="hidden" name="id" value={o.id} />
+                <div className="campo">
+                  <label htmlFor={`motivo-${a}`}>Motivo</label>
+                  <input id={`motivo-${a}`} name="motivo" required placeholder={a === "cerrar" ? "Ej. lo que falta ya no llegará" : "Ej. el proveedor no surtió"} />
+                </div>
+                <BotonEnviar className="boton boton-alerta">{a === "cancelar" ? "Cancelar" : "Cerrar"}</BotonEnviar>
+              </form>
+            </details>
+          ))}
+        </div>
+      )}
+
+      </section>
       <Aviso ok={ok} error={error} />
       <div className="detalle-con-lado">
         <div className="detalle-principal">
@@ -121,22 +207,6 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
           )}
           {o.notas && <><dt>Notas</dt><dd>{o.notas}</dd></>}
         </dl>
-        {edita && o.estado === "confirmada" && (
-          <form action={cambiarEntregaEsperada} className="acciones">
-            <input type="hidden" name="id" value={o.id} />
-            <div className="campo">
-              <label htmlFor="entrega_esperada">{o.entrega_esperada ? "Cambiar la entrega esperada" : "Poner la entrega esperada"}</label>
-              <input id="entrega_esperada" name="entrega_esperada" type="date" defaultValue={o.entrega_esperada ?? ""} required />
-            </div>
-            <BotonEnviar className="boton boton-secundario" pendiente="Guardando…">Guardar fecha</BotonEnviar>
-          </form>
-        )}
-        <div className="acciones">
-          {edita && o.estado === 'confirmada' && facturas.length===0 && <form action={facturarOrden}><input type="hidden" name="id" value={o.id}/><BotonEnviar pendiente="Creando factura…" confirmar={`Crear una prefactura sin CFDI por ${pesos(t.total)}, copiando el proveedor, la sucursal y los renglones de esta orden. Después podrás registrar el pago. ¿Continuar?`}>Crear factura para pagar</BotonEnviar></form>}
-          {edita && facturas.map(f=><Link key={f.id} className="boton" href={`/compras/facturas/${f.id}`}>Ver {nombreFactura(f)} y pagos</Link>)}
-          <Link className="boton boton-secundario" href={`/orden-compra/${o.id}`} target="_blank">Ver PDF</Link>
-          {(grupo?.length ?? 0) > 1 && <Link className="boton boton-secundario" href={`/compras/ordenes/${o.id}/comparar`}>Comparar {grupo!.length} cotizaciones</Link>}
-        </div>
       </section>
 
       <section className="seccion" aria-labelledby="t-renglones">
@@ -237,74 +307,6 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
           </form>
         )}
       </section>
-
-      {acciones.length > 0 && (
-        <section className="seccion" aria-labelledby="t-acciones">
-          <h2 id="t-acciones">Acciones</h2>
-          <div className="acciones">
-            {acciones.includes("enviar") && (
-              <form action={enviarOrden}><input type="hidden" name="id" value={o.id} /><BotonEnviar className="boton boton-secundario">Marcar como enviada</BotonEnviar></form>
-            )}
-            {acciones.includes("confirmar") && (
-              <form action={confirmarOrden}>
-                <input type="hidden" name="id" value={o.id} />
-                <BotonEnviar confirmar="¿Confirmar como orden de compra? Los renglones ya no cambian y se cancelan las otras cotizaciones del grupo.">Confirmar orden de compra</BotonEnviar>
-              </form>
-            )}
-          </div>
-          {acciones.includes("copiar") && (
-            <form action={copiarOrden} className="formulario">
-              <input type="hidden" name="id" value={o.id} />
-              <div className="campo">
-                <label htmlFor="otro">Pedir lo mismo a otro proveedor</label>
-                <select id="otro" name="proveedor_id" required defaultValue="">
-                  <option value="" disabled>Elige…</option>
-                  {(proveedores.data ?? []).filter((p) => p.id !== o.proveedor_id).map((p) => <option key={p.id} value={p.id}>{p.nombre_comercial ?? p.razon_social}</option>)}
-                </select>
-              </div>
-              <BotonEnviar className="boton boton-secundario">Crear cotización alternativa</BotonEnviar>
-            </form>
-          )}
-          {puedeEditar && (
-            <details>
-              <summary>Cambiar proveedor, destino o notas</summary>
-              <form action={editarOrden} className="formulario">
-                <input type="hidden" name="id" value={o.id} />
-                <div className="rejilla">
-                  <div className="campo">
-                    <label htmlFor="e-prov">Proveedor</label>
-                    <select id="e-prov" name="proveedor_id" defaultValue={o.proveedor_id}>
-                      {(proveedores.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.nombre_comercial ?? p.razon_social}</option>)}
-                    </select>
-                  </div>
-                  <div className="campo">
-                    <label htmlFor="e-suc">Para</label>
-                    <select id="e-suc" name="sucursal_id" defaultValue={o.sucursal_id ?? "oficina"}>
-                      {(sucursales.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                      <option value="oficina">Oficina</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="campo"><label htmlFor="e-notas">Notas</label><textarea id="e-notas" name="notas" rows={2} defaultValue={o.notas ?? ""} /></div>
-                <BotonEnviar>Guardar</BotonEnviar>
-              </form>
-            </details>
-          )}
-          {(["cancelar", "cerrar"] as const).filter((a) => acciones.includes(a)).map((a) => (
-            <details key={a}>
-              <summary>{a === "cancelar" ? "Cancelar" : "Cerrar la orden"}</summary>
-              <form action={a === "cancelar" ? cancelarOrden : cerrarOrden} className="formulario">
-                <input type="hidden" name="id" value={o.id} />
-                <div className="campo">
-                  <label htmlFor={`motivo-${a}`}>Motivo</label>
-                  <input id={`motivo-${a}`} name="motivo" required placeholder={a === "cerrar" ? "Ej. lo que falta ya no llegará" : "Ej. el proveedor no surtió"} />
-                </div>
-                <BotonEnviar className="boton boton-alerta">{a === "cancelar" ? "Cancelar" : "Cerrar"}</BotonEnviar>
-              </form>
-            </details>
-          ))}
-        </section>
-      )}
 
         </div>
         <aside className="detalle-lado" aria-labelledby="t-historial">

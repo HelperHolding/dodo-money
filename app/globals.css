@@ -774,3 +774,14 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
  .compra-cabecera .acciones { width:100%; }
  .compra-cabecera .boton { flex:1 1 auto; }
 }
+
+/* Acciones generales de la orden junto al encabezado, antes del detalle. */
+.orden-acciones-encabezado { display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-start; }
+.orden-acciones-encabezado > .acciones { margin:0; flex:1 1 420px; }
+.orden-acciones-secundarias { display:flex; flex-wrap:wrap; gap:.8rem; align-items:flex-start; width:100%; border-top:1px solid var(--borde, #ddd); padding-top:1rem; }
+.orden-acciones-secundarias > .acciones { margin:0; }
+.orden-acciones-encabezado details > summary { cursor:pointer; border:1px solid currentColor; border-radius:8px; padding:.7rem 1rem; color:#c43d00; font-weight:600; }
+.orden-acciones-encabezado details[open] { flex:1 1 300px; }
+.orden-acciones-encabezado details[open] > summary { margin-bottom:1rem; }
+.orden-acciones-encabezado .formulario { margin-bottom:0; }
+@media(max-width:700px) { .orden-acciones-encabezado > .acciones { flex-basis:100%; } .orden-acciones-secundarias > details { width:100%; } }
