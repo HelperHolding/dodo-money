@@ -127,7 +127,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
             )}
           </div>
           {acciones.includes("copiar") && (
-            <form action={copiarOrden} className="formulario">
+            <details><summary>Otra cotización</summary><form action={copiarOrden} className="formulario">
               <input type="hidden" name="id" value={o.id} />
               <div className="campo">
                 <label htmlFor="otro">Pedir lo mismo a otro proveedor</label>
@@ -137,11 +137,11 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
                 </select>
               </div>
               <BotonEnviar className="boton boton-secundario">Crear cotización alternativa</BotonEnviar>
-            </form>
+            </form></details>
           )}
           {puedeEditar && (
             <details>
-              <summary>Cambiar proveedor, destino o notas</summary>
+              <summary>Editar datos</summary>
               <form action={editarOrden} className="formulario">
                 <input type="hidden" name="id" value={o.id} />
                 <div className="rejilla">
