@@ -256,6 +256,8 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
                               <input id={`c-${r.id}`} name="cantidad" inputMode="decimal" defaultValue={r.cantidad} required placeholder="Cantidad" />
                               <label className="solo-lector" htmlFor={`p-${r.id}`}>Precio sin IVA</label>
                               <input id={`p-${r.id}`} name="precio" inputMode="decimal" defaultValue={r.precio} placeholder="Precio sin IVA" />
+                              <label htmlFor={`iva-${r.id}`}>IVA del renglón</label>
+                              <select id={`iva-${r.id}`} name="tasa_iva" defaultValue={r.tasa_iva} required><option value="16">IVA 16 %</option><option value="0">IVA 0 %</option><option value="exento">Exento</option></select>
                               <BotonEnviar pendiente="…">Guardar</BotonEnviar>
                             </form>
                             <form action={quitarRenglon} className="acciones">

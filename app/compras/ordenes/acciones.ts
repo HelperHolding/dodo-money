@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fechaEntregaValida } from "@/lib/compras/entregas";
+import { TASAS_IVA } from "@/lib/compras/proveedores";
 import { leerRenglon } from "@/lib/compras/ordenes";
 import { clienteAdmin, volver } from "../servidor";
 
@@ -69,7 +70,9 @@ export async function editarRenglon(fd: FormData) {
   const r = leerRenglon((c) => (c === "articulo_id" ? "x" : texto(fd, c)));
   if ("error" in r) volver(ruta(id), "error", r.error);
   const { datos } = r as { datos: { cantidad: number; precio: number } };
-  const { error } = await supabase.from("orden_renglones").update({ cantidad: datos.cantidad, precio: datos.precio })
+  const iva=texto(fd,"tasa_iva");
+  if (!(TASAS_IVA as readonly string[]).includes(iva)) volver(ruta(id),"error","Elige la tasa de IVA del renglón.");
+  const { error } = await supabase.from("orden_renglones").update({ cantidad: datos.cantidad, precio: datos.precio, tasa_iva:iva })
     .eq("id", texto(fd, "renglon_id")).eq("orden_id", id);
   if (error) volver(ruta(id), "error", error.message);
   listo(id, "Renglón actualizado.");
