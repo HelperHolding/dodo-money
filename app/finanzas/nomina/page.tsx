@@ -1,8 +1,9 @@
+import { NominaRealPanel } from "./NominaReal";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import { hoyMX, pesos } from "@/lib/formato";
-import { costoPuesto, plantillaVigente, type Puesto } from "@/lib/finanzas/nomina";
+import { baseNominaMes, realDelMes, costoPuesto, plantillaVigente, type Puesto, type NominaReal, conceptosNomina, totalEmpleado } from "@/lib/finanzas/nomina";
 import { finDeMes as finDe } from "@/lib/finanzas/pl";
 import { puedeEditarFinanzas } from "@/lib/roles";
 import { agregarAjuste, guardarPuesto, quitarAjuste } from "./acciones";
@@ -13,17 +14,20 @@ export default async function PaginaNomina({ searchParams }: { searchParams: Pro
   const finDeMes = finDe(mes);
   const { supabase, perfil } = await obtenerPerfil();
   const edita = puedeEditarFinanzas(perfil.rol);
-  const [{ data: sucursales }, { data: puestos }, { data: ajustes }] = await Promise.all([
+  const [{ data: sucursales }, { data: puestos }, { data: ajustes }, { data: versiones, error: errorReales }] = await Promise.all([
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     supabase.from("nomina_plantilla").select("sucursal_id, puesto, renglon, personas, sueldo, pct_cargas, bono, vigente_desde").returns<Puesto[]>(),
     supabase.from("nomina_ajustes").select("id, sucursal_id, renglon, monto, concepto").eq("mes", `${mes}-01`).order("creado_en")
       .returns<{ id: string; sucursal_id: string | null; renglon: string; monto: number; concepto: string }[]>(),
+    supabase.from("nomina_reales").select("id, sucursal_id, mes, fuente, empleados, anulada_en, creado_en, motivo_anulacion").eq("mes", `${mes}-01`).order("creado_en", {ascending: false}).returns<(NominaReal & {anulada_en: string | null; creado_en: string; motivo_anulacion: string | null})[]>(),
   ]);
+  if (errorReales) throw new Error(`No se pudo cargar nómina real: ${errorReales.message}`);
+  const reales = (versiones ?? []).filter((v) => !v.anulada_en);
   const lugares = [...(sucursales ?? []).map((s) => ({ id: s.id as string | null, nombre: s.nombre })), { id: null, nombre: "Oficina central" }];
 
   return (
     <>
-      <div className="encabezado"><h1>Nómina</h1><p>Plantilla por sucursal (vigente al cierre del mes) y ajustes del mes. Sale sola en el P&L.</p></div>
+      <div className="encabezado"><h1>Nómina</h1><p>Nómina real mensual o plantilla estimada, más ajustes del mes. Se incluye en el P&L; capturar nómina no registra un pago.</p></div>
       <Aviso ok={q.ok} error={q.error} />
       <form className="acciones" method="get">
         <label htmlFor="mes" className="etiqueta">Mes</label>
@@ -31,13 +35,18 @@ export default async function PaginaNomina({ searchParams }: { searchParams: Pro
         <button className="boton boton-secundario" type="submit">Ver</button>
       </form>
       {lugares.map((l) => {
-        const vigentes = plantillaVigente(puestos ?? [], l.id, finDeMes);
+        const real = realDelMes(reales, l.id, mes);
+        const vigentes = real ? [] : plantillaVigente(puestos ?? [], l.id, finDeMes);
         const aj = (ajustes ?? []).filter((a) => a.sucursal_id === l.id);
-        const total = vigentes.reduce((t, p) => t + costoPuesto(p), 0) + aj.reduce((t, a) => t + Number(a.monto), 0);
+        const base = baseNominaMes(puestos ?? [], reales, l.id, finDeMes);
+        const total = base.cocina + base.gerencia + aj.reduce((t, a) => t + Number(a.monto), 0);
         return (
           <section key={l.id ?? "oficina"} className="seccion">
             <h2>{l.nombre} · {pesos(total)}</h2>
-            <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
+            {!real && vigentes.length > 0 && <p>Importe estimado según la plantilla. Falta capturar la nómina real de {mes}.</p>}
+            <NominaRealPanel real={real} mes={mes} sucursal={l.id} edita={edita} />
+            {(versiones ?? []).some(v => v.sucursal_id === l.id && v.anulada_en) && <details className="seccion"><summary>Historial de nómina real</summary>{(versiones ?? []).filter(v => v.sucursal_id === l.id && v.anulada_en).map(v => <div key={v.id}><p>{v.creado_en} · {v.fuente} · {v.motivo_anulacion}</p>{v.empleados.map(e => <details key={e.nombre}><summary>{e.nombre} · {e.puesto} · {pesos(totalEmpleado(e))}</summary><dl>{Object.entries(conceptosNomina).map(([k,nombre]) => <div className="fila-datos" key={k}><dt>{nombre}</dt><dd>{pesos(e[k as keyof typeof conceptosNomina])}</dd></div>)}</dl>{e.nota && <p>{e.nota}</p>}</details>)}</div>)}</details>}
+            {(vigentes.length > 0 || aj.length > 0) && <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
               <li className="fila fila-encabezado" aria-hidden="true"><span>Puesto</span><span>Personas</span><span>Sueldo + cargas</span><span>Costo del mes</span></li>
               {vigentes.map((p) => (
                 <li key={p.puesto} className="fila">
@@ -53,7 +62,7 @@ export default async function PaginaNomina({ searchParams }: { searchParams: Pro
                   </span></div>
                 </li>
               ))}
-            </ul>
+            </ul>}
           </section>
         );
       })}

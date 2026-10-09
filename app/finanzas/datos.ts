@@ -5,7 +5,7 @@ import { leerConciliaciones } from "@/app/ventas/conciliacion/datos";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { comisionesCobro, comisionRappi, regalias, type DiaVenta, type Vigente } from "@/lib/finanzas/comisiones";
 import { enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "@/lib/finanzas/gastos";
-import { costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Puesto } from "@/lib/finanzas/nomina";
+import { conceptosNomina, realDelMes, costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Puesto, type NominaReal } from "@/lib/finanzas/nomina";
 import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
 import { acumuladoDe, anteriorDe, columnasComparativo, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
 import {
@@ -61,12 +61,14 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     supabase.from("pl_parametros").select("clave, valor, vigente_desde").returns<Parametro[]>(),
     supabase.from("nomina_plantilla").select("sucursal_id, puesto, renglon, personas, sueldo, pct_cargas, bono, vigente_desde").returns<Puesto[]>(),
     supabase.from("nomina_ajustes").select("sucursal_id, renglon, monto, concepto, mes").in("mes", primerosDeMes).returns<AjusteMes[]>(),
+    supabase.from("nomina_reales").select("id, sucursal_id, mes, fuente, empleados").is("anulada_en", null).in("mes", primerosDeMes).returns<NominaReal[]>(),
     supabase.from("pl_metas").select("sucursal_id, renglon, tipo, valor").returns<(Meta & { sucursal_id: string })[]>(),
   ]);
   const error = primerError(res);
   if (error) throw new Error(`No se pudieron cargar los datos del P&L: ${error}`);
   const sucursales = res[0].data ?? [], params = res[1].data ?? [], puestos = res[2].data ?? [], ajustes = res[3].data ?? [];
-  const metas = res[4].data ?? [];
+  const reales = res[4].data ?? [];
+  const metas = res[5].data ?? [];
 
   type FacturaPL = Fila & { id: string;
     tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
@@ -183,9 +185,16 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     const caja = facturasAGastos(cc.map((g) => ({ tipo: "ingreso" as const, estado: "pagada", subtotal: Number(g.monto), descuento: 0, cuenta_pl: g.cuenta_pl })));
     for (const g of cc) anotar(s.id, renglonDe(g.cuenta_pl), `Caja chica · ${g.concepto} · ${g.fecha}${g.cuenta_pl ? "" : " · sin cuenta"}`, Number(g.monto));
 
-    const nomina = nominaPeriodo(puestos, ajustes, s.id, meses);
+    const nomina = nominaPeriodo(puestos, ajustes, s.id, meses, reales);
     for (const m of meses) {
-      for (const p of plantillaVigente(puestos, s.id, m.fin)) {
+      const real = realDelMes(reales, s.id, m.mes);
+      if (real) {
+        for (const e of real.empleados) for (const [clave, nombre] of Object.entries(conceptosNomina)) {
+          const monto = Number(e[clave as keyof typeof conceptosNomina]);
+          if (monto) anotar(s.id, `nomina_${e.renglon}`, `${e.nombre} · ${e.puesto} · ${nombre}${proporcion(m.mes, monto)}`, monto * m.fraccion, { href: `/finanzas/nomina?mes=${m.mes}`, nota: `${real.fuente}${e.nota ? ` · ${e.nota}` : ""}` });
+        }
+      }
+      for (const p of real ? [] : plantillaVigente(puestos, s.id, m.fin)) {
         anotar(s.id, `nomina_${p.renglon}`,
           `${p.puesto} · ${p.personas} × (${pesos(Number(p.sueldo))} + ${(Number(p.pct_cargas) * 100).toFixed(2)} % de cargas${Number(p.bono) ? ` + bono ${pesos(Number(p.bono))}` : ""})${proporcion(m.mes, costoPuesto(p))}`,
           costoPuesto(p) * m.fraccion);
@@ -220,6 +229,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     };
 
     const avisos: string[] = [];
+    for (const m of meses) if (!realDelMes(reales, s.id, m.mes) && plantillaVigente(puestos, s.id, m.fin).length) avisos.push(`Nómina ${m.mes}: se usa plantilla estimada; falta capturar el desglose real del mes.`);
     if(merma.sinImportar)avisos.push(`Mermas: faltan ${merma.sinImportar} días por importar; el resultado es provisional.`);
     if(merma.sinCobertura)avisos.push(`Mermas: ${merma.sinCobertura} días sin cobertura confirmada de productos terminados. Reimporta el reporte completo; el resultado es provisional.`);
     if(merma.sinCosto)avisos.push(`Mermas: ${merma.sinCosto} renglones de productos sin costo confirmado quedan pendientes y fuera del monto conocido; el resultado es provisional.`);
@@ -249,7 +259,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     ...(sinCuentaOf ? [`Oficina central: ${sinCuentaOf} facturas sin sucursal ni cuenta del P&L (se reparten como gasto de oficina).`] : []),
     ...avisoTardias(facturasOf).map((a) => `Oficina central: ${a}`),
   ];
-  const nOf = nominaPeriodo(puestos, ajustes, null, meses);
+  const nOf = nominaPeriodo(puestos, ajustes, null, meses, reales);
   const oficina = centavos(Object.values(fOf.gastos).reduce((t, v) => t + v, 0) + fOf.sinCuenta + nOf.cocina + nOf.gerencia);
   const reparto = prorratear(oficina, new Map(porSucursal.map((s) => [s.id, s.entrada.ventaNeta])));
   for (const s of porSucursal) {

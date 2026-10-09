@@ -3,10 +3,32 @@
 import { revalidatePath } from "next/cache";
 import { numero } from "@/lib/formato";
 import { clienteFinanzas, volver } from "../servidor";
+import { conceptosNomina } from "@/lib/finanzas/nomina";
 
 const RUTA = "/finanzas/nomina";
 const t = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
 const sucursal = (v: string) => (v === "oficina" || !v ? null : v);
+
+export async function guardarReal(fd: FormData) {
+  const supabase = await clienteFinanzas(RUTA);
+  const mes = t(fd, "mes");
+  if (!/^\d{4}-\d{2}$/.test(mes)) volver(RUTA, "error", "Elige el mes.");
+  const campos = ["nombre", "puesto", "renglon", "nota", ...Object.keys(conceptosNomina)];
+  const valores = new Map(campos.map((k) => [k, fd.getAll(k).map(String)]));
+  const empleados = (valores.get("nombre") ?? []).map((nombre, i) => Object.fromEntries(campos.map((k) => [k,
+    k in conceptosNomina ? Number(valores.get(k)?.[i] ?? "") : (valores.get(k)?.[i] ?? "").trim(),
+  ]))).filter((e) => e.nombre || e.puesto || e.nota || Object.keys(conceptosNomina).some((k) => e[k] !== 0));
+  if (empleados.some((e) => Object.keys(conceptosNomina).some((k) => !Number.isFinite(e[k])))) volver(RUTA, "error", "Revisa los importes.");
+  const { error } = await supabase.rpc("guardar_nomina_real", { p_sucursal: sucursal(t(fd,"sucursal_id")), p_mes: `${mes}-01`, p_fuente: t(fd,"fuente"), p_empleados: empleados, p_previa: t(fd,"previa") || null });
+  if (error) volver(RUTA, "error", error.message);
+  revalidatePath("/finanzas", "layout"); volver(`${RUTA}?mes=${mes}`, "ok", "Nómina real guardada. Sustituye la estimación de este mes.");
+}
+export async function anularReal(fd: FormData) {
+  const supabase = await clienteFinanzas(RUTA);
+  const { error } = await supabase.rpc("anular_nomina_real", { p_id: t(fd,"id"), p_motivo: t(fd,"motivo") });
+  if (error) volver(RUTA, "error", error.message);
+  revalidatePath("/finanzas", "layout"); volver(RUTA,"ok","Nómina real anulada; se usa la plantilla estimada.");
+}
 
 /** Alta o cambio de un puesto: se guarda como versión nueva con su fecha de vigencia (personas 0 = se quita). */
 export async function guardarPuesto(fd: FormData) {

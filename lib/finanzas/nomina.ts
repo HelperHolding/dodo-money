@@ -37,14 +37,41 @@ export function nominaMes(puestos: readonly Puesto[], ajustes: readonly Ajuste[]
 
 export type AjusteMes = Ajuste & { mes: string };
 
+export const conceptosNomina = {
+  sueldo: "Sueldo bruto / importe reconocido", imss: "IMSS patronal", cesantia: "Cesantía y vejez",
+  retiro: "Retiro SAR", impuesto: "Impuesto estatal", infonavit: "Infonavit patronal",
+  ajuste: "Ajuste al total de obligaciones del reporte",
+} as const;
+export type EmpleadoReal = {
+  nombre: string; puesto: string; renglon: RenglonNomina; nota?: string;
+} & Record<keyof typeof conceptosNomina, number>;
+export type NominaReal = { id: string; sucursal_id: string | null; mes: string; fuente: string; empleados: EmpleadoReal[] };
+export function realDelMes(reales: readonly NominaReal[], sucursal: string | null, mes: string) {
+  return reales.find((r) => r.sucursal_id === sucursal && r.mes.slice(0, 7) === mes.slice(0, 7));
+}
+export function totalEmpleado(e: EmpleadoReal) {
+  return centavos(Object.keys(conceptosNomina).reduce((t, k) => t + Number(e[k as keyof typeof conceptosNomina]), 0));
+}
+export function baseNominaMes(puestos: readonly Puesto[], reales: readonly NominaReal[], sucursal: string | null, fin: string) {
+  const real = realDelMes(reales, sucursal, fin);
+  if (!real) return nominaMes(puestos, [], sucursal, fin).plantilla;
+  const base = { cocina: 0, gerencia: 0 };
+  for (const e of real.empleados) base[e.renglon] = centavos(base[e.renglon] + totalEmpleado(e));
+  return base;
+}
+
 /** Nómina de un periodo: la de cada mes que toca (plantilla al cierre de ese mes + sus ajustes) × su fracción. */
 export function nominaPeriodo(
   puestos: readonly Puesto[], ajustes: readonly AjusteMes[], sucursal: string | null,
   meses: readonly { mes: string; fraccion: number; fin: string }[],
+  reales: readonly NominaReal[] = [],
 ) {
   const r = { plantilla: { cocina: 0, gerencia: 0 }, cocina: 0, gerencia: 0 };
   for (const m of meses) {
-    const n = nominaMes(puestos, ajustes.filter((a) => a.mes.slice(0, 7) === m.mes), sucursal, m.fin);
+    const aj = ajustes.filter((a) => a.mes.slice(0, 7) === m.mes);
+    const base = baseNominaMes(puestos, reales, sucursal, m.fin);
+    const n = { plantilla: base, cocina: base.cocina, gerencia: base.gerencia };
+    for (const a of aj) if (a.sucursal_id === sucursal) n[a.renglon] = centavos(n[a.renglon] + Number(a.monto));
     r.plantilla.cocina += n.plantilla.cocina * m.fraccion;
     r.plantilla.gerencia += n.plantilla.gerencia * m.fraccion;
     r.cocina += n.cocina * m.fraccion;
