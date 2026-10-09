@@ -87,6 +87,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
 
   const firmar = async (ruta: string | null) => (ruta ? (await supabase.storage.from("facturas").createSignedUrl(ruta, 3600)).data?.signedUrl ?? null : null);
   const [urlXml, urlPdf] = await Promise.all([firmar(f.xml_ruta), firmar(f.pdf_ruta)]);
+  const { data: cancelacion } = await supabase.from("factura_cancelaciones").select("motivo, creado_en, ordenes, perfiles!usuario_id(nombre)").eq("factura_id", id).maybeSingle<{motivo:string;creado_en:string;ordenes:string[];perfiles:{nombre:string}|null}>();
   const edita = puedeEditarCompras(perfil.rol) && f.estado !== "cancelada";
   const notasVigentes = f.tipo === "ingreso" ? (relacionadas ?? []).filter((n) => n.estado !== "cancelada").length : 0;
   const regimenDistinto = f.proveedores && f.regimen_emisor && f.regimen_emisor !== f.proveedores.regimen_fiscal;
@@ -103,13 +104,31 @@ export default async function DetalleFactura({ params, searchParams }: { params:
         <p>{nombreEstadoFactura(f.tipo, f.estado)}{f.motivo_cancelacion ? ` · ${f.motivo_cancelacion}` : ""}{f.origen === "manual" ? " · Sin CFDI" : ` · UUID ${f.uuid}`}</p>
       </div>
       <Aviso ok={ok} error={error} />
+      {edita && (          <details className="seccion">
+            <summary>Cancelar factura / gasto</summary>
+            <form action={cancelarFacturaAccion} className="formulario">
+              <input type="hidden" name="id" value={f.id} />
+              <div className="campo"><label htmlFor="motivo">Motivo</label><input id="motivo" name="motivo" required minLength={5} maxLength={1000} placeholder="Ej. Rappi absorbió el gasto de marketing; ya no corresponde pagarlo." /></div>
+              {f.tipo === "ingreso" && notasVigentes > 0 && (
+                <p className="saldo-nota">
+                  Tiene {notasVigentes === 1 ? "1 nota de crédito vigente" : `${notasVigentes} notas de crédito vigentes`}: quedarán ligadas a una factura cancelada.
+                  Si el proveedor la sustituye por otra, cancela también la nota y pide que la emita sobre la nueva.
+                </p>
+              )}
+              <p className="saldo-nota">Se retira del saldo pendiente, del calendario y del P&amp;L. Se conservan el importe original, el motivo, quién canceló y la fecha. Las órdenes que esta factura cerró solas se reabren.</p>
+              <p className="saldo-nota">Primero anula los pagos y cancela las reservas de bóveda activas. Esta acción es interna y no cancela un CFDI ante el SAT.</p>
+              <BotonEnviar className="boton boton-alerta" confirmar="¿Cancelar esta factura? Se quitan sus ligas a órdenes y las que había cerrado se reabren.">Cancelar factura</BotonEnviar>
+            </form>
+          </details>
+      )}
+      {f.estado === "cancelada" && <section className="seccion"><h2>Cancelación registrada</h2><p>{f.motivo_cancelacion}</p><p>Este registro ya no cuenta como gasto en el P&amp;L ni como pago pendiente.</p>{cancelacion && <><p>{cancelacion.perfiles?.nombre ?? "Administración"} · {new Date(cancelacion.creado_en).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}</p><p>Importe original: <strong>{pesos(f.total)}</strong></p>{cancelacion.ordenes.length > 0 && <p>Órdenes anteriormente vinculadas: {cancelacion.ordenes.map((orden, i) => <Fragment key={orden}>{i > 0 && " · "}<Link href={`/compras/ordenes/${orden}`}>Ver orden {i + 1}</Link></Fragment>)}</p>}</>}</section>}
 
       <section className="seccion">
         <dl className="tarjeta-datos">
           <dt>Emitida</dt><dd>{fechaTexto(f.fecha_emision)} · {f.metodo_pago ?? "sin método"}{f.forma_pago ? ` · forma ${f.forma_pago}` : ""}</dd>
           <dt>Subtotal</dt><dd>{pesos(f.subtotal)}{Number(f.descuento) ? ` · descuento ${pesos(f.descuento)}` : ""}</dd>
           <dt>IVA</dt><dd>{pesos(f.iva)}{Number(f.retenciones) ? ` · retenciones ${pesos(f.retenciones)}` : ""}</dd>
-          <dt>Total</dt><dd><strong>{pesos(f.total)}</strong>{f.tipo === "ingreso" ? ` · saldo ${pesos(f.saldo)}` : ""}</dd>
+          <dt>Total</dt><dd><strong>{pesos(f.total)}</strong>{f.tipo === "ingreso" && f.estado !== "cancelada" ? ` · saldo ${pesos(f.saldo)}` : ""}</dd>
           {f.tipo === "ingreso" && <><dt>Vence</dt><dd>{fechaTexto(f.vence_el)}{vencida(f, hoy) ? " · vencida" : ""}</dd></>}
           {f.tipo === "ingreso" && Number(f.pagado) > 0 && <><dt>Pagado</dt><dd>{pesos(f.pagado)}</dd></>}
           {f.pago_programado_el && <><dt>Pago programado</dt><dd>{fechaTexto(f.pago_programado_el)} · {f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:"Forma por definir"}</dd></>}
@@ -316,21 +335,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
             <p className="saldo-nota">Actualiza también la entrega esperada de todas las órdenes vinculadas que siguen pendientes. No registra cantidades recibidas ni entradas de inventario.</p>
             <BotonEnviar className="boton boton-secundario">Guardar recepción prevista</BotonEnviar>
           </form>}
-          <details>
-            <summary>Cancelar</summary>
-            <form action={cancelarFacturaAccion} className="formulario">
-              <input type="hidden" name="id" value={f.id} />
-              <div className="campo"><label htmlFor="motivo">Motivo</label><input id="motivo" name="motivo" required placeholder="Ej. el proveedor la canceló en el SAT" /></div>
-              {f.tipo === "ingreso" && notasVigentes > 0 && (
-                <p className="saldo-nota">
-                  Tiene {notasVigentes === 1 ? "1 nota de crédito vigente" : `${notasVigentes} notas de crédito vigentes`}: quedarán ligadas a una factura cancelada.
-                  Si el proveedor la sustituye por otra, cancela también la nota y pide que la emita sobre la nueva.
-                </p>
-              )}
-              <p className="saldo-nota">Las órdenes que esta factura cerró solas se reabren.</p>
-              <BotonEnviar className="boton boton-alerta" confirmar="¿Cancelar esta factura? Se quitan sus ligas a órdenes y las que había cerrado se reabren.">Cancelar factura</BotonEnviar>
-            </form>
-          </details>
+
         </section>
       )}
     </>

@@ -113,6 +113,7 @@ async function llamarFactura(fd: FormData, funcion: string, argumentos: Record<s
   const { error } = await supabase.rpc(funcion, argumentos);
   if (error) volver(rutaFactura(id), "error", error.message);
   revalidatePath("/compras", "layout");
+  if (funcion === "cancelar_factura") { revalidatePath("/finanzas", "layout"); revalidatePath("/recepciones"); revalidatePath("/", "page"); }
   if (funcion === "programar_recepcion_factura") revalidatePath("/recepciones");
   volver(rutaFactura(id), "ok", mensaje);
 }

@@ -1,0 +1,40 @@
+-- Después de 0052. La excepción final revierte el ensayo.
+do $$
+declare a uuid;c uuid;s uuid;p uuid;f uuid;r uuid;pago uuid;o uuid;
+begin
+ select id into a from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' limit 1;
+ select id into c from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
+ if a is null or c is null then raise exception 'FALTAN DATOS: admin y corporativo activos.';end if;
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ insert into public.sucursales(nombre,fondo_boveda) values('Cancelación prueba '||gen_random_uuid(),4500) returning id into s;
+ insert into public.cajas(sucursal_id,tipo,nombre,saldo_inicial) values(s,'boveda','Bóveda',20000);
+ insert into public.proveedores(razon_social,rfc,regimen_fiscal,sucursal_id,cuenta_pl) values('Rappi ensayo','PRB010101AB1','601',s,'servicios') returning id into p;
+ set local role authenticated;
+ f:=public.registrar_gasto_manual(jsonb_build_object('proveedor_id',p,'sucursal_id',s,'fecha',public.hoy_mx(),'folio','Marketing absorbido','subtotal',3000,'iva',0,'retencion_iva',0,'retencion_isr',0,'total',3000,'renglones',jsonb_build_array(jsonb_build_object('descripcion','Marketing','importe',3000,'cuenta_pl','servicios'))));
+ begin perform public.cancelar_factura(f,'');raise exception 'FALLÓ: motivo';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ pago:=public.registrar_pago(p,public.hoy_mx(),100,'transferencia',null,'Pago de ensayo',null,jsonb_build_array(jsonb_build_object('factura_id',f,'monto',100)),'Pago extraordinario de ensayo');
+ begin perform public.cancelar_factura(f,'Rappi absorbe el gasto');raise exception 'FALLÓ: pagos';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ perform public.anular_pago(pago,'Anulación de pago para ensayo');
+ perform public.programar_pago(f,public.hoy_mx());
+ r:=public.reservar_boveda(s,f,3000,public.hoy_mx(),'Reserva de prueba');
+ begin perform public.cancelar_factura(f,'Rappi absorbe el gasto');raise exception 'FALLÓ: reserva';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ perform public.cancelar_reserva_boveda(r,'Se cancela por gasto absorbido');
+ reset role;
+ insert into public.ordenes_compra(proveedor_id,sucursal_id) values(p,s) returning id into o;
+ insert into public.factura_ordenes(factura_id,orden_id) values(f,o);
+ set local role authenticated;
+ perform public.cancelar_factura(f,'Rappi absorbe el gasto');
+ if exists(select 1 from public.factura_ordenes where factura_id=f) or not exists(select 1 from public.factura_cancelaciones where factura_id=f and o=any(ordenes)) then raise exception 'FALLÓ: vínculos originales';end if;
+ if public.saldo_factura(f)<>0 then raise exception 'FALLÓ: saldo cancelado';end if;
+ if not exists(select 1 from public.facturas where id=f and estado='cancelada' and total=3000 and pago_programado_el is null and cancelada_por=a and cancelada_en is not null) then raise exception 'FALLÓ: cancelación';end if;
+ if not exists(select 1 from public.factura_cancelaciones where factura_id=f and usuario_id=a and motivo='Rappi absorbe el gasto' and (anterior->>'total')::numeric=3000 and anterior->>'pago_programado_el' is not null) then raise exception 'FALLÓ: historial';end if;
+ begin perform public.cancelar_factura(f,'Segundo intento de cancelación');raise exception 'FALLÓ: duplicado';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin delete from public.factura_cancelaciones where factura_id=f;raise exception 'FALLÓ: escritura directa';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',c,'role','authenticated')::text,true);
+ if not exists(select 1 from public.factura_cancelaciones where factura_id=f) then raise exception 'FALLÓ: consulta corporativo';end if;
+ begin perform public.cancelar_factura(f,'Corporativo no puede cancelar');raise exception 'FALLÓ: corporativo';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ reset role;set local role anon;
+ begin perform public.cancelar_factura(f,'Anónimo no puede cancelar');raise exception 'FALLÓ: anónimo';exception when insufficient_privilege then null;end;
+ reset role;
+ raise exception 'PRUEBAS OK — motivo obligatorio · pagos y reserva protegidos · cancelación única · saldo cero · conserva órdenes · conserva importe y programación original · historial · corporativo consulta · sin escritura directa · anónimo sin acceso';
+end $$;
