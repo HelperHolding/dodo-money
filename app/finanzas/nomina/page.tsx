@@ -1,3 +1,5 @@
+import Link from "next/link";
+import type { BorradorNomina } from "@/lib/finanzas/personal";
 import { NominaRealPanel } from "./NominaReal";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
@@ -6,21 +8,23 @@ import { hoyMX, pesos } from "@/lib/formato";
 import { baseNominaMes, realDelMes, costoPuesto, plantillaVigente, type Puesto, type NominaReal, conceptosNomina, totalEmpleado } from "@/lib/finanzas/nomina";
 import { finDeMes as finDe } from "@/lib/finanzas/pl";
 import { puedeEditarFinanzas } from "@/lib/roles";
-import { agregarAjuste, guardarPuesto, quitarAjuste } from "./acciones";
+import { agregarAjuste, guardarPuesto, quitarAjuste, generarNomina, importarContpaqi } from "./acciones";
 
-export default async function PaginaNomina({ searchParams }: { searchParams: Promise<{ mes?: string; ok?: string; error?: string }> }) {
+export default async function PaginaNomina({ searchParams }: { searchParams: Promise<{ mes?: string; borrador?: string; ok?: string; error?: string }> }) {
   const q = await searchParams;
   const mes = q.mes && /^\d{4}-\d{2}$/.test(q.mes) ? q.mes : hoyMX().slice(0, 7);
   const finDeMes = finDe(mes);
   const { supabase, perfil } = await obtenerPerfil();
   const edita = puedeEditarFinanzas(perfil.rol);
-  const [{ data: sucursales }, { data: puestos }, { data: ajustes }, { data: versiones, error: errorReales }] = await Promise.all([
+  const [{ data: sucursales }, { data: puestos }, { data: ajustes }, { data: versiones, error: errorReales }, {data:borrador,error:errorBorrador}] = await Promise.all([
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     supabase.from("nomina_plantilla").select("sucursal_id, puesto, renglon, personas, sueldo, pct_cargas, bono, vigente_desde").returns<Puesto[]>(),
     supabase.from("nomina_ajustes").select("id, sucursal_id, renglon, monto, concepto").eq("mes", `${mes}-01`).order("creado_en")
       .returns<{ id: string; sucursal_id: string | null; renglon: string; monto: number; concepto: string }[]>(),
     supabase.from("nomina_reales").select("id, sucursal_id, mes, fuente, empleados, anulada_en, creado_en, motivo_anulacion").eq("mes", `${mes}-01`).order("creado_en", {ascending: false}).returns<(NominaReal & {anulada_en: string | null; creado_en: string; motivo_anulacion: string | null})[]>(),
+    q.borrador ? supabase.from("nomina_borradores").select("id,sucursal_id,mes,fuente,empleados,avisos,previa,confirmada_id").eq("id",q.borrador).maybeSingle<BorradorNomina>() : Promise.resolve({data:null,error:null}),
   ]);
+  if(errorBorrador)throw new Error(errorBorrador.message);
   if (errorReales) throw new Error(`No se pudo cargar nómina real: ${errorReales.message}`);
   const reales = (versiones ?? []).filter((v) => !v.anulada_en);
   const lugares = [...(sucursales ?? []).map((s) => ({ id: s.id as string | null, nombre: s.nombre })), { id: null, nombre: "Oficina central" }];
@@ -29,6 +33,12 @@ export default async function PaginaNomina({ searchParams }: { searchParams: Pro
     <>
       <div className="encabezado"><h1>Nómina</h1><p>Nómina real mensual o plantilla estimada, más ajustes del mes. Se incluye en el P&L; capturar nómina no registra un pago.</p></div>
       <Aviso ok={q.ok} error={q.error} />
+      <Link className="boton boton-secundario" href="/finanzas/personal">Perfiles de personal</Link>
+      {edita && <details className="seccion"><summary>Preparar nómina desde Personal o CONTPAQi</summary><p>Se guarda un borrador para revisar. El P&L cambia solamente al confirmar. Los importes vacíos quedan pendientes.</p>
+        <form action={generarNomina} className="formulario"><input type="hidden" name="mes" value={mes}/><div className="campo"><label htmlFor="personal-sucursal">Lugar para generar desde perfiles</label><select id="personal-sucursal" name="sucursal_id">{lugares.map(l=><option key={l.id??"oficina"} value={l.id??"oficina"}>{l.nombre}</option>)}</select></div><BotonEnviar>Generar desde Personal</BotonEnviar></form>
+        <form action={importarContpaqi} className="formulario"><input type="hidden" name="mes" value={mes}/><div className="campo"><label htmlFor="contpaqi-sucursal">Lugar del acumulado</label><select id="contpaqi-sucursal" name="sucursal_id">{lugares.map(l=><option key={l.id??"oficina"} value={l.id??"oficina"}>{l.nombre}</option>)}</select></div><div className="campo"><label htmlFor="contpaqi-excel">Lista de Raya tabular del mes completo (.xlsx, hasta 4 MB)</label><input id="contpaqi-excel" type="file" name="excel" accept=".xlsx" required/></div><BotonEnviar>Importar y revisar acumulado</BotonEnviar></form>
+      </details>}
+      {q.borrador && (!borrador || borrador.mes.slice(0,7)!==mes || borrador.confirmada_id) && <p>El borrador no está disponible para confirmar en este mes. Si ya lo confirmaste, consulta la nómina real.</p>}
       <form className="acciones" method="get">
         <label htmlFor="mes" className="etiqueta">Mes</label>
         <input id="mes" name="mes" type="month" defaultValue={mes} />
@@ -44,8 +54,8 @@ export default async function PaginaNomina({ searchParams }: { searchParams: Pro
           <section key={l.id ?? "oficina"} className="seccion">
             <h2>{l.nombre} · {pesos(total)}</h2>
             {!real && vigentes.length > 0 && <p>Importe estimado según la plantilla. Falta capturar la nómina real de {mes}.</p>}
-            <NominaRealPanel real={real} mes={mes} sucursal={l.id} edita={edita} />
-            {(versiones ?? []).some(v => v.sucursal_id === l.id && v.anulada_en) && <details className="seccion"><summary>Historial de nómina real</summary>{(versiones ?? []).filter(v => v.sucursal_id === l.id && v.anulada_en).map(v => <div key={v.id}><p>{v.creado_en} · {v.fuente} · {v.motivo_anulacion}</p>{v.empleados.map(e => <details key={e.nombre}><summary>{e.nombre} · {e.puesto} · {pesos(totalEmpleado(e))}</summary><dl>{Object.entries(conceptosNomina).map(([k,nombre]) => <div className="fila-datos" key={k}><dt>{nombre}</dt><dd>{pesos(e[k as keyof typeof conceptosNomina])}</dd></div>)}</dl>{e.nota && <p>{e.nota}</p>}</details>)}</div>)}</details>}
+            <NominaRealPanel real={real} mes={mes} sucursal={l.id} edita={edita} borrador={borrador && !borrador.confirmada_id && borrador.mes.slice(0,7)===mes && borrador.sucursal_id===l.id ? borrador : undefined} />
+            {(versiones ?? []).some(v => v.sucursal_id === l.id && v.anulada_en) && <details className="seccion"><summary>Historial de nómina real</summary>{(versiones ?? []).filter(v => v.sucursal_id === l.id && v.anulada_en).map(v => <div key={v.id}><p>{v.creado_en} · {v.fuente} · {v.motivo_anulacion}</p>{v.empleados.map(e => <details key={e.nombre}><summary>{e.nombre} · {e.puesto} · {pesos(totalEmpleado(e))}</summary><dl>{Object.entries(conceptosNomina).map(([k,nombre]) => <div className="fila-datos" key={k}><dt>{nombre}</dt><dd>{pesos(e[k as keyof typeof conceptosNomina] ?? 0)}</dd></div>)}</dl>{e.nota && <p>{e.nota}</p>}</details>)}</div>)}</details>}
             {(vigentes.length > 0 || aj.length > 0) && <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
               <li className="fila fila-encabezado" aria-hidden="true"><span>Puesto</span><span>Personas</span><span>Sueldo + cargas</span><span>Costo del mes</span></li>
               {vigentes.map((p) => (

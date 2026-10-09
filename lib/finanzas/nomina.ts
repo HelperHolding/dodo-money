@@ -38,19 +38,20 @@ export function nominaMes(puestos: readonly Puesto[], ajustes: readonly Ajuste[]
 export type AjusteMes = Ajuste & { mes: string };
 
 export const conceptosNomina = {
-  sueldo: "Sueldo bruto / importe reconocido", imss: "IMSS patronal", cesantia: "Cesantía y vejez",
+  sueldo: "Sueldo bruto / importe reconocido", bono: "Bonos y otras percepciones", imss: "IMSS patronal", cesantia: "Cesantía y vejez",
   retiro: "Retiro SAR", impuesto: "Impuesto estatal", infonavit: "Infonavit patronal",
   ajuste: "Ajuste al total de obligaciones del reporte",
 } as const;
 export type EmpleadoReal = {
   nombre: string; puesto: string; renglon: RenglonNomina; nota?: string;
-} & Record<keyof typeof conceptosNomina, number>;
+  bono?: number;
+} & Record<Exclude<keyof typeof conceptosNomina,"bono">, number>;
 export type NominaReal = { id: string; sucursal_id: string | null; mes: string; fuente: string; empleados: EmpleadoReal[] };
 export function realDelMes(reales: readonly NominaReal[], sucursal: string | null, mes: string) {
   return reales.find((r) => r.sucursal_id === sucursal && r.mes.slice(0, 7) === mes.slice(0, 7));
 }
 export function totalEmpleado(e: EmpleadoReal) {
-  return centavos(Object.keys(conceptosNomina).reduce((t, k) => t + Number(e[k as keyof typeof conceptosNomina]), 0));
+  return centavos(Object.keys(conceptosNomina).reduce((t, k) => t + Number(e[k as keyof typeof conceptosNomina] ?? 0), 0));
 }
 export function baseNominaMes(puestos: readonly Puesto[], reales: readonly NominaReal[], sucursal: string | null, fin: string) {
   const real = realDelMes(reales, sucursal, fin);

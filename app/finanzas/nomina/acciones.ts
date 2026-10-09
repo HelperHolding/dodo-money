@@ -4,22 +4,49 @@ import { revalidatePath } from "next/cache";
 import { numero } from "@/lib/formato";
 import { clienteFinanzas, volver } from "../servidor";
 import { conceptosNomina } from "@/lib/finanzas/nomina";
+import { leerPersonal } from "../personal/datos";
+import { generarPersonal, aplicarContpaqi, extraerContpaqi } from "@/lib/finanzas/personal";
+import { leerPrimeraHoja } from "@/lib/ventas/xlsx";
+import { createHash } from "node:crypto";
 
 const RUTA = "/finanzas/nomina";
 const t = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
 const sucursal = (v: string) => (v === "oficina" || !v ? null : v);
 
+async function preparar(fd:FormData,excel:boolean) {
+  const supabase=await clienteFinanzas(RUTA),mes=t(fd,"mes"),s=sucursal(t(fd,"sucursal_id"));
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes))volver(RUTA,"error","Elige un mes válido.");
+  const personas=await leerPersonal(supabase);
+  let borrador=generarPersonal(personas,s,mes),fuente=`Borrador generado desde Personal para ${mes}. Revisión mensual de importes.`;
+  if(excel) {
+    const archivo=fd.get("excel");
+    if(!(archivo instanceof File)||!archivo.size||archivo.size>4*1024*1024||!archivo.name.toLowerCase().endsWith(".xlsx"))return volver(RUTA,"error","Selecciona un Excel .xlsx de hasta 4 MB.");
+    try {
+      const bytes=new Uint8Array(await archivo.arrayBuffer());
+      borrador=aplicarContpaqi(personas,s,mes,extraerContpaqi(leerPrimeraHoja(bytes),mes));
+      fuente=`CONTPAQi ${archivo.name} · ${mes} · SHA256 ${createHash("sha256").update(bytes).digest("hex")}. Totales patronales reportados conservados.`;
+    }catch(e){volver(RUTA,"error",e instanceof Error?e.message:"No se pudo leer el acumulado.");}
+  }
+  if(!borrador.empleados.length)volver(RUTA,"error","No hay perfiles activos para este mes y lugar.");
+  const {data,error}=await supabase.rpc("preparar_borrador_nomina",{p_sucursal:s,p_mes:`${mes}-01`,p_fuente:fuente,p_empleados:borrador.empleados,p_avisos:borrador.avisos});
+  if(error)volver(RUTA,"error",error.message);
+  volver(`${RUTA}?mes=${mes}&borrador=${data}`,"ok","Borrador preparado. Revisa todos los importes antes de confirmarlo; todavía no cambia el P&L.");
+}
+export async function generarNomina(fd:FormData){return preparar(fd,false);}
+export async function importarContpaqi(fd:FormData){return preparar(fd,true);}
+
 export async function guardarReal(fd: FormData) {
   const supabase = await clienteFinanzas(RUTA);
   const mes = t(fd, "mes");
   if (!/^\d{4}-\d{2}$/.test(mes)) volver(RUTA, "error", "Elige el mes.");
-  const campos = ["nombre", "puesto", "renglon", "nota", ...Object.keys(conceptosNomina)];
+  const campos = ["nombre", "puesto", "renglon", "nota", "personal_id", "version_id", ...Object.keys(conceptosNomina)];
   const valores = new Map(campos.map((k) => [k, fd.getAll(k).map(String)]));
+  if(t(fd,"borrador") && (valores.get("nombre")??[]).some((_,i)=>Object.keys(conceptosNomina).some(k=>(valores.get(k)?.[i]??"").trim()==="")))volver(RUTA,"error","Completa los importes pendientes antes de confirmar.");
   const empleados = (valores.get("nombre") ?? []).map((nombre, i) => Object.fromEntries(campos.map((k) => [k,
     k in conceptosNomina ? Number(valores.get(k)?.[i] ?? "") : (valores.get(k)?.[i] ?? "").trim(),
   ]))).filter((e) => e.nombre || e.puesto || e.nota || Object.keys(conceptosNomina).some((k) => e[k] !== 0));
   if (empleados.some((e) => Object.keys(conceptosNomina).some((k) => !Number.isFinite(e[k])))) volver(RUTA, "error", "Revisa los importes.");
-  const { error } = await supabase.rpc("guardar_nomina_real", { p_sucursal: sucursal(t(fd,"sucursal_id")), p_mes: `${mes}-01`, p_fuente: t(fd,"fuente"), p_empleados: empleados, p_previa: t(fd,"previa") || null });
+  const { error } = t(fd,"borrador") ? await supabase.rpc("confirmar_borrador_nomina",{p_id:t(fd,"borrador"),p_empleados:empleados,p_fuente:t(fd,"fuente")}) : await supabase.rpc("guardar_nomina_real", { p_sucursal: sucursal(t(fd,"sucursal_id")), p_mes: `${mes}-01`, p_fuente: t(fd,"fuente"), p_empleados: empleados, p_previa: t(fd,"previa") || null });
   if (error) volver(RUTA, "error", error.message);
   revalidatePath("/finanzas", "layout"); volver(`${RUTA}?mes=${mes}`, "ok", "Nómina real guardada. Sustituye la estimación de este mes.");
 }

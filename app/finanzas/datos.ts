@@ -190,7 +190,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       const real = realDelMes(reales, s.id, m.mes);
       if (real) {
         for (const e of real.empleados) for (const [clave, nombre] of Object.entries(conceptosNomina)) {
-          const monto = Number(e[clave as keyof typeof conceptosNomina]);
+          const monto = Number(e[clave as keyof typeof conceptosNomina] ?? 0);
           if (monto) anotar(s.id, `nomina_${e.renglon}`, `${e.nombre} · ${e.puesto} · ${nombre}${proporcion(m.mes, monto)}`, monto * m.fraccion, { href: `/finanzas/nomina?mes=${m.mes}`, nota: `${real.fuente}${e.nota ? ` · ${e.nota}` : ""}` });
         }
       }
