@@ -127,6 +127,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       </div>
       <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={f.estado}>{nombreEstadoFactura(f.tipo, f.estado)}</strong></div><div><small>Total original</small><strong>{pesos(f.total)}</strong></div><div><small>Saldo pendiente</small><strong>{pesos(f.estado === "cancelada" ? 0 : f.saldo)}</strong></div><div><small>Fecha de vencimiento</small><strong>{fechaTexto(f.vence_el)}</strong></div></div>
       <div className="orden-acciones-encabezado ficha-barra">
+        {edita && f.tipo === "ingreso" && opcionesOrden.filter(o=>ligadas.includes(o.id)&&o.estado==="confirmada").map(o=><Link key={o.id} className="boton boton-secundario" href={`/compras/ordenes/${o.id}?recibir=1#recepcion-orden`}>Registrar recepción{ligadas.length>1?` · ${o.folio}`:""}</Link>)}
         {edita && <details><summary>Programar / revisar</summary>      {edita && (
         <section className="seccion">
           <h2>Programación y revisión</h2>
@@ -298,7 +299,9 @@ export default async function DetalleFactura({ params, searchParams }: { params:
 </section>},
         {id:"recepcion", titulo:"Órdenes y recepción", contenido:<>      {f.tipo === "ingreso" && (
         <section className="seccion" aria-labelledby="t-cotejo">
-          <h2 id="t-cotejo">Cotejo</h2>
+          <h2 id="t-cotejo">Órdenes y recepción</h2>
+          <p className="saldo-nota">Puedes recibir una orden confirmada aunque la factura esté por pagar. La recepción registra cantidades recibidas; el pago se registra por separado.</p>
+          {opcionesOrden.filter(o=>ligadas.includes(o.id)).map(o=><p key={o.id}><Link href={`/compras/ordenes/${o.id}${o.estado==="confirmada"?"?recibir=1#recepcion-orden":""}`}>{o.folio} · {o.estado==="confirmada"?"Registrar recepción sin requerir pago":"Ver recepción de la orden"}</Link></p>)}
           <p className={NOMBRE_COTEJO[cotejo].alerta ? "aviso aviso-error" : "aviso aviso-ok"}>{NOMBRE_COTEJO[cotejo].texto}</p>
           {ligadas.length > 0 && (
             <dl className="tarjeta-datos">

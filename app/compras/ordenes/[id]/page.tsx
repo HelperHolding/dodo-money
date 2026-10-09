@@ -40,8 +40,8 @@ const CLAVE_EVENTO: Record<string, string> = {
 
 const NOMBRE_AVANCE_FACTURA = { nada: "Sin facturar", parcial: "Facturada en parte", completa: "Facturada completa" } as const;
 
-export default async function DetalleOrden({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
+export default async function DetalleOrden({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string;recibir?:string }> }) {
+  const [{ id }, { ok, error,recibir }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: o, error: errorOrden } = await supabase.from("ordenes_compra")
     .select("id, folio, estado, grupo_id, proveedor_id, sucursal_id, notas, motivo, creado_en, confirmada_en, entrega_esperada, proveedores(razon_social, nombre_comercial), sucursales(nombre)")
@@ -116,11 +116,11 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
         <div className="acciones">
           {edita && o.estado === 'confirmada' && facturas.length===0 && <form action={facturarOrden}><input type="hidden" name="id" value={o.id}/><BotonEnviar pendiente="Creando factura…" confirmar={`Crear una prefactura sin CFDI por ${pesos(t.total)}, copiando el proveedor, la sucursal y los renglones de esta orden. Después podrás registrar el pago. ¿Continuar?`}>Crear factura para pagar</BotonEnviar></form>}
           {edita && facturas.map(f=><Link key={f.id} className="boton" href={`/compras/facturas/${f.id}`}>Ver {nombreFactura(f)} y pagos</Link>)}
-          {edita && o.estado === "confirmada" && <details className="orden-accion-desplegable"><summary className="boton boton-secundario">Registrar recepción</summary><form action={registrarRecepcionOrden} className="formulario orden-accion-formulario">
+          {edita && o.estado === "confirmada" && <details id="recepcion-orden" open={recibir==="1"} className="orden-accion-desplegable"><summary className="boton boton-secundario">Registrar recepción</summary><form action={registrarRecepcionOrden} className="formulario orden-accion-formulario">
  <input type="hidden" name="id" value={o.id}/><input type="hidden" name="lote" value={randomUUID()}/>
  <label className="campo">Fecha real de recepción<input type="date" name="fecha_recepcion" required max={hoyCalendarioMX()} defaultValue={hoyCalendarioMX()}/></label>
  <label className="campo">Motivo / nota de recepción<textarea name="motivo" required maxLength={1000} placeholder="Por ejemplo: entrega del 7 de octubre capturada hoy"/></label>
- <p className="saldo-nota">Puedes registrar días anteriores. Esto confirma la recepción en DODO MX; no registra entradas en Dodo IS. Deja vacíos los artículos que no llegaron.</p>
+ <p className="saldo-nota">No necesitas haber pagado la factura. Puedes registrar días anteriores. Esto confirma la recepción en DODO MX; no registra entradas en Dodo IS. Deja vacíos los artículos que no llegaron.</p>
  {rs.map(r=><label className="campo" key={r.id}>{r.descripcion} · pendiente {Math.max(0,Number(r.cantidad)-Number(r.recibido))} {r.articulos?.unidad}<input type="hidden" name="renglon" value={r.id}/><input name={`cantidad_${r.id}`} type="number" min="0" step="0.001" inputMode="decimal" placeholder="Cantidad recibida"/></label>)}
  <BotonEnviar pendiente="Registrando…">Guardar recepción</BotonEnviar>
  </form></details>}
