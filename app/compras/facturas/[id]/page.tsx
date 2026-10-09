@@ -1,3 +1,6 @@
+import {RecepcionDirecta} from "../RecepcionDirecta";
+import type {RecepcionFactura} from "@/lib/compras/recepcionFactura";
+import {leerTodo} from "@/lib/ventas/paginar";
 import {soloInsumos} from "@/lib/compras/periodoInsumos";
 import { HistorialCompra, type EventoCompra } from "@/components/HistorialCompra";
 import { agregarNotaFactura } from "../acciones";
@@ -65,6 +68,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       : Promise.resolve({ data: [] as { id: string; folio: string; fecha_emision: string; total: number }[] }),
     supabase.from("facturas").select("id, folio").eq("sustituido_por", f.id).returns<{ id: string; folio: string }[]>(),
   ]);
+  const directas=await leerTodo<RecepcionFactura>((d,h)=>supabase.from("factura_recepciones").select("*,autor:perfiles!usuario_id(nombre),anulador:perfiles!anulada_por(nombre)").eq("factura_id",id).order("creado_en",{ascending:false}).order("id").range(d,h));
   const esInsumos=soloInsumos((conceptos??[]).map(c=>c.cuenta_pl),f.cuenta_pl);
   const ligadas = (ligas ?? []).map((l) => l.orden_id);
   const { data: renglones } = ligadas.length
@@ -99,6 +103,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   ]);
   if(auditoria.error||programaciones.error||notas.error)throw Error("No se pudo consultar el historial de la factura.");
   const eventos:EventoCompra[]=[];
+  for(const r of directas){eventos.push({id:`recibida-${r.id}`,en:r.creado_en,titulo:"Recepción sin orden registrada",nota:`Fecha real ${fechaTexto(r.fecha)} · ${r.motivo}`,autor:r.autor?.nombre});if(r.anulada_en)eventos.push({id:`recepcion-anulada-${r.id}`,en:r.anulada_en,titulo:"Recepción anulada",nota:r.motivo_anulacion,autor:r.anulador?.nombre});}
   const audit=auditoria.data;
   if(audit){
    eventos.push({id:"creada",en:audit.creado_en,titulo:"Factura registrada",autor:audit.creador?.nombre});
@@ -127,6 +132,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
         <h1>{f.tipo === "egreso" ? "Nota de crédito" : "Factura"} {f.serie ?? ""}{f.folio ?? ""} · {f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social}</h1>
         <p>{nombreEstadoFactura(f.tipo, f.estado)}{f.motivo_cancelacion ? ` · ${f.motivo_cancelacion}` : ""}{f.origen === "manual" ? " · Sin CFDI" : ` · UUID ${f.uuid}`}</p>
       </div>
+      {!ligadas.length&&f.tipo==="ingreso"&&f.estado!=="cancelada"&&<RecepcionDirecta id={id} conceptos={conceptos??[]} recepciones={directas} hoy={hoy} edita={edita}/>}
       <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={f.estado}>{nombreEstadoFactura(f.tipo, f.estado)}</strong></div><div><small>Total original</small><strong>{pesos(f.total)}</strong></div><div><small>Saldo pendiente</small><strong>{pesos(f.estado === "cancelada" ? 0 : f.saldo)}</strong></div><div><small>Fecha de vencimiento</small><strong>{fechaTexto(f.vence_el)}</strong></div></div>
       <div className="orden-acciones-encabezado ficha-barra">
         {edita && f.tipo === "ingreso" && opcionesOrden.filter(o=>ligadas.includes(o.id)&&o.estado==="confirmada").map(o=><Link key={o.id} className="boton boton-secundario" href={`/compras/ordenes/${o.id}?recibir=1#recepcion-orden`}>Registrar recepción{ligadas.length>1?` · ${o.folio}`:""}</Link>)}

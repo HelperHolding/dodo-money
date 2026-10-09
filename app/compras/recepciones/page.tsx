@@ -68,7 +68,11 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
     leerTodo<{id:string;fecha:string;orden_renglon_id:string|null}>((d,h)=>supabase.from("recepciones_dodo").select("id,fecha,orden_renglon_id").gt("cantidad",0).order("id").range(d,h)),
     leerTodo<{id:string;fecha:string;orden_renglon_id:string}>((d,h)=>supabase.from("recepciones_app").select("id,fecha,orden_renglon_id").is("anulada_en",null).is("conciliada_en",null).gt("cantidad",0).order("id").range(d,h)),
   ]);
-  const realizadas=recibidasPorDia([...hechasDodo,...hechasApp],abiertos,esperadas);
+  const realizadas:Record<string,OrdenEsperada[]>=recibidasPorDia([...hechasDodo,...hechasApp],abiertos,esperadas);
+
+  type DirectaCalendario={id:string;factura_id:string;fecha:string;facturas:{folio:string|null;serie:string|null;proveedores:{nombre_comercial:string|null;razon_social:string}|null;sucursales:{nombre:string}|null}|null};
+  const directasCalendario=await leerTodo<DirectaCalendario>((d,h)=>supabase.from("factura_recepciones").select("id,factura_id,fecha,facturas(folio,serie,proveedores(nombre_comercial,razon_social),sucursales(nombre))").is("anulada_en",null).order("id").range(d,h).returns<DirectaCalendario[]>());
+  for(const r of directasCalendario){const lista=realizadas[r.fecha]??=[];const clave=`factura:${r.factura_id}`;if(!lista.some(o=>o.id===clave))lista.push({id:clave,folio:`Factura ${r.facturas?.serie??""}${r.facturas?.folio??"Sin folio"}`,proveedor:r.facturas?.proveedores?.nombre_comercial??r.facturas?.proveedores?.razon_social??"",destino:r.facturas?.sucursales?.nombre??"Oficina",avance:"recepción registrada",atrasada:false,href:`/compras/facturas/${r.factura_id}`});}
   const atrasadas = esperadas.filter((o) => !o.cerrada&&o.atrasada);
   const sinFecha = esperadas.filter((o) => !o.cerrada&&!o.completa && !o.entrega_esperada);
   const manuales=edita?await leerTodo<{id:string;orden_renglon_id:string;fecha:string;cantidad:number}>((d,h)=>supabase.from("recepciones_app").select("id,orden_renglon_id,fecha,cantidad").is("anulada_en",null).is("conciliada_en",null).order("id").range(d,h).returns<{id:string;orden_renglon_id:string;fecha:string;cantidad:number}[]>()):[];

@@ -1,3 +1,4 @@
+import {avanceFactura,type RecepcionFactura} from "@/lib/compras/recepcionFactura";
 import ListaDocumentos,{type FiltrosCompra} from "./ListaDocumentos";
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
@@ -28,6 +29,12 @@ export default async function Documentos({searchParams}:{searchParams:Promise<Pa
  const porOrden=new Map<string,Renglon[]>();for(const r of renglones){const rs=porOrden.get(r.orden_id)??[];rs.push(r);porOrden.set(r.orden_id,rs);}
  const base=(d:Orden|Factura)=>({id:d.id,proveedor_id:d.proveedor_id,proveedor:d.proveedores?.nombre_comercial??d.proveedores?.razon_social??"Sin proveedor",sucursal_id:d.sucursal_id,destino:d.sucursales?.nombre??"Oficina"});
  const filas=documentosCompra(ordenes.map(o=>({...base(o),nombre:o.folio,estado:o.estado,recepcion:avanceOrden(porOrden.get(o.id)??[]),fecha:fechaMX(o.creado_en),importe:totalesOrden(porOrden.get(o.id)??[]).total})),facturas.map(f=>({...base(f),nombre:nombreFactura(f),estado:f.estado,fecha:f.fecha_emision,importe:Number(f.total),saldo:Number(f.saldo),vence_el:f.vence_el,tipo:f.tipo,origen:f.origen,sustituido_por:f.sustituido_por})),ligas,hoyCalendarioMX());
+ const [recepcionesDirectas,conceptosDirectos]=await Promise.all([
+ leerTodo<RecepcionFactura>((d,h)=>supabase.from("factura_recepciones").select("*").is("anulada_en",null).order("id").range(d,h)),
+ leerTodo<{id:number;factura_id:string;cantidad:number}>((d,h)=>supabase.from("factura_conceptos").select("id,factura_id,cantidad").order("id").range(d,h)),
+ ]);
+ for(const fila of filas)if(fila.etapa==="factura"&&!fila.notaCredito&&!fila.ordenes.length){const rec=recepcionesDirectas.filter(r=>r.factura_id===fila.id);if(rec.length)fila.recepcion=avanceFactura(conceptosDirectos.filter(c=>c.factura_id===fila.id),rec);}
+
  return <>
   <div className="encabezado compra-cabecera"><div><p className="compra-sobretitulo">DOCUMENTOS DE COMPRA</p><h1>Compras y facturas</h1><p>Cotizaciones, órdenes y facturas en un mismo lugar. También puedes registrar facturas directamente.</p></div>{puedeEditarCompras(perfil.rol)&&<div className="acciones"><Link className="boton" href="/compras/ordenes/nueva">+ Nueva cotización</Link><Link className="boton boton-secundario" href="/compras/facturas/subir">Subir CFDI</Link><Link className="boton boton-secundario" href="/compras/facturas/nueva">Sin CFDI</Link></div>}</div>
   <Aviso ok={params.ok} error={params.error}/>

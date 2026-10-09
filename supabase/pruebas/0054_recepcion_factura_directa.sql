@@ -1,0 +1,45 @@
+-- Ensayo reversible: PRUEBAS OK se emite con RAISE y revierte todas las escrituras.
+do $$
+declare a uuid;corp uuid;s uuid;p uuid;f uuid;concepto bigint;sol uuid:=gen_random_uuid();o uuid;payload jsonb;
+begin
+ select id into a from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' limit 1;
+ select id into corp from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
+ if a is null or corp is null then raise exception 'FALTAN DATOS: admin/corporativo activos.';end if;
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ insert into public.sucursales(nombre) values('Recepción XML prueba '||gen_random_uuid()) returning id into s;
+ insert into public.proveedores(razon_social,rfc,regimen_fiscal,sucursal_id,cuenta_pl) values('Proveedor recepción','PRB010101AB1','601',s,'insumos') returning id into p;
+ insert into public.ordenes_compra(proveedor_id,sucursal_id) values(p,s) returning id into o;
+ set local role authenticated;
+ f:=public.registrar_gasto_manual(jsonb_build_object('proveedor_id',p,'sucursal_id',s,'fecha',public.hoy_mx(),'folio','Ensayo recepción directa','subtotal',100,'iva',0,'retencion_iva',0,'retencion_isr',0,'total',100,'renglones',jsonb_build_array(jsonb_build_object('descripcion','Insumo','importe',100,'cuenta_pl','insumos'))));
+ reset role;
+ select id into concepto from public.factura_conceptos where factura_id=f limit 1;
+ update public.factura_conceptos set cantidad=3 where id=concepto;
+ payload:=jsonb_build_array(jsonb_build_object('id',concepto,'cantidad',2));
+ set local role authenticated;
+ perform public.recibir_factura_directa(sol,f,public.hoy_mx()-1,'Entrega de dos unidades',payload);
+ perform public.recibir_factura_directa(sol,f,public.hoy_mx()-1,'Entrega de dos unidades',payload);
+ if (select count(*) from public.factura_recepciones where id=sol)<>1 then raise exception 'FALLÓ: duplicado';end if;
+ if not exists(select 1 from public.factura_recepciones where id=sol and usuario_id=a and fecha=public.hoy_mx()-1) then raise exception 'FALLÓ: trazabilidad';end if;
+ if exists(select 1 from public.factura_ordenes where factura_id=f) or (select pagado from public.facturas_saldo where id=f)<>0 then raise exception 'FALLÓ: inventa orden o pago';end if;
+ begin perform public.recibir_factura_directa(gen_random_uuid(),f,public.hoy_mx(),'Supera pendiente',payload);raise exception 'FALLÓ: sobre recepción';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.recibir_factura_directa(sol,f,public.hoy_mx(),'Cambio solicitud',payload);raise exception 'FALLÓ: sobrescritura';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.recibir_factura_directa(gen_random_uuid(),f,public.hoy_mx()+1,'Fecha futura',payload);raise exception 'FALLÓ: fecha futura';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.recibir_factura_directa(gen_random_uuid(),f,public.hoy_mx(),' ',payload);raise exception 'FALLÓ: motivo';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ reset role;
+ begin update public.factura_conceptos set cantidad=4 where id=concepto;raise exception 'FALLÓ: cambia cantidad recibida';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin insert into public.factura_ordenes(factura_id,orden_id) values(f,o);raise exception 'FALLÓ: mezcla orden';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin update public.facturas set estado='cancelada' where id=f;raise exception 'FALLÓ: cancela con recepción';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ set local role authenticated;
+ perform public.anular_recepcion_factura(sol,'Entrega capturada incorrectamente');
+ begin perform public.anular_recepcion_factura(sol,'Anulación repetida');raise exception 'FALLÓ: anula dos veces';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ perform public.recibir_factura_directa(gen_random_uuid(),f,public.hoy_mx(),'Entrega completa corregida',jsonb_build_array(jsonb_build_object('id',concepto,'cantidad',3)));
+ if not exists(select 1 from public.factura_recepciones where id=sol and anulada_en is not null and anulada_por=a) then raise exception 'FALLÓ: pierde historial';end if;
+ begin update public.factura_recepciones set motivo='Cambio directo' where id=sol;raise exception 'FALLÓ: escritura directa';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',corp,'role','authenticated')::text,true);
+ if not exists(select 1 from public.factura_recepciones where id=sol) then raise exception 'FALLÓ: corporativo consulta';end if;
+ begin perform public.recibir_factura_directa(gen_random_uuid(),f,public.hoy_mx(),'Corporativo no escribe',payload);raise exception 'FALLÓ: corporativo escribe';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ reset role;set local role anon;
+ begin perform public.recibir_factura_directa(gen_random_uuid(),f,public.hoy_mx(),'Anónimo no escribe',payload);raise exception 'FALLÓ: anónimo escribe';exception when insufficient_privilege then null;end;
+ reset role;
+ raise exception 'PRUEBAS OK — factura sin orden · sin pago · fecha real · parcial y completa · motivo · idempotencia · cantidades protegidas · sin mezcla de fuentes · anulación con historial · corporativo consulta · sin escritura directa · anónimo sin acceso';
+end $$;

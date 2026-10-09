@@ -5,7 +5,7 @@ import { useState } from "react";
 import { fechaTexto } from "@/lib/formato";
 import { mesDe, moverMes, semanasDelMes } from "@/lib/ventas/calendario";
 
-export type OrdenEsperada = { id: string; folio: string; proveedor: string; destino: string; avance: string; atrasada: boolean };
+export type OrdenEsperada = { id: string; folio: string; proveedor: string; destino: string; avance: string; atrasada: boolean;href?:string };
 
 const DIAS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 const nombreMes = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -38,7 +38,7 @@ export function CalendarioEntregas({ hoy, porDia,realizadas={} }: { hoy: string;
           return (
             <button key={d} type="button" className="calendario-dia" data-vacio={ordenes.length||hechas.length ? undefined : "si"}
               data-estado={d === dia ? "extremo" : undefined} aria-pressed={d === dia}
-              aria-label={`${fechaTexto(d)}: ${ordenes.length ? `${ordenes.length} ${ordenes.length === 1 ? "orden" : "órdenes"}` : "nada esperado"}${atrasadas ? ", con atrasadas" : ""}, ${hechas.length} órdenes con recepción registrada`}
+              aria-label={`${fechaTexto(d)}: ${ordenes.length ? `${ordenes.length} ${ordenes.length === 1 ? "orden" : "órdenes"}` : "nada esperado"}${atrasadas ? ", con atrasadas" : ""}, ${hechas.length} documentos con recepción registrada`}
               onClick={() => setDia(d === dia ? null : d)}>
               <span className="calendario-numero">{Number(d.slice(8))}{d === hoy ? " ·" : ""}</span>
               <span className="calendario-venta" style={atrasadas && d !== dia ? { color: "var(--alerta-texto)" } : undefined}>
@@ -55,11 +55,11 @@ export function CalendarioEntregas({ hoy, porDia,realizadas={} }: { hoy: string;
             {lista.length>0&&<li><strong>Programadas</strong></li>}
             {lista.map((o) => (
               <li key={o.id} style={{ overflowWrap: "anywhere" }}>
-                <Link href={`/compras/ordenes/${o.id}`}>{o.folio}</Link> · {o.proveedor} · {o.destino} · {o.avance}{o.atrasada ? " · atrasada" : ""}
+                <Link href={o.href??`/compras/ordenes/${o.id}`}>{o.folio}</Link> · {o.proveedor} · {o.destino} · {o.avance}{o.atrasada ? " · atrasada" : ""}
               </li>
             ))}
             {recibidas.length>0&&<li><strong className="recepcion-hecha">Recepciones realizadas · {fechaTexto(dia!)}</strong></li>}
-            {recibidas.map(o=><li key={`recibida-${o.id}`}><Link href={`/compras/ordenes/${o.id}`}>{o.folio}</Link> · {o.proveedor} · {o.destino} · <span className="recepcion-hecha">{o.avance==="recibida completa"?"Ya recibido":"Recepción registrada"}</span></li>)}
+            {recibidas.map(o=><li key={`recibida-${o.id}`}><Link href={o.href??`/compras/ordenes/${o.id}`}>{o.folio}</Link> · {o.proveedor} · {o.destino} · <span className="recepcion-hecha">{o.avance==="recibida completa"?"Ya recibido":"Recepción registrada"}</span></li>)}
           </ul>
         )}
       </div>

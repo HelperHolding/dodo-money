@@ -224,3 +224,18 @@ export async function agregarNotaFactura(fd: FormData) {
  revalidatePath("/compras","layout");
  volver(rutaFactura(id),"ok","Nota interna guardada.");
 }
+
+export async function recibirFacturaDirecta(fd:FormData){
+ const id=texto(fd,"id"),db=await clienteAdmin(`/compras/facturas/${id}`);
+ const renglones=fd.getAll("concepto").map(c=>({id:Number(c),cantidad:Number(texto(fd,`cantidad_${c}`).replace(/[,\s]/g,""))})).filter(c=>c.cantidad!==0);
+ if(!renglones.length||renglones.some(c=>!Number.isFinite(c.cantidad)||c.cantidad<=0))volver(`/compras/facturas/${id}`,"error","Indica cantidades recibidas válidas.");
+ const {error}=await db.rpc("recibir_factura_directa",{p_id:texto(fd,"solicitud"),p_factura:id,p_fecha:texto(fd,"fecha"),p_motivo:texto(fd,"motivo"),p_renglones:renglones});
+ if(error)volver(`/compras/facturas/${id}`,"error",error.message);
+ revalidatePath("/compras","layout");volver(`/compras/facturas/${id}`,"ok","Recepción registrada sin orden de compra.");
+}
+export async function anularRecepcionFactura(fd:FormData){
+ const id=texto(fd,"id"),db=await clienteAdmin(`/compras/facturas/${id}`);
+ const {error}=await db.rpc("anular_recepcion_factura",{p_id:texto(fd,"recepcion_id"),p_motivo:texto(fd,"motivo")});
+ if(error)volver(`/compras/facturas/${id}`,"error",error.message);
+ revalidatePath("/compras","layout");volver(`/compras/facturas/${id}`,"ok","Recepción anulada; cantidades liberadas.");
+}
