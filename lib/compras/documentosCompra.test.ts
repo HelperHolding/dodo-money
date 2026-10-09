@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {documentosCompra,filtrarDocumentosCompra,type OrdenCompraVista,type FacturaCompraVista} from './documentosCompra.ts';
+import {documentosCompra,filtrarDocumentosCompra,agruparDocumentosCompra,type OrdenCompraVista,type FacturaCompraVista} from './documentosCompra.ts';
 const base={id:'o',nombre:'OC-0001',proveedor_id:'p',proveedor:'Proveedor Álamo',sucursal_id:'s',destino:'Zapopan-1',fecha:'2026-10-08',importe:116};
 const orden:OrdenCompraVista={...base,estado:'confirmada'};
 const factura:FacturaCompraVista={...base,id:'f',nombre:'F-1',estado:'por_pagar',saldo:116,vence_el:'2026-10-07',tipo:'ingreso',origen:'cfdi',sustituido_por:null};
@@ -34,4 +34,18 @@ test('documentos: sustitución oculta cancelada por defecto; filtros no pierden 
 test('documentos: buscar por folio de origen y contar una factura vinculada a varias órdenes una sola vez',()=>{
  const filas=documentosCompra([orden,{...orden,id:'o2',nombre:'OC-2'}],[factura],[{orden_id:'o',factura_id:'f'},{orden_id:'o2',factura_id:'f'},{orden_id:'o',factura_id:'f'}],'2026-10-08');
  assert.equal(filas.length,1);assert.equal(filas[0].ordenes.length,2);assert.equal(filtrarDocumentosCompra(filas,{q:'OC-2'}).length,1);
+});
+
+test('búsqueda por palabras sin acentos y rango inclusivo de fechas',()=>{
+ const filas=documentosCompra([orden],[],[],'2026-10-09');
+ assert.equal(filtrarDocumentosCompra(filas,{q:'zapopan alamo',desde:'2026-10-08',hasta:'2026-10-08'}).length,1);
+ assert.equal(filtrarDocumentosCompra(filas,{desde:'2026-10-09'}).length,0);
+ assert.equal(filtrarDocumentosCompra(filas,{q:'alamo inexistente'}).length,0);
+});
+test('agrupación conserva documentos y separa proveedores homónimos y Oficina',()=>{
+ const filas=documentosCompra([orden,{...orden,id:'o2',proveedor_id:'p2',sucursal_id:null,fecha:'2026-10-09'}],[],[],'2026-10-09');
+ assert.equal(agruparDocumentosCompra(filas,'proveedor').length,2);
+ assert.equal(agruparDocumentosCompra(filas,'sucursal').length,2);
+ assert.equal(agruparDocumentosCompra(filas,'fecha')[0].clave,'2026-10-09');
+ assert.equal(agruparDocumentosCompra(filas).flatMap(g=>g.filas).length,2);
 });

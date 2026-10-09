@@ -32,7 +32,14 @@ export function documentosCompra(ordenes:readonly OrdenCompraVista[],facturas:re
  return filas.sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.clave.localeCompare(b.clave));
 }
 const normalizar=(s:string)=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-export function filtrarDocumentosCompra(filas:readonly DocumentoCompra[],f:{etapa?:string;estado?:string;proveedor?:string;sucursal?:string;q?:string;canceladas?:boolean}){
- const q=normalizar(f.q?.trim()??"");
- return filas.filter(d=>(f.canceladas||d.estado!=="cancelada")&&(!f.etapa||d.etapa===f.etapa)&&(!f.estado||d.estado===f.estado)&&(!f.proveedor||d.proveedor_id===f.proveedor)&&(!f.sucursal||(f.sucursal==="oficina"?d.sucursal_id===null:d.sucursal_id===f.sucursal))&&(!q||normalizar([d.nombre,d.proveedor,d.destino,...d.ordenes.map(o=>o.nombre)].join(" ")).includes(q)));
+export function filtrarDocumentosCompra(filas:readonly DocumentoCompra[],f:{etapa?:string;estado?:string;proveedor?:string;sucursal?:string;q?:string;canceladas?:boolean;desde?:string;hasta?:string}){
+ const palabras=normalizar(f.q?.trim()??"").split(/\s+/).filter(Boolean);
+ return filas.filter(d=>(f.canceladas||d.estado!=="cancelada")&&(!f.etapa||d.etapa===f.etapa)&&(!f.estado||d.estado===f.estado)&&(!f.proveedor||d.proveedor_id===f.proveedor)&&(!f.sucursal||(f.sucursal==="oficina"?d.sucursal_id===null:d.sucursal_id===f.sucursal))&&(!f.desde||d.fecha>=f.desde)&&(!f.hasta||d.fecha<=f.hasta)&&palabras.every(q=>normalizar([d.nombre,d.proveedor,d.destino,...d.ordenes.map(o=>o.nombre)].join(" ")).includes(q)));
+}
+
+export function agruparDocumentosCompra(filas:readonly DocumentoCompra[],por?:string){
+if(!["fecha","proveedor","sucursal"].includes(por??""))return [{clave:"todos",nombre:"Todos",filas:[...filas]}];
+const grupos=new Map<string,{clave:string;nombre:string;filas:DocumentoCompra[]}>();
+for(const d of filas){const clave=por==="fecha"?d.fecha:por==="proveedor"?d.proveedor_id:d.sucursal_id??"oficina";const nombre=por==="fecha"?d.fecha:por==="proveedor"?d.proveedor:d.destino;const grupo=grupos.get(clave)??{clave,nombre,filas:[]};grupo.filas.push(d);grupos.set(clave,grupo);}
+return [...grupos.values()].sort((a,b)=>por==="fecha"?b.clave.localeCompare(a.clave):a.nombre.localeCompare(b.nombre,"es"));
 }

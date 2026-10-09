@@ -734,10 +734,10 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .compra-cabecera h1 { margin:5px 0 10px; }
 .compra-sobretitulo { font-size:.72rem; letter-spacing:.12em; font-weight:750; color:var(--tinta-2); }
 .compra-etapas { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:20px 0; }
-.compra-etapas a { text-decoration:none; color:var(--tinta); border:1px solid var(--linea); border-radius:12px; padding:16px; display:flex; align-items:center; gap:10px; background:var(--papel); }
-.compra-etapas a strong { margin-left:auto; font-size:1.2rem; }
-.compra-etapas a:hover { background:var(--papel-2); }
-.compra-etapas a[aria-current="page"] { box-shadow:inset 0 0 0 2px var(--accion); background:#fff6f1; }
+.compra-etapas :is(a,button) { text-decoration:none; color:var(--tinta); border:1px solid var(--linea); border-radius:12px; padding:16px; display:flex; align-items:center; gap:10px; background:var(--papel); }
+.compra-etapas :is(a,button) strong { margin-left:auto; font-size:1.2rem; }
+.compra-etapas :is(a,button):hover { background:var(--papel-2); }
+.compra-etapas :is(a,button)[aria-current="page"] { box-shadow:inset 0 0 0 2px var(--accion); background:#fff6f1; }
 .compra-paso { display:grid; place-items:center; width:28px; height:28px; flex:none; border-radius:50%; background:var(--papel-2); font-size:.8rem; font-weight:700; }
 .compra-etapas [data-etapa="cotizacion"] .compra-paso { background:#fff0c7; color:#795200; }
 .compra-etapas [data-etapa="orden"] .compra-paso { background:#e7efff; color:#24528d; }
@@ -770,7 +770,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .compra-regreso { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:10px 0 18px; font-size:.85rem; }
 @media(max-width:700px) {
  .compra-etapas { grid-template-columns:repeat(2,minmax(0,1fr)); }
- .compra-etapas a { padding:12px; font-size:.85rem; }
+ .compra-etapas :is(a,button) { padding:12px; font-size:.85rem; }
  .compra-cabecera .acciones { width:100%; }
  .compra-cabecera .boton { flex:1 1 auto; }
 }
@@ -895,3 +895,11 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .inicio-dona-canales .dona-punto.cat-pos { background:#ff6900; }
 .inicio-dona-canales .dona-punto.cat-rappi { background:#347a9e; }
 .inicio-ventas h3 { font-size:1rem; margin-bottom:16px; }
+
+.compra-etapas button {font:inherit;cursor:pointer;text-align:left;}
+.compra-barra .accesos button {font:inherit;border:1px solid #ddd;background:white;border-radius:8px;padding:9px 16px;cursor:pointer;}
+.compra-barra .accesos button[aria-current="page"] {background:#fff2e8;border-color:#ff5000;color:#a73500;}
+.compra-grupo {margin-bottom:18px;}
+.compra-grupo>details>summary {cursor:pointer;padding:16px 20px;background:#f5f6f8;border:1px solid #e1e3e6;border-radius:10px;font-weight:700;}
+.compra-grupo>details>summary span {font-weight:400;font-size:.85rem;margin-left:14px;color:#59616d;}
+.compra-grupo>details[open]>summary {margin-bottom:10px;}
