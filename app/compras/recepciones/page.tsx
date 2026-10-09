@@ -5,7 +5,7 @@ import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { avanceOrden, NOMBRE_AVANCE } from "@/lib/compras/ordenes";
-import { esperadasPorDia, estadoEntrega } from "@/lib/compras/entregas";
+import { esperadasPorDia, estadoEntrega,recibidasPorDia } from "@/lib/compras/entregas";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { clasificarRecepcion, conciliarRecepcion } from "./acciones";
@@ -63,6 +63,12 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
     return vista;
   });
   const porDia = esperadasPorDia(esperadas.filter(o=>!o.cerrada));
+
+  const [hechasDodo,hechasApp]=await Promise.all([
+    leerTodo<{id:string;fecha:string;orden_renglon_id:string|null}>((d,h)=>supabase.from("recepciones_dodo").select("id,fecha,orden_renglon_id").gt("cantidad",0).order("id").range(d,h)),
+    leerTodo<{id:string;fecha:string;orden_renglon_id:string}>((d,h)=>supabase.from("recepciones_app").select("id,fecha,orden_renglon_id").is("anulada_en",null).is("conciliada_en",null).gt("cantidad",0).order("id").range(d,h)),
+  ]);
+  const realizadas=recibidasPorDia([...hechasDodo,...hechasApp],abiertos,esperadas);
   const atrasadas = esperadas.filter((o) => !o.cerrada&&o.atrasada);
   const sinFecha = esperadas.filter((o) => !o.cerrada&&!o.completa && !o.entrega_esperada);
   const manuales=edita?await leerTodo<{id:string;orden_renglon_id:string;fecha:string;cantidad:number}>((d,h)=>supabase.from("recepciones_app").select("id,orden_renglon_id,fecha,cantidad").is("anulada_en",null).is("conciliada_en",null).order("id").range(d,h).returns<{id:string;orden_renglon_id:string;fecha:string;cantidad:number}[]>()):[];
@@ -78,7 +84,7 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
         <p>Lo que se recibió en Dodo IS, ligado a las órdenes de compra. Los consumibles se ligan solos por su ID de insumo.</p>
       </div>
       <Aviso ok={ok} error={error} />
-      <CalendarioEntregas hoy={hoy} porDia={porDia} />
+      <CalendarioEntregas hoy={hoy} porDia={porDia} realizadas={realizadas} />
       {(atrasadas.length > 0 || sinFecha.length > 0) && (
         <section className="seccion" aria-labelledby="t-atrasadas">
           <h2 id="t-atrasadas">Por seguir</h2>

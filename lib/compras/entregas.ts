@@ -36,3 +36,9 @@ export function fechaEntregaValida(fecha: string): boolean {
  const d=new Date(`${fecha}T00:00:00Z`);
  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===fecha;
 }
+
+/** Una orden aparece una vez por fecha real, aunque se reciban varios renglones. */
+export function recibidasPorDia<O extends {id:string;atrasada:boolean}>(recepciones:readonly {fecha:string;orden_renglon_id:string|null}[],renglones:readonly {id:string;orden_id:string}[],ordenes:readonly O[]):Record<string,O[]>{
+ const porRenglon=new Map(renglones.map(r=>[r.id,r.orden_id])),porOrden=new Map(ordenes.map(o=>[o.id,o])),dias:Record<string,O[]>={};
+ for(const r of recepciones){const id=r.orden_renglon_id?porRenglon.get(r.orden_renglon_id):undefined,o=id?porOrden.get(id):undefined;if(!o)continue;const lista=dias[r.fecha]??=[];if(!lista.some(x=>x.id===o.id))lista.push({...o,atrasada:false});}return dias;
+}

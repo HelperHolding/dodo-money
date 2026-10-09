@@ -37,3 +37,10 @@ test("fecha de entrega admite días anteriores y rechaza fechas inexistentes", a
  assert.equal(fechaEntregaValida("2024-02-29"),true);
  assert.equal(fechaEntregaValida("2026-2-9"),false);
 });
+
+import {recibidasPorDia} from './entregas.ts';
+test('calendario recibido: fecha real, varios renglones y órdenes cerradas sin duplicar',()=>{
+ const r=[{id:'r1',orden_id:'o'},{id:'r2',orden_id:'o'}],o=[{id:'o',atrasada:true}];
+ const dias=recibidasPorDia([{fecha:'2026-10-07',orden_renglon_id:'r1'},{fecha:'2026-10-07',orden_renglon_id:'r2'},{fecha:'2026-10-08',orden_renglon_id:'r1'},{fecha:'2026-10-08',orden_renglon_id:null}],r,o);
+ assert.equal(dias['2026-10-07'].length,1);assert.equal(dias['2026-10-08'].length,1);assert.equal(dias['2026-10-07'][0].atrasada,false);
+});
