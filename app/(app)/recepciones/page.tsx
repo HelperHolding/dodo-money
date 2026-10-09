@@ -1,3 +1,5 @@
+import {leerTodo} from "@/lib/ventas/paginar";
+import {Plegable} from "@/components/Plegable";
 import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
@@ -14,10 +16,13 @@ type PorRecibir = {
 
 export default async function RecepcionesSucursal({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
-  const { supabase, perfil, soloLectura } = await obtenerContexto();
+  const { supabase, perfil, soloLectura,sucursal } = await obtenerContexto();
   if (!puedeRecibirCompras(perfil.rol)) redirect("/");
   const { data, error: errorRpc } = await supabase.rpc("ordenes_por_recibir");
   if (errorRpc) throw new Error(errorRpc.message);
+  type Historica={id:string;orden_id:string;descripcion:string;cantidad:number;recibido:number;articulos:{unidad:string}|null;ordenes_compra:{folio:string;proveedores:{nombre_comercial:string|null;razon_social:string}|null}|null};
+  const historial=await leerTodo<Historica>((d,h)=>supabase.from("renglones_recibido").select("id,orden_id,descripcion,cantidad,recibido,articulos(unidad),ordenes_compra!inner(folio,proveedores(nombre_comercial,razon_social))").eq("ordenes_compra.sucursal_id",sucursal.id).in("ordenes_compra.estado",["confirmada","cerrada"]).order("orden_id").order("id").range(d,h).returns<Historica[]>());
+  const recibidas=historial.filter(r=>avanceRenglon(Number(r.cantidad),Number(r.recibido))==="completa").map(r=>({renglon_id:r.id,folio:r.ordenes_compra?.folio??"Orden",proveedor:r.ordenes_compra?.proveedores?.nombre_comercial??r.ordenes_compra?.proveedores?.razon_social??"",descripcion:r.descripcion,recibido:r.recibido,cantidad:r.cantidad,unidad:r.articulos?.unidad??""}));
   const pendientes = ((data ?? []) as PorRecibir[]).filter((r) => avanceRenglon(Number(r.cantidad), Number(r.recibido)) !== "completa");
   const ordenes = [...new Map(pendientes.map((r) => [r.orden_id, r])).values()];
   const hoy = hoyCalendarioMX();
@@ -29,6 +34,7 @@ export default async function RecepcionesSucursal({ searchParams }: { searchPara
         <p>Equipo, servicios y otros pedidos por oficina. Los insumos (consumibles) se siguen recibiendo en Dodo IS.</p>
       </div>
       <Aviso ok={ok} error={error} />
+      <Plegable id="ya-recibidas" titulo="Ya recibidas" resumen={`${recibidas.length} renglones completos`}><div className="tabla-contenedor"><table className="tabla"><thead><tr><th>Orden / proveedor</th><th>Artículo</th><th>Recibido</th><th>Estado</th></tr></thead><tbody>{recibidas.map(r=><tr key={r.renglon_id}><td>{r.folio} · {r.proveedor}</td><td>{r.descripcion}</td><td>{r.recibido} / {r.cantidad} {r.unidad}</td><td><span className="compra-estado" data-tono="verde">Ya recibido</span></td></tr>)}</tbody></table></div>{!recibidas.length&&<p className="vacio">Sin renglones recibidos completos.</p>}</Plegable>
       {!ordenes.length && <p className="vacio">No hay nada por recibir.</p>}
       {ordenes.map((o) => (
         <section key={o.orden_id} className="seccion" aria-labelledby={`o-${o.orden_id}`}>

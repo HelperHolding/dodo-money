@@ -5,10 +5,10 @@ export type EtapaCompra = "cotizacion" | "orden" | "factura";
 export type TonoCompra = "ambar" | "azul" | "violeta" | "verde" | "gris";
 export const ETAPAS_COMPRA: Record<EtapaCompra,string> = {cotizacion:"Cotización",orden:"Orden de compra",factura:"Factura"};
 type Base = {id:string;nombre:string;proveedor_id:string;proveedor:string;sucursal_id:string|null;destino:string;fecha:string;importe:number};
-export type OrdenCompraVista = Base & {estado:EstadoOrden};
+export type OrdenCompraVista = Base & {estado:EstadoOrden;recepcion?:"nada"|"parcial"|"completa"};
 export type FacturaCompraVista = Base & {estado:EstadoFactura;saldo:number;vence_el:string;tipo:"ingreso"|"egreso";origen:"manual"|"cfdi";sustituido_por:string|null};
 export type LigaCompra = {orden_id:string;factura_id:string};
-export type DocumentoCompra = Base & {clave:string;etapa:EtapaCompra;estado:string;estadoTexto:string;tono:TonoCompra;href:string;saldo:number|null;vencida:boolean;sinCfdi:boolean;notaCredito:boolean;ordenes:{id:string;nombre:string}[]};
+export type DocumentoCompra = Base & {clave:string;etapa:EtapaCompra;estado:string;estadoTexto:string;tono:TonoCompra;href:string;saldo:number|null;vencida:boolean;sinCfdi:boolean;notaCredito:boolean;ordenes:{id:string;nombre:string}[];recepcion:"nada"|"parcial"|"completa"|null};
 
 /** Una factura vigente reemplaza la fila de su orden; conserva los enlaces de origen.
  * Varias facturas de una orden siguen siendo documentos distintos. Una cancelada no oculta la orden.
@@ -23,11 +23,13 @@ export function documentosCompra(ordenes:readonly OrdenCompraVista[],facturas:re
  const nombresFactura:Record<EstadoFactura,string>={por_pagar:"Por pagar",parcial:"Pago parcial",pagada:"Pagada",cancelada:"Cancelada"};
  const filas:DocumentoCompra[]=ordenes.filter(o=>!facturadas.has(o.id)).map(o=>{
   const etapa:EtapaCompra=o.estado==="borrador"||o.estado==="enviada"?"cotizacion":"orden";
-  return {...o,clave:`orden:${o.id}`,etapa,estadoTexto:nombresOrden[o.estado],tono:o.estado==="cancelada"?"gris":o.estado==="cerrada"?"verde":etapa==="cotizacion"?"ambar":"azul",href:`/compras/ordenes/${o.id}`,saldo:null,vencida:false,sinCfdi:false,notaCredito:false,ordenes:[]};
+  return {...o,clave:`orden:${o.id}`,etapa,estadoTexto:nombresOrden[o.estado],tono:o.estado==="cancelada"?"gris":o.estado==="cerrada"?"verde":etapa==="cotizacion"?"ambar":"azul",href:`/compras/ordenes/${o.id}`,saldo:null,vencida:false,sinCfdi:false,notaCredito:false,recepcion:o.recepcion??"nada",ordenes:[]};
  });
  for(const f of facturas){
   const ids=[...(ligasPorFactura.get(f.id)??[])];
-  filas.push({...f,clave:`factura:${f.id}`,etapa:"factura",estadoTexto:f.sustituido_por?"Sustituida":nombresFactura[f.estado],tono:f.estado==="cancelada"?"gris":f.estado==="pagada"?"verde":"violeta",href:`/compras/facturas/${f.id}`,vencida:f.tipo==="ingreso"&&(f.estado==="por_pagar"||f.estado==="parcial")&&f.saldo>0&&f.vence_el<hoy,sinCfdi:f.origen==="manual",notaCredito:f.tipo==="egreso",ordenes:ids.map(id=>({id,nombre:ordenPorId.get(id)?.nombre??"Ver orden"}))});
+  const avances=ids.map(id=>ordenPorId.get(id)?.recepcion??"nada");
+  const recepcion=f.tipo==="egreso"||!ids.length?null:avances.every(a=>a==="completa")?"completa":avances.every(a=>a==="nada")?"nada":"parcial";
+  filas.push({...f,recepcion,clave:`factura:${f.id}`,etapa:"factura",estadoTexto:f.sustituido_por?"Sustituida":nombresFactura[f.estado],tono:f.estado==="cancelada"?"gris":f.estado==="pagada"?"verde":"violeta",href:`/compras/facturas/${f.id}`,vencida:f.tipo==="ingreso"&&(f.estado==="por_pagar"||f.estado==="parcial")&&f.saldo>0&&f.vence_el<hoy,sinCfdi:f.origen==="manual",notaCredito:f.tipo==="egreso",ordenes:ids.map(id=>({id,nombre:ordenPorId.get(id)?.nombre??"Ver orden"}))});
  }
  return filas.sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.clave.localeCompare(b.clave));
 }

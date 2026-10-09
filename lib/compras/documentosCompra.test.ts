@@ -49,3 +49,12 @@ test('agrupación conserva documentos y separa proveedores homónimos y Oficina'
  assert.equal(agruparDocumentosCompra(filas,'fecha')[0].clave,'2026-10-09');
  assert.equal(agruparDocumentosCompra(filas).flatMap(g=>g.filas).length,2);
 });
+
+test('recepción: factura hereda avance de todas sus órdenes sin inferir por pago',()=>{
+ const completas=[{...orden,recepcion:'completa' as const},{...orden,id:'o2',recepcion:'completa' as const}];
+ const ligas=[{orden_id:'o',factura_id:'f'},{orden_id:'o2',factura_id:'f'}];
+ assert.equal(documentosCompra(completas,[factura],ligas,'2026-10-09')[0].recepcion,'completa');
+ assert.equal(documentosCompra([completas[0],{...completas[1],recepcion:'nada'}],[factura],ligas,'2026-10-09')[0].recepcion,'parcial');
+ assert.equal(documentosCompra([], [{...factura,estado:'pagada'}],[],'2026-10-09')[0].recepcion,null);
+ assert.equal(documentosCompra([{...orden,recepcion:'parcial'}],[],[],'2026-10-09')[0].recepcion,'parcial');
+});

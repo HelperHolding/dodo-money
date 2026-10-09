@@ -23,7 +23,7 @@ type Abierto = {
 };
 
 type OrdenConfirmada = {
-  id: string; folio: string; entrega_esperada: string | null;
+  id: string; folio: string; estado:string; entrega_esperada: string | null;
   proveedores: { razon_social: string; nombre_comercial: string | null } | null; sucursales: { nombre: string } | null;
 };
 
@@ -36,16 +36,16 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
   const { supabase, perfil } = await obtenerPerfil();
   const edita = puedeEditarCompras(perfil.rol);
   // Solo lo que se ve: todas las pendientes y las 40 clasificadas más recientes (el historial completo crece cada día).
-  const [pendientes, { data: recientesData }, { data: abiertos }, { data: confirmadas }] = await Promise.all([
+  const [pendientes, { data: recientesData }, abiertos,confirmadas] = await Promise.all([
     leerTodo<Recepcion>((d, h) => supabase.from("recepciones_dodo").select("id, sucursal_id, dodo_insumo_id, material, unidad, fecha, cantidad, precio, clasificacion, orden_renglon_id, sucursales(nombre)")
       .eq("clasificacion", "pendiente").order("fecha", { ascending: false }).order("id").range(d, h).returns<Recepcion[]>()),
     supabase.from("recepciones_dodo").select("id, sucursal_id, dodo_insumo_id, material, unidad, fecha, cantidad, precio, clasificacion, orden_renglon_id, sucursales(nombre)")
       .neq("clasificacion", "pendiente").order("fecha", { ascending: false }).order("id").limit(40).returns<Recepcion[]>(),
-    supabase.from("renglones_recibido")
+    leerTodo<Abierto>((d,h)=>supabase.from("renglones_recibido")
       .select("id, descripcion, cantidad, recibido, orden_id, articulos(dodo_insumo_id, unidad), ordenes_compra!inner(folio, estado, sucursal_id, proveedores(razon_social, nombre_comercial))")
-      .eq("ordenes_compra.estado", "confirmada").returns<Abierto[]>(),
-    supabase.from("ordenes_compra").select("id, folio, entrega_esperada, proveedores(razon_social, nombre_comercial), sucursales(nombre)")
-      .eq("estado", "confirmada").order("entrega_esperada", { nullsFirst: false }).returns<OrdenConfirmada[]>(),
+      .in("ordenes_compra.estado", ["confirmada","cerrada"]).order("id").range(d,h).returns<Abierto[]>()),
+    leerTodo<OrdenConfirmada>((d,h)=>supabase.from("ordenes_compra").select("id, folio, estado, entrega_esperada, proveedores(razon_social, nombre_comercial), sucursales(nombre)")
+      .in("estado", ["confirmada","cerrada"]).order("entrega_esperada", { nullsFirst: false }).order("id").range(d,h).returns<OrdenConfirmada[]>()),
   ]);
   const agendaFacturas = await leerTodo<FacturaPrevista>((d,h)=>supabase.from("facturas")
     .select("id,folio,serie,uuid,recepcion_programada_el,proveedores(razon_social,nombre_comercial),sucursales(nombre)")
@@ -56,20 +56,20 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
     const rs = (abiertos ?? []).filter((a) => a.orden_id === o.id).map((a) => ({ cantidad: Number(a.cantidad), recibido: Number(a.recibido) }));
     const avance = avanceOrden(rs);
     const estado = estadoEntrega(o.entrega_esperada, avance === "completa", hoy);
-    const vista: OrdenEsperada & { entrega_esperada: string | null; completa: boolean } = {
+    const vista: OrdenEsperada & { entrega_esperada: string | null; completa: boolean;cerrada:boolean } = {
       id: o.id, folio: o.folio, proveedor: o.proveedores?.nombre_comercial ?? o.proveedores?.razon_social ?? "", destino: o.sucursales?.nombre ?? "Oficina",
-      avance: NOMBRE_AVANCE[avance].toLowerCase(), atrasada: estado === "atrasada", entrega_esperada: o.entrega_esperada, completa: avance === "completa",
+      avance: NOMBRE_AVANCE[avance].toLowerCase(), atrasada: estado === "atrasada", entrega_esperada: o.entrega_esperada, completa: avance === "completa",cerrada:o.estado==="cerrada",
     };
     return vista;
   });
-  const porDia = esperadasPorDia(esperadas);
-  const atrasadas = esperadas.filter((o) => o.atrasada);
-  const sinFecha = esperadas.filter((o) => !o.completa && !o.entrega_esperada);
+  const porDia = esperadasPorDia(esperadas.filter(o=>!o.cerrada));
+  const atrasadas = esperadas.filter((o) => !o.cerrada&&o.atrasada);
+  const sinFecha = esperadas.filter((o) => !o.cerrada&&!o.completa && !o.entrega_esperada);
   const manuales=edita?await leerTodo<{id:string;orden_renglon_id:string;fecha:string;cantidad:number}>((d,h)=>supabase.from("recepciones_app").select("id,orden_renglon_id,fecha,cantidad").is("anulada_en",null).is("conciliada_en",null).order("id").range(d,h).returns<{id:string;orden_renglon_id:string;fecha:string;cantidad:number}[]>()):[];
   const candidatas=(rec:Recepcion)=>manuales.filter(m=>m.fecha===rec.fecha&&abiertos?.some(r=>r.id===m.orden_renglon_id&&r.ordenes_compra?.sucursal_id===rec.sucursal_id&&(!r.articulos?.dodo_insumo_id||r.articulos.dodo_insumo_id===rec.dodo_insumo_id)));
   const recientes = recientesData ?? [];
   const opciones = (r: Recepcion) => (abiertos ?? []).filter((a) =>
-    a.ordenes_compra?.sucursal_id === r.sucursal_id && (!a.articulos?.dodo_insumo_id || a.articulos.dodo_insumo_id === r.dodo_insumo_id));
+    a.ordenes_compra?.estado==="confirmada"&&a.ordenes_compra?.sucursal_id === r.sucursal_id && (!a.articulos?.dodo_insumo_id || a.articulos.dodo_insumo_id === r.dodo_insumo_id));
 
   return (
     <>
@@ -103,6 +103,9 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
         <p className="saldo-nota">Fechas previstas; no confirman la recepción. Las órdenes vinculadas siguen mostrando su avance real en el calendario de entregas.</p>
         <ul>{agendaFacturas.map(f=><li key={f.id}><Link href={`/compras/facturas/${f.id}`}>{f.serie??""}{f.folio??f.uuid??"Factura"}</Link> · {f.proveedores?.nombre_comercial??f.proveedores?.razon_social} · {f.sucursales?.nombre??"Oficina"} · {fechaTexto(f.recepcion_programada_el)}</li>)}</ul>
       </section>}
+      <Plegable id="ordenes-recibidas" titulo="Órdenes ya recibidas" resumen={`${esperadas.filter(o=>o.completa).length} completas`}>
+      <div className="tabla-contenedor"><table className="tabla"><thead><tr><th>Orden</th><th>Proveedor</th><th>Sucursal</th><th>Recepción</th></tr></thead><tbody>{esperadas.filter(o=>o.completa).map(o=><tr key={o.id}><td><Link href={`/compras/ordenes/${o.id}`}>{o.folio}</Link></td><td>{o.proveedor}</td><td>{o.destino}</td><td><span className="compra-estado" data-tono="verde">Ya recibido</span></td></tr>)}</tbody></table></div>{!esperadas.some(o=>o.completa)&&<p className="vacio">No hay órdenes recibidas completas.</p>}
+      </Plegable>
       {edita && <FormImportarRecepciones />}
 
       <section className="seccion" aria-labelledby="t-pendientes">
