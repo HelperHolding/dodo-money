@@ -67,7 +67,7 @@ begin
  for e in select value from jsonb_array_elements(p_empleados) loop
   if not exists(select 1 from public.personal p join public.personal_versiones v on v.personal_id=p.id where p.id=(e->>'personal_id')::uuid and v.id=(e->>'version_id')::uuid and p.sucursal_id is not distinct from p_sucursal) then raise exception 'El empleado no corresponde a este lugar.';end if;
  end loop;
- if exists(select 1 from jsonb_array_elements(p_empleados)e group by e->>'personal_id' having count(*)>1) then raise exception 'Hay empleados repetidos.';end if;
+ if exists(select 1 from jsonb_array_elements(p_empleados) as empleado(valor) group by empleado.valor->>'personal_id' having count(*)>1) then raise exception 'Hay empleados repetidos.';end if;
  select id into prev from public.nomina_reales where sucursal_id is not distinct from p_sucursal and mes=p_mes and anulada_en is null;
  insert into public.nomina_borradores(sucursal_id,mes,fuente,empleados,avisos,previa,creado_por) values(p_sucursal,p_mes,trim(p_fuente),p_empleados,p_avisos,prev,auth.uid()) returning id into nuevo;
  return nuevo;
@@ -103,7 +103,7 @@ begin
  for e in select value from jsonb_array_elements(p_empleados) loop
   if not exists(select 1 from jsonb_array_elements(r.empleados)d where d->>'personal_id'=e->>'personal_id' and d->>'version_id'=e->>'version_id') then raise exception 'Revisa los empleados del borrador.';end if;
  end loop;
- if exists(select 1 from jsonb_array_elements(p_empleados)e group by e->>'personal_id' having count(*)>1) then raise exception 'Hay empleados repetidos.';end if;
+ if exists(select 1 from jsonb_array_elements(p_empleados) as empleado(valor) group by empleado.valor->>'personal_id' having count(*)>1) then raise exception 'Hay empleados repetidos.';end if;
  n:=public.guardar_nomina_real(r.sucursal_id,r.mes,p_fuente,p_empleados,r.previa);
  update public.nomina_borradores set confirmada_id=n where id=p_id;
  return n;
