@@ -8,7 +8,7 @@ import { avanceOrden, NOMBRE_AVANCE } from "@/lib/compras/ordenes";
 import { esperadasPorDia, estadoEntrega } from "@/lib/compras/entregas";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
-import { clasificarRecepcion } from "./acciones";
+import { clasificarRecepcion, conciliarRecepcion } from "./acciones";
 import { FormImportarRecepciones } from "./FormImportarRecepciones";
 import { CalendarioEntregas, type OrdenEsperada } from "./CalendarioEntregas";
 
@@ -65,6 +65,8 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
   const porDia = esperadasPorDia(esperadas);
   const atrasadas = esperadas.filter((o) => o.atrasada);
   const sinFecha = esperadas.filter((o) => !o.completa && !o.entrega_esperada);
+  const manuales=edita?await leerTodo<{id:string;orden_renglon_id:string;fecha:string;cantidad:number}>((d,h)=>supabase.from("recepciones_app").select("id,orden_renglon_id,fecha,cantidad").is("anulada_en",null).is("conciliada_en",null).order("id").range(d,h).returns<{id:string;orden_renglon_id:string;fecha:string;cantidad:number}[]>()):[];
+  const candidatas=(rec:Recepcion)=>manuales.filter(m=>m.fecha===rec.fecha&&abiertos?.some(r=>r.id===m.orden_renglon_id&&r.ordenes_compra?.sucursal_id===rec.sucursal_id&&(!r.articulos?.dodo_insumo_id||r.articulos.dodo_insumo_id===rec.dodo_insumo_id)));
   const recientes = recientesData ?? [];
   const opciones = (r: Recepcion) => (abiertos ?? []).filter((a) =>
     a.ordenes_compra?.sucursal_id === r.sucursal_id && (!a.articulos?.dodo_insumo_id || a.articulos.dodo_insumo_id === r.dodo_insumo_id));
@@ -116,6 +118,8 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
                 </div>
               </div>
               <dl className="tarjeta-datos"><dt>Precio Dodo IS</dt><dd>{pesos(r.precio)} por {r.unidad}</dd></dl>
+              {edita&&candidatas(r).length>0&&<details className="seccion"><summary>Conciliar con recepción manual ({candidatas(r).length})</summary><p>Elige la captura de esta misma entrega. Se conservarán ambas fuentes sin duplicar cantidades.</p><form action={conciliarRecepcion} className="formulario"><input type="hidden" name="dodo_id" value={r.id}/><label className="campo">Recepción manual<select name="manual_id" required defaultValue=""><option value="" disabled>Elige…</option>{candidatas(r).map(m=><option key={m.id} value={m.id}>{abiertos?.find(a=>a.id===m.orden_renglon_id)?.ordenes_compra?.folio} · {m.fecha} · {m.cantidad}</option>)}</select></label><BotonEnviar pendiente="Conciliando…">Conciliar recepción</BotonEnviar></form></details>}
+
               {edita && (
                 <form action={clasificarRecepcion} className="formulario">
                   <input type="hidden" name="id" value={r.id} />

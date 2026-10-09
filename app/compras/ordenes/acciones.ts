@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { fechaEntregaValida } from "@/lib/compras/entregas";
 import { leerRenglon } from "@/lib/compras/ordenes";
 import { clienteAdmin, volver } from "../servidor";
 
@@ -108,7 +109,7 @@ export async function cambiarEntregaEsperada(fd: FormData) {
   const id = texto(fd, "id");
   const supabase = await clienteAdmin(ruta(id));
   const fecha = texto(fd, "entrega_esperada");
-  if (!/^d{4}-d{2}-d{2}$/.test(fecha)) volver(ruta(id), "error", "Escribe la fecha en que se espera la entrega.");
+  if (!fechaEntregaValida(fecha)) volver(ruta(id), "error", "Escribe la fecha en que se espera la entrega.");
   const { error } = await supabase.rpc("cambiar_entrega_esperada", { p_orden: id, p_fecha: fecha });
   if (error) volver(ruta(id), "error", error.message);
   listo(id, "Entrega esperada actualizada.");
@@ -128,4 +129,14 @@ export async function anularRecepcionApp(fd: FormData) {
   const { error } = await supabase.rpc("anular_recepcion", { p_id: texto(fd, "recepcion_id"), p_motivo: texto(fd, "motivo") });
   if (error) volver(ruta(id), "error", error.message);
   listo(id, "Recepción anulada.");
+}
+
+/** Recepción real, también anterior a la captura de la orden. */
+export async function registrarRecepcionOrden(fd: FormData) {
+ const id=texto(fd,"id"), db=await clienteAdmin(ruta(id));
+ const renglones=fd.getAll("renglon").map(x=>({id:String(x),cantidad:Number(String(fd.get(`cantidad_${x}`)??"").replace(/[$,\s]/g,""))})).filter(x=>x.cantidad!==0);
+ if(!renglones.length||renglones.some(x=>!Number.isFinite(x.cantidad)||x.cantidad<=0))volver(ruta(id),"error","Indica las cantidades recibidas; deja vacíos los renglones que no llegaron.");
+ const {error}=await db.rpc("registrar_recepcion_orden",{p_orden:id,p_fecha:texto(fd,"fecha_recepcion"),p_motivo:texto(fd,"motivo"),p_renglones:renglones,p_lote:texto(fd,"lote")});
+ if(error)volver(ruta(id),"error",error.message);
+ listo(id,"Recepción registrada con su fecha real.");
 }

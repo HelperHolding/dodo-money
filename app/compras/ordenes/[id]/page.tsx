@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Fragment } from "react";
 import { avanceFacturacion, nombreFactura } from "@/lib/compras/facturas";
 import Link from "next/link";
@@ -14,7 +15,7 @@ import {
 import { NOMBRE_TASA_IVA, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import {
-  agregarRenglon, anularRecepcionApp, cancelarOrden, cerrarOrden, confirmarOrden, copiarOrden, editarOrden, editarRenglon, enviarOrden, quitarRenglon, cambiarEntregaEsperada, facturarOrden,
+  agregarRenglon, anularRecepcionApp, cancelarOrden, cerrarOrden, confirmarOrden, copiarOrden, editarOrden, editarRenglon, enviarOrden, quitarRenglon, cambiarEntregaEsperada, facturarOrden, registrarRecepcionOrden,
 } from "../acciones";
 import { CamposRenglon } from "../CamposRenglon";
 
@@ -25,7 +26,7 @@ type Orden = {
 };
 type Renglon = { id: string; articulo_id: string; descripcion: string; cantidad: number; precio: number; tasa_iva: TasaIva; recibido: number; articulos: { unidad: string; tipo: string } | null };
 type RecDodo = { id: string; orden_renglon_id: string; fecha: string; cantidad: number; unidad: string; precio: number };
-type RecApp = { id: string; orden_renglon_id: string; fecha: string; cantidad: number; anulada_en: string | null; motivo_anulacion: string | null; foto_path: string | null };
+type RecApp = { id: string; orden_renglon_id: string; fecha: string; cantidad: number; anulada_en: string | null; motivo_anulacion: string | null; foto_path: string | null; nota: string | null; conciliada_en: string | null };
 type Evento = { id: number; evento: string; nota: string | null; en: string; perfiles: { nombre: string } | null };
 
 const CLAVE_EVENTO: Record<string, string> = {
@@ -56,7 +57,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const [{ data: recDodo }, { data: recApp }] = ids.length
     ? await Promise.all([
       supabase.from("recepciones_dodo").select("id, orden_renglon_id, fecha, cantidad, unidad, precio").in("orden_renglon_id", ids).order("fecha").returns<RecDodo[]>(),
-      supabase.from("recepciones_app").select("id, orden_renglon_id, fecha, cantidad, anulada_en, motivo_anulacion, foto_path").in("orden_renglon_id", ids).order("recibido_en").returns<RecApp[]>(),
+      supabase.from("recepciones_app").select("id, orden_renglon_id, fecha, cantidad, anulada_en, motivo_anulacion, foto_path, nota, conciliada_en").in("orden_renglon_id", ids).order("recibido_en").returns<RecApp[]>(),
     ])
     : [{ data: [] as RecDodo[] }, { data: [] as RecApp[] }];
 
@@ -109,6 +110,14 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
         <div className="acciones">
           {edita && o.estado === 'confirmada' && facturas.length===0 && <form action={facturarOrden}><input type="hidden" name="id" value={o.id}/><BotonEnviar pendiente="Creando factura…" confirmar={`Crear una prefactura sin CFDI por ${pesos(t.total)}, copiando el proveedor, la sucursal y los renglones de esta orden. Después podrás registrar el pago. ¿Continuar?`}>Crear factura para pagar</BotonEnviar></form>}
           {edita && facturas.map(f=><Link key={f.id} className="boton" href={`/compras/facturas/${f.id}`}>Ver {nombreFactura(f)} y pagos</Link>)}
+          {edita && o.estado === "confirmada" && <details className="orden-accion-desplegable"><summary className="boton boton-secundario">Registrar recepción</summary><form action={registrarRecepcionOrden} className="formulario orden-accion-formulario">
+ <input type="hidden" name="id" value={o.id}/><input type="hidden" name="lote" value={randomUUID()}/>
+ <label className="campo">Fecha real de recepción<input type="date" name="fecha_recepcion" required max={hoyCalendarioMX()} defaultValue={hoyCalendarioMX()}/></label>
+ <label className="campo">Motivo / nota de recepción<textarea name="motivo" required maxLength={1000} placeholder="Por ejemplo: entrega del 7 de octubre capturada hoy"/></label>
+ <p className="saldo-nota">Puedes registrar días anteriores. Esto confirma la recepción en DODO MX; no registra entradas en Dodo IS. Deja vacíos los artículos que no llegaron.</p>
+ {rs.map(r=><label className="campo" key={r.id}>{r.descripcion} · pendiente {Math.max(0,Number(r.cantidad)-Number(r.recibido))} {r.articulos?.unidad}<input type="hidden" name="renglon" value={r.id}/><input name={`cantidad_${r.id}`} type="number" min="0" step="0.001" inputMode="decimal" placeholder="Cantidad recibida"/></label>)}
+ <BotonEnviar pendiente="Registrando…">Guardar recepción</BotonEnviar>
+ </form></details>}
           <Link className="boton boton-secundario" href={`/orden-compra/${o.id}`} target="_blank">Ver PDF</Link>
           {(grupo?.length ?? 0) > 1 && <Link className="boton boton-secundario" href={`/compras/ordenes/${o.id}/comparar`}>Comparar {grupo!.length} cotizaciones</Link>}
         </div>
@@ -241,7 +250,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
                             <ul className="lista-simple">
                               {dodo.map((x) => <li key={x.id}>Dodo IS · {fechaTexto(x.fecha)} · {x.cantidad} {x.unidad} · {pesos(x.precio)}{precioDistinto(Number(r.precio), Number(x.precio)) ? ` (orden: ${pesos(r.precio)})` : ""}</li>)}
                               {app.map((x) => (
-                                <li key={x.id}>En sucursal · {fechaTexto(x.fecha)} · {x.cantidad}{x.anulada_en ? ` · anulada: ${x.motivo_anulacion}` : ""}
+                                <li key={x.id}>DODO MX · {fechaTexto(x.fecha)} · {x.cantidad}{x.conciliada_en ? " · conciliada con Dodo IS" : ""}{x.nota ? ` · ${x.nota}` : ""}{x.anulada_en ? ` · anulada: ${x.motivo_anulacion}` : ""}
                                   {x.foto_path && urlFoto.get(x.foto_path) ? <> · <a href={urlFoto.get(x.foto_path)} target="_blank" rel="noreferrer">ver foto</a></> : null}</li>
                               ))}
                             </ul>

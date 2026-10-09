@@ -29,3 +29,11 @@ test("esperadasPorDia: solo las que tienen fecha y no se han recibido completas"
   ]);
   assert.deepEqual(Object.fromEntries(Object.entries(r).map(([d, os]) => [d, os.map((o) => o.id)])), { "2026-10-05": ["a", "b"] });
 });
+
+test("fecha de entrega admite días anteriores y rechaza fechas inexistentes", async()=>{
+ const {fechaEntregaValida}=await import("./entregas.ts");
+ assert.equal(fechaEntregaValida("2026-10-07"),true);
+ assert.equal(fechaEntregaValida("2026-02-30"),false);
+ assert.equal(fechaEntregaValida("2024-02-29"),true);
+ assert.equal(fechaEntregaValida("2026-2-9"),false);
+});

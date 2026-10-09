@@ -44,3 +44,10 @@ export async function clasificarRecepcion(fd: FormData) {
   revalidatePath("/compras", "layout");
   volver(ruta, "ok", "Recepción clasificada.");
 }
+
+export async function conciliarRecepcion(fd: FormData) {
+ const ruta="/compras/recepciones",db=await clienteAdmin(ruta);
+ const {error}=await db.rpc("conciliar_recepcion_dodo",{p_dodo:String(fd.get("dodo_id")??""),p_manual:String(fd.get("manual_id")??"")});
+ if(error)volver(ruta,"error",error.message);
+ revalidatePath("/compras","layout");volver(ruta,"ok","Recepciones conciliadas sin duplicar cantidades.");
+}

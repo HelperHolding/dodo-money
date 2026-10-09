@@ -1,0 +1,45 @@
+-- PRUEBAS OK revierte los datos del ensayo. Requiere 0048 y 0049.
+do $$
+declare a uuid;c uuid;s uuid;p uuid;art uuid;o uuid;b uuid:=gen_random_uuid();ins text:=upper(replace(gen_random_uuid()::text,'-',''));r uuid;d uuid;m uuid;f date:= (now() at time zone 'America/Mexico_City')::date-3;filas jsonb;dias jsonb;lineas jsonb; afectadas integer;
+begin
+ select id,sucursal_id into a,s from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' limit 1;
+ select id into c from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
+ if a is null or c is null or s is null then raise exception 'FALTAN DATOS: admin con sucursal y corporativo activos.';end if;
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ insert into public.proveedores(razon_social,rfc,regimen_fiscal) values('Recepción histórica prueba','RHP010101AB1','601') returning id into p;
+ insert into public.articulos(nombre,unidad,tipo,dodo_insumo_id) values('Insumo histórico prueba','kg','consumible',ins) returning id into art;
+ insert into public.ordenes_compra(proveedor_id,sucursal_id) values(p,s) returning id into o;
+ insert into public.orden_renglones(orden_id,articulo_id,descripcion,cantidad,precio,tasa_iva) values(o,art,'Insumo',10,10,'0') returning id into r;
+ filas:=jsonb_build_array(jsonb_build_object('id',r,'cantidad',3));
+ set local role authenticated;
+ begin perform public.registrar_recepcion_orden(o,f,'Entrega anterior capturada hoy',filas,b);raise exception 'FALLÓ: recibió borrador';exception when raise_exception then if sqlerrm<>'Solo se reciben órdenes confirmadas y abiertas.' then raise;end if;end;
+ perform public.confirmar_orden(o);
+ begin perform public.registrar_recepcion_orden(o,f,'',filas,gen_random_uuid());raise exception 'FALLÓ: sin motivo';exception when raise_exception then if sqlerrm<>'Agrega cantidades y un motivo específico de recepción.' then raise;end if;end;
+ perform public.registrar_recepcion_orden(o,f,'Entrega anterior capturada hoy',filas,b);
+ perform public.registrar_recepcion_orden(o,f,'Entrega anterior capturada hoy',filas,b);
+ if public.recibido_renglon(r) is distinct from 3 or (select count(*) from public.recepciones_app where lote_id=b)<>1 then raise exception 'FALLÓ: recepción pasada / idempotencia';end if;
+ select id into m from public.recepciones_app where lote_id=b;
+ if not exists(select 1 from public.recepciones_app where id=m and fecha=f and recibido_por=a and nota='Entrega anterior capturada hoy') then raise exception 'FALLÓ: trazabilidad';end if;
+ begin perform public.registrar_recepcion_orden(o,f+10,'Entrega futura inválida',filas,gen_random_uuid());raise exception 'FALLÓ: futura';exception when raise_exception then if sqlerrm<>'Fecha de recepción inválida; no puede ser futura.' then raise;end if;end;
+ begin perform public.registrar_recepcion_orden(o,f,'Entrega demasiado grande',jsonb_build_array(jsonb_build_object('id',r,'cantidad',8)),gen_random_uuid());raise exception 'FALLÓ: exceso';exception when raise_exception then if sqlerrm not like 'La cantidad de % supera lo pendiente.' then raise;end if;end;
+ dias:=jsonb_build_array(jsonb_build_object('sucursal_id',s,'fecha',f));
+ lineas:=jsonb_build_array(jsonb_build_object('sucursal_id',s,'fecha',f,'dodo_insumo_id',ins,'material','Insumo','unidad','kg','cantidad',3,'precio',10));
+ perform public.importar_recepciones_dodo('ensayo.xlsx',dias,lineas);
+ select id into d from public.recepciones_dodo where sucursal_id=s and dodo_insumo_id=ins and fecha=f;
+ if public.recibido_renglon(r) is distinct from 3 or not exists(select 1 from public.recepciones_dodo where id=d and clasificacion='pendiente') then raise exception 'FALLÓ: importación duplicó o ligó sin revisión';end if;
+ begin perform public.clasificar_recepcion(d,'orden',r);raise exception 'FALLÓ: ligó duplicado';exception when raise_exception then if sqlerrm<>'Usa Conciliar con recepción manual para evitar duplicados.' then raise;end if;end;
+ perform public.conciliar_recepcion_dodo(d,m);
+ if public.recibido_renglon(r) is distinct from 3 then raise exception 'FALLÓ: conciliación duplica';end if;
+ perform public.importar_recepciones_dodo('ensayo-reimportado.xlsx',dias,lineas);
+ if public.recibido_renglon(r) is distinct from 3 then raise exception 'FALLÓ: reimportación';end if;
+ perform public.importar_recepciones_dodo('ensayo-corrección.xlsx',dias,jsonb_set(lineas,'{0,cantidad}','5'));
+ if public.recibido_renglon(r) is distinct from 5 then raise exception 'FALLÓ: diferencia de cantidades';end if;
+ perform public.importar_recepciones_dodo('ensayo-vacío.xlsx',dias,'[]');
+ if public.recibido_renglon(r) is distinct from 3 then raise exception 'FALLÓ: perdió captura original';end if;
+ perform public.importar_recepciones_dodo('ensayo-restaurado.xlsx',dias,lineas);
+ perform set_config('request.jwt.claims',json_build_object('sub',c,'role','authenticated')::text,true);
+ if public.recibido_renglon(r) is distinct from 3 then raise exception 'FALLÓ: corporativo consulta';end if;
+ begin perform public.registrar_recepcion_orden(o,f,'Sin permiso corporativo',filas,gen_random_uuid());raise exception 'FALLÓ: corporativo escribe';exception when raise_exception then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin update public.recepciones_app set nota='modificada' where id=m;get diagnostics afectadas=row_count;if afectadas>0 then raise exception 'FALLÓ: escritura directa';end if;exception when insufficient_privilege then null;end;
+ raise exception 'PRUEBAS OK — fecha anterior · insumos y cantidades · confirmada · motivo y trazabilidad · sin duplicados · importación por revisar · conciliación · reimportación · conserva original · corporativo consulta · sin escritura directa';
+end $$;
