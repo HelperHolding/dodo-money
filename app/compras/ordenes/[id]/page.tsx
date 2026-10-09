@@ -1,3 +1,4 @@
+import { FichaPestanas } from "@/components/FichaPestanas";
 import { randomUUID } from "node:crypto";
 import { Fragment } from "react";
 import { avanceFacturacion, nombreFactura } from "@/lib/compras/facturas";
@@ -92,10 +93,11 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
 
   return (
     <>
-      <div className="encabezado">
+      <div className="encabezado ficha-encabezado">
         <h1>{o.folio} · {o.proveedores?.nombre_comercial ?? o.proveedores?.razon_social}</h1>
         <p>{NOMBRE_ESTADO_ORDEN[o.estado]} · para {o.sucursales?.nombre ?? "Oficina"}{o.motivo ? ` · ${o.motivo}` : ""}</p>
       </div>
+      <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={o.estado}>{NOMBRE_ESTADO_ORDEN[o.estado]}</strong></div><div><small>Total de la orden</small><strong>{pesos(t.total)}</strong></div><div><small>Facturado</small><strong>{pesos(facturado)}</strong></div><div><small>Recepción</small><strong>{NOMBRE_AVANCE[avanceOrden(rs)]}</strong></div></div>
       <section className="seccion orden-acciones-encabezado" aria-label="Acciones de la orden">
         {edita && o.estado === "confirmada" && (
           <details className="orden-programar-entrega"><summary>Programar entrega</summary><form action={cambiarEntregaEsperada} className="acciones">
@@ -191,34 +193,8 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
 
       </section>
       <Aviso ok={ok} error={error} />
-      <div className="detalle-con-lado">
-        <div className="detalle-principal">
-
-      <section className="seccion">
-        <dl className="tarjeta-datos">
-          {o.estado === "confirmada" && <><dt>Recepción</dt><dd>{NOMBRE_AVANCE[avanceOrden(rs)]}</dd></>}
-          {o.estado === "confirmada" && (() => {
-            const estado = estadoEntrega(o.entrega_esperada, avanceOrden(rs) === "completa", hoyCalendarioMX());
-            return (
-              <><dt>Entrega esperada</dt>
-                <dd className={estado === "atrasada" ? "celda-alerta" : undefined}>
-                  {o.entrega_esperada ? fechaTexto(o.entrega_esperada) : "Sin fecha"}
-                  {estado === "atrasada" || estado === "hoy" ? ` · ${NOMBRE_ESTADO_ENTREGA[estado].toLowerCase()}` : ""}
-                </dd></>
-            );
-          })()}
-          {(o.estado === "confirmada" || o.estado === "cerrada") && (
-            <><dt>Facturación</dt><dd>{NOMBRE_AVANCE_FACTURA[avanceFacturacion(t.total, facturado)]} · {pesos(facturado)} de {pesos(t.total)}
-              {facturas.map((x) => <Fragment key={x.id}> · <Link href={`/compras/facturas/${x.id}`}>{nombreFactura(x)}</Link></Fragment>)}</dd></>
-          )}
-          {o.estado === "confirmada" && avanceOrden(rs) === "completa" && avanceFacturacion(t.total, facturado) === "completa" && (
-            <><dt>Lista</dt><dd>Recibida y facturada: ya se puede cerrar.</dd></>
-          )}
-          {o.notas && <><dt>Notas</dt><dd>{o.notas}</dd></>}
-        </dl>
-      </section>
-
-      <section className="seccion" aria-labelledby="t-renglones">
+      <FichaPestanas pestanas={[
+        {id:"renglones", titulo:`Artículos (${rs.length})`, contenido:<>      <section className="seccion" aria-labelledby="t-renglones">
         <h2 id="t-renglones">Renglones</h2>
         {!rs.length && <p className="vacio">Agrega el primer artículo.</p>}
         <div className="tabla-contenedor">
@@ -317,9 +293,33 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
         )}
       </section>
 
-        </div>
-        <aside className="detalle-lado" aria-labelledby="t-historial">
-          <section className="seccion">
+</>},
+        {id:"seguimiento", titulo:"Recepción y facturación", contenido:<>      <section className="seccion">
+        <dl className="tarjeta-datos">
+          {o.estado === "confirmada" && <><dt>Recepción</dt><dd>{NOMBRE_AVANCE[avanceOrden(rs)]}</dd></>}
+          {o.estado === "confirmada" && (() => {
+            const estado = estadoEntrega(o.entrega_esperada, avanceOrden(rs) === "completa", hoyCalendarioMX());
+            return (
+              <><dt>Entrega esperada</dt>
+                <dd className={estado === "atrasada" ? "celda-alerta" : undefined}>
+                  {o.entrega_esperada ? fechaTexto(o.entrega_esperada) : "Sin fecha"}
+                  {estado === "atrasada" || estado === "hoy" ? ` · ${NOMBRE_ESTADO_ENTREGA[estado].toLowerCase()}` : ""}
+                </dd></>
+            );
+          })()}
+          {(o.estado === "confirmada" || o.estado === "cerrada") && (
+            <><dt>Facturación</dt><dd>{NOMBRE_AVANCE_FACTURA[avanceFacturacion(t.total, facturado)]} · {pesos(facturado)} de {pesos(t.total)}
+              {facturas.map((x) => <Fragment key={x.id}> · <Link href={`/compras/facturas/${x.id}`}>{nombreFactura(x)}</Link></Fragment>)}</dd></>
+          )}
+          {o.estado === "confirmada" && avanceOrden(rs) === "completa" && avanceFacturacion(t.total, facturado) === "completa" && (
+            <><dt>Lista</dt><dd>Recibida y facturada: ya se puede cerrar.</dd></>
+          )}
+          {o.notas && <><dt>Notas</dt><dd>{o.notas}</dd></>}
+        </dl>
+      </section>
+
+</>},
+        {id:"historial", titulo:`Historial (${historial?.length ?? 0})`, contenido:<>          <section className="seccion">
             <h2 id="t-historial">Historial</h2>
             {!historial?.length ? <p className="vacio">Sin eventos.</p> : (
               <ol className="linea-tiempo">
@@ -333,8 +333,8 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
               </ol>
             )}
           </section>
-        </aside>
-      </div>
+</>},
+      ]} />
     </>
   );
 }

@@ -1,9 +1,9 @@
+import { FichaPestanas } from "@/components/FichaPestanas";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Fragment } from "react";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
-import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { cotejar, NOMBRE_COTEJO, nombreEstadoFactura, nombreFactura, valorRecibido, vencida, type EstadoFactura } from "@/lib/compras/facturas";
@@ -99,12 +99,65 @@ export default async function DetalleFactura({ params, searchParams }: { params:
 
   return (
     <>
-      <div className="encabezado">
+      <div className="encabezado ficha-encabezado">
         <h1>{f.tipo === "egreso" ? "Nota de crédito" : "Factura"} {f.serie ?? ""}{f.folio ?? ""} · {f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social}</h1>
         <p>{nombreEstadoFactura(f.tipo, f.estado)}{f.motivo_cancelacion ? ` · ${f.motivo_cancelacion}` : ""}{f.origen === "manual" ? " · Sin CFDI" : ` · UUID ${f.uuid}`}</p>
       </div>
-      <Aviso ok={ok} error={error} />
-      {edita && (          <details className="seccion">
+      <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={f.estado}>{nombreEstadoFactura(f.tipo, f.estado)}</strong></div><div><small>Total original</small><strong>{pesos(f.total)}</strong></div><div><small>Saldo pendiente</small><strong>{pesos(f.estado === "cancelada" ? 0 : f.saldo)}</strong></div><div><small>Fecha de vencimiento</small><strong>{fechaTexto(f.vence_el)}</strong></div></div>
+      <div className="orden-acciones-encabezado ficha-barra">
+        {edita && <details><summary>Programar / revisar</summary>      {edita && (
+        <section className="seccion">
+          <h2>Programación y revisión</h2>
+          {!f.revisada && NOMBRE_COTEJO[cotejo].alerta && f.tipo === "ingreso" && (
+            <form action={marcarRevisada} className="formulario">
+              <input type="hidden" name="id" value={f.id} />
+              {(cotejo==='nada_recibido'||cotejo==='facturado_de_mas')&&<p className="aviso">Todavía falta recibir todo lo facturado. Para registrar un anticipo, revisa la orden y el monto, escribe el motivo de autorización y marca la factura como revisada. Esto permite pagar; no registra una recepción ni cierra la orden.</p>}
+              <div className="campo"><label htmlFor="nota">Revisada: ¿qué verificaste?</label><input id="nota" name="nota" required placeholder={cotejo==='nada_recibido'||cotejo==='facturado_de_mas'?'Ej. anticipo autorizado; orden y monto verificados':'Ej. el proveedor aplicó un aumento autorizado'} /></div>
+              <BotonEnviar className="boton boton-secundario">Marcar como revisada</BotonEnviar>
+            </form>
+          )}
+          {f.tipo === "ingreso" && (f.estado === "por_pagar" || f.estado === "parcial") && (
+            <form action={cambiarVencimientoFactura} className="formulario">
+              <input type="hidden" name="id" value={f.id} />
+              <div className="campo"><label htmlFor="vence">Vencimiento</label><input id="vence" name="vence_el" type="date" defaultValue={f.vence_el} required /></div>
+              <BotonEnviar className="boton boton-secundario">Cambiar vencimiento</BotonEnviar>
+            </form>
+          )}
+          {f.tipo === "ingreso" && (f.estado === "por_pagar" || f.estado === "parcial") && (
+            <form action={programarPagoFactura} className="formulario">
+              <input type="hidden" name="id" value={f.id} />
+              <div className="campo">
+                <label htmlFor="programada">Día de pago</label>
+                <input id="programada" name="pago_programado_el" type="date" min={hoy} defaultValue={f.pago_programado_el ?? ""} />
+                <small>Recomendado: {textoDia(diaDePagoSugerido(f.vence_el, hoy, dias))}. Puedes elegir cualquier día desde hoy; deja vacío para quitar la programación.</small>
+              </div>
+              <div className="campo"><label htmlFor="pago_programado_forma">Forma de pago prevista</label>
+                <select id="pago_programado_forma" name="pago_programado_forma" defaultValue={f.pago_programado_forma??""}>
+                  <option value="">Elige al programar una fecha…</option>
+                  {FORMAS_PAGO.map(forma=><option key={forma} value={forma}>{NOMBRE_FORMA_PAGO[forma]}</option>)}
+                </select><small>Es una previsión; no registra el pago ni reserva efectivo.</small>
+              </div>
+              <BotonEnviar className="boton boton-secundario">Programar pago</BotonEnviar>
+            </form>
+          )}
+          {f.tipo==="ingreso" && <form action={programarRecepcionFactura} className="formulario">
+            <h3>Programar recepción de insumos</h3>
+            <input type="hidden" name="id" value={f.id}/>
+            <div className="campo"><label htmlFor="recepcion_programada_el">Fecha de recepción prevista</label>
+              <input id="recepcion_programada_el" name="recepcion_programada_el" type="date" min={hoy} defaultValue={f.recepcion_programada_el??""}/>
+              <small>{plazo!=null?`Recomendado: ${fechaTexto(recepcionSugerida??hoy)} (hoy + ${plazo} días naturales del proveedor).`:"El proveedor no tiene plazo de entrega configurado."} Puedes elegir cualquier día desde hoy; deja vacío para quitar la programación.</small>
+            </div>
+            <p className="saldo-nota">Actualiza también la entrega esperada de todas las órdenes vinculadas que siguen pendientes. No registra cantidades recibidas ni entradas de inventario.</p>
+            <BotonEnviar className="boton boton-secundario">Guardar recepción prevista</BotonEnviar>
+          </form>}
+
+        </section>
+      )}
+</details>}
+        {edita && f.tipo === "ingreso" && Number(f.saldo) > 0 && <Link className="boton" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}
+        {urlPdf && <a className="boton boton-secundario" href={urlPdf} target="_blank" rel="noreferrer">{f.origen === "manual" ? "Ver adjunto" : "Ver PDF"}</a>}
+        {urlXml && <a className="boton boton-secundario" href={urlXml} target="_blank" rel="noreferrer">Ver XML</a>}
+      {edita && (          <details>
             <summary>Cancelar factura / gasto</summary>
             <form action={cancelarFacturaAccion} className="formulario">
               <input type="hidden" name="id" value={f.id} />
@@ -121,9 +174,51 @@ export default async function DetalleFactura({ params, searchParams }: { params:
             </form>
           </details>
       )}
+      </div>
+      <Aviso ok={ok} error={error} />
       {f.estado === "cancelada" && <section className="seccion"><h2>Cancelación registrada</h2><p>{f.motivo_cancelacion}</p><p>Este registro ya no cuenta como gasto en el P&amp;L ni como pago pendiente.</p>{cancelacion && <><p>{cancelacion.perfiles?.nombre ?? "Administración"} · {new Date(cancelacion.creado_en).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}</p><p>Importe original: <strong>{pesos(f.total)}</strong></p>{cancelacion.ordenes.length > 0 && <p>Órdenes anteriormente vinculadas: {cancelacion.ordenes.map((orden, i) => <Fragment key={orden}>{i > 0 && " · "}<Link href={`/compras/ordenes/${orden}`}>Ver orden {i + 1}</Link></Fragment>)}</p>}</>}</section>}
 
-      <section className="seccion">
+      <FichaPestanas pestanas={[
+        {id:"conceptos", titulo:`Conceptos (${conceptos?.length ?? 0})`, contenido:<>      <section className="seccion" aria-labelledby="t-conceptos"><h2 id="t-conceptos">{f.origen === "manual" ? "Renglones" : "Conceptos del XML"}</h2>
+        {edita && (conceptos ?? []).length > 0 ? (
+          <form action={guardarCuentasConceptos} className="formulario">
+            <input type="hidden" name="id" value={f.id} />
+            <ul className="lista-filas" style={{ "--columnas": 2 } as React.CSSProperties}>
+              {(conceptos ?? []).map((c) => (
+                <li key={c.id} className="fila">
+                  <div className="fila-nombre"><strong>{c.descripcion}</strong><small>{c.cantidad} {c.unidad} · {pesos(c.valor_unitario)}</small></div>
+                  <div className="fila-datos">
+                    <span>{pesos(c.importe)}</span>
+                    <span>
+                      <input type="hidden" name="concepto_id" value={c.id} />
+                      <select name="concepto_cuenta" defaultValue={c.cuenta_pl ?? ""} aria-label={`Cuenta del P&L de ${c.descripcion}`}>
+                        <option value="">La de la factura</option>
+                        {[...CUENTAS_GASTO, ...CUENTAS_MEMO].map((k) => <option key={k} value={k}>{NOMBRE_CUENTA[k]}</option>)}
+                      </select>
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <BotonEnviar className="boton boton-secundario">Guardar cuentas</BotonEnviar>
+          </form>
+        ) : (
+          <dl className="tarjeta-datos">
+            {(conceptos ?? []).map((c) => <Fragment key={c.id}><dt>{c.cantidad} {c.unidad}</dt><dd>{c.descripcion} · {pesos(c.importe)} · {c.cuenta_pl && esCuentaPl(c.cuenta_pl) ? NOMBRE_CUENTA[c.cuenta_pl] : "cuenta de la factura"}</dd></Fragment>)}
+          </dl>
+        )}
+        {rs.length > 0 && (
+          <>
+            <h3>Renglones de las órdenes</h3>
+            <dl className="tarjeta-datos">
+              {rs.map((r, i) => <Fragment key={i}><dt>{r.cantidad} pedidos · {r.recibido} recibidos</dt><dd>{r.descripcion} · {pesos(r.precio)}</dd></Fragment>)}
+            </dl>
+          </>
+        )}
+      </section>
+
+</>},
+        {id:"datos", titulo:"Datos y contabilidad", contenido:<>      <section className="seccion">
         <dl className="tarjeta-datos">
           <dt>Emitida</dt><dd>{fechaTexto(f.fecha_emision)} · {f.metodo_pago ?? "sin método"}{f.forma_pago ? ` · forma ${f.forma_pago}` : ""}</dd>
           <dt>Subtotal</dt><dd>{pesos(f.subtotal)}{Number(f.descuento) ? ` · descuento ${pesos(f.descuento)}` : ""}</dd>
@@ -164,7 +259,10 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           {urlXml && <a className="boton boton-secundario" href={urlXml} target="_blank" rel="noreferrer">Ver XML</a>}
           {urlPdf && <a className="boton boton-secundario" href={urlPdf} target="_blank" rel="noreferrer">{f.origen === "manual" ? "Ver adjunto" : "Ver PDF"}</a>}
         </div>
-        {(pagosFactura ?? []).length > 0 && (
+      </section>
+
+</>},
+        {id:"pagos", titulo:`Pagos (${pagosFactura?.length ?? 0})`, contenido:<section className="seccion"><h2>Pagos aplicados</h2>{!(pagosFactura ?? []).length && <p className="vacio">Todavía no hay pagos registrados.</p>}        {(pagosFactura ?? []).length > 0 && (
           <dl className="tarjeta-datos">
             {(pagosFactura ?? []).map((a) => (
               <Fragment key={a.id}><dt><Link href={`/compras/pagos/${a.pagos.id}`}>{fechaTexto(a.pagos.fecha)}</Link></dt><dd>{pesos(a.monto)}{a.pagos.anulado_en ? " · anulado" : ""}</dd></Fragment>
@@ -174,9 +272,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
         {edita && f.tipo === "ingreso" && Number(f.saldo) > 0 && (f.estado === "por_pagar" || f.estado === "parcial") && (
           <div className="acciones"><Link className="boton" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link></div>
         )}
-      </section>
-
-      {f.tipo === "ingreso" && (
+</section>},
+        {id:"recepcion", titulo:"Órdenes y recepción", contenido:<>      {f.tipo === "ingreso" && (
         <section className="seccion" aria-labelledby="t-cotejo">
           <h2 id="t-cotejo">Cotejo</h2>
           <p className={NOMBRE_COTEJO[cotejo].alerta ? "aviso aviso-error" : "aviso aviso-ok"}>{NOMBRE_COTEJO[cotejo].texto}</p>
@@ -230,45 +327,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
         <p className="aviso aviso-error">La factura que corrige ({f.uuid_relacionado}) aún no se sube. Cuando se suba, su saldo ya restará esta nota.</p>
       )}
 
-      <Plegable id="t-conceptos" titulo={f.origen === "manual" ? "Renglones" : "Conceptos del XML"} resumen={`${conceptos?.length ?? 0}`}>
-        {edita && (conceptos ?? []).length > 0 ? (
-          <form action={guardarCuentasConceptos} className="formulario">
-            <input type="hidden" name="id" value={f.id} />
-            <ul className="lista-filas" style={{ "--columnas": 2 } as React.CSSProperties}>
-              {(conceptos ?? []).map((c) => (
-                <li key={c.id} className="fila">
-                  <div className="fila-nombre"><strong>{c.descripcion}</strong><small>{c.cantidad} {c.unidad} · {pesos(c.valor_unitario)}</small></div>
-                  <div className="fila-datos">
-                    <span>{pesos(c.importe)}</span>
-                    <span>
-                      <input type="hidden" name="concepto_id" value={c.id} />
-                      <select name="concepto_cuenta" defaultValue={c.cuenta_pl ?? ""} aria-label={`Cuenta del P&L de ${c.descripcion}`}>
-                        <option value="">La de la factura</option>
-                        {[...CUENTAS_GASTO, ...CUENTAS_MEMO].map((k) => <option key={k} value={k}>{NOMBRE_CUENTA[k]}</option>)}
-                      </select>
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <BotonEnviar className="boton boton-secundario">Guardar cuentas</BotonEnviar>
-          </form>
-        ) : (
-          <dl className="tarjeta-datos">
-            {(conceptos ?? []).map((c) => <Fragment key={c.id}><dt>{c.cantidad} {c.unidad}</dt><dd>{c.descripcion} · {pesos(c.importe)} · {c.cuenta_pl && esCuentaPl(c.cuenta_pl) ? NOMBRE_CUENTA[c.cuenta_pl] : "cuenta de la factura"}</dd></Fragment>)}
-          </dl>
-        )}
-        {rs.length > 0 && (
-          <>
-            <h3>Renglones de las órdenes</h3>
-            <dl className="tarjeta-datos">
-              {rs.map((r, i) => <Fragment key={i}><dt>{r.cantidad} pedidos · {r.recibido} recibidos</dt><dd>{r.descripcion} · {pesos(r.precio)}</dd></Fragment>)}
-            </dl>
-          </>
-        )}
-      </Plegable>
-
-      {(sustituye ?? []).length > 0 && (
+</>},
+        {id:"documentos", titulo:"Documentos relacionados", contenido:<><p className="saldo-nota">Adjuntos, notas de crédito y sustituciones de este documento.</p>      {(sustituye ?? []).length > 0 && (
         <p className="aviso">Sustituye a: {(sustituye ?? []).map((x) => <Link key={x.id} href={`/compras/facturas/${x.id}`}>{x.folio}</Link>)}</p>
       )}
       {f.sustituido_por && <p className="aviso">Sustituido por <Link href={`/compras/facturas/${f.sustituido_por}`}>su CFDI</Link>.</p>}
@@ -290,54 +350,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
         </section>
       )}
 
-      {edita && (
-        <section className="seccion">
-          <h2>Acciones</h2>
-          {!f.revisada && NOMBRE_COTEJO[cotejo].alerta && f.tipo === "ingreso" && (
-            <form action={marcarRevisada} className="formulario">
-              <input type="hidden" name="id" value={f.id} />
-              {(cotejo==='nada_recibido'||cotejo==='facturado_de_mas')&&<p className="aviso">Todavía falta recibir todo lo facturado. Para registrar un anticipo, revisa la orden y el monto, escribe el motivo de autorización y marca la factura como revisada. Esto permite pagar; no registra una recepción ni cierra la orden.</p>}
-              <div className="campo"><label htmlFor="nota">Revisada: ¿qué verificaste?</label><input id="nota" name="nota" required placeholder={cotejo==='nada_recibido'||cotejo==='facturado_de_mas'?'Ej. anticipo autorizado; orden y monto verificados':'Ej. el proveedor aplicó un aumento autorizado'} /></div>
-              <BotonEnviar className="boton boton-secundario">Marcar como revisada</BotonEnviar>
-            </form>
-          )}
-          {f.tipo === "ingreso" && (f.estado === "por_pagar" || f.estado === "parcial") && (
-            <form action={cambiarVencimientoFactura} className="formulario">
-              <input type="hidden" name="id" value={f.id} />
-              <div className="campo"><label htmlFor="vence">Vencimiento</label><input id="vence" name="vence_el" type="date" defaultValue={f.vence_el} required /></div>
-              <BotonEnviar className="boton boton-secundario">Cambiar vencimiento</BotonEnviar>
-            </form>
-          )}
-          {f.tipo === "ingreso" && (f.estado === "por_pagar" || f.estado === "parcial") && (
-            <form action={programarPagoFactura} className="formulario">
-              <input type="hidden" name="id" value={f.id} />
-              <div className="campo">
-                <label htmlFor="programada">Día de pago</label>
-                <input id="programada" name="pago_programado_el" type="date" min={hoy} defaultValue={f.pago_programado_el ?? ""} />
-                <small>Recomendado: {textoDia(diaDePagoSugerido(f.vence_el, hoy, dias))}. Puedes elegir cualquier día desde hoy; deja vacío para quitar la programación.</small>
-              </div>
-              <div className="campo"><label htmlFor="pago_programado_forma">Forma de pago prevista</label>
-                <select id="pago_programado_forma" name="pago_programado_forma" defaultValue={f.pago_programado_forma??""}>
-                  <option value="">Elige al programar una fecha…</option>
-                  {FORMAS_PAGO.map(forma=><option key={forma} value={forma}>{NOMBRE_FORMA_PAGO[forma]}</option>)}
-                </select><small>Es una previsión; no registra el pago ni reserva efectivo.</small>
-              </div>
-              <BotonEnviar className="boton boton-secundario">Programar pago</BotonEnviar>
-            </form>
-          )}
-          {f.tipo==="ingreso" && <form action={programarRecepcionFactura} className="formulario">
-            <h3>Programar recepción de insumos</h3>
-            <input type="hidden" name="id" value={f.id}/>
-            <div className="campo"><label htmlFor="recepcion_programada_el">Fecha de recepción prevista</label>
-              <input id="recepcion_programada_el" name="recepcion_programada_el" type="date" min={hoy} defaultValue={f.recepcion_programada_el??""}/>
-              <small>{plazo!=null?`Recomendado: ${fechaTexto(recepcionSugerida??hoy)} (hoy + ${plazo} días naturales del proveedor).`:"El proveedor no tiene plazo de entrega configurado."} Puedes elegir cualquier día desde hoy; deja vacío para quitar la programación.</small>
-            </div>
-            <p className="saldo-nota">Actualiza también la entrega esperada de todas las órdenes vinculadas que siguen pendientes. No registra cantidades recibidas ni entradas de inventario.</p>
-            <BotonEnviar className="boton boton-secundario">Guardar recepción prevista</BotonEnviar>
-          </form>}
-
-        </section>
-      )}
+</>},
+      ]} />
     </>
   );
 }

@@ -836,3 +836,28 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .rappi-acordeon > summary > span { display:inline-block; color:var(--tinta-2); font-size:.9rem; font-weight:400; margin-left:14px; }.rappi-acordeon[open] > summary { margin-bottom:18px; }
 .rappi-archivo::file-selector-button { font:inherit; font-weight:600; border:1px solid var(--accion-oscuro); color:var(--accion-oscuro); background:var(--blanco); padding:8px 12px; border-radius:5px; margin-right:12px; cursor:pointer; }
 @media(max-width:520px) { .rappi-barra-fila { grid-template-columns:80px minmax(20px,1fr) auto; gap:6px; }.rappi-acordeon > summary > span { margin:8px 0 0; display:block; } }
+/* Fichas de compras: resumen fijo, acciones y cuaderno de contenido. */
+.ficha-encabezado { margin-bottom:20px; }
+.ficha-encabezado h1 { font-size:clamp(1.55rem,2.5vw,2rem); margin-bottom:8px; }
+.ficha-indicadores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; border:1px solid var(--linea); border-radius:10px; overflow:hidden; background:var(--linea); margin-bottom:20px; }
+.ficha-indicadores > div { background:var(--blanco); padding:16px 20px; display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+.ficha-indicadores small { color:var(--tinta-suave,var(--tinta)); font-size:.8rem; }
+.ficha-indicadores strong { font-size:1.15rem; }
+.ficha-indicadores .ficha-estado { font-size:.85rem; border-radius:20px; padding:5px 10px; background:#fff2e9; color:#8c3d00; }
+.ficha-estado[data-estado="confirmada"], .ficha-estado[data-estado="parcial"] { background:#edf3ff; color:#284a8b; }
+.ficha-estado[data-estado="pagada"], .ficha-estado[data-estado="cerrada"] { background:#e7f5ee; color:#17613f; }
+.ficha-estado[data-estado="cancelada"] { background:#fbecec; color:#923b36; }
+.ficha-cuaderno { border:1px solid var(--linea); border-radius:10px; background:var(--blanco); overflow:hidden; margin:24px 0; }
+.ficha-pestanas { display:flex; overflow-x:auto; border-bottom:1px solid var(--linea); background:var(--papel-2); gap:4px; padding:0 12px; }
+.ficha-pestanas > button { appearance:none; border:0; border-bottom:3px solid transparent; border-radius:0; background:transparent; color:var(--tinta); padding:16px 14px; font:inherit; font-size:.9rem; white-space:nowrap; cursor:pointer; }
+.ficha-pestanas > button[aria-selected="true"] { border-bottom-color:#ff6900; color:#b84600; font-weight:700; background:var(--blanco); }
+.ficha-pestanas > button:hover { background:var(--blanco); }
+.ficha-pestanas > button:focus-visible, .ficha-panel:focus-visible { outline:2px solid #ff6900; outline-offset:-3px; }
+.ficha-panel { padding:24px; }
+.ficha-panel[hidden] { display:none; }
+.ficha-panel > .seccion, .ficha-panel > .plegable { border:0; padding:0; margin:0 0 24px; border-radius:0; }
+.ficha-panel > .seccion:last-child { margin-bottom:0; }
+.ficha-panel .formulario { max-width:760px; }
+.ficha-barra { margin-bottom:20px; }
+@media(max-width:700px) { .ficha-indicadores { grid-template-columns:repeat(2,minmax(0,1fr)); } .ficha-indicadores > div { padding:12px; } .ficha-panel { padding:16px; } .ficha-pestanas { padding:0 4px; } .ficha-pestanas > button { padding:14px 10px; } }
+@media print { .ficha-pestanas, .ficha-barra, .orden-acciones-encabezado { display:none; } .ficha-panel[hidden] { display:block; } .ficha-cuaderno { border:0; } }
