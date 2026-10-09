@@ -1,8 +1,11 @@
+import ListaCosteo from "./ListaCosteo";
+import {catalogoCosteo} from "./catalogo";
+import {ultimosPreciosCosteo} from "./precios";
+import type {FiltroCosteo,FilaCosteo} from "@/lib/costeo/lista";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
-import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyMX, pesos } from "@/lib/formato";
 import { puedeImportarVentas } from "@/lib/roles";
 import { CATEGORIAS, costoVigente, NOMBRE_CATEGORIA, type Categoria, type Tamano } from "@/lib/ventas/calculos";
@@ -17,9 +20,10 @@ const TAMANO: Record<Tamano, string> = { pequeno: "Pequeña", mediano: "Mediana"
 const FILTROS = { "sin-costo": "Sin costo", "sin-categoria": "Sin categoría" } as const;
 type Filtro = keyof typeof FILTROS;
 
-export default async function PaginaCostos({ searchParams }: { searchParams: Promise<{ ver?: string; vista?:string;q?:string;ok?: string; error?: string }> }) {
-  const { ver,vista,q, ok, error } = await searchParams;
-  const { supabase, perfil } = await obtenerPerfil();
+export default async function PaginaCostos({ searchParams }: { searchParams: Promise<FiltroCosteo & { ver?: string; vista?:string;q?:string;ok?: string; error?: string }> }) {
+  const params=await searchParams;
+  const { ver,vista,q, ok, error } = params;
+  const { supabase, perfil,recetas,v } = await catalogoCosteo();
   if (!["admin","corporativo"].includes(perfil.rol)) redirect("/ventas");
   const edita=puedeImportarVentas(perfil.rol);
   const filtro: Filtro | undefined = ver === "sin-costo" || ver === "sin-categoria" ? ver : undefined;
@@ -27,13 +31,14 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
   const esLista = vista !== "tarjetas";
 
   // Todas las páginas: con cada recarga de costos la tabla crece y Supabase corta en 1000 sin avisar.
-  const [productos, costos, correcciones] = await Promise.all([
+  const [productos, costos, correcciones,preciosRappi] = await Promise.all([
     leerTodo<Producto>((desde, hasta) => supabase.from("productos_venta").select("dodo_id, nombre, categoria, tamano")
       .order("nombre").order("dodo_id").range(desde, hasta).returns<Producto[]>()),
     leerTodo<Costo>((desde, hasta) => supabase.from("costos_producto").select("id, dodo_id, costo, vigente_desde, fuente, nota")
       .order("dodo_id").order("vigente_desde", { ascending: false }).range(desde, hasta).returns<Costo[]>()),
     leerTodo<Correccion>((desde, hasta) => supabase.from("correcciones_costo").select("costo_id, costo_anterior, corregido_en")
       .order("corregido_en").order("id").range(desde, hasta).returns<Correccion[]>()),
+    ultimosPreciosCosteo(supabase,hoy),
   ]);
   const correccionesDe = new Map<string, Correccion[]>();
   for (const k of correcciones) correccionesDe.set(k.costo_id, [...(correccionesDe.get(k.costo_id) ?? []), k]);
@@ -47,6 +52,8 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
     .map((c) => ({ categoria: c, productos: visibles.filter((p) => p.categoria === c) }))
     .filter((g) => g.productos.length > 0);
 
+  const filas:FilaCosteo[]=productos.map(p=>{const c=vigente(p),r=recetas.find(r=>r.dodo_id===p.dodo_id),precio=preciosRappi.get(p.dodo_id);return {id:p.dodo_id,nombre:p.nombre,categoria:p.categoria?NOMBRE_CATEGORIA[p.categoria]:"Sin categoría",tamano:p.tamano?TAMANO[p.tamano]:"Sin tamaño",costo:c?Number(c.costo):null,desde:c?.vigente_desde??null,fuente:c?.fuente??null,nota:c?.nota??null,pos:r?.receta.precioVenta??null,rappi:precio?.precio??null,rappiFecha:precio?.fecha??null,bom:!!r,costoBOM:r?.costo===null||!r?null:v?.periferico&&r.receta.precioVenta===null?null:Math.round((Number(r.costo)+(v?.periferico?Number(r.receta.precioVenta)*.01:0))*100)/100,insumos:r?.receta.materiales.map(m=>m.nombre)??[]};});
+
   return (
     <>
       <div className="encabezado ficha-encabezado">
@@ -57,9 +64,8 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
         </p>
       </div>
       <Aviso ok={ok} error={error} />
-      <div className="ficha-indicadores"><div><small>Productos registrados</small><strong>{productos.length}</strong></div><div><small>Con costo vigente</small><strong>{productos.filter(p=>vigente(p)).length}</strong></div><div><small>Sin costo vigente</small><strong>{productos.filter(p=>!vigente(p)).length}</strong></div><div><small>Resultados del filtro</small><strong>{visibles.length}</strong></div></div>
       <div className="acciones orden-acciones-encabezado"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link><Link className="boton boton-secundario" href="/ventas/costos/calculadora">Calculadora de promociones</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>
-      <nav className="acciones" aria-label="Filtros">
+      {esLista?<ListaCosteo filas={filas} inicial={{...params,ver:undefined,vista:undefined,ok:undefined,error:undefined,rapido:params.rapido??filtro} as FiltroCosteo}/>:<>      <nav className="acciones" aria-label="Filtros">
         <Link className="boton boton-secundario" href={`/ventas/costos?vista=${esLista?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={!filtro ? "page" : undefined}>Todos</Link>
         {(Object.keys(FILTROS) as Filtro[]).map((f) => (
           <Link key={f} className="boton boton-secundario" href={`/ventas/costos?ver=${f}&vista=${esLista?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={filtro === f ? "page" : undefined}>
@@ -68,9 +74,9 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
         ))}
       </nav>
       <form className="acciones"><input type="hidden" name="ver" value={filtro??""}/><label htmlFor="costos-vista">Vista</label><select id="costos-vista" name="vista" defaultValue={esLista?"lista":"tarjetas"}><option value="tarjetas">Tarjetas</option><option value="lista">Lista</option></select><label className="solo-lector" htmlFor="costos-buscar">Buscar producto o ID</label><input id="costos-buscar" name="q" defaultValue={q??""} placeholder="Buscar producto o ID"/><button className="boton boton-secundario">Consultar</button></form>
-      {esLista&&<section className="seccion"><h2>Productos · {visibles.length}</h2><div className="tabla-contenedor"><table className="tabla tabla-tarjetas"><thead><tr><th>Producto</th><th>ID</th><th>Categoría</th><th>Tamaño</th><th className="monto">Costo vigente</th><th>Vigente desde</th><th>Detalle</th></tr></thead><tbody>{visibles.map(p=>{const c=vigente(p);return <tr key={p.dodo_id}><td data-label="Producto"><Link href={`/ventas/costos/productos/${p.dodo_id}`}>{p.nombre}</Link></td><td data-label="ID">{p.dodo_id}</td><td data-label="Categoría">{p.categoria?NOMBRE_CATEGORIA[p.categoria]:"Sin categoría"}</td><td data-label="Tamaño">{p.tamano?TAMANO[p.tamano]:"—"}</td><td data-label="Costo vigente" className="monto">{c?pesos(c.costo):"Sin costo"}</td><td data-label="Vigente desde">{c?fechaTexto(c.vigente_desde):"—"}</td><td data-label="Detalle"><div className="costeo-detalle-links"><Link href={`/ventas/costos/productos/${p.dodo_id}`}>Abrir ficha</Link><Link href={`/ventas/costos/calculadora?producto=${p.dodo_id}`}>Simular promo</Link>{c&&<details className="costeo-origen"><summary>Ver origen{c.nota?" · revisar":""}</summary><p>{c.fuente??"Fuente no indicada"} · vigente desde {fechaTexto(c.vigente_desde)}</p>{c.nota&&<small className="alerta-texto">{c.nota}</small>}</details>}</div></td></tr>;})}</tbody></table></div></section>}
+</>}
 
-      {!grupos.length && <p className="vacio">{filtro ? "No hay productos con ese filtro." : "Aún no hay productos. Se agregan solos al importar ventas."}</p>}
+      {!esLista&&!grupos.length && <p className="vacio">{filtro ? "No hay productos con ese filtro." : "Aún no hay productos. Se agregan solos al importar ventas."}</p>}
       {!esLista&&grupos.map((g) => (
         <section key={g.categoria ?? "sin"} className="seccion" aria-labelledby={`g-${g.categoria ?? "sin"}`}>
           <h2 id={`g-${g.categoria ?? "sin"}`}>{g.categoria ? NOMBRE_CATEGORIA[g.categoria] : "Sin categoría"} · {g.productos.length}</h2>

@@ -903,3 +903,9 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .compra-grupo>details>summary {cursor:pointer;padding:16px 20px;background:#f5f6f8;border:1px solid #e1e3e6;border-radius:10px;font-weight:700;}
 .compra-grupo>details>summary span {font-weight:400;font-size:.85rem;margin-left:14px;color:#59616d;}
 .compra-grupo>details[open]>summary {margin-bottom:10px;}
+
+.costeo-rango {display:flex;gap:8px;}
+.costeo-rango input {min-width:0;width:50%;}
+.costeo-ordenar {border:0;background:transparent;font:inherit;font-weight:700;color:inherit;padding:8px 0;cursor:pointer;white-space:nowrap;}
+.costeo-ordenar:focus-visible {outline:2px solid var(--accion);outline-offset:4px;}
+.costeo-rapidos button[aria-pressed="true"] {background:#fff0e5;box-shadow:inset 0 0 0 1px var(--accion);}
