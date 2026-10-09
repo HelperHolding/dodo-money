@@ -1,3 +1,4 @@
+import {DashboardVentasInicio} from "@/components/DashboardVentasInicio";
 import Link from "next/link";
 import { IconoInicio } from "@/components/IconoInicio";
 import { Aviso } from "@/components/Aviso";
@@ -10,8 +11,8 @@ import { NOMBRE_MOVIMIENTO, type Movimiento } from "@/lib/tipos";
 import { abrirTurno } from "./actions";
 import { confirmarMovimiento, rechazarMovimiento } from "./movimientos/actions";
 
-export default async function Inicio({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const { ok, error } = await searchParams;
+export default async function Inicio({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string;ventas_mes?:string;ventas_sucursal?:string }> }) {
+  const { ok, error,ventas_mes,ventas_sucursal } = await searchParams;
   const { supabase, perfil, sucursal, turno, cajas, soloLectura } = await obtenerContexto();
 
   const [{ data: saldos }, { data: pendientes }, { data: nombres }] = await Promise.all([
@@ -64,6 +65,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         <p>Ventas, finanzas y operación en un solo lugar.</p>
       </div>
       <Aviso ok={ok} error={error} />
+      {["admin","corporativo"].includes(perfil.rol)&&<DashboardVentasInicio supabase={supabase} rol={perfil.rol} mes={ventas_mes} sucursal={ventas_sucursal} porDefecto={sucursal.id} ruta="/"/>}
 
       <section className="seccion" aria-labelledby="t-resumen">
         <h2 id="t-resumen">Tu operación</h2>

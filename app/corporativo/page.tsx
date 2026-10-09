@@ -1,3 +1,4 @@
+import {DashboardVentasInicio} from "@/components/DashboardVentasInicio";
 import Link from "next/link";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { resumenPagos, type PorPagar } from "@/lib/compras/pagos";
@@ -14,12 +15,12 @@ import { datosCorporativo } from "./datos";
 
 const clases = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ") || undefined;
 
-export default async function Corporativo({ searchParams }: { searchParams: Promise<{ fecha?: string }> }) {
-  const { fecha: pedida } = await searchParams;
+export default async function Corporativo({ searchParams }: { searchParams: Promise<{ fecha?: string;ventas_mes?:string;ventas_sucursal?:string }> }) {
+  const { fecha: pedida,ventas_mes,ventas_sucursal } = await searchParams;
   const ahora = new Date();
   const hoy = diaOperativoMX(ahora);
   const fecha = fechaElegida(pedida, hoy);
-  const { supabase } = await obtenerPerfil();
+  const { supabase,perfil } = await obtenerPerfil();
 
   const datos = await datosCorporativo(supabase, fecha, ahora);
   const hoyCalendario = hoyCalendarioMX();
@@ -48,6 +49,7 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
         </p>
       </div>
 
+      <DashboardVentasInicio supabase={supabase} rol={perfil.rol} mes={ventas_mes} sucursal={ventas_sucursal} porDefecto={null} ruta="/corporativo" fecha={fecha}/>
       <form className="acciones" method="get">
         <label htmlFor="fecha" className="etiqueta">Día</label>
         <input id="fecha" name="fecha" type="date" defaultValue={fecha} max={hoy} />

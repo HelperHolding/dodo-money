@@ -883,3 +883,15 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .calculadora-promos .campo { margin-bottom:16px; }
 .promo-resultados small { display:block; line-height:1.5; }
 @media(max-width:800px) { .promo-distribucion { grid-template-columns:minmax(0,1fr); } .promo-resultados { position:static; padding:16px; } }
+.inicio-ventas-titulo { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+.inicio-ventas-filtros { padding:16px 0; align-items:flex-end; }
+.inicio-ventas-filtros .campo { min-width:180px; }
+.inicio-ventas-kpis strong { font-size:clamp(1.1rem,1.6vw,1.5rem); }
+.inicio-ventas-cambio { font-size:.75rem; }
+.inicio-ventas-cambio[data-direccion="sube"] { color:#17613f; }
+.inicio-ventas-cambio[data-direccion="baja"] { color:#923b36; }
+.inicio-dona-canales .cat-pos { stroke:#ff6900; }
+.inicio-dona-canales .cat-rappi { stroke:#347a9e; }
+.inicio-dona-canales .dona-punto.cat-pos { background:#ff6900; }
+.inicio-dona-canales .dona-punto.cat-rappi { background:#347a9e; }
+.inicio-ventas h3 { font-size:1rem; margin-bottom:16px; }
