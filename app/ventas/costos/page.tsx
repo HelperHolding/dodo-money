@@ -24,6 +24,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
   const edita=puedeImportarVentas(perfil.rol);
   const filtro: Filtro | undefined = ver === "sin-costo" || ver === "sin-categoria" ? ver : undefined;
   const hoy = hoyMX();
+  const esLista = vista !== "tarjetas";
 
   // Todas las páginas: con cada recarga de costos la tabla crece y Supabase corta en 1000 sin avisar.
   const [productos, costos, correcciones] = await Promise.all([
@@ -48,7 +49,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <div className="encabezado">
+      <div className="encabezado ficha-encabezado">
         <h1>Costeo</h1>
         <p>
           Costo por producto con la fecha desde la que aplica. Un costo nuevo no borra el anterior: los días previos
@@ -56,20 +57,21 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
         </p>
       </div>
       <Aviso ok={ok} error={error} />
-      <div className="acciones"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>
+      <div className="ficha-indicadores"><div><small>Productos registrados</small><strong>{productos.length}</strong></div><div><small>Con costo vigente</small><strong>{productos.filter(p=>vigente(p)).length}</strong></div><div><small>Sin costo vigente</small><strong>{productos.filter(p=>!vigente(p)).length}</strong></div><div><small>Resultados del filtro</small><strong>{visibles.length}</strong></div></div>
+      <div className="acciones orden-acciones-encabezado"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link><Link className="boton boton-secundario" href="/ventas/costos/calculadora">Calculadora de promociones</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>
       <nav className="acciones" aria-label="Filtros">
-        <Link className="boton boton-secundario" href={`/ventas/costos?vista=${vista==="lista"?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={!filtro ? "page" : undefined}>Todos</Link>
+        <Link className="boton boton-secundario" href={`/ventas/costos?vista=${esLista?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={!filtro ? "page" : undefined}>Todos</Link>
         {(Object.keys(FILTROS) as Filtro[]).map((f) => (
-          <Link key={f} className="boton boton-secundario" href={`/ventas/costos?ver=${f}&vista=${vista==="lista"?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={filtro === f ? "page" : undefined}>
+          <Link key={f} className="boton boton-secundario" href={`/ventas/costos?ver=${f}&vista=${esLista?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={filtro === f ? "page" : undefined}>
             {FILTROS[f]}
           </Link>
         ))}
       </nav>
-      <form className="acciones"><input type="hidden" name="ver" value={filtro??""}/><label htmlFor="costos-vista">Vista</label><select id="costos-vista" name="vista" defaultValue={vista==="lista"?"lista":"tarjetas"}><option value="tarjetas">Tarjetas</option><option value="lista">Lista</option></select><label className="solo-lector" htmlFor="costos-buscar">Buscar producto o ID</label><input id="costos-buscar" name="q" defaultValue={q??""} placeholder="Buscar producto o ID"/><button className="boton boton-secundario">Consultar</button></form>
-      {vista==="lista"&&<section className="seccion"><h2>Productos · {visibles.length}</h2><div className="tabla-contenedor"><table className="tabla tabla-tarjetas"><thead><tr><th>Producto</th><th>ID</th><th>Categoría</th><th>Tamaño</th><th className="monto">Costo vigente</th><th>Desde / fuente</th></tr></thead><tbody>{visibles.map(p=>{const c=vigente(p);return <tr key={p.dodo_id}><td data-label="Producto"><Link href={`/ventas/costos/productos/${p.dodo_id}`}>{p.nombre}</Link></td><td data-label="ID">{p.dodo_id}</td><td data-label="Categoría">{p.categoria?NOMBRE_CATEGORIA[p.categoria]:"Sin categoría"}</td><td data-label="Tamaño">{p.tamano?TAMANO[p.tamano]:"—"}</td><td data-label="Costo vigente" className="monto">{c?pesos(c.costo):"Sin costo"}</td><td data-label="Desde / fuente">{c?`${fechaTexto(c.vigente_desde)} · ${c.fuente??"Fuente no indicada"}`:"—"}{c?.nota&&<small className="alerta-texto">{c.nota}</small>}</td></tr>;})}</tbody></table></div></section>}
+      <form className="acciones"><input type="hidden" name="ver" value={filtro??""}/><label htmlFor="costos-vista">Vista</label><select id="costos-vista" name="vista" defaultValue={esLista?"lista":"tarjetas"}><option value="tarjetas">Tarjetas</option><option value="lista">Lista</option></select><label className="solo-lector" htmlFor="costos-buscar">Buscar producto o ID</label><input id="costos-buscar" name="q" defaultValue={q??""} placeholder="Buscar producto o ID"/><button className="boton boton-secundario">Consultar</button></form>
+      {esLista&&<section className="seccion"><h2>Productos · {visibles.length}</h2><div className="tabla-contenedor"><table className="tabla tabla-tarjetas"><thead><tr><th>Producto</th><th>ID</th><th>Categoría</th><th>Tamaño</th><th className="monto">Costo vigente</th><th>Vigente desde</th><th>Detalle</th></tr></thead><tbody>{visibles.map(p=>{const c=vigente(p);return <tr key={p.dodo_id}><td data-label="Producto"><Link href={`/ventas/costos/productos/${p.dodo_id}`}>{p.nombre}</Link></td><td data-label="ID">{p.dodo_id}</td><td data-label="Categoría">{p.categoria?NOMBRE_CATEGORIA[p.categoria]:"Sin categoría"}</td><td data-label="Tamaño">{p.tamano?TAMANO[p.tamano]:"—"}</td><td data-label="Costo vigente" className="monto">{c?pesos(c.costo):"Sin costo"}</td><td data-label="Vigente desde">{c?fechaTexto(c.vigente_desde):"—"}</td><td data-label="Detalle"><div className="costeo-detalle-links"><Link href={`/ventas/costos/productos/${p.dodo_id}`}>Abrir ficha</Link><Link href={`/ventas/costos/calculadora?producto=${p.dodo_id}`}>Simular promo</Link>{c&&<details className="costeo-origen"><summary>Ver origen{c.nota?" · revisar":""}</summary><p>{c.fuente??"Fuente no indicada"} · vigente desde {fechaTexto(c.vigente_desde)}</p>{c.nota&&<small className="alerta-texto">{c.nota}</small>}</details>}</div></td></tr>;})}</tbody></table></div></section>}
 
       {!grupos.length && <p className="vacio">{filtro ? "No hay productos con ese filtro." : "Aún no hay productos. Se agregan solos al importar ventas."}</p>}
-      {vista!=="lista"&&grupos.map((g) => (
+      {!esLista&&grupos.map((g) => (
         <section key={g.categoria ?? "sin"} className="seccion" aria-labelledby={`g-${g.categoria ?? "sin"}`}>
           <h2 id={`g-${g.categoria ?? "sin"}`}>{g.categoria ? NOMBRE_CATEGORIA[g.categoria] : "Sin categoría"} · {g.productos.length}</h2>
           <div className="tarjetas">
@@ -87,7 +89,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
                     </div>
                     <span className="saldo-nota">#{p.dodo_id}{p.tamano ? ` · ${TAMANO[p.tamano]}` : ""}</span>
                   </div>
-                  {actual?.nota && <p className="alerta-texto">⚠ {actual.nota}</p>}
+                  {actual&&<details className="costeo-origen"><summary>Ver origen{actual.nota?" · revisar":""}</summary><p>{actual.fuente??"Fuente no indicada"} · vigente desde {fechaTexto(actual.vigente_desde)}</p>{actual.nota&&<p className="alerta-texto">{actual.nota}</p>}</details>}
 
                   {edita&&<form action={asignarCategoria} className="acciones">
                     <input type="hidden" name="dodo_id" value={p.dodo_id} />

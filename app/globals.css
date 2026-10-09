@@ -870,3 +870,16 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .compra-nota-texto { white-space:pre-wrap; overflow-wrap:anywhere; margin:6px 0; font-size:.9rem; }
 .compra-historial small { font-size:.75rem; }
 @media print { .compra-ficha-lado { display:block; } .compra-historial { position:static; max-height:none; overflow:visible; } .compra-historial form { display:none; } }
+.costeo-detalle-links { display:flex; flex-direction:column; align-items:flex-start; gap:8px; font-size:.85rem; }
+.costeo-origen { margin:10px 0; font-size:.85rem; }
+.costeo-origen summary { cursor:pointer; color:var(--tinta); font-weight:600; }
+.costeo-origen p { max-width:400px; overflow-wrap:anywhere; }
+.promo-distribucion { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:28px; align-items:start; }
+.promo-resultados { background:var(--papel-2); border:1px solid var(--linea); border-radius:10px; padding:24px; position:sticky; top:16px; }
+.promo-resultados h3 { margin-top:20px; }
+.promo-cifra { display:block; font-size:2.2rem; margin:12px 0 0; }
+.promo-porcentaje { margin:4px 0 24px; }
+.promo-resultados .ficha-estado { display:inline-block; border-radius:20px; padding:6px 10px; font-size:.8rem; font-weight:700; }
+.calculadora-promos .campo { margin-bottom:16px; }
+.promo-resultados small { display:block; line-height:1.5; }
+@media(max-width:800px) { .promo-distribucion { grid-template-columns:minmax(0,1fr); } .promo-resultados { position:static; padding:16px; } }
