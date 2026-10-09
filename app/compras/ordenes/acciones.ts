@@ -140,3 +140,11 @@ export async function registrarRecepcionOrden(fd: FormData) {
  if(error)volver(ruta(id),"error",error.message);
  listo(id,"Recepción registrada con su fecha real.");
 }
+
+export async function agregarNotaOrden(fd: FormData) {
+ const id=texto(fd,"id"),supabase=await clienteAdmin(ruta(id));
+ const {error}=await supabase.rpc("agregar_compra_nota",{p_solicitud:texto(fd,"solicitud"),p_tipo:"orden",p_id:id,p_texto:texto(fd,"nota")});
+ if(error)volver(ruta(id),"error",error.message);
+ revalidatePath("/compras","layout");
+ volver(ruta(id),"ok","Nota interna guardada.");
+}

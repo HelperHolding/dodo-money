@@ -861,3 +861,12 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .ficha-barra { margin-bottom:20px; }
 @media(max-width:700px) { .ficha-indicadores { grid-template-columns:repeat(2,minmax(0,1fr)); } .ficha-indicadores > div { padding:12px; } .ficha-panel { padding:16px; } .ficha-pestanas { padding:0 4px; } .ficha-pestanas > button { padding:14px 10px; } }
 @media print { .ficha-pestanas, .ficha-barra, .orden-acciones-encabezado { display:none; } .ficha-panel[hidden] { display:block; } .ficha-cuaderno { border:0; } }
+.compra-ficha-lado { margin-top:24px; }
+.compra-ficha-lado .ficha-cuaderno { margin-top:0; }
+.compra-historial .seccion { margin-top:0; }
+.compra-historial h2 { font-size:1.15rem; }
+.compra-historial .formulario { margin:0 0 24px; }
+.compra-historial textarea { resize:vertical; }
+.compra-nota-texto { white-space:pre-wrap; overflow-wrap:anywhere; margin:6px 0; font-size:.9rem; }
+.compra-historial small { font-size:.75rem; }
+@media print { .compra-ficha-lado { display:block; } .compra-historial { position:static; max-height:none; overflow:visible; } .compra-historial form { display:none; } }

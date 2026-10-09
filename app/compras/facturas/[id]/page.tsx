@@ -1,3 +1,5 @@
+import { HistorialCompra, type EventoCompra } from "@/components/HistorialCompra";
+import { agregarNotaFactura } from "../acciones";
 import { FichaPestanas } from "@/components/FichaPestanas";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -45,8 +47,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   if (!f) notFound();
 
   const { data: pagosFactura } = await supabase.from("pago_aplicaciones")
-    .select("id, monto, pagos!inner(id, fecha, anulado_en)").eq("factura_id", id).order("id")
-    .returns<{ id: number; monto: number; pagos: { id: string; fecha: string; anulado_en: string | null } }[]>();
+    .select("id, monto, pagos!inner(id, fecha, anulado_en,creado_en,motivo_anulacion,creador:perfiles!creado_por(nombre),anulador:perfiles!anulado_por(nombre))").eq("factura_id", id).order("id")
+    .returns<{ id: number; monto: number; pagos: { id: string; fecha: string; anulado_en: string | null;creado_en:string;motivo_anulacion:string|null;creador:{nombre:string}|null;anulador:{nombre:string}|null } }[]>();
   const [{ data: conceptos }, { data: ligas }, { data: candidatas }, { data: sucursales }, { data: relacionadas }, { data: sinCfdi }, { data: sustituye }] = await Promise.all([
     supabase.from("factura_conceptos").select("id, descripcion, cantidad, unidad, valor_unitario, importe, cuenta_pl").eq("factura_id", id).order("id").returns<Concepto[]>(),
     supabase.from("factura_ordenes").select("orden_id").eq("factura_id", id).returns<{ orden_id: string }[]>(),
@@ -88,6 +90,26 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const firmar = async (ruta: string | null) => (ruta ? (await supabase.storage.from("facturas").createSignedUrl(ruta, 3600)).data?.signedUrl ?? null : null);
   const [urlXml, urlPdf] = await Promise.all([firmar(f.xml_ruta), firmar(f.pdf_ruta)]);
   const { data: cancelacion } = await supabase.from("factura_cancelaciones").select("motivo, creado_en, ordenes, perfiles!usuario_id(nombre)").eq("factura_id", id).maybeSingle<{motivo:string;creado_en:string;ordenes:string[];perfiles:{nombre:string}|null}>();
+  const [auditoria,programaciones,notas] = await Promise.all([
+   supabase.from("facturas").select("creado_en,revisada_en,revision_nota,cancelada_en,motivo_cancelacion,creador:perfiles!creado_por(nombre),revisor:perfiles!revisada_por(nombre),cancelador:perfiles!cancelada_por(nombre)").eq("id",id).maybeSingle<{creado_en:string;revisada_en:string|null;revision_nota:string|null;cancelada_en:string|null;motivo_cancelacion:string|null;creador:{nombre:string}|null;revisor:{nombre:string}|null;cancelador:{nombre:string}|null}>(),
+   supabase.from("factura_programacion_historial").select("id,tipo,fecha_anterior,fecha_nueva,forma_anterior,forma_nueva,creado_en,perfiles!usuario_id(nombre)").eq("factura_id",id).order("creado_en").returns<{id:number;tipo:string;fecha_anterior:string|null;fecha_nueva:string|null;forma_anterior:FormaPago|null;forma_nueva:FormaPago|null;creado_en:string;perfiles:{nombre:string}|null}[]>(),
+   supabase.from("compra_notas").select("id,texto,creado_en,perfiles!usuario_id(nombre)").eq("factura_id",id).order("creado_en").returns<{id:string;texto:string;creado_en:string;perfiles:{nombre:string}|null}[]>(),
+  ]);
+  if(auditoria.error||programaciones.error||notas.error)throw Error("No se pudo consultar el historial de la factura.");
+  const eventos:EventoCompra[]=[];
+  const audit=auditoria.data;
+  if(audit){
+   eventos.push({id:"creada",en:audit.creado_en,titulo:"Factura registrada",autor:audit.creador?.nombre});
+   if(audit.revisada_en)eventos.push({id:"revisada",en:audit.revisada_en,titulo:"Última revisión registrada",nota:audit.revision_nota,autor:audit.revisor?.nombre});
+   if(audit.cancelada_en)eventos.push({id:"cancelada",en:audit.cancelada_en,titulo:"Factura cancelada",nota:audit.motivo_cancelacion,autor:audit.cancelador?.nombre});
+  }
+  for(const h of programaciones.data??[])eventos.push({id:`programacion-${h.id}`,en:h.creado_en,titulo:h.tipo==="pago"?"Programación de pago":"Programación de recepción",nota:`${h.fecha_anterior?fechaTexto(h.fecha_anterior):"Sin fecha"} → ${h.fecha_nueva?fechaTexto(h.fecha_nueva):"Sin programación"}${h.tipo==="pago"?` · ${h.forma_anterior?NOMBRE_FORMA_PAGO[h.forma_anterior]:"Sin forma"} → ${h.forma_nueva?NOMBRE_FORMA_PAGO[h.forma_nueva]:"Sin forma"}`:""}`,autor:h.perfiles?.nombre});
+  for(const n of notas.data??[])eventos.push({id:`nota-${n.id}`,en:n.creado_en,titulo:"Nota interna",nota:n.texto,autor:n.perfiles?.nombre});
+  for(const aplicacion of pagosFactura??[]){
+   const pago=aplicacion.pagos;
+   eventos.push({id:`pago-${aplicacion.id}`,en:pago.creado_en,titulo:"Pago registrado",nota:`${pesos(aplicacion.monto)} aplicados · fecha del pago: ${fechaTexto(pago.fecha)}`,autor:pago.creador?.nombre,href:`/compras/pagos/${pago.id}`});
+   if(pago.anulado_en)eventos.push({id:`anulacion-${aplicacion.id}`,en:pago.anulado_en,titulo:"Pago anulado",nota:pago.motivo_anulacion,autor:pago.anulador?.nombre,href:`/compras/pagos/${pago.id}`});
+  }
   const edita = puedeEditarCompras(perfil.rol) && f.estado !== "cancelada";
   const notasVigentes = f.tipo === "ingreso" ? (relacionadas ?? []).filter((n) => n.estado !== "cancelada").length : 0;
   const regimenDistinto = f.proveedores && f.regimen_emisor && f.regimen_emisor !== f.proveedores.regimen_fiscal;
@@ -178,6 +200,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       <Aviso ok={ok} error={error} />
       {f.estado === "cancelada" && <section className="seccion"><h2>Cancelación registrada</h2><p>{f.motivo_cancelacion}</p><p>Este registro ya no cuenta como gasto en el P&amp;L ni como pago pendiente.</p>{cancelacion && <><p>{cancelacion.perfiles?.nombre ?? "Administración"} · {new Date(cancelacion.creado_en).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}</p><p>Importe original: <strong>{pesos(f.total)}</strong></p>{cancelacion.ordenes.length > 0 && <p>Órdenes anteriormente vinculadas: {cancelacion.ordenes.map((orden, i) => <Fragment key={orden}>{i > 0 && " · "}<Link href={`/compras/ordenes/${orden}`}>Ver orden {i + 1}</Link></Fragment>)}</p>}</>}</section>}
 
+      <div className="detalle-con-lado compra-ficha-lado"><div className="detalle-principal">
       <FichaPestanas pestanas={[
         {id:"conceptos", titulo:`Conceptos (${conceptos?.length ?? 0})`, contenido:<>      <section className="seccion" aria-labelledby="t-conceptos"><h2 id="t-conceptos">{f.origen === "manual" ? "Renglones" : "Conceptos del XML"}</h2>
         {edita && (conceptos ?? []).length > 0 ? (
@@ -351,7 +374,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       )}
 
 </>},
-      ]} />
+      ]} /></div><HistorialCompra id={f.id} edita={puedeEditarCompras(perfil.rol)} accion={agregarNotaFactura} eventos={eventos}/></div>
     </>
   );
 }

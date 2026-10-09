@@ -216,3 +216,11 @@ export async function programarRecepcionFactura(fd: FormData) {
   await llamarFactura(fd, "programar_recepcion_factura", {p_factura:texto(fd,"id"),p_fecha:texto(fd,"recepcion_programada_el")||null},
     texto(fd,"recepcion_programada_el")?"Recepción programada.":"Se quitó la recepción programada.");
 }
+
+export async function agregarNotaFactura(fd: FormData) {
+ const id=texto(fd,"id"),supabase=await clienteAdmin(rutaFactura(id));
+ const {error}=await supabase.rpc("agregar_compra_nota",{p_solicitud:texto(fd,"solicitud"),p_tipo:"factura",p_id:id,p_texto:texto(fd,"nota")});
+ if(error)volver(rutaFactura(id),"error",error.message);
+ revalidatePath("/compras","layout");
+ volver(rutaFactura(id),"ok","Nota interna guardada.");
+}

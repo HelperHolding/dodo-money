@@ -1,3 +1,5 @@
+import { HistorialCompra } from "@/components/HistorialCompra";
+import { agregarNotaOrden } from "../acciones";
 import { FichaPestanas } from "@/components/FichaPestanas";
 import { randomUUID } from "node:crypto";
 import { Fragment } from "react";
@@ -67,6 +69,8 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const { data: firmadas } = rutasFoto.length ? await supabase.storage.from(BUCKET_FOTOS).createSignedUrls(rutasFoto, 3600) : { data: [] };
   const urlFoto = new Map((firmadas ?? []).flatMap((f) => (f.path && f.signedUrl ? [[f.path, f.signedUrl] as const] : [])));
 
+  const {data:notas,error:errorNotas}=await supabase.from("compra_notas").select("id,texto,creado_en,perfiles!usuario_id(nombre)").eq("orden_id",id).order("creado_en").returns<{id:string;texto:string;creado_en:string;perfiles:{nombre:string}|null}[]>();
+  if(errorNotas)throw Error("No se pudieron consultar las notas de la orden.");
   const edita = puedeEditarCompras(perfil.rol);
   const hayRecepciones = rs.some((r) => Number(r.recibido) > 0);
   const acciones = edita ? accionesDe(o.estado, hayRecepciones) : [];
@@ -193,6 +197,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
 
       </section>
       <Aviso ok={ok} error={error} />
+      <div className="detalle-con-lado compra-ficha-lado"><div className="detalle-principal">
       <FichaPestanas pestanas={[
         {id:"renglones", titulo:`Artículos (${rs.length})`, contenido:<>      <section className="seccion" aria-labelledby="t-renglones">
         <h2 id="t-renglones">Renglones</h2>
@@ -319,22 +324,10 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
       </section>
 
 </>},
-        {id:"historial", titulo:`Historial (${historial?.length ?? 0})`, contenido:<>          <section className="seccion">
-            <h2 id="t-historial">Historial</h2>
-            {!historial?.length ? <p className="vacio">Sin eventos.</p> : (
-              <ol className="linea-tiempo">
-                {[...historial].reverse().map((h) => (
-                  <li key={h.id}>
-                    <span className="linea-tiempo-fecha">{fechaTexto(fechaMX(h.en))} · {hora(h.en)}</span>
-                    <span className="linea-tiempo-evento">{CLAVE_EVENTO[h.evento] ?? h.evento}{h.nota ? ` · ${h.nota}` : ""}</span>
-                    {h.perfiles && <span className="linea-tiempo-quien">{h.perfiles.nombre}</span>}
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
-</>},
-      ]} />
+      ]} /></div><HistorialCompra id={o.id} edita={edita} accion={agregarNotaOrden} eventos={[
+ ...(historial??[]).map(h=>({id:`evento-${h.id}`,en:h.en,titulo:CLAVE_EVENTO[h.evento]??h.evento,nota:h.nota,autor:h.perfiles?.nombre})),
+ ...(notas??[]).map(n=>({id:`nota-${n.id}`,en:n.creado_en,titulo:"Nota interna",nota:n.texto,autor:n.perfiles?.nombre})),
+ ]}/></div>
     </>
   );
 }
