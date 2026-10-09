@@ -1,3 +1,4 @@
+import {soloInsumos} from "@/lib/compras/periodoInsumos";
 import { HistorialCompra, type EventoCompra } from "@/components/HistorialCompra";
 import { agregarNotaFactura } from "../acciones";
 import { FichaPestanas } from "@/components/FichaPestanas";
@@ -64,6 +65,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       : Promise.resolve({ data: [] as { id: string; folio: string; fecha_emision: string; total: number }[] }),
     supabase.from("facturas").select("id, folio").eq("sustituido_por", f.id).returns<{ id: string; folio: string }[]>(),
   ]);
+  const esInsumos=soloInsumos((conceptos??[]).map(c=>c.cuenta_pl),f.cuenta_pl);
   const ligadas = (ligas ?? []).map((l) => l.orden_id);
   const { data: renglones } = ligadas.length
     ? await supabase.from("renglones_recibido").select("orden_id, descripcion, cantidad, precio, tasa_iva, recibido").in("orden_id", ligadas).returns<Renglon[]>()
@@ -257,7 +259,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           {regimenDistinto && <><dt>Aviso</dt><dd>El régimen del XML ({f.regimen_emisor}) no es el de la cartera ({f.proveedores!.regimen_fiscal}).</dd></>}
           {f.revisada && <><dt>Revisada</dt><dd>{f.revision_nota}</dd></>}
           <dt>Cuenta del P&L</dt><dd>{f.cuenta_pl && esCuentaPl(f.cuenta_pl) ? NOMBRE_CUENTA[f.cuenta_pl] : "Sin cuenta (va a Otros)"}</dd>
-          <dt>Cubre</dt><dd>{textoCubre({ desde: f.cubre_desde, hasta: f.cubre_hasta })}</dd>
+          {!esInsumos&&<><dt>Cubre</dt><dd>{textoCubre({ desde: f.cubre_desde, hasta: f.cubre_hasta })}</dd></>}
         </dl>
         {edita && (
           <form action={asignarCuentaFactura} className="acciones">
@@ -269,7 +271,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
             <BotonEnviar className="boton boton-secundario">Guardar cuenta</BotonEnviar>
           </form>
         )}
-        {edita && (
+        {edita && !esInsumos && (
           <form action={cambiarPeriodoFactura} className="acciones">
             <input type="hidden" name="id" value={f.id} />
             <label htmlFor="cubre_desde" className="etiqueta">Cubre desde</label>

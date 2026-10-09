@@ -1,4 +1,5 @@
 "use client";
+import {soloInsumos} from "@/lib/compras/periodoInsumos";
 
 import { useState } from "react";
 import { BotonEnviar } from "@/components/BotonEnviar";
@@ -41,6 +42,7 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy }: {
     setRenglones((rs) => rs.map((r) => (r.cuenta ? r : { ...r, cuenta: p.cuenta_pl ?? "" })));
   };
 
+  const esInsumos=soloInsumos(renglones.map(r=>r.cuenta),proveedores.find(p=>p.id===proveedor)?.cuenta_pl);
   return (
     <form action={registrarGastoManual} className="formulario seccion">
       <div className="rejilla">
@@ -61,6 +63,7 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy }: {
         <div className="campo"><label htmlFor="folio">Referencia</label><input id="folio" name="folio" required placeholder="Ej. Prefactura renta octubre" /></div>
         <div className="campo"><label htmlFor="fecha">Fecha</label><input id="fecha" name="fecha" type="date" value={fecha} max={hoy} required onChange={(e) => { setFecha(e.target.value); recalcular(proveedor, e.target.value); }} /></div>
         <div className="campo"><label htmlFor="vence_el">Vence (opcional)</label><input id="vence_el" name="vence_el" type="date" /><small>Si no, la fecha + días de crédito del proveedor.</small></div>
+        {!esInsumos&&<>
         <div className="campo">
           <label htmlFor="cubre_desde">Cubre desde</label>
           <input id="cubre_desde" name="cubre_desde" type="month" placeholder="AAAA-MM" value={cubre.desde} onChange={(e) => setCubre({ ...cubre, desde: e.target.value })} required />
@@ -70,6 +73,7 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy }: {
           <input id="cubre_hasta" name="cubre_hasta" type="month" placeholder="AAAA-MM" value={cubre.hasta} onChange={(e) => setCubre({ ...cubre, hasta: e.target.value })} required />
           <small>Sale de la regla del proveedor; el P&L reparte el gasto en esos meses.</small>
         </div>
+        </>}
       </div>
 
       <h2>Renglones</h2>
