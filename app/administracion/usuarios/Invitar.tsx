@@ -9,7 +9,7 @@ function Enviar({reenvio=false}:{reenvio?:boolean}) {const {pending}=useFormStat
 export type EventoInvitacion={id:string;invitacion_id:string;autor_id:string;evento:string;creado_en:string;usuarios_invitaciones:{nombre:string;correo:string}|null};
 export function Invitaciones({sucursales,invitaciones,eventos,autores}:{sucursales:{id:string;nombre:string}[];invitaciones:Invitacion[];eventos:EventoInvitacion[];autores:{id:string;nombre:string}[]}) {
   const [rol,setRol]=useState("operacion");
-  return <><details className={styles.grupo}><summary>Invitar usuario</summary><form action={invitarUsuario} className={styles.editor}>
+  return <><details className={styles.invitar}><summary>Invitar usuario</summary><form action={invitarUsuario} className={styles.editor}>
     <label>Nombre<input name="nombre" required minLength={2} maxLength={160}/></label><label>Correo<input name="correo" type="email" autoComplete="off" required maxLength={254}/></label>
     <label>Rol<select name="rol" value={rol} onChange={e=>setRol(e.target.value)}>{Object.entries(NOMBRE_ROL).map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></label>
     <label>Sucursal<select name="sucursal_id" required={rol!=="corporativo"} disabled={rol==="corporativo"}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
