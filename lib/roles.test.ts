@@ -87,9 +87,9 @@ test("menú lateral: grupo Sucursal por puesto (Recepciones solo para quien reci
 });
 
 test("menú lateral: Ventas y Compras por puesto", () => {
-  assert.deepEqual(grupo("admin", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/importar", "/ventas/costos"]);
-  assert.deepEqual(grupo("gerente", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion"]);
-  assert.deepEqual(grupo("corporativo", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/costos"]);
+  assert.deepEqual(grupo("admin", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/operacion", "/ventas/conciliacion", "/ventas/importar", "/ventas/costos"]);
+  assert.deepEqual(grupo("gerente", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/operacion", "/ventas/conciliacion"]);
+  assert.deepEqual(grupo("corporativo", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/operacion", "/ventas/conciliacion", "/ventas/costos"]);
   assert.deepEqual(grupo("admin", "Compras"),
     ["/compras", "/compras/articulos", "/compras/documentos", "/compras/recepciones", "/compras/pagos", "/compras/pagos/reservas", "/compras/cargar"]);
   assert.deepEqual(grupo("corporativo", "Compras"),
@@ -160,3 +160,4 @@ test("cambiar de sucursal y vista general: el admin cambia y opera; corporativo 
   for (const rol of ["admin", "corporativo"] as const) assert.equal(puedeVerVistaGeneral(rol), true);
   for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerVistaGeneral(rol), false);
 });
+
