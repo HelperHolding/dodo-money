@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {resumirInversion,type DetalleInversion} from './inversionApertura.ts';
+test('suma detalle una vez y conserva depósitos separados',()=>{const d=(tipo:string,monto:number)=>({tipo,monto} as DetalleInversion);assert.deepEqual(resumirInversion([d('CAPEX',.1),d('CAPEX',.2),d('Depósitos',40000)]),{total:40000.3,grupos:[{tipo:'CAPEX',monto:.3},{tipo:'Depósitos',monto:40000}]});});
