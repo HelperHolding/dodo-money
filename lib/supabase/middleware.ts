@@ -57,8 +57,10 @@ export async function actualizarSesion(request: NextRequest) {
   if (error && error.name !== "AuthSessionMissingError") console.error("Middleware de sesión:", error);
 
   const esLogin = request.nextUrl.pathname.startsWith("/login");
+  // Se autentica con su propio header x-api-key, no con la sesión de cookies.
+  const esReporteSemanal = request.nextUrl.pathname.startsWith("/api/reporte-semanal");
 
-  if (!user && !esLogin) {
+  if (!user && !esLogin && !esReporteSemanal) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
