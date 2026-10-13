@@ -45,6 +45,6 @@ export function ListaUsuarios({usuarios,sucursales,cambios,yo,editable}:{usuario
     <h2>Equipo por sucursal</h2>
     {sucursales.map(s=>{const equipo=visibles.filter(u=>!general(u)&&u.sucursal_id===s.id);return <details className={styles.grupo} key={s.id}><summary>{s.nombre}<span>{equipo.length} usuarios</span></summary><div className={styles.contenido}><form action={verSucursal}><input type="hidden" name="sucursal_id" value={s.id}/><button className="boton boton-secundario">Abrir sucursal</button></form>{filas(equipo)}{!equipo.length&&<p>Sin usuarios con los filtros actuales.</p>}</div></details>;})}
     {visibles.some(u=>!general(u)&&!sucursales.some(s=>s.id===u.sucursal_id))&&<section className={styles.grupo}><h2>Sin sucursal disponible</h2>{filas(visibles.filter(u=>!general(u)&&!sucursales.some(s=>s.id===u.sucursal_id)))}</section>}
-    <small>El historial muestra los últimos 100 cambios de usuarios. Las altas de nuevas cuentas continúan en Supabase Auth.</small>
+    <small>El historial muestra los últimos 100 cambios de usuarios. Las nuevas cuentas se crean mediante invitación por correo.</small>
   </div>;
 }
