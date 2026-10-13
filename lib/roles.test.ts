@@ -64,7 +64,7 @@ test("menú lateral: cada puesto ve solo sus grupos", () => {
   assert.deepEqual(grupos("operacion"), ["Sucursal", "Conocimiento"]);
   assert.deepEqual(grupos("encargado"), ["Sucursal", "Conocimiento"]);
   assert.deepEqual(grupos("gerente"), ["Sucursal", "Ventas", "Conocimiento"]);
-  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Aperturas", "Activos", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Administración", "Aperturas", "Activos", "Conocimiento"]);
   assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Aperturas", "Activos", "Conocimiento"]);
 });
 
@@ -87,9 +87,9 @@ test("menú lateral: grupo Sucursal por puesto (Recepciones solo para quien reci
 });
 
 test("menú lateral: Ventas y Compras por puesto", () => {
-  assert.deepEqual(grupo("admin", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/operacion", "/ventas/conciliacion", "/ventas/importar", "/ventas/costos"]);
-  assert.deepEqual(grupo("gerente", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/operacion", "/ventas/conciliacion"]);
-  assert.deepEqual(grupo("corporativo", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/operacion", "/ventas/conciliacion", "/ventas/costos"]);
+  assert.deepEqual(grupo("admin", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/importar", "/ventas/costos"]);
+  assert.deepEqual(grupo("gerente", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion"]);
+  assert.deepEqual(grupo("corporativo", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/costos"]);
   assert.deepEqual(grupo("admin", "Compras"),
     ["/compras", "/compras/articulos", "/compras/documentos", "/compras/recepciones", "/compras/pagos", "/compras/pagos/reservas", "/compras/cargar"]);
   assert.deepEqual(grupo("corporativo", "Compras"),

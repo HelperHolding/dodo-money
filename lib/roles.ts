@@ -82,7 +82,6 @@ export function menuLateral(rol: Rol): Menu {
       enlaces: [
         { href: "/ventas", texto: "Tablero" },
         { href: "/ventas/rappi", texto: "Rappi" },
-        { href: "/ventas/operacion", texto: "Operación" },
         { href: "/ventas/conciliacion", texto: "Conciliación" },
         ...(puedeImportarVentas(rol) ? [{ href: "/ventas/importar", texto: "Importar" }] : []),
         ...(["admin", "corporativo"].includes(rol) ? [{ href: "/ventas/costos", texto: "Costeo" }] : []),
@@ -115,6 +114,9 @@ export function menuLateral(rol: Rol): Menu {
         { href: "/finanzas/parametros", texto: "Parámetros y metas" },
       ],
     });
+  }
+  if (rol === "admin") {
+    grupos.push({ titulo: "Administración", enlaces: [{ href: "/administracion/usuarios", texto: "Usuarios y sucursales" }] });
   }
   return {
     inicio: corporativo ? { href: "/corporativo", texto: "Vista general" } : { href: "/", texto: "Inicio" },
