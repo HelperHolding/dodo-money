@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {ETAPAS,grupoApertura,indicadoresApertura,resumenApertura,ventanaEtapa,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
 import {fechaTexto,pesos} from '@/lib/formato';
+import {cortePresupuesto} from '@/lib/cortePresupuesto';
 
 const grupos=[['pendiente','Pendientes / por cotizar','#8b93a3'],['en_curso','En curso / pedidos','#3977cc'],['recibido','Recibidos / instalados','#24a0a0'],['bloqueado','Bloqueados','#c84343'],['terminado','Terminados / verificados','#23845b']] as const;
 function Dona({items,titulo,href}:{items:ItemApertura[];titulo:string;href:string}) {
@@ -10,12 +11,14 @@ function Dona({items,titulo,href}:{items:ItemApertura[];titulo:string;href:strin
 }
 export function PanelProyecto({proyecto:p,items,hoy,roadmap}:{proyecto:ProyectoApertura;items:ItemApertura[];hoy:string;roadmap:boolean}) {
  const r=indicadoresApertura(items,hoy),compras=resumenApertura(items),base=`/aperturas/${p.id}`;
+ const corte=cortePresupuesto(items),firme=corte?Math.round((corte.adquirido+corte.cotizado)*100)/100:null;
+ const porcentajeFirme=corte&&firme!==null?Math.round(firme/corte.total_sin_iva*100):null;
  const porcentaje=p.presupuesto!==null&&Number(p.presupuesto)>0?Math.round(compras.cotizado/Number(p.presupuesto)*100):null;
  return <>
  <div className="ap-indicadores">
  <Link className="ap-indicador" href={`${base}?vista=actividades`}><span>Avance de actividades</span><strong>{r.avance===null?'—':`${r.avance} %`}</strong><progress value={r.avance??0} max={100} aria-label="Avance de actividades"/><small>{r.terminadas} de {r.actividades.length} terminadas · excluye no aplica</small></Link>
  <Link className="ap-indicador" href={`${base}?vista=compras&tipo=equipo`}><span>Equipo recibido</span><strong>{r.recepcion===null?'—':`${r.recepcion} %`}</strong><progress value={r.recepcion??0} max={100} aria-label="Unidades de equipo recibidas"/><small>{r.recibidas} de {r.unidades} unidades · {r.sinCantidad} conceptos sin cantidad</small></Link>
- <Link className="ap-indicador" data-alerta={porcentaje!==null&&porcentaje>100} href={`${base}?vista=compras`}><span>Estimado de compras</span><strong>{pesos(compras.cotizado)}</strong><small>Presupuesto: {p.presupuesto===null?'sin definir':pesos(p.presupuesto)}{porcentaje!==null?` · ${porcentaje} %`:''}</small><small>{compras.sinPrecio} conceptos sin cotización completa. No representa pagos.</small></Link>
+ {corte&&firme!==null?<Link className="ap-indicador" href={`${base}#corte-presupuesto`}><span>Presupuesto con precio firme</span><strong>{pesos(firme)}</strong><small>Sin IVA · {porcentajeFirme} % de {pesos(corte.total_sin_iva)}</small><small>Adquirido + cotizado / confirmado · corte {corte.fecha.split('-').reverse().join('/')}. No representa pagos ni recepción.</small></Link>:<Link className="ap-indicador" data-alerta={porcentaje!==null&&porcentaje>100} href={`${base}?vista=compras`}><span>Estimado de compras</span><strong>{pesos(compras.cotizado)}</strong><small>Presupuesto: {p.presupuesto===null?'sin definir':pesos(p.presupuesto)}{porcentaje!==null?` · ${porcentaje} %`:''}</small><small>{compras.sinPrecio} conceptos sin cotización completa. No representa pagos.</small></Link>}
  <Link className="ap-indicador" data-alerta={r.alertas.length>0} href={`${base}?vista=alertas`}><span>Necesitan atención</span><strong>{r.alertas.length}</strong><small>{r.bloqueados.length} bloqueados · {r.atrasados.length} vencidos</small><small>Un registro bloqueado y vencido cuenta una sola vez.</small></Link>
  </div>
  <div className="ap-graficas"><Dona items={r.actividades} titulo="Estado de actividades" href={`${base}?vista=actividades`}/><Dona items={r.equipo} titulo="Estado del equipo" href={`${base}?vista=compras&tipo=equipo`}/></div>
