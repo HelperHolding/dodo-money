@@ -60,7 +60,8 @@ export async function actualizarSesion(request: NextRequest) {
   // Se autentican con su propio header x-api-key, no con la sesión de cookies.
   const esReporteAutomatizado = request.nextUrl.pathname.startsWith("/api/reporte-semanal") || request.nextUrl.pathname.startsWith("/api/reporte-diario");
 
-  if (!user && !esLogin && !esReporteAutomatizado) {
+  const esInvitacion = request.nextUrl.pathname === "/auth/confirm" || request.nextUrl.pathname === "/invitacion";
+  if (!user && !esLogin && !esReporteAutomatizado && !esInvitacion) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
