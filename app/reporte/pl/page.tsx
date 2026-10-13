@@ -25,7 +25,6 @@ export default async function ReportePLPdf({ searchParams }: { searchParams: Pro
         r.comp.columnas.length ? <TablaComparativo columnas={r.comp.columnas} total={r.comp.total} /> : vacio
       ) : r.meta && (p.vacio ? vacio : (
         <>
-          {r.meta.avisos.length > 0 && <ul className="aviso aviso-error lista-simple">{r.meta.avisos.map((a) => <li key={a}>{a}</li>)}</ul>}
           <TablaPL r={r.meta} columnas={r.meta.columnas} conDetalle={false} />
         </>
       ))}

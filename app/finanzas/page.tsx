@@ -6,6 +6,7 @@ import { INICIO_FECHA, INICIO_PL } from "@/lib/finanzas/pl";
 import { comparativoPL, plConHistoria } from "./datos";
 import { TablaComparativo } from "./TablaComparativo";
 import { TablaPL } from "./TablaPL";
+import AdvertenciasPL from "./AdvertenciasPL";
 
 type Filtros = { periodo?: string; mes?: string; semana?: string; sucursal?: string; vista?: string };
 
@@ -82,7 +83,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         <p className="vacio">{p.tipo === "semana" ? "La semana apenas empieza: todavía no hay días cerrados." : "El mes apenas empieza: todavía no hay días cerrados."}</p>
       ) : meta && (
         <>
-          {meta.avisos.length > 0 && <ul className="aviso aviso-error lista-simple">{meta.avisos.map((a) => <li key={a}>{a}</li>)}</ul>}
+          <AdvertenciasPL avisos={meta.avisos} />
           <TablaPL r={meta} columnas={meta.columnas} />
         </>
       )}
