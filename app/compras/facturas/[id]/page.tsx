@@ -1,4 +1,6 @@
 import {RecepcionDirecta} from "../RecepcionDirecta";
+import {ConvertirPrefactura} from "../ConvertirPrefactura";
+import {OrigenPrefactura} from "../OrigenPrefactura";
 import {AdjuntarDocumento,AdjuntosCompra} from "../../adjuntos/Componentes";
 import type {RecepcionFactura} from "@/lib/compras/recepcionFactura";
 import {leerTodo} from "@/lib/ventas/paginar";
@@ -137,6 +139,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={f.estado}>{nombreEstadoFactura(f.tipo, f.estado)}</strong></div><div><small>Total original</small><strong>{pesos(f.total)}</strong></div><div><small>Saldo pendiente</small><strong>{pesos(f.estado === "cancelada" ? 0 : f.saldo)}</strong></div><div><small>Fecha de vencimiento</small><strong>{fechaTexto(f.vence_el)}</strong></div></div>
       <div className="orden-acciones-encabezado ficha-barra">
         {edita&&<AdjuntarDocumento tipo="factura" id={f.id}/>}
+        {edita&&f.origen==='manual'&&f.tipo==='ingreso'&&f.estado!=='cancelada'&&!f.sustituido_por&&<ConvertirPrefactura id={f.id}/>}
         {edita && f.tipo === "ingreso" && opcionesOrden.filter(o=>ligadas.includes(o.id)&&o.estado==="confirmada").map(o=><Link key={o.id} className="boton boton-secundario" href={`/compras/ordenes/${o.id}?recibir=1#recepcion-orden`}>Registrar recepción{ligadas.length>1?` · ${o.folio}`:""}</Link>)}
         {edita && <details><summary>Programar / revisar</summary>      {edita && (
         <section className="seccion">
@@ -364,7 +367,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       )}
 
 </>},
-        {id:"documentos", titulo:"Documentos relacionados", contenido:<><p className="saldo-nota">Adjuntos, notas de crédito y sustituciones de este documento.</p>      {(sustituye ?? []).length > 0 && (
+        {id:"documentos", titulo:"Documentos relacionados", contenido:<><OrigenPrefactura id={f.id}/><p className="saldo-nota">Adjuntos, notas de crédito y sustituciones de este documento.</p>      {(sustituye ?? []).length > 0 && (
         <p className="aviso">Sustituye a: {(sustituye ?? []).map((x) => <Link key={x.id} href={`/compras/facturas/${x.id}`}>{x.folio}</Link>)}</p>
       )}
       {f.sustituido_por && <p className="aviso">Sustituido por <Link href={`/compras/facturas/${f.sustituido_por}`}>su CFDI</Link>.</p>}
