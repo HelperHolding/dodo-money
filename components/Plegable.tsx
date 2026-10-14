@@ -7,15 +7,15 @@ import { useEffect, useState } from "react";
  * `insignia` va junto al título (p. ej. un aviso que abre su propio recuadro).
  */
 export function Plegable({
-  id, titulo, resumen, alerta = false, insignia, children,
-}: { id: string; titulo: string; resumen: string; alerta?: boolean; insignia?: React.ReactNode; children: React.ReactNode }) {
+  id, titulo, resumen, alerta = false, insignia, children, forzarAbierto=false,
+}: { id: string; titulo: string; resumen: string; alerta?: boolean; insignia?: React.ReactNode; children: React.ReactNode; forzarAbierto?:boolean }) {
   const [abierto, setAbierto] = useState(true);
   useEffect(() => {
     if (window.matchMedia("(max-width: 640px)").matches) setAbierto(false);
   }, []);
   return (
     <section className="seccion plegable" aria-labelledby={id}>
-      <details open={abierto} onToggle={(e) => setAbierto(e.currentTarget.open)}>
+      <details open={forzarAbierto||abierto} onToggle={(e) => setAbierto(e.currentTarget.open)}>
         <summary>
           <span className="plegable-titulo">
             <h2 id={id}>{titulo}</h2>

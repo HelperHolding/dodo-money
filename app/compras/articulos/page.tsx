@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
-import { Plegable } from "@/components/Plegable";
 import { SelectorVista } from "@/components/SelectorVista";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, pesos } from "@/lib/formato";
@@ -11,6 +10,7 @@ import { leerTodo } from "@/lib/ventas/paginar";
 import { leerVista } from "@/lib/vista";
 import { cambiarActivoArticulo, guardarArticulo, guardarProveedoresArticulo } from "../acciones";
 import { FormValidado } from "../FormValidado";
+import {BusquedaArticulos,ArticuloBuscable,GrupoArticulosBuscable} from "./BusquedaArticulos";
 
 type Articulo = { id: string; nombre: string; unidad: string; tipo: CategoriaCompra; tasa_iva: TasaIva; dodo_insumo_id: string | null; activo: boolean; motivo_desactivacion: string | null };
 type Liga = { articulo_id: string; proveedor_id: string; principal: boolean };
@@ -68,6 +68,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
   const textoSurten = (id: string) => (surtenDe.get(id) ?? []).map((l) => `${nombreProv.get(l.proveedor_id) ?? "—"}${l.principal ? " (principal)" : ""}`).join(", ");
   const preciosDe = new Map<string, Precio[]>();
   for (const p of precios) preciosDe.set(p.articulo_id, [...(preciosDe.get(p.articulo_id) ?? []), p]);
+  const textoBusqueda=(a:Articulo)=>[a.nombre,a.unidad,a.dodo_insumo_id??'',NOMBRE_CATEGORIA_COMPRA[a.tipo],textoSurten(a.id)].join(' ');
 
   return (
     <>
@@ -86,12 +87,13 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
         </details>
       )}
       <SelectorVista ruta="/compras/articulos" params={params} vista={vista} />
+      <BusquedaArticulos indice={articulos.map(a=>({id:a.id,texto:textoBusqueda(a)}))}>
       {!articulos.length && <p className="vacio">Aún no hay artículos.</p>}
       {CATEGORIAS_COMPRA.map((tipo) => {
         const lista = articulos.filter((a) => a.tipo === tipo);
         if (!lista.length) return null;
         return (
-          <Plegable key={tipo} id={`t-${tipo}`} titulo={NOMBRE_CATEGORIA_COMPRA[tipo]} resumen={`${lista.filter((a) => a.activo).length} activos`}>
+          <GrupoArticulosBuscable key={tipo} textos={lista.map(textoBusqueda)} id={`t-${tipo}`} titulo={NOMBRE_CATEGORIA_COMPRA[tipo]} resumen={`${lista.filter((a) => a.activo).length} activos en categoría`}>
             {vista === "lista" ? (
               <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
                 <li className="fila fila-encabezado" aria-hidden="true"><span>Artículo</span><span>Lo surten</span><span>Mejor precio</span><span>Última compra</span></li>
@@ -100,7 +102,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                   const mejor = ps.reduce<Precio | null>((m, p) => (!m || Number(p.precio) < Number(m.precio) ? p : m), null);
                   const ultima = ps.reduce<string | null>((u, p) => (!u || p.fecha > u ? p.fecha : u), null);
                   return (
-                    <li key={a.id} className="fila" data-alerta={a.activo ? undefined : "si"}>
+                    <ArticuloBuscable key={a.id} texto={textoBusqueda(a)}><li className="fila" data-alerta={a.activo ? undefined : "si"}>
                       <div className="fila-nombre">
                         <Link href={`/compras/articulos#a-${a.id}`}>{a.nombre}</Link>
                         <small>{a.unidad} · {NOMBRE_TASA_IVA[a.tasa_iva]}{a.activo ? "" : " · inactivo"}</small>
@@ -110,7 +112,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                         <span>{mejor ? `${pesos(mejor.precio)} · ${mejor.proveedores?.nombre_comercial ?? mejor.proveedores?.razon_social ?? ""}` : "Sin precio"}</span>
                         <span>{ultima ? fechaTexto(ultima) : "—"}</span>
                       </div>
-                    </li>
+                    </li></ArticuloBuscable>
                   );
                 })}
               </ul>
@@ -119,7 +121,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
               {lista.map((a) => {
                 const ps = preciosDe.get(a.id) ?? [];
                 return (
-                  <article key={a.id} id={`a-${a.id}`} className="tarjeta" data-alerta={a.activo ? undefined : "si"}>
+                  <ArticuloBuscable key={a.id} texto={textoBusqueda(a)}><article id={`a-${a.id}`} className="tarjeta" data-alerta={a.activo ? undefined : "si"}>
                     <div className="tarjeta-encabezado">
                       <div>
                         <h3>{a.nombre}</h3>
@@ -175,14 +177,15 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                         </details>
                       );
                     })()}
-                  </article>
+                  </article></ArticuloBuscable>
                 );
               })}
             </div>
             )}
-          </Plegable>
+          </GrupoArticulosBuscable>
         );
       })}
+      </BusquedaArticulos>
     </>
   );
 }

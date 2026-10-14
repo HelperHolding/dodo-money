@@ -1,4 +1,5 @@
 import ListaCosteo from "./ListaCosteo";
+import {BusquedaUrl} from "@/components/BusquedaUrl";
 import {catalogoCosteo} from "./catalogo";
 import {ultimosPreciosCosteo} from "./precios";
 import type {FiltroCosteo,FilaCosteo} from "@/lib/costeo/lista";
@@ -73,7 +74,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
           </Link>
         ))}
       </nav>
-      <form className="acciones"><input type="hidden" name="ver" value={filtro??""}/><label htmlFor="costos-vista">Vista</label><select id="costos-vista" name="vista" defaultValue={esLista?"lista":"tarjetas"}><option value="tarjetas">Tarjetas</option><option value="lista">Lista</option></select><label className="solo-lector" htmlFor="costos-buscar">Buscar producto o ID</label><input id="costos-buscar" name="q" defaultValue={q??""} placeholder="Buscar producto o ID"/><button className="boton boton-secundario">Consultar</button></form>
+      <form className="acciones"><input type="hidden" name="ver" value={filtro??""}/><label htmlFor="costos-vista">Vista</label><select id="costos-vista" name="vista" defaultValue={esLista?"lista":"tarjetas"}><option value="tarjetas">Tarjetas</option><option value="lista">Lista</option></select><BusquedaUrl id="costos-buscar" titulo="Buscar producto o ID" inicial={q??""}/><button className="boton boton-secundario">Consultar</button></form>
 </>}
 
       {!esLista&&!grupos.length && <p className="vacio">{filtro ? "No hay productos con ese filtro." : "Aún no hay productos. Se agregan solos al importar ventas."}</p>}
