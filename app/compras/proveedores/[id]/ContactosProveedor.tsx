@@ -14,7 +14,7 @@ export function ContactosProveedor({proveedor,contactos,edita,disponible}:{prove
   finally {setOcupado(false);}
  }
  return <section className="seccion" aria-labelledby="contactos-titulo">
-  <div className="encabezado"><h2 id="contactos-titulo">Contactos adicionales</h2>{edita&&disponible&&<button type="button" disabled={ocupado} onClick={()=>{setEditando(null);setMensaje('');}}>Agregar contacto</button>}</div>
+  <div className="contactos-encabezado"><h2 id="contactos-titulo">Contactos adicionales</h2>{edita&&disponible&&<button className="boton" type="button" disabled={ocupado} onClick={()=>{setEditando(null);setMensaje('');}}>Agregar contacto</button>}</div>
   {!disponible?<p className="aviso aviso-error">Contactos no disponibles. Aplica la migración 0043 en Supabase.</p>:<>
   {!contactos.length?<p>Todavía no hay contactos adicionales.</p>:<ul className="lista-simple">{contactos.map(c=><li key={c.id}>
    <strong>{c.nombre}</strong>{c.puesto&&` · ${c.puesto}`}{!c.activo&&' · Inactivo'}
@@ -30,7 +30,7 @@ export function ContactosProveedor({proveedor,contactos,edita,disponible}:{prove
     <div className="campo"><label htmlFor="contacto-telefono">Teléfono</label><input id="contacto-telefono" name="telefono" type="tel" maxLength={100} defaultValue={editando?.telefono??''}/></div>
     <div className="campo"><label htmlFor="contacto-correo">Correo</label><input id="contacto-correo" name="correo" type="email" maxLength={254} defaultValue={editando?.correo??''}/></div>
    </div><small>Agrega al menos un teléfono o correo.</small>
-   <div className="acciones"><button disabled={ocupado}>{ocupado?'Guardando…':'Guardar contacto'}</button><button type="button" className="boton boton-secundario" disabled={ocupado} onClick={()=>setEditando(undefined)}>Cancelar</button></div>
+   <div className="acciones"><button className="boton" disabled={ocupado}>{ocupado?'Guardando…':'Guardar contacto'}</button><button type="button" className="boton boton-secundario" disabled={ocupado} onClick={()=>setEditando(undefined)}>Cancelar</button></div>
   </form>}</>}
   <p role="status">{mensaje}</p>
  </section>;

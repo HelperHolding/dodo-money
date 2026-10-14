@@ -16,6 +16,7 @@ import { PortalProveedor } from "./PortalProveedor";
 import type { PortalProveedor as DatosPortal } from "@/lib/compras/portal";
 import { ContactosProveedor } from "./ContactosProveedor";
 import type { ContactoProveedor } from "@/lib/compras/contactos";
+import {ComprasProveedor} from "./ComprasProveedor";
 
 type Doc = { id: string; tipo: TipoDocumento; fecha: string; ruta: string; subido_en: string };
 type Proveedor = DatosProveedor & { id: string; activo: boolean; motivo_desactivacion: string | null; desactivado_en: string | null };
@@ -60,6 +61,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
         <p>{p.rfc}{p.activo ? "" : " · inactivo"}</p>
       </div>
       <Aviso ok={ok} error={error} />
+      <ComprasProveedor id={id}/>
       {edita && <PortalProveedor id={id} portal={acceso?.data ?? null} disponible={!acceso?.error} />}
       <section className="seccion">
         <dl className="tarjeta-datos">
