@@ -7,7 +7,6 @@ import { obtenerPerfil } from "@/lib/contexto";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const BASES = ["https://api.dodois.com/dodopizza/mx", "https://api.dodois.io/dodopizza/mx"];
 const DESDE = "2026-09-25T00:00:00", HASTA = "2026-09-26T00:00:00";
 
 type Resultado = { ruta: string; status: number; cuerpo: unknown };
@@ -64,10 +63,12 @@ export async function GET(request: Request) {
     return { ruta: `${base}${ruta}`, status: r.status, cuerpo };
   };
 
-  // Base que responde: la primera en la que /auth/roles/units no da 404 ni error de red.
-  let base = BASES[0], unidades: Resultado | null = null;
-  for (const b of BASES) {
-    try { unidades = await llamar(b, "/auth/roles/units"); base = b; if (unidades.status !== 404) break; } catch (e) { unidades = { ruta: b, status: 0, cuerpo: String(e) }; }
+  // La API es del mismo dominio que el servidor de acceso (.com o .io); las unidades van en la raíz, sin /dodopizza/mx.
+  const host = auth === "https://auth.dodois.com" ? "https://api.dodois.com" : "https://api.dodois.io";
+  const base = `${host}/dodopizza/mx`;
+  let unidades: Resultado | null = null;
+  for (const ruta of ["/auth/roles/units", "/dodopizza/mx/auth/roles/units"]) {
+    try { unidades = await llamar(host, ruta); if (unidades.status !== 404) break; } catch (e) { unidades = { ruta, status: 0, cuerpo: String(e) }; }
   }
   const lista = Array.isArray(unidades?.cuerpo) ? unidades!.cuerpo as { id?: string; name?: string }[]
     : ((unidades?.cuerpo as { units?: { id?: string; name?: string }[] })?.units ?? []);
