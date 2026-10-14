@@ -1,7 +1,7 @@
 -- PRUEBA TEMPORAL de la API de Dodo IS: el canje del código por el token se hace desde Supabase, porque Dodo bloquea a Vercel.
 -- La llave secreta se guarda en el Vault de Supabase (cifrada) y solo la lee esta función. Solo admin.
 -- Córrelo en Supabase → SQL Editor. Antes de correrlo, reemplaza PEGA_AQUI_EL_CLIENT_SECRET por el Client Secret de la app
--- "Dodo MX" (el mismo de DODOIS_CLIENT_SECRET en Vercel). No lo compartas por chat.
+-- "Dodo MX" (el mismo de DODOIS_CLIENT_SECRET en Vercel) SOLO en las dos líneas del paso 1. No lo compartas por chat.
 
 create extension if not exists http with schema extensions;
 
@@ -24,7 +24,7 @@ declare v_secreto text; v_resp extensions.http_response;
 begin
   if coalesce(mi_rol()::text, '') <> 'admin' then raise exception 'Solo admin.'; end if;
   select decrypted_secret into v_secreto from vault.decrypted_secrets where name = 'dodois_client_secret';
-  if v_secreto is null or v_secreto = 'PEGA_AQUI_EL_CLIENT_SECRET' then raise exception 'Falta la llave secreta de Dodo IS en el Vault.'; end if;
+  if coalesce(v_secreto, '') = '' then raise exception 'Falta la llave secreta de Dodo IS en el Vault.'; end if;
   v_resp := extensions.http_post(
     'https://auth.dodois.com/connect/token',
     'grant_type=authorization_code'
@@ -41,5 +41,5 @@ revoke execute on function dodois_canjear_codigo(text, text, text, text) from pu
 grant execute on function dodois_canjear_codigo(text, text, text, text) to authenticated;
 
 -- Revisión: debe salir "llave guardada: sí" (no muestra la llave).
-select case when exists (select 1 from vault.decrypted_secrets where name = 'dodois_client_secret' and decrypted_secret <> 'PEGA_AQUI_EL_CLIENT_SECRET')
+select case when exists (select 1 from vault.decrypted_secrets where name = 'dodois_client_secret' and coalesce(decrypted_secret, '') <> '' and decrypted_secret <> 'PEGA' || '_AQUI_EL_CLIENT_SECRET')
             then 'llave guardada: sí' else 'llave guardada: NO (reemplaza PEGA_AQUI_EL_CLIENT_SECRET)' end as revision;
