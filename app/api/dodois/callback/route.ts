@@ -13,7 +13,7 @@ const DESDE = "2026-09-25T00:00:00", HASTA = "2026-09-26T00:00:00";
 type Resultado = { ruta: string; status: number; cuerpo: unknown };
 
 export async function GET(request: Request) {
-  const { perfil } = await obtenerPerfil();
+  const { supabase, perfil } = await obtenerPerfil();
   if (perfil.rol !== "admin") return NextResponse.json({ error: "Solo admin." }, { status: 403 });
   const url = new URL(request.url);
   if (url.searchParams.get("error")) {
@@ -28,17 +28,32 @@ export async function GET(request: Request) {
   }
 
   const auth = guardado.auth === "https://auth.dodois.com" ? guardado.auth : "https://auth.dodois.io";
-  const respToken = await fetch(`${auth}/connect/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code", code, redirect_uri: `${url.origin}/api/dodois/callback`,
-      client_id: process.env.DODOIS_CLIENT_ID ?? "", client_secret: process.env.DODOIS_CLIENT_SECRET ?? "", code_verifier: guardado.verifier,
-    }),
-  });
-  const token = await respToken.json().catch(() => ({})) as { access_token?: string; scope?: string; expires_in?: number; refresh_token?: string; error?: string; error_description?: string };
-  if (!respToken.ok || !token.access_token) {
-    return NextResponse.json({ paso: "token", status: respToken.status, error: token.error, detalle: token.error_description });
+  type Token = { access_token?: string; scope?: string; expires_in?: number; refresh_token?: string; error?: string; error_description?: string };
+  const redirect = `${url.origin}/api/dodois/callback`;
+  let token: Token, status: number;
+  if (auth === "https://auth.dodois.com") {
+    // Dodo bloquea a Vercel: el canje lo hace Supabase (función dodois_canjear_codigo, llave secreta en el Vault).
+    const { data, error } = await supabase.rpc("dodois_canjear_codigo", {
+      p_client_id: process.env.DODOIS_CLIENT_ID ?? "", p_code: code, p_verifier: guardado.verifier, p_redirect: redirect,
+    });
+    if (error) return NextResponse.json({ paso: "token (Supabase)", error: error.message });
+    status = (data as { status: number }).status;
+    const cuerpo = (data as { cuerpo: unknown }).cuerpo;
+    token = typeof cuerpo === "object" && cuerpo ? cuerpo as Token : { error: "respuesta no JSON", error_description: String(cuerpo) };
+  } else {
+    const respToken = await fetch(`${auth}/connect/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code", code, redirect_uri: redirect,
+        client_id: process.env.DODOIS_CLIENT_ID ?? "", client_secret: process.env.DODOIS_CLIENT_SECRET ?? "", code_verifier: guardado.verifier,
+      }),
+    });
+    status = respToken.status;
+    token = await respToken.json().catch(() => ({})) as Token;
+  }
+  if (status !== 200 || !token.access_token) {
+    return NextResponse.json({ paso: "token", servidor: auth, status, error: token.error, detalle: token.error_description });
   }
 
   const llamar = async (base: string, ruta: string): Promise<Resultado> => {
