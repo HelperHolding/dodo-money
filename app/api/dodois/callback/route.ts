@@ -20,14 +20,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ paso: "autorizar", error: url.searchParams.get("error"), detalle: url.searchParams.get("error_description") });
   }
   const jar = await cookies();
-  const guardado = JSON.parse(jar.get("dodois_pkce")?.value ?? "{}") as { verifier?: string; state?: string };
+  const guardado = JSON.parse(jar.get("dodois_pkce")?.value ?? "{}") as { verifier?: string; state?: string; auth?: string };
   jar.delete({ name: "dodois_pkce", path: "/api/dodois" });
   const code = url.searchParams.get("code");
   if (!code || !guardado.verifier || url.searchParams.get("state") !== guardado.state) {
     return NextResponse.json({ paso: "regreso", error: "Falta el código o el state no coincide; vuelve a /api/dodois/login." }, { status: 400 });
   }
 
-  const respToken = await fetch("https://auth.dodois.io/connect/token", {
+  const auth = guardado.auth === "https://auth.dodois.com" ? guardado.auth : "https://auth.dodois.io";
+  const respToken = await fetch(`${auth}/connect/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -77,7 +78,7 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
-    token: { scope: token.scope, expira_en_s: token.expires_in, trae_refresh: Boolean(token.refresh_token) },
+    servidor: auth, token: { scope: token.scope, expira_en_s: token.expires_in, trae_refresh: Boolean(token.refresh_token) },
     base, unidades, resumen, otros,
   });
 }
