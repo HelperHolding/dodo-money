@@ -5,6 +5,7 @@ export const camposPersonal = ["sueldo", "bono", "imss", "cesantia", "retiro", "
 export type DatosPersonal = {nombre:string;puesto:string;renglon:"cocina"|"gerencia";ingreso:string|null;baja:string|null;nota:string;codigo?:string} & Record<typeof camposPersonal[number],number|null>;
 export type VersionPersonal = {id:string;desde:string;hasta:string|null;datos:DatosPersonal;sustituida_en?:string|null};
 export type Persona = {id:string;codigo:string;sucursal_id:string|null;personal_versiones:VersionPersonal[]};
+export type PlantillaPuesto={id:string;sucursal_id:string|null;nombre:string;datos:Pick<DatosPersonal,'puesto'|'renglon'|typeof camposPersonal[number]>;fuente:string;version_fuente:string};
 export type EmpleadoBorrador = Omit<EmpleadoReal,typeof camposPersonal[number]> & Record<typeof camposPersonal[number],number|null> & {personal_id:string;version_id:string;codigo?:string};
 export type BorradorNomina = {id:string;sucursal_id:string|null;mes:string;fuente:string;empleados:EmpleadoBorrador[];avisos:string[];previa:string|null;confirmada_id:string|null};
 const redondear = (n:number) => Math.round(n*100)/100;

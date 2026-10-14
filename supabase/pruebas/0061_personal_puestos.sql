@@ -1,0 +1,41 @@
+-- Reversible: no modifica empleados ni nóminas reales al terminar.
+do $$
+declare a uuid;c uuid;g uuid;s uuid;s2 uuid;p uuid;n uuid;v uuid;nv uuid;plantilla uuid:=gen_random_uuid();sol uuid:=gen_random_uuid();baja uuid:=gen_random_uuid();v_datos jsonb;original jsonb;v_desde date:=date_trunc('month',public.hoy_mx())::date;total_nominas integer;total_sueldos numeric;
+begin
+ select id into a from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' limit 1;
+ select id into c from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
+ select id into g from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='gerente' limit 1;
+ if a is null or c is null or g is null then raise exception 'FALTAN DATOS: admin, corporativo y gerente.';end if;
+ select count(*) into total_nominas from public.nomina_reales;
+ insert into public.sucursales(nombre) values('Personal prueba '||sol) returning id into s;
+ insert into public.sucursales(nombre) values('Otra personal prueba '||sol) returning id into s2;
+ v_datos:=jsonb_build_object('nombre','Empleado fuente','puesto','Pizzero / cajero','renglon','cocina','ingreso',v_desde,'baja',null,'nota','Desglose real de ensayo','sueldo',12000,'bono',0,'imss',2013.72,'cesantia',832.68,'retiro',251.84,'impuesto',240,'infonavit',629.58,'ajuste',48.74);
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ set local role authenticated;
+ p:=public.guardar_personal(null,s,'FUENTE',v_desde,null,v_datos,null);
+ select pv.id,pv.datos into v,original from public.personal_versiones pv where pv.personal_id=p and pv.sustituida_en is null;
+ perform public.guardar_plantilla_puesto(plantilla,'Pizzero base 12000',v,'Base de prueba para nuevas altas');
+ perform public.guardar_plantilla_puesto(plantilla,'Pizzero base 12000',v,'Base de prueba para nuevas altas');
+ if (select count(*) from public.personal_puestos where id=plantilla)<>1 or (select pv.datos from public.personal_versiones pv where pv.id=v)<>original then raise exception 'FALLÓ: plantilla conserva fuente';end if;
+ begin perform public.guardar_personal_con_puesto(gen_random_uuid(),null,s2,'OTRA',v_desde,null,v_datos,null,plantilla);raise exception 'FALLÓ: mezcla sucursales';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ n:=public.guardar_personal_con_puesto(sol,null,s,'NUEVO',v_desde,null,v_datos||'{"nombre":"Persona nueva"}',null,plantilla);
+ if public.guardar_personal_con_puesto(sol,null,s,'NUEVO',v_desde,null,v_datos||'{"nombre":"Persona nueva"}',null,plantilla)<>n then raise exception 'FALLÓ: alta duplicada';end if;
+ select id into nv from public.personal_versiones where personal_id=n and sustituida_en is null;
+ begin perform public.registrar_baja_personal(baja,n,nv,v_desde,'');raise exception 'FALLÓ: motivo';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.registrar_baja_personal(baja,n,nv,v_desde-1,'Baja inválida');raise exception 'FALLÓ: fecha';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.registrar_baja_personal(baja,n,gen_random_uuid(),v_desde+1,'Baja por fin de contrato');raise exception 'FALLÓ: versión obsoleta';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ perform public.registrar_baja_personal(baja,n,nv,v_desde+1,'Baja por fin de contrato');
+ perform public.registrar_baja_personal(baja,n,nv,v_desde+1,'Baja por fin de contrato');
+ if (select count(*) from public.personal_movimientos where personal_id=n)<>2 or not exists(select 1 from public.personal_versiones pv where pv.id=nv and pv.datos->>'baja' is null) or not exists(select 1 from public.personal_versiones pv where pv.personal_id=n and pv.datos->>'baja'=(v_desde+1)::text) then raise exception 'FALLÓ: baja e historial';end if;
+ select id into nv from public.personal_versiones pv where pv.personal_id=n and pv.sustituida_en is null order by pv.desde desc limit 1;
+ begin perform public.registrar_baja_personal(gen_random_uuid(),n,nv,v_desde+1,'Segunda baja');raise exception 'FALLÓ: segunda baja';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ if (select count(*) from public.nomina_reales)<>total_nominas then raise exception 'FALLÓ: registra nómina';end if;
+ begin update public.personal_puestos set nombre='Cambio' where id=plantilla;raise exception 'FALLÓ: escritura directa';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',c,'role','authenticated')::text,true);
+ if not exists(select 1 from public.personal_puestos where id=plantilla) or not exists(select 1 from public.personal_movimientos where id=baja) then raise exception 'FALLÓ: corporativo consulta';end if;
+ begin perform public.registrar_baja_personal(gen_random_uuid(),p,v,v_desde+2,'Intento corporativo');raise exception 'FALLÓ: corporativo gestiona';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',g,'role','authenticated')::text,true);
+ begin perform public.guardar_plantilla_puesto(gen_random_uuid(),'Intento gerente',v,'Intento de gestión');raise exception 'FALLÓ: gerente gestiona';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ if has_function_privilege('anon','public.registrar_baja_personal(uuid,uuid,uuid,date,text)','execute') or has_function_privilege('anon','public.guardar_plantilla_puesto(uuid,text,uuid,text)','execute') then raise exception 'FALLÓ: anónimo';end if;
+ raise exception 'PRUEBAS OK — plantillas por puesto · conserva fuente · alta y baja con historial · motivo y fechas · doble envío · versión protegida · sucursal · sin nómina automática · corporativo consulta · gerente sin gestión · sin escritura directa · anónimo sin ejecución';
+end $$;

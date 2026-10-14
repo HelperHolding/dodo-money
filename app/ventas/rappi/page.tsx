@@ -1,4 +1,6 @@
 import {PanelRappi} from './PanelRappi';
+import {ProductosRappi} from './ProductosRappi';
+import {unidadesRappi} from '@/lib/ventas/rappiProductos';
 import {obtenerPerfil} from "@/lib/contexto";
 import {puedeImportarVentas,veVentasDeTodas} from "@/lib/roles";
 import {hoyCalendarioMX,pesos} from "@/lib/formato";
@@ -15,11 +17,11 @@ export default async function Rappi({searchParams}:{searchParams:Promise<{mes?:s
   const sucursal=veVentasDeTodas(perfil.rol)?(sucursales??[]).find(s=>s.id===q.sucursal)?.id??null:perfil.sucursal_id;
   const {ordenes,catalogo}=await cargarRappi(supabase,sucursal,desde,hasta),nombres=new Map((sucursales??[]).map(s=>[s.id,s.nombre]));
   const ids=new Set(ordenes.flatMap(o=>o.rappi_lineas.map(p=>Number(p.producto_id)))),productos=catalogo.filter(c=>ids.has(Number(c.id)));
-  const dodo=edita?await leerTodo<{dodo_id:number;nombre:string}>((a,b)=>supabase.from("productos_venta").select("dodo_id,nombre").order("dodo_id").range(a,b)):[];
+  const dodo=await leerTodo<{dodo_id:number;nombre:string;categoria:string|null}>((a,b)=>supabase.from("productos_venta").select("dodo_id,nombre,categoria").order("dodo_id").range(a,b));
   const ventas=ordenes.filter(o=>o.estado==="Finalizado"&&o.sumar),total=ventas.reduce((s,o)=>s+Number(o.subtotal_restaurante),0);
   return <><div className="encabezado"><h1>Ventas Rappi</h1><p>Órdenes y productos extraídos del historial. El subtotal restaurante de las órdenes finalizadas suma a Ventas y P&L; los descuentos de Rappi quedan separados.</p></div><Aviso ok={q.ok} error={q.error}/>
     <form className="seccion formulario"><div className="rejilla"><div className="campo"><label htmlFor="mes-rappi">Mes</label><input id="mes-rappi" name="mes" type="month" defaultValue={mes}/></div>{veVentasDeTodas(perfil.rol)&&<div className="campo"><label htmlFor="sucursal-filtro">Sucursal</label><select id="sucursal-filtro" name="sucursal" defaultValue={sucursal??""}><option value="">Todas</option>{sucursales?.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></div>}</div><div className="acciones"><button className="boton" type="submit">Consultar</button></div></form>
-    <PanelRappi ordenes={ordenes}/>{edita&&<FormularioRappi sucursales={sucursales??[]}/>}
+    <PanelRappi ordenes={ordenes}/><ProductosRappi resumen={unidadesRappi(ordenes,catalogo,dodo)}/>{edita&&<FormularioRappi sucursales={sucursales??[]}/>}
     <details className="seccion rappi-acordeon"><summary><strong>Ver órdenes importadas ({ordenes.length})</strong><span>{ventas.length} sumadas · {pesos(total)}</span></summary>{!ordenes.length&&<p>No hay órdenes importadas en este periodo.</p>}<p>El costo se calcula únicamente para productos vinculados al catálogo, con costo vigente. Los combos requieren su equivalencia completa.</p>
       <ul className="lista-filas" style={{"--columnas":2} as React.CSSProperties}>{[...ordenes].sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.hora.localeCompare(a.hora)).map(o=><li className="fila" key={o.rappi_id}><div className="fila-nombre"><strong>#{o.rappi_id} · {nombres.get(o.sucursal_id)}</strong><small>{o.fecha} {o.hora} · {o.estado} · {o.sumar?"Fuente Rappi":"Incluida en Dodo IS"}</small><details><summary>Productos y descuentos</summary><ul>{o.rappi_lineas.map(p=><li key={p.linea}>{p.cantidad} × {p.nombre}{p.opciones?` · ${p.opciones}`:""} · {pesos(Number(p.importe))}</li>)}</ul><p>Descuento restaurante {pesos(Number(o.descuento_restaurante))} · Rappi {pesos(Number(o.descuento_rappi))}</p><small>{o.archivo}</small>{edita&&<form action={fuenteOrden}><input type="hidden" name="id" value={o.rappi_id}/><input type="hidden" name="sumar" value={o.sumar?"no":"si"}/><BotonEnviar confirmar="¿Cambiar la fuente de esta orden?">{o.sumar?"Ya incluida en Dodo IS":"Sumar desde Rappi"}</BotonEnviar></form>}</details></div><div className="fila-datos"><span>Subtotal restaurante {pesos(Number(o.subtotal_restaurante))}</span><span>A facturar {pesos(Number(o.facturar))}</span></div></li>)}</ul>
     </details>
