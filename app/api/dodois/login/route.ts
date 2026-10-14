@@ -17,11 +17,13 @@ export async function GET(request: Request) {
   const verifier = randomBytes(32).toString("base64url");
   const state = randomBytes(16).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
-  (await cookies()).set("dodois_pkce", JSON.stringify({ verifier, state }), {
+  // ?servidor=com usa auth.dodois.com (por omisión auth.dodois.io, el del Marketplace).
+  const auth = new URL(request.url).searchParams.get("servidor") === "com" ? "https://auth.dodois.com" : "https://auth.dodois.io";
+  (await cookies()).set("dodois_pkce", JSON.stringify({ verifier, state, auth }), {
     httpOnly: true, secure: true, sameSite: "lax", path: "/api/dodois", maxAge: 600,
   });
 
-  const url = new URL("https://auth.dodois.io/connect/authorize");
+  const url = new URL(`${auth}/connect/authorize`);
   url.search = new URLSearchParams({
     client_id: clientId, redirect_uri: `${new URL(request.url).origin}/api/dodois/callback`, response_type: "code",
     scope: SCOPES, code_challenge: challenge, code_challenge_method: "S256", state,
