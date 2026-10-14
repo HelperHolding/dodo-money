@@ -7,7 +7,6 @@ import { fechaTexto, pesos } from "@/lib/formato";
 import { CATEGORIAS_COMPRA, NOMBRE_CATEGORIA_COMPRA, NOMBRE_TASA_IVA, TASAS_IVA, type CategoriaCompra, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
-import { leerVista } from "@/lib/vista";
 import { cambiarActivoArticulo, guardarArticulo, guardarProveedoresArticulo } from "../acciones";
 import { FormValidado } from "../FormValidado";
 import {BusquedaArticulos,ArticuloBuscable,GrupoArticulosBuscable} from "./BusquedaArticulos";
@@ -47,7 +46,7 @@ function CamposArticulo({ a }: { a?: Articulo }) {
 export default async function Articulos({ searchParams }: { searchParams: Promise<{ vista?: string; ok?: string; error?: string }> }) {
   const params = await searchParams;
   const { ok, error } = params;
-  const vista = leerVista(params.vista);
+  const vista = params.vista === "tarjetas" ? "tarjetas" : "lista";
   const { supabase, perfil } = await obtenerPerfil();
   const edita = puedeEditarCompras(perfil.rol);
   const [articulos, precios, ligas, proveedores] = await Promise.all([
@@ -86,7 +85,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
           </FormValidado>
         </details>
       )}
-      <SelectorVista ruta="/compras/articulos" params={params} vista={vista} />
+      <SelectorVista ruta="/compras/articulos" params={params} vista={vista} predeterminada="lista" />
       <BusquedaArticulos indice={articulos.map(a=>({id:a.id,texto:textoBusqueda(a)}))}>
       {!articulos.length && <p className="vacio">Aún no hay artículos.</p>}
       {CATEGORIAS_COMPRA.map((tipo) => {
