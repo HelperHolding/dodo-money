@@ -42,6 +42,9 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
     return {id:s.id,nombre:s.nombre,disponible:error?0:Number(data?.disponible??0)};
   }));
 
+  const {data:turnosVentas,error:errorTurnos}=await supabase.from("turnos").select("id,sucursal_id,tipo,sucursales(nombre)").is("cerrado_en",null).returns<{id:string;sucursal_id:string;tipo:string;sucursales:{nombre:string}|null}[]>();
+  if(errorTurnos)throw new Error(errorTurnos.message);
+  const ventas=await Promise.all((turnosVentas??[]).map(async t=>{const {data,error}=await supabase.rpc("disponibilidad_ventas",{p_turno:t.id});if(error)throw new Error(error.message);return {id:t.id,nombre:`${t.sucursales?.nombre??"Sucursal"} · ${t.tipo}`,disponible:Number(data?.disponible??0)};}));
   return (
     <>
       <div className="encabezado"><h1>Registrar pago</h1><p>Un pago puede cubrir varias facturas del mismo proveedor, completas o en abono.</p></div>
@@ -58,7 +61,7 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
       </form>
       {elegido && (!facturas.length
         ? <p className="vacio">Este proveedor no tiene facturas por pagar.</p>
-        : <FormPago proveedorId={elegido.id} facturas={facturas} forma={elegido.forma_pago_habitual} hoy={hoyCalendarioMX()} preseleccion={factura} dias={await diasDePago(supabase)} reservas={reservas} reservaInicial={reserva} bovedas={bovedas} solicitud={crypto.randomUUID()} />)}
+        : <FormPago proveedorId={elegido.id} facturas={facturas} forma={elegido.forma_pago_habitual} hoy={hoyCalendarioMX()} preseleccion={factura} dias={await diasDePago(supabase)} reservas={reservas} reservaInicial={reserva} bovedas={bovedas} ventas={ventas} solicitud={crypto.randomUUID()} />)}
     </>
   );
 }

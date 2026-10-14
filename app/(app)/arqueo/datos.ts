@@ -8,5 +8,7 @@ export async function fondoYRetirosDelTurno(supabase: SupabaseClient, turnoId: s
     .returns<{ tipo: string; monto: number }[]>();
   const suma = (tipo: string) => (data ?? []).filter((m) => m.tipo === tipo).reduce((s, m) => s + Number(m.monto), 0);
   const aperturas = suma("apertura");
-  return { fondo: aperturas > 0 ? aperturas : fondoFijo, fondoDeMovimientos: aperturas > 0, retiros: suma("retiro_boveda") };
+  const {data:eventos,error}=await supabase.from('pagos_ventas_eventos').select('importe').eq('turno_id',turnoId);
+  if(error)throw new Error(error.message);
+  return { fondo: aperturas > 0 ? aperturas : fondoFijo, fondoDeMovimientos: aperturas > 0, retiros: suma("retiro_boveda"),pagos:(eventos??[]).reduce((s,e)=>s+Number(e.importe),0) };
 }

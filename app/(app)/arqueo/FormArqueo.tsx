@@ -9,8 +9,8 @@ import { NOMBRE_MOMENTO, type MomentoArqueo } from "@/lib/tipos";
 import { registrarArqueo } from "./actions";
 
 export function FormArqueo({
-  fondoInicial, fondoDeMovimientos, retirosBoveda, momentoSugerido, momentosPosibles,
-}: { fondoInicial: number; fondoDeMovimientos: boolean; retirosBoveda: number; momentoSugerido: MomentoArqueo; momentosPosibles: MomentoArqueo[] }) {
+  fondoInicial, fondoDeMovimientos, retirosBoveda, momentoSugerido, momentosPosibles,pagosVentas=0,
+}: { fondoInicial: number; fondoDeMovimientos: boolean; retirosBoveda: number; momentoSugerido: MomentoArqueo; momentosPosibles: MomentoArqueo[];pagosVentas?:number }) {
   const [conteo, setConteo] = useState<Record<string, number>>({});
   const [ventas, setVentas] = useState("");
   const [momento, setMomento] = useState<MomentoArqueo>(momentoSugerido);
@@ -18,7 +18,7 @@ export function FormArqueo({
   const contado = useMemo(() => totalConteo(conteo), [conteo]);
   const conVentas = pideVentas(momento);
   const { ventas: ventasNum, esperado, diferencia, estado } = cuadre({
-    momento, fondo: fondoInicial, ventas: ventas === "" ? null : Number(ventas) || 0, retiros: retirosBoveda, contado,
+    momento, fondo: fondoInicial, ventas: ventas === "" ? null : Number(ventas) || 0, retiros: retirosBoveda, contado,pagos:pagosVentas,
   });
   const veredicto =
     estado === "pendiente" ? (conVentas ? "Cuenta el efectivo y escribe las ventas" : "Cuenta el efectivo del cajero")
@@ -90,6 +90,7 @@ export function FormArqueo({
           </div>
           {conVentas && <div className="resultado-dato"><span>+ Ventas en efectivo</span><strong>{pesos(ventasNum)}</strong></div>}
           <div className="resultado-dato"><span>− Retiros a bóveda</span><strong>{pesos(retirosBoveda)}</strong></div>
+          <div className="resultado-dato"><span>− Pagos desde efectivo de ventas</span><strong>{pesos(pagosVentas)}</strong></div>
           <div className="resultado-dato"><span>= Esperado</span><strong>{pesos(esperado)}</strong></div>
           <div className="resultado-dato"><span>Contado</span><strong>{pesos(contado)}</strong></div>
           <div className="resultado-veredicto">

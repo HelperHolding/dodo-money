@@ -7,6 +7,10 @@ test("en el inicio de turno no se piden ventas", () => {
   assert.equal(pideVentas("traspaso"), true);
   assert.equal(pideVentas("cierre"), true);
 });
+test('pagos de ventas reducen el esperado una sola vez sin convertirse en retiro a bóveda',()=>{
+ const r=cuadre({momento:'cierre',fondo:500,ventas:1500,retiros:300,pagos:600,contado:1100});
+ assert.equal(r.esperado,1100);assert.equal(r.diferencia,0);assert.equal(r.estado,'cuadra');
+});
 
 test("inicio: el esperado es solo el fondo, aunque se haya escrito una venta", () => {
   const r = cuadre({ momento: "inicio", fondo: 1500, ventas: 1500, retiros: 0, contado: 1500 });

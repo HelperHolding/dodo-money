@@ -6,11 +6,11 @@ export const pideVentas = (momento: MomentoArqueo) => momento !== "inicio";
 export type EstadoCuadre = "pendiente" | "cuadra" | "faltante" | "sobrante";
 
 /** Esperado = fondo + ventas en efectivo (salvo al inicio) − retiros a bóveda; diferencia = contado − esperado. */
-export function cuadre({ momento, fondo, ventas, retiros, contado }: {
-  momento: MomentoArqueo; fondo: number; ventas: number | null; retiros: number; contado: number;
+export function cuadre({ momento, fondo, ventas, retiros, contado,pagos=0 }: {
+  momento: MomentoArqueo; fondo: number; ventas: number | null; retiros: number; contado: number;pagos?:number;
 }): { ventas: number; esperado: number; diferencia: number; estado: EstadoCuadre } {
   const v = pideVentas(momento) ? (ventas ?? 0) : 0;
-  const esperado = fondo + v - retiros;
+  const esperado = fondo + v - retiros-pagos;
   const diferencia = Math.round((contado - esperado) * 100) / 100;
   const listo = contado > 0 && (!pideVentas(momento) || ventas !== null);
   const estado: EstadoCuadre = !listo ? "pendiente" : diferencia === 0 ? "cuadra" : diferencia < 0 ? "faltante" : "sobrante";

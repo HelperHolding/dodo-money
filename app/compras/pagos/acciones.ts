@@ -79,8 +79,8 @@ export async function registrarPago(fd: FormData) {
     if (errorArchivo) volver(ruta, "error", `No se pudo subir el comprobante: ${errorArchivo.message}`);
   }
 
-  const { data: id, error } = await supabase.rpc(fd.get("origen")==="boveda_acumulado"?"registrar_pago_boveda_acumulado":"registrar_pago_con_origen", {p_datos:{
-    sucursal:String(fd.get("sucursal_boveda")??""),nota:String(fd.get("nota_boveda")??"").trim(),
+  const { data: id, error } = await supabase.rpc(fd.get("origen")==="ventas"?"registrar_pago_ventas":fd.get("origen")==="boveda_acumulado"?"registrar_pago_boveda_acumulado":"registrar_pago_con_origen", {p_datos:{
+    turno:String(fd.get("turno_ventas")??""),sucursal:String(fd.get("sucursal_boveda")??""),nota:String(fd.get("nota_boveda")??"").trim(),
     solicitud:String(fd.get("solicitud")??""),proveedor,fecha:String(fd.get("fecha")??""),monto,origen:String(fd.get("origen")??""),
     cuenta:String(fd.get("cuenta_origen")??""),reserva:String(fd.get("reserva")??"")||null,
     referencia:String(fd.get("referencia")??""),comprobante:rutaComprobante,aplicaciones,

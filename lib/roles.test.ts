@@ -63,7 +63,7 @@ const grupo = (rol: R, titulo: string) => menuLateral(rol).grupos.find((g) => g.
 test("menú lateral: cada puesto ve solo sus grupos", () => {
   assert.deepEqual(grupos("operacion"), ["Sucursal", "Conocimiento"]);
   assert.deepEqual(grupos("encargado"), ["Sucursal", "Conocimiento"]);
-  assert.deepEqual(grupos("gerente"), ["Sucursal", "Ventas", "Conocimiento"]);
+  assert.deepEqual(grupos("gerente"), ["Sucursal", "Efectivo", "Ventas", "Conocimiento"]);
   assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Administración", "Aperturas", "Activos", "Conocimiento"]);
   assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Aperturas", "Activos", "Conocimiento"]);
 });
@@ -112,7 +112,7 @@ test("enlaceActivo elige la ruta más larga de todo el menú", () => {
 test("efectivo a corporativo: admin y corporativo lo ven; solo corporativo recibe", () => {
   for (const rol of ["admin", "corporativo"] as const) {
     assert.equal(puedeVerEfectivo(rol), true);
-    assert.deepEqual(grupo(rol, "Efectivo"), ["/efectivo"]);
+    assert.deepEqual(grupo(rol, "Efectivo"), ["/recolecciones", "/efectivo"]);
   }
   for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerEfectivo(rol), false);
   assert.equal(puedeRecibirEfectivo("corporativo"), true);

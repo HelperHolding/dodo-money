@@ -14,7 +14,7 @@ import { salidaSugerida } from "@/lib/fondos";
 type Cierre = {
   id: string; rappi: number; rappi_corte: number | null; rappi_corte_ruta: string | null;
   venta_total: number; venta_neta: number; ticket_promedio: number; transacciones: number;
-  boveda_esperado: number; boveda_contado: number; boveda_diferencia: number; gastos_boveda_dia: number;
+  boveda_esperado: number; boveda_contado: number; boveda_diferencia: number; gastos_boveda_dia: number; gastos_ventas_dia:number;
   cambios_diferencia: number; diferencia_turnos: number; deposito_ficha: string | null;
 };
 
@@ -34,7 +34,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
   const disponibilidad=await bovedaDe(supabase,sucursal.id,Number(sucursal.fondo_boveda));
 
   const { data: cierre } = await supabase.from("cierres_dia")
-    .select("id, rappi, rappi_corte, rappi_corte_ruta, venta_total, venta_neta, ticket_promedio, transacciones, boveda_esperado, boveda_contado, boveda_diferencia, gastos_boveda_dia, cambios_diferencia, diferencia_turnos, deposito_ficha")
+    .select("id, rappi, rappi_corte, rappi_corte_ruta, venta_total, venta_neta, ticket_promedio, transacciones, boveda_esperado, boveda_contado, boveda_diferencia, gastos_boveda_dia, gastos_ventas_dia, cambios_diferencia, diferencia_turnos, deposito_ficha")
     .eq("sucursal_id", sucursal.id).eq("fecha", fecha).maybeSingle<Cierre>();
 
   if (cierre) {
@@ -54,6 +54,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="Ticket promedio sin IVA" valor={pesos(cierre.ticket_promedio)} />
             <Fila texto="Diferencia de los arqueos de turno" valor={pesos(cierre.diferencia_turnos)} fuerte />
             {Number(cierre.gastos_boveda_dia) !== 0 && <Fila texto="Gastos y pagos de bóveda, netos de anulaciones" valor={pesos(cierre.gastos_boveda_dia)} />}
+            <Fila texto="Pagos desde efectivo de ventas" valor={pesos(cierre.gastos_ventas_dia)} />
             <Fila texto="Bóveda esperada" valor={pesos(cierre.boveda_esperado)} />
             <Fila texto="Bóveda contada" valor={pesos(cierre.boveda_contado)} />
             <Fila texto="Diferencia de bóveda" valor={pesos(cierre.boveda_diferencia)} fuerte />
@@ -166,15 +167,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
           </div>
         </section>
 
-        <section className="seccion" aria-labelledby="t-deposito">
-          <h2 id="t-deposito">Salida a corporativo</h2>
-          <p className="saldo-nota">Si hoy salió efectivo a corporativo, el movimiento ya debe estar registrado y confirmado. Aquí quedan los datos de la entrega.</p>
-          <div className="rejilla">
-            <div className="campo"><label htmlFor="deposito_banco">Quién la recibió</label><input id="deposito_banco" name="deposito_banco" /></div>
-            <div className="campo"><label htmlFor="deposito_ficha">Folio o recibo</label><input id="deposito_ficha" name="deposito_ficha" /></div>
-            <div className="campo"><label htmlFor="deposito_fecha">Fecha y hora</label><input id="deposito_fecha" name="deposito_fecha" type="datetime-local" /></div>
-          </div>
-        </section>
+        <section className="seccion"><h2>Recolección de efectivo</h2><p>Prepara la salida a corporativo por rango de cierres en <Link href="/recolecciones">Recolecciones</Link>. El cierre conserva sus datos de efectivo; la entrega se registra por separado.</p></section>
 
         <div className="acciones">
           <BotonEnviar pendiente="Cerrando…">Cerrar el día</BotonEnviar>

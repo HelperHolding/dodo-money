@@ -23,7 +23,7 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
     );
   }
 
-  const [{ fondo, fondoDeMovimientos, retiros }, { data: arqueos }, { count: pendientes }, { data: nombres }] = await Promise.all([
+  const [{ fondo, fondoDeMovimientos, retiros,pagos }, { data: arqueos }, { count: pendientes }, { data: nombres }] = await Promise.all([
     fondoYRetirosDelTurno(supabase, turno.id, Number(sucursal.fondo_caja_venta)),
     supabase.from("arqueos").select("id, turno_id, momento, total_contado, esperado, diferencia, entrega_id, recibe_id, creado_en, anulado_en, motivo_anulacion")
       .eq("turno_id", turno.id).order("creado_en").returns<Arqueo[]>(),
@@ -101,7 +101,7 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
         </section>
       )}
 
-      {!soloLectura && <FormArqueo fondoInicial={fondo} fondoDeMovimientos={fondoDeMovimientos} retirosBoveda={retiros} momentoSugerido={momentos.sugerido} momentosPosibles={momentos.posibles} />}
+      {!soloLectura && <FormArqueo fondoInicial={fondo} fondoDeMovimientos={fondoDeMovimientos} retirosBoveda={retiros} pagosVentas={pagos} momentoSugerido={momentos.sugerido} momentosPosibles={momentos.posibles} />}
     </>
   );
 }

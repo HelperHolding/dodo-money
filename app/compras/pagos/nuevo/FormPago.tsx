@@ -13,13 +13,13 @@ export type FacturaParaPagar = PorPagar & { nombre: string; bloqueada: string | 
 export type ReservaPago={id:string;factura_id:string;pendiente:number;sucursal_id:string;sucursales:{nombre:string}|null};
 
 /** El monto se reparte solo por fecha de pago; cada factura se puede ajustar a mano. */
-export function FormPago({ proveedorId, facturas, hoy, preseleccion, dias,reservas,reservaInicial,solicitud,bovedas }: {
+export function FormPago({ proveedorId, facturas, hoy, preseleccion, dias,reservas,reservaInicial,solicitud,bovedas,ventas }: {
   proveedorId: string; facturas: FacturaParaPagar[]; forma: FormaPago; hoy: string; preseleccion: string | null;
   /** Días de pago autorizados (ISO): otro día pide motivo. */
   dias: number[];
   reservas:ReservaPago[];reservaInicial:string|null;
   solicitud:string;
-  bovedas:{id:string;nombre:string;disponible:number}[];
+  bovedas:{id:string;nombre:string;disponible:number}[]; ventas:{id:string;nombre:string;disponible:number}[];
 }) {
   const inicialReserva=reservas.find(r=>r.id===reservaInicial);
   const [origen,setOrigen]=useState(inicialReserva?"boveda":"transferencia");
@@ -27,7 +27,7 @@ export function FormPago({ proveedorId, facturas, hoy, preseleccion, dias,reserv
   const elegidaReserva=reservas.find(r=>r.id===reserva);
   const [facturaCash, setFacturaCash] = useState(preseleccion ?? "");
   const [sucursalCash, setSucursalCash] = useState("");
-  const cash = origen === "boveda_acumulado";
+  const cash = origen === "boveda_acumulado"||origen==="ventas";
   const [fecha, setFecha] = useState(hoy);
   const diaDePago = esDiaDePago(fecha, dias);
   const pagables = facturas.filter((f) => !f.bloqueada&&(origen!=="boveda"||f.id===elegidaReserva?.factura_id)&&(!cash||f.id===facturaCash));
@@ -58,14 +58,14 @@ export function FormPago({ proveedorId, facturas, hoy, preseleccion, dias,reserv
         <div className="campo">
           <label htmlFor="origen">Origen del dinero</label>
           <select id="origen" name="origen" value={origen} onChange={e=>{setOrigen(e.target.value);setManual({});setMonto("");}}>
-            <option value="boveda_acumulado">Efectivo acumulado en bóveda · días anteriores</option><option value="transferencia">Transferencia bancaria</option><option value="boveda">Efectivo de bóveda reservado</option>
+            <option value="ventas">Efectivo de ventas · caja del turno</option><option value="boveda_acumulado">Efectivo acumulado en bóveda · días anteriores</option><option value="transferencia">Transferencia bancaria</option><option value="boveda">Efectivo de bóveda reservado</option>
           </select>
         </div>
         {cash?<>
           <div className="campo">
-          <label htmlFor="sucursal_boveda">Bóveda de la sucursal</label>
-          <select id="sucursal_boveda" name="sucursal_boveda" required value={sucursalCash} onChange={e=>setSucursalCash(e.target.value)}>
-          <option value="">Elige…</option>{bovedas.map(b=>
+          <label htmlFor="sucursal_boveda">{origen==="ventas"?"Caja de ventas / turno":"Bóveda de la sucursal"}</label>
+          <select id="sucursal_boveda" name={origen==="ventas"?"turno_ventas":"sucursal_boveda"} required value={sucursalCash} onChange={e=>setSucursalCash(e.target.value)}>
+          <option value="">Elige…</option>{(origen==="ventas"?ventas:bovedas).map(b=>
           <option key={b.id} value={b.id}>{b.nombre} · disponible {pesos(b.disponible)}</option>)}</select>
           </div>
           <div className="campo">
@@ -77,7 +77,7 @@ export function FormPago({ proveedorId, facturas, hoy, preseleccion, dias,reserv
           <div className="campo">
           <label htmlFor="nota_boveda">Anotación importante · uso del efectivo</label>
           <textarea id="nota_boveda" name="nota_boveda" required minLength={5} maxLength={1000} placeholder="Explica el pago y de qué efectivo acumulado se toma el dinero."/>
-          <p className="aviso">Este pago toma efectivo disponible que sigue físicamente en bóveda. Se registra hoy y no modifica cortes anteriores. Conserva el fondo y las reservas y salidas comprometidas; no lo registres también como gasto de caja chica. Si hay varios tickets, adjúntalos en un solo PDF.</p>
+          <p className="aviso">{origen==="ventas"?"Usa el último arqueo confirmado del turno, conserva el fondo y descuenta pagos y retiros posteriores. Para considerar nuevas ventas, registra y confirma un nuevo arqueo.":"Este pago toma efectivo disponible que sigue físicamente en bóveda."} Se registra hoy y no modifica cortes anteriores. Conserva el fondo y las reservas y salidas comprometidas; no lo registres también como gasto de caja chica. Si hay varios tickets, adjúntalos en un solo PDF.</p>
           </div>
           </>:origen==="transferencia"?<div className="campo">
           <label htmlFor="cuenta_origen">Cuenta de transferencia</label>

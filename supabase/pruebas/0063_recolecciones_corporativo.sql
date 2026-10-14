@@ -1,0 +1,44 @@
+-- Reversible. Cierres y pagos simulados para probar custodia, disponibilidad y respaldo.
+do $$
+declare v_a uuid;v_c uuid;v_g uuid;v_s uuid;v_b uuid;v_dest uuid;v_p uuid;v_f uuid;v_pago uuid;v_id uuid:=gen_random_uuid();v_id2 uuid:=gen_random_uuid();v_exp jsonb;v_original jsonb;v_count integer;v_op date:=((now() at time zone 'America/Mexico_City')-interval '4 hours')::date;
+begin
+ select id into v_a from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' limit 1;
+ select id into v_c from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
+ select id into v_g from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='gerente' limit 1;
+ if v_a is null or v_c is null or v_g is null then raise exception 'FALTAN DATOS: admin, corporativo y gerente.';end if;
+ perform set_config('request.jwt.claims',json_build_object('sub',v_a,'role','authenticated')::text,true);
+ insert into public.sucursales(nombre,fondo_boveda) values('Recolección ensayo '||v_id,4500) returning id into v_s;
+ insert into public.cajas(sucursal_id,tipo,nombre,saldo_inicial) values(v_s,'boveda','Bóveda',6900) returning id into v_b;
+ insert into public.cajas(sucursal_id,tipo,nombre) values(v_s,'corporativo','Corporativo') returning id into v_dest;
+ update public.perfiles set sucursal_id=v_s where id=v_g;
+ insert into public.cierres_dia(sucursal_id,fecha,boveda_inicial,boveda_contado,efectivo,cerrado_por) values(v_s,v_op-2,4500,5500,1000,v_g),(v_s,v_op-1,5500,6900,1400,v_g);
+ select jsonb_agg(to_jsonb(cd) order by cd.fecha) into v_original from public.cierres_dia cd where sucursal_id=v_s;
+ insert into public.proveedores(razon_social,rfc,regimen_fiscal,sucursal_id,cuenta_pl) values('Ensayo efectivo','PRB010101AB1','601',v_s,'insumos') returning id into v_p;
+ set local role authenticated;
+ v_f:=public.registrar_gasto_manual(jsonb_build_object('proveedor_id',v_p,'sucursal_id',v_s,'fecha',public.hoy_mx(),'folio','Compra ensayo','subtotal',10000,'iva',0,'retencion_iva',0,'retencion_isr',0,'total',10000,'renglones',jsonb_build_array(jsonb_build_object('descripcion','Insumo','importe',10000,'cuenta_pl','insumos'))));
+ v_pago:=public.registrar_pago_boveda_acumulado(jsonb_build_object('solicitud',gen_random_uuid(),'proveedor',v_p,'fecha',public.hoy_mx(),'monto',600,'origen','boveda_acumulado','sucursal',v_s,'nota','Pago de insumos posterior al cierre','comprobante','pagos/ensayo.pdf','aplicaciones',jsonb_build_array(jsonb_build_object('factura_id',v_f,'monto',600)),'motivo','Urgencia de ensayo'));
+ perform set_config('request.jwt.claims',json_build_object('sub',v_g,'role','authenticated')::text,true);
+ v_exp:=public.vista_recoleccion(v_s,v_op-2,v_op-1);
+ if (v_exp->>'maximo')::numeric<>1800 or jsonb_array_length(v_exp->'cierres')<>2 or jsonb_array_length(v_exp->'pagos')<>1 then raise exception 'FALLÓ: cierres y pagos posteriores';end if;
+ perform public.registrar_recoleccion(v_id,v_s,v_op-2,v_op-1,1800,'REC-ENSAYO','Entrega de dos cierres');
+ perform public.registrar_recoleccion(v_id,v_s,v_op-2,v_op-1,1800,'REC-ENSAYO','Entrega de dos cierres');
+ begin perform public.vista_recoleccion(v_s,v_op-2,v_op-1);raise exception 'FALLÓ: cierres duplicados';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.confirmar_movimiento(v_id,true);raise exception 'FALLÓ: registra y recoge misma persona';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',v_a,'role','authenticated')::text,true);
+ perform public.confirmar_movimiento(v_id,false);
+ perform set_config('request.jwt.claims',json_build_object('sub',v_g,'role','authenticated')::text,true);
+ perform public.registrar_recoleccion(v_id2,v_s,v_op-2,v_op-1,1800,'REC-ENSAYO-2','Repreparación tras rechazo');
+ perform set_config('request.jwt.claims',json_build_object('sub',v_a,'role','authenticated')::text,true);
+ perform public.confirmar_movimiento(v_id2,true);
+ if (select saldo from public.saldos_cajas where caja_id=v_b)<>4500 then raise exception 'FALLÓ: bóveda o fondo';end if;
+ perform set_config('request.jwt.claims',json_build_object('sub',v_c,'role','authenticated')::text,true);
+ begin perform public.recibir_en_corporativo(v_id2,true,null);raise exception 'FALLÓ: recibe sin conteo';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.recibir_recoleccion(v_id2,1790,'');raise exception 'FALLÓ: diferencia sin motivo';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ perform public.recibir_recoleccion(v_id2,1790,'Faltaron diez pesos al contar');
+ perform public.recibir_recoleccion(v_id2,1790,'Faltaron diez pesos al contar');
+ if not exists(select 1 from public.movimientos where id=v_id2 and recepcion='rechazada') or not exists(select 1 from public.recolecciones_corporativo where id=v_id2 and contado_corporativo=1790) then raise exception 'FALLÓ: discrepancia';end if;
+ if v_original is distinct from (select jsonb_agg(to_jsonb(cd) order by cd.fecha) from public.cierres_dia cd where sucursal_id=v_s) then raise exception 'FALLÓ: reescribe cierre';end if;
+ begin update public.recolecciones_corporativo set contado_corporativo=1800 where id=v_id2;raise exception 'FALLÓ: escritura directa';exception when insufficient_privilege then null;end;
+ if has_function_privilege('anon','public.registrar_recoleccion(uuid,uuid,date,date,numeric,text,text,boolean)','execute') then raise exception 'FALLÓ: anónimo';end if;
+ raise exception 'PRUEBAS OK — recolección por rango · cierres y compras unidos · pagos posteriores · no resta dos veces · fondo protegido · sin cierres duplicados · rechazo libera · custodia por otra persona · conteo corporativo · diferencia con motivo · conserva cierres · sin escritura directa · anónimo sin ejecución';
+end $$;

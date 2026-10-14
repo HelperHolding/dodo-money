@@ -16,6 +16,7 @@ export async function registrarMovimiento(formData: FormData) {
   const tipo = String(formData.get("tipo")) as TipoMovimiento;
   const ruta = RUTAS[tipo];
   if (!ruta) volverCon("/movimientos", "error", "Elige el tipo de movimiento.");
+  if(tipo==='salida_corporativo')volverCon('/recolecciones','error','Prepara la entrega con sus cierres desde Recolecciones.');
 
   const origenTipo = String(formData.get("origen")) as TipoCaja;
   const destinoTipo = String(formData.get("destino")) as TipoCaja;

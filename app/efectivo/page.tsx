@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
@@ -8,11 +9,11 @@ import type { EstadoMovimiento } from "@/lib/tipos";
 import { aceptarEntrada, noCuadra, rechazarSalida, recogerSalida } from "./actions";
 
 type Salida = {
-  id: string; sucursal_id: string; monto: number; folio: string | null; nota: string | null; estado: EstadoMovimiento;
+  id: string; recoleccion_id:string|null; sucursal_id: string; monto: number; folio: string | null; nota: string | null; estado: EstadoMovimiento;
   registrado_por: string; creado_en: string; confirmado_por: string | null; confirmado_en: string | null;
   recepcion: Recepcion | null; recibido_por: string | null; recibido_en: string | null; nota_recepcion: string | null;
 };
-const COLUMNAS = "id, sucursal_id, monto, folio, nota, estado, registrado_por, creado_en, confirmado_por, confirmado_en, recepcion, recibido_por, recibido_en, nota_recepcion";
+const COLUMNAS = "id, recoleccion_id, sucursal_id, monto, folio, nota, estado, registrado_por, creado_en, confirmado_por, confirmado_en, recepcion, recibido_por, recibido_en, nota_recepcion";
 
 const cuando = (iso: string) => `${fechaTexto(fechaMX(iso))}, ${hora(iso)}`;
 
@@ -63,7 +64,7 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
           {s.nota_recepcion && <><dt>{s.recepcion === "rechazada" ? "Motivo" : "Nota"}</dt><dd>{s.nota_recepcion}</dd></>}
           {s.nota && <><dt>Nota de sucursal</dt><dd>{s.nota}</dd></>}
         </dl>
-        {acciones}
+        {s.recoleccion_id?<Link className="boton boton-secundario" href={`/recolecciones/${s.id}`}>Ver cierres y recibir desde expediente</Link>:acciones}
       </article>
     );
   };
@@ -71,7 +72,7 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
   return (
     <>
       <div className="encabezado">
-        <h1>Salidas a corporativo</h1>
+        <h1>Salidas a corporativo</h1><Link className="boton boton-secundario" href="/recolecciones">Recolecciones por rango de cierres</Link>
         <p>La sucursal registra la salida, un admin la recoge y corporativo cuenta el efectivo y confirma que llegó.</p>
       </div>
       <Aviso ok={ok} error={error} />

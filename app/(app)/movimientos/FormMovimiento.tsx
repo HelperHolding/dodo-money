@@ -6,6 +6,7 @@ import { salidaSugerida, type Boveda } from "@/lib/fondos";
 import { pesos } from "@/lib/formato";
 import { NOMBRE_MOVIMIENTO, RUTAS, type TipoCaja, type TipoMovimiento } from "@/lib/tipos";
 import { registrarMovimiento } from "./actions";
+import Link from 'next/link';
 
 const NOMBRE_CAJA: Record<TipoCaja, string> = {
   venta: "Caja de venta", cambios: "Fondo de cambios", boveda: "Bóveda", caja_chica: "Caja chica", corporativo: "Corporativo",
@@ -38,11 +39,12 @@ export function FormMovimiento({ limiteRetiro, fondoCajon, boveda, fondoEmergenc
   return (
     <form action={registrarMovimiento} className="seccion" aria-labelledby="t-nuevo">
       <h2 id="t-nuevo">Registrar movimiento</h2>
+      <p className="saldo-nota">Las entregas a corporativo se preparan por rango de cierres en <Link href="/recolecciones">Recolecciones</Link>.</p>
       <div className="rejilla">
         <div className="campo">
           <label htmlFor="tipo">Movimiento</label>
           <select id="tipo" name="tipo" value={tipo} onChange={(e) => cambiarTipo(e.target.value as TipoMovimiento)}>
-            {(Object.keys(RUTAS) as TipoMovimiento[]).map((t) => (
+            {(Object.keys(RUTAS) as TipoMovimiento[]).filter(t=>t!=='salida_corporativo').map((t) => (
               <option key={t} value={t}>{NOMBRE_MOVIMIENTO[t]}</option>
             ))}
           </select>

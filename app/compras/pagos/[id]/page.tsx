@@ -37,7 +37,7 @@ export default async function DetallePago({ params, searchParams }: { params: Pr
       <Aviso ok={ok} error={error} />
       <section className="seccion">
         <dl className="tarjeta-datos">
-          <dt>Origen del dinero</dt><dd>{p.origen_fondos==="boveda"?<Link href="/compras/pagos/reservas">{p.nota_boveda?"Bóveda · efectivo acumulado":"Bóveda · reserva autorizada"}</Link>:p.origen_fondos==="transferencia"?"Transferencia bancaria":"Sin identificar · registro anterior"}</dd>
+          <dt>Origen del dinero</dt><dd>{p.origen_fondos==="ventas"?"Efectivo de ventas · caja del turno":p.origen_fondos==="boveda"?<Link href="/compras/pagos/reservas">{p.nota_boveda?"Bóveda · efectivo acumulado":"Bóveda · reserva autorizada"}</Link>:p.origen_fondos==="transferencia"?"Transferencia bancaria":"Sin identificar · registro anterior"}</dd>
           {p.nota_boveda && <><dt>Anotación importante</dt><dd>{p.nota_boveda}</dd></>}
           {p.cuenta_origen && <><dt>Cuenta</dt><dd>{p.cuenta_origen}</dd></>}
           {p.referencia && <><dt>Referencia</dt><dd>{p.referencia}</dd></>}
@@ -54,7 +54,7 @@ export default async function DetallePago({ params, searchParams }: { params: Pr
           <form action={anularPago} className="formulario">
             <input type="hidden" name="id" value={p.id} />
             <div className="campo"><label htmlFor="motivo">Motivo</label><input id="motivo" name="motivo" required placeholder="Ej. se registró dos veces" /></div>
-            {p.origen_fondos==="boveda"&&<p className="aviso">Anular devuelve el monto al saldo esperado de bóveda en el día actual. Confirma que el efectivo está nuevamente en bóveda o que nunca salió.</p>}
+            {["boveda","ventas"].includes(p.origen_fondos??"")&&<p className="aviso">Anular devuelve el efectivo al origen registrado; si el turno de ventas ya cerró, la devolución entra a bóveda en el día actual. Confirma que el efectivo está nuevamente en bóveda o que nunca salió.</p>}
             <BotonEnviar className="boton boton-alerta" confirmar="¿Anular este pago? Las facturas recuperan su saldo.">Anular pago</BotonEnviar>
           </form>
         </details>

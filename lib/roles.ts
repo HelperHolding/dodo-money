@@ -73,8 +73,8 @@ export function menuLateral(rol: Rol): Menu {
       ...(puedeRecibirCompras(rol) ? [{ href: "/recepciones", texto: "Recepciones" }] : []),
     ],
   }];
-  if (puedeVerEfectivo(rol)) {
-    grupos.push({ titulo: "Efectivo", enlaces: [{ href: "/efectivo", texto: "Salidas a corporativo" }] });
+  if (puedeVerEfectivo(rol)||rol==='gerente') {
+    grupos.push({ titulo: "Efectivo", enlaces: [{href:'/recolecciones',texto:'Recolecciones'},...(puedeVerEfectivo(rol)?[{ href: "/efectivo", texto: "Salidas a corporativo" }]:[])] });
   }
   if (puedeVerVentas(rol)) {
     grupos.push({
