@@ -1,4 +1,5 @@
 import {RecepcionDirecta} from "../RecepcionDirecta";
+import {AdjuntarDocumento,AdjuntosCompra} from "../../adjuntos/Componentes";
 import type {RecepcionFactura} from "@/lib/compras/recepcionFactura";
 import {leerTodo} from "@/lib/ventas/paginar";
 import {soloInsumos} from "@/lib/compras/periodoInsumos";
@@ -135,6 +136,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       {!ligadas.length&&f.tipo==="ingreso"&&f.estado!=="cancelada"&&<RecepcionDirecta id={id} conceptos={conceptos??[]} recepciones={directas} hoy={hoy} edita={edita}/>}
       <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={f.estado}>{nombreEstadoFactura(f.tipo, f.estado)}</strong></div><div><small>Total original</small><strong>{pesos(f.total)}</strong></div><div><small>Saldo pendiente</small><strong>{pesos(f.estado === "cancelada" ? 0 : f.saldo)}</strong></div><div><small>Fecha de vencimiento</small><strong>{fechaTexto(f.vence_el)}</strong></div></div>
       <div className="orden-acciones-encabezado ficha-barra">
+        {edita&&<AdjuntarDocumento tipo="factura" id={f.id}/>}
         {edita && f.tipo === "ingreso" && opcionesOrden.filter(o=>ligadas.includes(o.id)&&o.estado==="confirmada").map(o=><Link key={o.id} className="boton boton-secundario" href={`/compras/ordenes/${o.id}?recibir=1#recepcion-orden`}>Registrar recepción{ligadas.length>1?` · ${o.folio}`:""}</Link>)}
         {edita && <details><summary>Programar / revisar</summary>      {edita && (
         <section className="seccion">
@@ -385,6 +387,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       )}
 
 </>},
+        {id:"adjuntos",titulo:"Adjuntos",contenido:<AdjuntosCompra tipo="factura" id={f.id}/>},
       ]} /></div><HistorialCompra id={f.id} edita={puedeEditarCompras(perfil.rol)} accion={agregarNotaFactura} eventos={eventos}/></div>
     </>
   );

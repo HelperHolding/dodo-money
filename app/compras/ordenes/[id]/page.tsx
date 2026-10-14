@@ -1,4 +1,5 @@
 import { HistorialCompra } from "@/components/HistorialCompra";
+import {AdjuntarDocumento,AdjuntosCompra} from "../../adjuntos/Componentes";
 import { agregarNotaOrden } from "../acciones";
 import { FichaPestanas } from "@/components/FichaPestanas";
 import { randomUUID } from "node:crypto";
@@ -114,6 +115,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
           </form></details>
         )}
         <div className="acciones">
+          {edita&&<AdjuntarDocumento tipo="orden" id={o.id}/>}
           {edita && o.estado === 'confirmada' && facturas.length===0 && <form action={facturarOrden}><input type="hidden" name="id" value={o.id}/><BotonEnviar pendiente="Creando factura…" confirmar={`Crear una prefactura sin CFDI por ${pesos(t.total)}, copiando el proveedor, la sucursal y los renglones de esta orden. Después podrás registrar el pago. ¿Continuar?`}>Crear factura para pagar</BotonEnviar></form>}
           {edita && facturas.map(f=><Link key={f.id} className="boton" href={`/compras/facturas/${f.id}`}>Ver {nombreFactura(f)} y pagos</Link>)}
           {edita && o.estado === "confirmada" && <details id="recepcion-orden" open={recibir==="1"} className="orden-accion-desplegable"><summary className="boton boton-secundario">Registrar recepción</summary><form action={registrarRecepcionOrden} className="formulario orden-accion-formulario">
@@ -326,6 +328,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
       </section>
 
 </>},
+        {id:"adjuntos",titulo:"Adjuntos",contenido:<AdjuntosCompra tipo="orden" id={o.id}/>},
       ]} /></div><HistorialCompra id={o.id} edita={edita} accion={agregarNotaOrden} eventos={[
  ...(historial??[]).map(h=>({id:`evento-${h.id}`,en:h.en,titulo:CLAVE_EVENTO[h.evento]??h.evento,nota:h.nota,autor:h.perfiles?.nombre})),
  ...(notas??[]).map(n=>({id:`nota-${n.id}`,en:n.creado_en,titulo:"Nota interna",nota:n.texto,autor:n.perfiles?.nombre})),
