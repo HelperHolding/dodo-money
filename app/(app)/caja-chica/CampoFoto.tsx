@@ -22,10 +22,10 @@ export function CampoFoto() {
   const [estado, setEstado] = useState<string | null>(null);
 
   return (
-    <div className="campo">
+    <div className="campo caja-chica-foto">
       <label htmlFor="foto">Foto del ticket (opcional)</label>
       <input
-        id="foto" name="foto" type="file" accept="image/*" capture="environment"
+        id="foto" name="foto" type="file" className="caja-chica-archivo" accept="image/*" capture="environment"
         onChange={async (e) => {
           const input = e.currentTarget;
           const archivo = input.files?.[0];

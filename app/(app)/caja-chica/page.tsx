@@ -78,8 +78,9 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
       </section>
 
       {!soloLectura && (
-      <form action={registrarGasto} className="seccion" aria-labelledby="t-gasto">
-        <h2 id="t-gasto">Registrar gasto</h2>
+      <details className="seccion caja-chica-acordeon">
+        <summary id="t-gasto">Registrar gasto <span>Capturar un nuevo gasto y su comprobante</span></summary>
+      <form action={registrarGasto} aria-labelledby="t-gasto">
         <div className="rejilla">
           <div className="campo"><label htmlFor="fecha">Fecha</label><input id="fecha" name="fecha" type="date" defaultValue={hoyMX()} required /></div>
           <div className="campo"><label htmlFor="concepto">Concepto</label><input id="concepto" name="concepto" required placeholder="Ej. garrafón de agua" /></div>
@@ -99,10 +100,11 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
         </div>
         <div className="acciones"><BotonEnviar>Registrar gasto</BotonEnviar></div>
       </form>
+      </details>
       )}
 
-      <section className="seccion" aria-labelledby="t-empleados">
-        <h2 id="t-empleados">Por reponer a empleados</h2>
+      <details className="seccion caja-chica-acordeon">
+        <summary id="t-empleados">Por reponer a empleados <span>{empleados.length} {empleados.length === 1 ? "empleado" : "empleados"} · {pesos(empleados.reduce((total, e) => total + e.total, 0))}</span></summary>
         {!empleados.length ? <p className="vacio">No hay gastos pagados por empleados pendientes de reponer.</p> : (
           <div className="tarjetas">
             {empleados.map((e) => (
@@ -130,10 +132,10 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
             ))}
           </div>
         )}
-      </section>
+      </details>
 
-      <section className="seccion" aria-labelledby="t-gastos">
-        <h2 id="t-gastos">Gastos desde la última reposición</h2>
+      <details className="seccion caja-chica-acordeon">
+        <summary id="t-gastos">Gastos desde la última reposición <span>{gastos?.length ?? 0} registros · {pesos((gastos ?? []).reduce((total, g) => total + Number(g.monto), 0))}</span></summary>
         {!gastos?.length ? <p className="vacio">No hay gastos pendientes de reponer.</p> : (
           <div className="tabla-contenedor">
             <table className="tabla tabla-tarjetas">
@@ -152,7 +154,7 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
             </table>
           </div>
         )}
-      </section>
+      </details>
     </>
   );
 }
