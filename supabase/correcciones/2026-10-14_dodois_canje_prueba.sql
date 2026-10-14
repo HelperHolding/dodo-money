@@ -1,6 +1,6 @@
 -- PRUEBA TEMPORAL de la API de Dodo IS: el canje del código por el token se hace desde Supabase, porque Dodo bloquea a Vercel.
 -- La llave secreta se guarda en el Vault de Supabase (cifrada) y solo la lee esta función. Solo admin.
--- Córrelo en Supabase → SQL Editor. Antes de correrlo, reemplaza PEGA_AQUI_EL_CLIENT_SECRET por el Client Secret de la app
+-- Córrelo en Supabase → SQL Editor. Antes de correrlo, pon el Client Secret de la app
 -- "Dodo MX" (el mismo de DODOIS_CLIENT_SECRET en Vercel) SOLO en las dos líneas del paso 1. No lo compartas por chat.
 
 create extension if not exists http with schema extensions;
@@ -42,4 +42,4 @@ grant execute on function dodois_canjear_codigo(text, text, text, text) to authe
 
 -- Revisión: debe salir "llave guardada: sí" (no muestra la llave).
 select case when exists (select 1 from vault.decrypted_secrets where name = 'dodois_client_secret' and coalesce(decrypted_secret, '') <> '' and decrypted_secret <> 'PEGA' || '_AQUI_EL_CLIENT_SECRET')
-            then 'llave guardada: sí' else 'llave guardada: NO (reemplaza PEGA_AQUI_EL_CLIENT_SECRET)' end as revision;
+            then 'llave guardada: sí' else 'llave guardada: NO (revisa el paso 1)' end as revision;
