@@ -22,7 +22,7 @@ export function validarDocumentosAlta(fd: FormData, hoy: string): string | null 
   };
   for (const tipo of DOCUMENTOS_ALTA) {
     const a = archivo(tipo);
-    if (!a) return `Adjunta ${NOMBRE_DOCUMENTO[tipo].toLowerCase()} antes de dar de alta al proveedor.`;
+    if (!a) continue;
     if (!extensionDocumento(a.type)) return `${NOMBRE_DOCUMENTO[tipo]} debe ser PDF o foto (JPG, PNG o WebP).`;
     const fecha = leerDocumento(tipo, String(fd.get(`${tipo}_fecha`) ?? ""), hoy);
     if ("error" in fecha) return `${NOMBRE_DOCUMENTO[tipo]}: ${fecha.error}`;

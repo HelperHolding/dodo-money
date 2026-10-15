@@ -10,11 +10,12 @@ function alta() {
  }
  return fd;
 }
-test('alta: exige ambos documentos con sus fechas, permite constancia opcional',()=>{
+test('alta: permite ambos documentos opcionales, uno solo y campos vacíos',()=>{
  assert.equal(validarDocumentosAlta(alta(),'2026-10-08'),null);
- const fd=alta();fd.delete('caratula_banco');assert.match(validarDocumentosAlta(fd,'2026-10-08')!,/carátula/);
- const otro=alta();otro.delete('opinion_cumplimiento');assert.match(validarDocumentosAlta(otro,'2026-10-08')!,/opinión/);
- const vacio=alta();vacio.set('opinion_cumplimiento',new File([],''));assert.ok(validarDocumentosAlta(vacio,'2026-10-08'));
+ const fd=alta();fd.delete('caratula_banco');assert.equal(validarDocumentosAlta(fd,'2026-10-08'),null);
+ const otro=alta();otro.delete('opinion_cumplimiento');assert.equal(validarDocumentosAlta(otro,'2026-10-08'),null);
+ const vacio=alta();vacio.set('opinion_cumplimiento',new File([],''));assert.equal(validarDocumentosAlta(vacio,'2026-10-08'),null);
+ assert.equal(validarDocumentosAlta(new FormData(),'2026-10-08'),null);
 });
 test('alta: valida fecha real, futura y formato de adjuntos antes de crear proveedor',()=>{
  for(const fecha of ['','2026-02-30','2026-99-01','2026-10-09']) {const fd=alta();fd.set('caratula_banco_fecha',fecha);assert.ok(validarDocumentosAlta(fd,'2026-10-08'));}

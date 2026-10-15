@@ -59,6 +59,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
       <div className="encabezado">
         <h1>{p.nombre_comercial ?? p.razon_social}</h1>
         <p>{p.rfc}{p.activo ? "" : " · inactivo"}</p>
+        {edita && p.activo && <div className="acciones"><Link className="boton" href={`/compras/ordenes/nueva?proveedor=${encodeURIComponent(id)}`}>Crear cotización</Link></div>}
       </div>
       <Aviso ok={ok} error={error} />
       <ComprasProveedor id={id}/>

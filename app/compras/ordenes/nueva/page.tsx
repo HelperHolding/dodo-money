@@ -5,8 +5,8 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { puedeEditarCompras } from "@/lib/roles";
 import { crearOrden } from "../acciones";
 
-export default async function NuevaOrden({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function NuevaOrden({ searchParams }: { searchParams: Promise<{ error?: string; proveedor?: string }> }) {
+  const { error, proveedor } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
   if (!puedeEditarCompras(perfil.rol)) redirect("/compras/ordenes");
   const [{ data: proveedores }, { data: sucursales }] = await Promise.all([
@@ -14,6 +14,7 @@ export default async function NuevaOrden({ searchParams }: { searchParams: Promi
       .returns<{ id: string; razon_social: string; nombre_comercial: string | null }[]>(),
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
   ]);
+  const proveedorInicial = (proveedores ?? []).some(p => p.id === proveedor) ? proveedor : "";
   return (
     <>
       <div className="encabezado"><h1>Nueva cotización</h1><p>Después agregas los artículos. Al confirmarla se vuelve orden de compra.</p></div>
@@ -22,7 +23,7 @@ export default async function NuevaOrden({ searchParams }: { searchParams: Promi
         <div className="rejilla">
           <div className="campo">
             <label htmlFor="proveedor_id">Proveedor</label>
-            <select id="proveedor_id" name="proveedor_id" required defaultValue="">
+            <select id="proveedor_id" name="proveedor_id" required defaultValue={proveedorInicial}>
               <option value="" disabled>Elige…</option>
               {(proveedores ?? []).map((p) => <option key={p.id} value={p.id}>{p.nombre_comercial ?? p.razon_social}</option>)}
             </select>

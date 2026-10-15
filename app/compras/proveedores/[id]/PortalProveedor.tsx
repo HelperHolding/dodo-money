@@ -64,7 +64,7 @@ export function PortalProveedor({ id, portal, disponible }: { id: string; portal
           <div className="campo"><label htmlFor="portal_password">{guardado?.tiene_password ? "Nueva contraseña" : "Contraseña"}</label><input id="portal_password" name="password" type="password" maxLength={1000} autoComplete="new-password" /><small>Déjala vacía para conservar la actual.</small></div>
           {guardado?.tiene_password && <label><input type="checkbox" name="quitar_password" /> Quitar la contraseña guardada</label>}
           <div className="campo"><label htmlFor="portal_notas">Notas de acceso</label><textarea id="portal_notas" name="notas" rows={3} maxLength={2000} defaultValue={portal?.notas ?? ""} placeholder="Ej. quién recibe el código de verificación" /></div>
-          <button disabled={ocupado}>{ocupado ? "Procesando…" : "Guardar acceso"}</button>
+          <div className="acciones"><button type="submit" className="boton" disabled={ocupado}>{ocupado ? "Procesando…" : "Guardar acceso"}</button></div>
         </form>
       </details>
       <p role="status">{mensaje}</p>

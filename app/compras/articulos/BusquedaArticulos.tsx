@@ -1,18 +1,23 @@
 "use client";
-import {createContext,useContext,useState,type ReactNode} from 'react';
+import {createContext,useContext,useMemo,useState,type ReactNode} from 'react';
 import {Plegable} from '@/components/Plegable';
-const Busqueda=createContext('');
-const normal=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-const coincide=(texto:string,q:string)=>normal(q).trim().split(/\s+/).filter(Boolean).every(p=>normal(texto).includes(p));
-export function BusquedaArticulos({indice,children}:{indice:{id:string;texto:string}[];children:ReactNode}) {
- const [q,setQ]=useState('');
- const cantidad=indice.filter(a=>coincide(a.texto,q)).length;
- return <Busqueda.Provider value={q}><section className="seccion formulario" role="search"><div className="campo"><label htmlFor="articulos-buscar">Buscar artículo, ID de Dodo IS o proveedor</label><input id="articulos-buscar" type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Escribe para buscar…"/></div><div className="acciones"><span role="status">{cantidad} de {indice.length} artículos</span>{q&&<button type="button" className="boton boton-secundario" onClick={()=>setQ('')}>Limpiar búsqueda</button>}</div></section>{!cantidad&&indice.length>0&&<p className="vacio">No hay artículos con esta búsqueda.</p>}{children}</Busqueda.Provider>;
+import {CATEGORIAS_COMPRA,NOMBRE_CATEGORIA_COMPRA,TASAS_IVA,NOMBRE_TASA_IVA} from '@/lib/compras/proveedores';
+import {filtrarArticulos,FILTROS_ARTICULOS_VACIOS,type IndiceArticulo} from '@/lib/compras/filtrosArticulos';
+const Busqueda=createContext<{visibles:Set<string>;filtrado:boolean}>({visibles:new Set(),filtrado:false});
+export function BusquedaArticulos({indice,proveedores,children}:{indice:IndiceArticulo[];proveedores:{id:string;nombre:string}[];children:ReactNode}) {
+ const [f,setF]=useState(FILTROS_ARTICULOS_VACIOS);
+ const visibles=useMemo(()=>new Set(filtrarArticulos(indice,f).map(a=>a.id)),[indice,f]);
+ const filtrado=!!(f.q.trim()||f.proveedor||f.tipo||f.iva);
+ return <Busqueda.Provider value={{visibles,filtrado}}><section className="seccion formulario" role="search"><div className="campo"><label htmlFor="articulos-buscar">Buscar artículo, ID de Dodo IS o proveedor</label><input id="articulos-buscar" type="search" value={f.q} onChange={e=>setF(x=>({...x,q:e.target.value}))} placeholder="Escribe para buscar…"/></div>
+ <div className="rejilla"><div className="campo"><label htmlFor="articulos-proveedor">Proveedor</label><select id="articulos-proveedor" value={f.proveedor} onChange={e=>setF(x=>({...x,proveedor:e.target.value}))}><option value="">Todos los proveedores</option><option value="sin-proveedor">Sin proveedor</option>{proveedores.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}</select></div>
+ <div className="campo"><label htmlFor="articulos-tipo">Tipo de artículo</label><select id="articulos-tipo" value={f.tipo} onChange={e=>setF(x=>({...x,tipo:e.target.value}))}><option value="">Todos los tipos</option>{CATEGORIAS_COMPRA.map(t=><option key={t} value={t}>{NOMBRE_CATEGORIA_COMPRA[t]}</option>)}</select></div>
+ <div className="campo"><label htmlFor="articulos-iva">IVA</label><select id="articulos-iva" value={f.iva} onChange={e=>setF(x=>({...x,iva:e.target.value}))}><option value="">Todas las tasas</option>{TASAS_IVA.map(t=><option key={t} value={t}>{NOMBRE_TASA_IVA[t]}</option>)}</select></div></div>
+ <div className="acciones"><span role="status">{visibles.size} de {indice.length} artículos</span>{filtrado&&<button type="button" className="boton boton-secundario" onClick={()=>setF(FILTROS_ARTICULOS_VACIOS)}>Limpiar filtros</button>}</div></section>{!visibles.size&&indice.length>0&&<p className="vacio">No hay artículos con estos filtros.</p>}{children}</Busqueda.Provider>;
 }
-export function ArticuloBuscable({texto,children}:{texto:string;children:ReactNode}) {
- const q=useContext(Busqueda);return coincide(texto,q)?children:null;
+export function ArticuloBuscable({id,children}:{id:string;children:ReactNode}) {
+ const {visibles}=useContext(Busqueda);return visibles.has(id)?children:null;
 }
-export function GrupoArticulosBuscable({textos,id,titulo,resumen,children}:{textos:string[];id:string;titulo:string;resumen:string;children:ReactNode}) {
- const q=useContext(Busqueda);const cantidad=textos.filter(t=>coincide(t,q)).length;
- return cantidad?<Plegable id={id} titulo={titulo} resumen={q.trim()?`${cantidad} resultados`:resumen} forzarAbierto={!!q.trim()}>{children}</Plegable>:null;
+export function GrupoArticulosBuscable({ids,id,titulo,resumen,children}:{ids:string[];id:string;titulo:string;resumen:string;children:ReactNode}) {
+ const {visibles,filtrado}=useContext(Busqueda);const cantidad=ids.filter(i=>visibles.has(i)).length;
+ return cantidad?<Plegable id={id} titulo={titulo} resumen={filtrado?`${cantidad} resultados`:resumen} forzarAbierto={filtrado}>{children}</Plegable>:null;
 }

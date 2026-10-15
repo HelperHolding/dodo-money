@@ -86,28 +86,28 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
         </details>
       )}
       <SelectorVista ruta="/compras/articulos" params={params} vista={vista} predeterminada="lista" />
-      <BusquedaArticulos indice={articulos.map(a=>({id:a.id,texto:textoBusqueda(a)}))}>
+      <BusquedaArticulos indice={articulos.map(a=>({id:a.id,texto:textoBusqueda(a),tipo:a.tipo,iva:a.tasa_iva,proveedores:(surtenDe.get(a.id)??[]).map(l=>l.proveedor_id)}))} proveedores={proveedores.filter(p=>ligas.some(l=>l.proveedor_id===p.id)).map(p=>({id:p.id,nombre:`${nombreProv.get(p.id)}${p.activo?"":" · inactivo"}`}))}>
       {!articulos.length && <p className="vacio">Aún no hay artículos.</p>}
       {CATEGORIAS_COMPRA.map((tipo) => {
         const lista = articulos.filter((a) => a.tipo === tipo);
         if (!lista.length) return null;
         return (
-          <GrupoArticulosBuscable key={tipo} textos={lista.map(textoBusqueda)} id={`t-${tipo}`} titulo={NOMBRE_CATEGORIA_COMPRA[tipo]} resumen={`${lista.filter((a) => a.activo).length} activos en categoría`}>
+          <GrupoArticulosBuscable key={tipo} ids={lista.map(a=>a.id)} id={`t-${tipo}`} titulo={NOMBRE_CATEGORIA_COMPRA[tipo]} resumen={`${lista.filter((a) => a.activo).length} activos en categoría`}>
             {vista === "lista" ? (
-              <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
-                <li className="fila fila-encabezado" aria-hidden="true"><span>Artículo</span><span>Lo surten</span><span>Mejor precio</span><span>Última compra</span></li>
+              <ul className="lista-filas" style={{ "--columnas": 4 } as React.CSSProperties}>
+                <li className="fila fila-encabezado" aria-hidden="true"><span>Artículo</span><span>Lo surten</span><span>IVA</span><span>Mejor precio</span><span>Última compra</span></li>
                 {lista.map((a) => {
                   const ps = preciosDe.get(a.id) ?? [];
                   const mejor = ps.reduce<Precio | null>((m, p) => (!m || Number(p.precio) < Number(m.precio) ? p : m), null);
                   const ultima = ps.reduce<string | null>((u, p) => (!u || p.fecha > u ? p.fecha : u), null);
                   return (
-                    <ArticuloBuscable key={a.id} texto={textoBusqueda(a)}><li className="fila" data-alerta={a.activo ? undefined : "si"}>
+                    <ArticuloBuscable key={a.id} id={a.id}><li className="fila" data-alerta={a.activo ? undefined : "si"}>
                       <div className="fila-nombre">
                         <Link href={`/compras/articulos#a-${a.id}`}>{a.nombre}</Link>
                         <small>{a.unidad} · {NOMBRE_TASA_IVA[a.tasa_iva]}{a.activo ? "" : " · inactivo"}</small>
                       </div>
                       <div className="fila-datos">
-                        <span>{textoSurten(a.id) || "Sin proveedor"}</span>
+                        <span>{textoSurten(a.id) || "Sin proveedor"}</span><span>{NOMBRE_TASA_IVA[a.tasa_iva]}</span>
                         <span>{mejor ? `${pesos(mejor.precio)} · ${mejor.proveedores?.nombre_comercial ?? mejor.proveedores?.razon_social ?? ""}` : "Sin precio"}</span>
                         <span>{ultima ? fechaTexto(ultima) : "—"}</span>
                       </div>
@@ -120,7 +120,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
               {lista.map((a) => {
                 const ps = preciosDe.get(a.id) ?? [];
                 return (
-                  <ArticuloBuscable key={a.id} texto={textoBusqueda(a)}><article id={`a-${a.id}`} className="tarjeta" data-alerta={a.activo ? undefined : "si"}>
+                  <ArticuloBuscable key={a.id} id={a.id}><article id={`a-${a.id}`} className="tarjeta" data-alerta={a.activo ? undefined : "si"}>
                     <div className="tarjeta-encabezado">
                       <div>
                         <h3>{a.nombre}</h3>

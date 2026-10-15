@@ -21,11 +21,11 @@ export function FormProveedor({ id, inicial, sucursales }: { id?: string; inicia
       {!id && <CampoConstancia />}
       {!id && <fieldset className="seccion">
         <legend>Documentos para el alta</legend>
-        <p>Adjunta la carátula bancaria y la opinión de cumplimiento. Se guardarán en el expediente del proveedor.</p>
+        <p>La carátula bancaria y la opinión de cumplimiento son opcionales. Puedes adjuntarlas ahora o después desde el expediente del proveedor. Si adjuntas un documento, indica su fecha.</p>
         <p className="saldo-nota">PDF o foto (JPG, PNG o WebP). Máximo 4 MB entre estos documentos y la constancia fiscal.</p>
         {DOCUMENTOS_ALTA.map(tipo => <div className="rejilla" key={tipo}>
-          <div className="campo"><label htmlFor={tipo}>{NOMBRE_DOCUMENTO[tipo]}</label><input id={tipo} name={tipo} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required/></div>
-          <div className="campo"><label htmlFor={`${tipo}_fecha`}>Fecha de {tipo === "caratula_banco" ? "la carátula" : "la opinión"}</label><input id={`${tipo}_fecha`} name={`${tipo}_fecha`} type="date" required max={hoyCalendarioMX()}/></div>
+          <div className="campo"><label htmlFor={tipo}>{NOMBRE_DOCUMENTO[tipo]} (opcional)</label><input id={tipo} name={tipo} type="file" accept="application/pdf,image/jpeg,image/png,image/webp"/></div>
+          <div className="campo"><label htmlFor={`${tipo}_fecha`}>Fecha de {tipo === "caratula_banco" ? "la carátula" : "la opinión"}</label><input id={`${tipo}_fecha`} name={`${tipo}_fecha`} type="date" max={hoyCalendarioMX()}/></div>
         </div>)}
       </fieldset>}
       <h2>Datos fiscales</h2>

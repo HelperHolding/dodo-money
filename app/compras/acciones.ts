@@ -31,7 +31,10 @@ export async function guardarProveedor(fd: FormData) {
   if (!id) {
     const problema = validarDocumentosAlta(fd, hoyCalendarioMX());
     if (problema) volver(ruta, "error", problema);
-    for (const tipo of DOCUMENTOS_ALTA) adjuntos.push({tipo,fecha:String(fd.get(`${tipo}_fecha`)),archivo:archivoDe(fd,tipo)!});
+    for (const tipo of DOCUMENTOS_ALTA) {
+      const archivo = archivoDe(fd,tipo);
+      if (archivo) adjuntos.push({tipo,fecha:String(fd.get(`${tipo}_fecha`)),archivo});
+    }
     const constancia = archivoDe(fd, "constancia");
     if (constancia) {
       const c = await constanciaDe(constancia);

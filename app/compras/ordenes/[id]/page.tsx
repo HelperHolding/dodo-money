@@ -296,7 +296,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
         {puedeEditar && (
           <form action={agregarRenglon} className="formulario">
             <input type="hidden" name="orden_id" value={o.id} />
-            <CamposRenglon articulos={articulos.data ?? []} precios={preciosPorArticulo} surtidos={(surtidos.data ?? []).map((s) => s.articulo_id)} />
+            <CamposRenglon ordenId={o.id} articulos={articulos.data ?? []} precios={preciosPorArticulo} surtidos={(surtidos.data ?? []).map((s) => s.articulo_id)} />
             <BotonEnviar>Agregar renglón</BotonEnviar>
           </form>
         )}
