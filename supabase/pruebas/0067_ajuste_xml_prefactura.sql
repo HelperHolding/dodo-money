@@ -1,0 +1,66 @@
+-- Reversible: objetos Storage simulados, no sube archivos reales.
+do $$
+declare a uuid;c uuid;s uuid;p uuid;f uuid;sol uuid:=gen_random_uuid();otro uuid:=gen_random_uuid();cfdi jsonb;j jsonb;orig jsonb;conceptos jsonb;receptor text;u text:=upper(gen_random_uuid()::text);n integer;rec uuid:=gen_random_uuid();concepto bigint;pago uuid;reserva uuid;otra_factura uuid;
+begin
+ select id into a from perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' limit 1;
+ select id into c from perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
+ select rfc into receptor from empresa;
+ if a is null or c is null or receptor is null then raise exception 'FALTAN DATOS: admin, corporativo y empresa.';end if;
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ insert into sucursales(nombre) values('Conversión ensayo '||sol) returning id into s;
+ insert into proveedores(razon_social,rfc,regimen_fiscal,sucursal_id,cuenta_pl) values('Proveedor conversión','PRB010101AB1','601',s,'insumos') returning id into p;
+ set local role authenticated;
+ f:=registrar_gasto_manual(jsonb_build_object('proveedor_id',p,'sucursal_id',s,'fecha',hoy_mx(),'folio','Prefactura ensayo','subtotal',100,'iva',0,'retencion_iva',0,'retencion_isr',0,'total',100,'renglones',jsonb_build_array(jsonb_build_object('descripcion','Insumo','importe',100,'cuenta_pl','insumos'))));
+ reset role;
+ insert into pagos(proveedor_id,fecha,monto,forma,creado_por) values(p,hoy_mx(),40,'transferencia',a) returning id into pago;
+ insert into pago_aplicaciones(pago_id,factura_id,monto) values(pago,f,40);
+ perform actualizar_estado_factura(f);
+ insert into reservas_boveda(sucursal_id,factura_id,monto,motivo,fecha_pago,creado_por) values(s,f,60,'Reserva de ensayo',hoy_mx()+7,a) returning id into reserva;
+ update facturas set pago_programado_el=hoy_mx()+7,pago_programado_forma='transferencia',recepcion_programada_el=hoy_mx()+2 where id=f;
+ select id into concepto from factura_conceptos where factura_id=f;
+ set local role authenticated;
+ perform recibir_factura_directa(rec,f,hoy_mx(),'Entrega recibida antes de CFDI',jsonb_build_array(jsonb_build_object('id',concepto,'cantidad',1)));
+ select to_jsonb(q) into orig from facturas q where id=f;
+ select jsonb_agg(to_jsonb(q) order by id) into conceptos from factura_conceptos q where factura_id=f;
+ select count(*) into n from facturas;
+ cfdi:=jsonb_build_object('uuid',u,'version','4.0','tipo','ingreso','moneda','MXN','fecha',hoy_mx(),'rfc_emisor','PRB010101AB1','rfc_receptor',receptor,'nombre_emisor','Proveedor conversión','regimen_emisor','601','metodo_pago','PPD','forma_pago','99','serie','A','folio','123','subtotal',100.20,'descuento',0,'iva',0,'retenciones',0,'retencion_iva',0,'retencion_isr',0,'total',100.20,'conceptos',jsonb_build_array(jsonb_build_object('descripcion','Insumo fiscal','cantidad',1,'unidad','pieza','valor_unitario',100,'importe',100)));
+
+ begin perform preparar_cfdi_prefactura(otro,f,cfdi||'{"rfc_receptor":"XAXX010101000"}','Entrega CFDI',10,repeat('b',64));raise exception 'FALLÓ: receptor distinto';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform preparar_cfdi_prefactura(otro,f,cfdi||'{"rfc_emisor":"OTR010101AB1"}','Entrega CFDI',10,repeat('b',64));raise exception 'FALLÓ: proveedor distinto';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ j:=preparar_cfdi_prefactura(sol,f,cfdi,'Proveedor entregó CFDI',10,repeat('a',64));
+ perform preparar_cfdi_prefactura(sol,f,cfdi,'Proveedor entregó CFDI',10,repeat('a',64));
+ if (select origen from facturas where id=f)<>'manual' then raise exception 'FALLÓ: vista previa cambia factura';end if;
+ begin perform confirmar_cfdi_prefactura(sol);raise exception 'FALLÓ: sin archivo';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ insert into storage.objects(bucket_id,name,metadata) values('facturas',j->>'ruta','{"size":10,"mimetype":"application/xml"}');
+ reset role;
+ update facturas set folio='Cambio posterior a vista previa' where id=f;
+ set local role authenticated;
+ begin perform confirmar_cfdi_prefactura(sol);raise exception 'FALLÓ: vista previa obsoleta';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ reset role;
+ update facturas set folio='Prefactura ensayo' where id=f;
+ set local role authenticated;
+ begin perform confirmar_cfdi_prefactura(sol);raise exception 'FALLÓ: ajuste sin aceptación';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ if confirmar_cfdi_prefactura(sol,true)<>f or confirmar_cfdi_prefactura(sol,true)<>f then raise exception 'FALLÓ: conserva identidad';end if;
+ if (select count(*) from facturas)<>n or (select count(*) from compra_notas where factura_id=f and texto like 'Prefactura convertida%')<>1 then raise exception 'FALLÓ: duplicado';end if;
+ if not exists(select 1 from facturas where id=f and origen='cfdi' and uuid=u and estado::text=orig->>'estado' and pago_programado_el=(orig->>'pago_programado_el')::date and pago_programado_forma::text=orig->>'pago_programado_forma' and recepcion_programada_el=(orig->>'recepcion_programada_el')::date and total=100.20 and subtotal=100.20 and cuenta_pl=orig->>'cuenta_pl') or not exists(select 1 from factura_recepciones where id=rec and factura_id=f and anulada_en is null) then raise exception 'FALLÓ: conserva programación y recepción';end if;
+ if conceptos is distinct from (select jsonb_agg(to_jsonb(q) order by id) from factura_conceptos q where factura_id=f) then raise exception 'FALLÓ: conceptos operativos';end if;
+ if pagado_factura(f)<>40 or saldo_factura(f)<>60.20 or not exists(select 1 from pago_aplicaciones where pago_id=pago and factura_id=f and monto=40) or not exists(select 1 from reservas_boveda where id=reserva and factura_id=f and monto=60 and anulado_en is null) then raise exception 'FALLÓ: pagos y reserva';end if;
+ otra_factura:=registrar_gasto_manual(jsonb_build_object('proveedor_id',p,'sucursal_id',s,'fecha',hoy_mx(),'folio','Otra prefactura ensayo','subtotal',100,'iva',0,'retencion_iva',0,'retencion_isr',0,'total',100,'renglones',jsonb_build_array(jsonb_build_object('descripcion','Insumo','importe',100,'cuenta_pl','insumos'))));
+ begin perform preparar_cfdi_prefactura(otro,otra_factura,cfdi,'Entrega CFDI',10,repeat('b',64));raise exception 'FALLÓ: UUID duplicado';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ -- Corrección a la baja: conserva el pago real aunque exceda el XML.
+ reset role;
+ insert into pagos(proveedor_id,fecha,monto,forma,creado_por) values(p,hoy_mx(),100,'transferencia',a) returning id into pago;
+ insert into pago_aplicaciones(pago_id,factura_id,monto) values(pago,otra_factura,100);
+ perform actualizar_estado_factura(otra_factura);
+ set local role authenticated;
+ j:=preparar_cfdi_prefactura(otro,otra_factura,cfdi||jsonb_build_object('uuid',upper(gen_random_uuid()::text),'subtotal',99.80,'total',99.80),'Corrección fiscal a la baja',10,repeat('c',64));
+ insert into storage.objects(bucket_id,name,metadata) values('facturas',j->>'ruta','{"size":10,"mimetype":"application/xml"}');
+ perform confirmar_cfdi_prefactura(otro,true);
+ if pagado_factura(otra_factura)<>100 or saldo_factura(otra_factura)<>0 or (select total from facturas where id=otra_factura)<>99.80 or (select estado::text from facturas where id=otra_factura)<>'pagada' then raise exception 'FALLÓ: ajuste a la baja conserva pago real';end if;
+ begin update prefactura_conversiones set motivo='cambio' where id=sol;raise exception 'FALLÓ: escritura directa';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',c,'role','authenticated')::text,true);
+ if not exists(select 1 from prefactura_conversiones where id=sol) then raise exception 'FALLÓ: corporativo consulta';end if;
+ begin perform confirmar_cfdi_prefactura(sol);raise exception 'FALLÓ: corporativo escribe';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ if has_function_privilege('anon','public.confirmar_cfdi_prefactura(uuid,boolean)','execute') then raise exception 'FALLÓ: anónimo';end if;
+ raise exception 'PRUEBAS OK — ajuste XML de 20 centavos · aceptación obligatoria · saldo recalculado · prefactura a CFDI · mismo registro · vista previa y cambios posteriores · importes y RFC · UUID único · sin archivo no confirma · doble envío · conserva pagos, saldo, reserva, programación y recepción · conceptos originales · historial · corporativo consulta · sin escritura directa · anónimo sin ejecución';
+end $$;

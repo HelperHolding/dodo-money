@@ -11,3 +11,7 @@ Los conceptos operativos se conservan, incluidos IDs referidos por recepciones; 
 Confirmación bloquea reserva y factura, compara snapshot para evitar aplicar una vista previa sobre un documento modificado, comprueba presencia/tamaño/MIME del XML, vuelve a verificar UUID único y es idempotente. La reserva expira en 24 horas; fallos o vistas previas abandonadas pueden dejar archivos privados pendientes, sin convertir la factura. El bucket utiliza los permisos de Compras existentes. La comparación completa detecta cambios de la factura y de conceptos; no impide registrar nuevos pagos entre vista previa y confirmación, pues no altera montos ni aplicaciones.
 
 Ensayo SQL reversible con objeto Storage simulado. Falta confirmar carga y descarga real después de publicación. No ejecutar escrituras directas en tablas de producción para probar.
+
+## Ajuste fiscal (0067)
+
+La vista previa compara subtotal, descuento, IVA, retenciones y total. Si cambian, exige aceptar el XML como fuente de verdad también en la RPC; revisar no modifica el documento. Confirmar actualiza importes y recalcula el estado y saldo sin cambiar pagos, reservas ni movimientos de efectivo. Si el pago excede el nuevo total se muestra la diferencia para revisión, sin devolución automática. El P&L distribuye la base fiscal corregida entre las cuentas de los conceptos operativos existentes. El snapshot conserva todos los importes originales; una nota registra el cambio y el autor. Esta sección sustituye la restricción de coincidencia exacta de 0060.
