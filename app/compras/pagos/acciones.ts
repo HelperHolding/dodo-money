@@ -64,7 +64,7 @@ export async function registrarPago(fd: FormData) {
 
   const archivo = fd.get("comprobante");
   const comprobante = archivo instanceof File && archivo.size > 0 ? archivo : null;
-  if (fd.get("origen") === "boveda_acumulado") {
+  if (["boveda_acumulado","ventas"].includes(String(fd.get("origen"))) || fd.get("historico")==="on") {
     const nota = String(fd.get("nota_boveda") ?? "").trim();
     if (nota.length < 5 || nota.length > 1000) volver(ruta, "error", "Especifica el motivo del uso del efectivo (5 a 1000 caracteres).");
     if (!comprobante) volver(ruta, "error", "Adjunta el ticket o comprobante del pago.");
@@ -79,12 +79,13 @@ export async function registrarPago(fd: FormData) {
     if (errorArchivo) volver(ruta, "error", `No se pudo subir el comprobante: ${errorArchivo.message}`);
   }
 
-  const { data: id, error } = await supabase.rpc(fd.get("origen")==="ventas"?"registrar_pago_ventas":fd.get("origen")==="boveda_acumulado"?"registrar_pago_boveda_acumulado":"registrar_pago_con_origen", {p_datos:{
+  const { data: id, error } = await supabase.rpc("registrar_pago_simple", {p_datos:{
+    historico:fd.get("historico")==="on",confirmado:String(fd.get("confirmado")??""),sucursal_historica:String(fd.get("sucursal_historica")??""),
     turno:String(fd.get("turno_ventas")??""),sucursal:String(fd.get("sucursal_boveda")??""),nota:String(fd.get("nota_boveda")??"").trim(),
     solicitud:String(fd.get("solicitud")??""),proveedor,fecha:String(fd.get("fecha")??""),monto,origen:String(fd.get("origen")??""),
     cuenta:String(fd.get("cuenta_origen")??""),reserva:String(fd.get("reserva")??"")||null,
     referencia:String(fd.get("referencia")??""),comprobante:rutaComprobante,aplicaciones,
-    motivo:String(fd.get("motivo_fuera_de_dia")??"").trim()||null,
+    motivo:String(fd.get("motivo_fuera_de_dia")??fd.get("nota_boveda")??"").trim()||null,
   }});
   if (error) volver(ruta, "error", error.message);
   revalidatePath("/compras", "layout");
