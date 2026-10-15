@@ -102,7 +102,7 @@ export async function corregirGastoInformativo(fd:FormData) {
   const problema=validarFoto(archivo);if(problema)volver("error",problema);
   let respaldo:string|null=null;
   if(archivo&&!g!.informativo){respaldo=rutaFoto(sucursal.id,crypto.randomUUID(),archivo.type);const {error}=await supabase.storage.from(BUCKET_FOTOS).upload(respaldo,archivo,{contentType:archivo.type,upsert:false});if(error)volver("error","No se pudo subir el respaldo.");}
-  const {error}=await supabase.rpc("marcar_gasto_informativo",{p_id:id,p_motivo:String(fd.get("motivo")??""),p_referencia:String(fd.get("referencia")??""),p_respaldo:respaldo,p_confirmado:fd.get("confirmado")==="si"});
+  const {error}=await supabase.rpc("corregir_fecha_gasto_informativo",{p_id:id,p_fecha:String(fd.get("fecha_real")??""),p_motivo:String(fd.get("motivo")??""),p_referencia:String(fd.get("referencia")??""),p_respaldo:respaldo,p_confirmado:fd.get("confirmado")==="si"});
   if(error)volver("error",error.message);
   revalidatePath("/","layout");volver("ok","Gasto corregido como informativo. Se conserva una sola entrada en el P&L y el corte anterior no se modifica.");
 }

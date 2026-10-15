@@ -9,7 +9,7 @@ import {leerTodo} from "@/lib/ventas/paginar";
 import { CampoOrigen } from "./CampoOrigen";
 import { marcarRepuesto, registrarGasto, solicitarReposicion } from "./actions";
 
-const COLUMNAS = "id, fecha, concepto, proveedor, monto, comprobante, creado_en, foto_path, origen, pagado_por, repuesto_en, informativo, motivo_informativo, referencia_informativa, informado_por, informado_en, respaldo_informativo";
+const COLUMNAS = "id, fecha, fecha_capturada_original, concepto, proveedor, monto, comprobante, creado_en, foto_path, origen, pagado_por, repuesto_en, informativo, motivo_informativo, referencia_informativa, informado_por, informado_en, respaldo_informativo";
 
 export default async function CajaChica({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
