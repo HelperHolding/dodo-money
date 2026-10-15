@@ -22,6 +22,11 @@ test("sumaPorOrigen separa caja chica, bóveda y empleados", () => {
   assert.deepEqual(sumaPorOrigen([]), { caja_chica: 0, boveda: 0, empleado: 0 });
 });
 
+test("informativos: no descuentan caja ni bóveda y no generan reposición a empleados",()=>{
+ assert.deepEqual(sumaPorOrigen([{origen:"caja_chica",monto:120,informativo:true},{origen:"boveda",monto:60,informativo:true},{origen:"empleado",monto:80,informativo:true},{origen:"boveda",monto:400}]),{caja_chica:0,boveda:400,empleado:0});
+ assert.deepEqual(porReponerAEmpleados([{id:"anterior",origen:"empleado",pagado_por:"ana",repuesto_en:null,monto:80,informativo:true}]),[]);
+});
+
 test("porReponerAEmpleados agrupa por persona lo que falta reponer, el mayor primero", () => {
   const r = porReponerAEmpleados([
     { id: "1", origen: "empleado", pagado_por: "ana", repuesto_en: null, monto: 100 },

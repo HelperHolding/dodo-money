@@ -27,7 +27,7 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
       .returns<{ sucursal_id: string; checklist_id: string; hora: number; recorrido_respuestas: { cumple: boolean }[] }[]>(),
     supabase.from("cierres_merma").select("sucursal_id").eq("fecha", fecha).returns<{ sucursal_id: string }[]>(),
     supabase.from("mermas").select("sucursal_id").eq("fecha", fecha).returns<{ sucursal_id: string }[]>(),
-    supabase.from("gastos_caja_chica").select("sucursal_id, monto, comprobante").eq("fecha", fecha)
+    supabase.from("gastos_caja_chica").select("sucursal_id, monto, comprobante").eq("informativo", false).eq("fecha", fecha)
       .returns<{ sucursal_id: string; monto: number; comprobante: string }[]>(),
     supabase.from("checklist_puntos").select("checklist_id, momento, dia_semana")
       .returns<{ checklist_id: string; momento: Momento; dia_semana: number | null }[]>(),
@@ -36,7 +36,7 @@ export async function datosCorporativo(supabase: SupabaseClient, fecha: string, 
     supabase.from("lotes_amasado").select("sucursal_id, temp_masa, temp_sala, temp_harina, temp_agua").eq("fecha", fecha)
       .returns<{ sucursal_id: string; temp_masa: number; temp_sala: number; temp_harina: number; temp_agua: number }[]>(),
     supabase.from("limpiezas_profundas").select("sucursal_id").eq("fecha", fecha).returns<{ sucursal_id: string }[]>(),
-    supabase.from("gastos_caja_chica").select("sucursal_id, monto").eq("origen", "empleado").is("repuesto_en", null)
+    supabase.from("gastos_caja_chica").select("sucursal_id, monto").eq("informativo", false).eq("origen", "empleado").is("repuesto_en", null)
       .returns<{ sucursal_id: string; monto: number }[]>(),
   ]);
   const errorCarga = primerError(resultados);

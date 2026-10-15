@@ -78,9 +78,9 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     desde > hasta ? Promise.resolve([] as FacturaPL[]) : leerTodo<FacturaPL>((d, h) => supabase.from("facturas")
       .select("id, sucursal_id, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(descripcion, importe, cuenta_pl)")
       .lte("cubre_desde", hasta).gte("cubre_hasta", desde).order("id").range(d, h).returns<FacturaPL[]>()),
-    leerTodo<Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null }>((d, h) => supabase.from("gastos_caja_chica")
-      .select("sucursal_id, fecha, concepto, monto, cuenta_pl").gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h)
-      .returns<(Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null })[]>()),
+    leerTodo<Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null; informativo: boolean }>((d, h) => supabase.from("gastos_caja_chica")
+      .select("sucursal_id, fecha, concepto, monto, cuenta_pl, informativo").gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h)
+      .returns<(Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null; informativo: boolean })[]>()),
     leerTodo<Fila & { boveda_diferencia: number }>((d, h) => supabase.from("cierres_dia").select("sucursal_id, boveda_diferencia")
       .gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h).returns<(Fila & { boveda_diferencia: number })[]>()),
     leerTodo<{ diferencia: number; turnos: { sucursal_id: string } }>((d, h) => supabase.from("arqueos").select("diferencia, turnos!inner(sucursal_id, fecha)")
@@ -183,7 +183,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     }
     const cc = de(cajaChica, s.id);
     const caja = facturasAGastos(cc.map((g) => ({ tipo: "ingreso" as const, estado: "pagada", subtotal: Number(g.monto), descuento: 0, cuenta_pl: g.cuenta_pl })));
-    for (const g of cc) anotar(s.id, renglonDe(g.cuenta_pl), `Caja chica · ${g.concepto} · ${g.fecha}${g.cuenta_pl ? "" : " · sin cuenta"}`, Number(g.monto));
+    for (const g of cc) anotar(s.id, renglonDe(g.cuenta_pl), `Gasto${g.informativo?" informativo · ya pagado":""} · ${g.concepto} · ${g.fecha}${g.cuenta_pl ? "" : " · sin cuenta"}`, Number(g.monto));
 
     const nomina = nominaPeriodo(puestos, ajustes, s.id, meses, reales);
     for (const m of meses) {

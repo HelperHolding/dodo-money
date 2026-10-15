@@ -3,17 +3,13 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto, puedeGestionar } from "@/lib/contexto";
 import { fechaTexto, hoyMX, pesos } from "@/lib/formato";
 import { BUCKET_FOTOS } from "@/lib/fotos";
-import { NOMBRE_ORIGEN, porReponerAEmpleados, sumaPorOrigen, type OrigenGasto } from "@/lib/gastos";
-import { CampoFoto } from "./CampoFoto";
+import { porReponerAEmpleados, sumaPorOrigen } from "@/lib/gastos";
+import {ListaGastos,type Gasto} from "./ListaGastos";
+import {leerTodo} from "@/lib/ventas/paginar";
 import { CampoOrigen } from "./CampoOrigen";
 import { marcarRepuesto, registrarGasto, solicitarReposicion } from "./actions";
 
-type Gasto = {
-  id: string; fecha: string; concepto: string; proveedor: string | null; monto: number; comprobante: string; creado_en: string; foto_path: string | null;
-  origen: OrigenGasto; pagado_por: string | null; repuesto_en: string | null;
-};
-const COLUMNAS = "id, fecha, concepto, proveedor, monto, comprobante, creado_en, foto_path, origen, pagado_por, repuesto_en";
-const COMPROBANTE: Record<string, string> = { cfdi: "Factura", nota: "Nota", sin_comprobante: "Sin comprobante" };
+const COLUMNAS = "id, fecha, concepto, proveedor, monto, comprobante, creado_en, foto_path, origen, pagado_por, repuesto_en, informativo, motivo_informativo, referencia_informativa, informado_por, informado_en, respaldo_informativo";
 
 export default async function CajaChica({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
@@ -28,17 +24,16 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
     supabase.from("perfiles").select("id, nombre").eq("sucursal_id", sucursal.id).eq("activo", true).order("nombre")
       .returns<{ id: string; nombre: string }[]>(),
     supabase.from("gastos_caja_chica").select(COLUMNAS).eq("sucursal_id", sucursal.id)
-      .eq("origen", "empleado").is("repuesto_en", null).order("fecha").returns<Gasto[]>(),
+      .eq("origen", "empleado").eq("informativo", false).is("repuesto_en", null).order("fecha").returns<Gasto[]>(),
   ]);
   const nombre = new Map((personas ?? []).map((p) => [p.id, p.nombre]));
 
-  let consulta = supabase.from("gastos_caja_chica").select(COLUMNAS)
-    .eq("sucursal_id", sucursal.id).order("creado_en", { ascending: false });
-  if (ultima) consulta = consulta.gt("creado_en", ultima.creado_en);
-  const { data: gastos } = await consulta.returns<Gasto[]>();
+  const todos=await leerTodo<Gasto>((d,h)=>supabase.from("gastos_caja_chica").select(COLUMNAS).eq("sucursal_id",sucursal.id).order("creado_en",{ascending:false}).order("id").range(d,h).returns<Gasto[]>());
+  const gastos=ultima?todos.filter(g=>new Date(g.creado_en).getTime()>new Date(ultima.creado_en).getTime()):todos;
+  const anteriores=ultima?todos.filter(g=>new Date(g.creado_en).getTime()<=new Date(ultima.creado_en).getTime()):[];
 
   // Enlaces temporales (1 hora): las fotos están en un bucket privado.
-  const rutas = (gastos ?? []).flatMap((g) => (g.foto_path ? [g.foto_path] : []));
+  const rutas = todos.flatMap(g=>[g.foto_path,g.respaldo_informativo].filter((p):p is string=>Boolean(p)));
   const { data: firmadas } = rutas.length
     ? await supabase.storage.from(BUCKET_FOTOS).createSignedUrls(rutas, 3600)
     : { data: [] };
@@ -55,13 +50,13 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
   return (
     <>
       <div className="encabezado">
-        <h1>Caja chica</h1>
-        <p>Solo para gastos menores, separada de la bóveda. Cada gasto se registra con su comprobante y se repone por el mismo monto.</p>
+        <h1>Gastos</h1>
+        <p>Registra limpieza, agua y otros gastos con su origen y comprobante. Si ya estaban descontados en un corte anterior, elige el registro informativo para evitar otra salida.</p>
       </div>
       <Aviso ok={ok} error={error} />
 
       <section className="seccion" aria-labelledby="t-estado">
-        <h2 id="t-estado">Estado del fondo</h2>
+        <h2 id="t-estado">Fondo de caja chica</h2>
         <div className="rejilla">
           <div className="saldo"><span>Fondo autorizado</span><span className="saldo-monto">{pesos(fondo)}</span></div>
           <div className="saldo"><span>Gastos de caja chica por reponer</span><span className="saldo-monto">{pesos(porReponer)}</span>
@@ -81,8 +76,9 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
       <details className="seccion caja-chica-acordeon">
         <summary id="t-gasto">Registrar gasto <span>Capturar un nuevo gasto y su comprobante</span></summary>
       <form action={registrarGasto} aria-labelledby="t-gasto">
+        <input type="hidden" name="solicitud" value={crypto.randomUUID()}/>
         <div className="rejilla">
-          <div className="campo"><label htmlFor="fecha">Fecha</label><input id="fecha" name="fecha" type="date" defaultValue={hoyMX()} required /></div>
+          <div className="campo"><label htmlFor="fecha">Fecha</label><input id="fecha" name="fecha" type="date" defaultValue={hoyMX()} max={hoyMX()} required /></div>
           <div className="campo"><label htmlFor="concepto">Concepto</label><input id="concepto" name="concepto" required placeholder="Ej. garrafón de agua" /></div>
           <div className="campo"><label htmlFor="proveedor">Proveedor</label><input id="proveedor" name="proveedor" /></div>
           <CampoOrigen personas={personas ?? []} yo={perfil.id} />
@@ -96,7 +92,6 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
             </select>
           </div>
           <div className="campo"><label htmlFor="uuid_cfdi">Folio fiscal (UUID)</label><input id="uuid_cfdi" name="uuid_cfdi" placeholder="Solo si hay factura" /></div>
-          <CampoFoto />
         </div>
         <div className="acciones"><BotonEnviar>Registrar gasto</BotonEnviar></div>
       </form>
@@ -136,25 +131,10 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
 
       <details className="seccion caja-chica-acordeon">
         <summary id="t-gastos">Gastos desde la última reposición <span>{gastos?.length ?? 0} registros · {pesos((gastos ?? []).reduce((total, g) => total + Number(g.monto), 0))}</span></summary>
-        {!gastos?.length ? <p className="vacio">No hay gastos pendientes de reponer.</p> : (
-          <div className="tabla-contenedor">
-            <table className="tabla tabla-tarjetas">
-              <thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Salió de</th><th>Comprobante</th><th>Foto</th><th>Monto</th></tr></thead>
-              <tbody>
-                {gastos.map((g) => (
-                  <tr key={g.id}>
-                    <td data-label="Fecha">{g.fecha}</td><td data-label="Concepto">{g.concepto}</td><td data-label="Proveedor">{g.proveedor ?? ""}</td>
-                    <td data-label="Salió de">{g.origen === "empleado" ? `${nombre.get(g.pagado_por ?? "") ?? "Empleado"}${g.repuesto_en ? " (repuesto)" : ""}` : NOMBRE_ORIGEN[g.origen]}</td>
-                    <td data-label="Comprobante">{COMPROBANTE[g.comprobante]}</td>
-                    <td data-label="Foto">{g.foto_path && urlFoto.get(g.foto_path) ? <a href={urlFoto.get(g.foto_path)} target="_blank" rel="noopener noreferrer">Ver foto</a> : ""}</td>
-                    <td data-label="Monto" className="monto">{pesos(g.monto)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <ListaGastos gastos={gastos} nombres={nombre} fotos={urlFoto} edita={marca}/>
+
       </details>
+      {anteriores.length>0&&<details className="seccion caja-chica-acordeon"><summary>Gastos anteriores <span>{anteriores.length} registros · historial</span></summary><ListaGastos gastos={anteriores} nombres={nombre} fotos={urlFoto} edita={marca}/></details>}
     </>
   );
 }

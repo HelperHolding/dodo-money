@@ -50,7 +50,7 @@ export const puedeVerTurnos = (rol: Rol) => puedeAbrirTurno(rol) || esCorporativ
 const ENLACE_ARQUEO: Enlace = { href: "/arqueo", texto: "Arqueo de turno" };
 const ENLACES_SUCURSAL: readonly Enlace[] = [
   { href: "/movimientos", texto: "Movimientos" },
-  { href: "/caja-chica", texto: "Caja chica" },
+  { href: "/caja-chica", texto: "Gastos" },
   { href: "/cierre", texto: "Cierre del día" },
   { href: "/checklists", texto: "Checklists" },
 ];

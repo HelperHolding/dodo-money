@@ -18,14 +18,14 @@ async function reducir(archivo: File): Promise<File> {
   return new File([blob], `${archivo.name.replace(/\.[^.]+$/, "")}.jpg`, { type: "image/jpeg" });
 }
 
-export function CampoFoto() {
+export function CampoFoto({obligatorio=false}:{obligatorio?:boolean}) {
   const [estado, setEstado] = useState<string | null>(null);
 
   return (
     <div className="campo caja-chica-foto">
-      <label htmlFor="foto">Foto del ticket (opcional)</label>
+      <label htmlFor="foto">Foto del ticket ({obligatorio?"obligatoria":"opcional"})</label>
       <input
-        id="foto" name="foto" type="file" className="caja-chica-archivo" accept="image/*" capture="environment"
+        required={obligatorio} id="foto" name="foto" type="file" className="caja-chica-archivo" accept="image/*" capture="environment"
         onChange={async (e) => {
           const input = e.currentTarget;
           const archivo = input.files?.[0];

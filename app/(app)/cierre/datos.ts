@@ -13,7 +13,7 @@ export async function datosDelDia(supabase: SupabaseClient, sucursalId: string, 
     supabase.from("turnos").select("id").eq("sucursal_id", sucursalId).eq("fecha", fecha).returns<{ id: string }[]>(),
     supabase.from("cajas").select("saldo_inicial").eq("sucursal_id", sucursalId).eq("tipo", "boveda")
       .maybeSingle<{ saldo_inicial: number }>(),
-    supabase.from("gastos_caja_chica").select("monto").eq("sucursal_id", sucursalId).eq("origen", "boveda")
+    supabase.from("gastos_caja_chica").select("monto").eq("informativo", false).eq("sucursal_id", sucursalId).eq("origen", "boveda")
       .gte("creado_en", desde).lt("creado_en", hasta).returns<{ monto: number }[]>(),
     supabase.from("pagos_boveda_eventos").select("importe").eq("sucursal_id",sucursalId).eq("fecha_operativa",fecha).returns<{importe:number}[]>(),
   ]);
