@@ -1,5 +1,8 @@
 begin;
 set local lock_timeout='5s';
+-- No depender de un UPDATE silencioso de cero filas por RLS: escritura solo por RPC.
+revoke all on public.pagos,public.pago_aplicaciones from public,anon,authenticated;
+grant select on public.pagos,public.pago_aplicaciones to authenticated;
 alter table public.pagos drop constraint pagos_origen_fondos_check;
 alter table public.pagos add constraint pagos_origen_fondos_check check(origen_fondos in ('transferencia','boveda','ventas','tarjeta','historico'));
 alter table public.pagos add column origen_historico text,
