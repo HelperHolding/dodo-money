@@ -44,12 +44,25 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [pl, ventas] = await Promise.all([
+    // Segunda lectura para el contexto del PDF: los 7 días que cierran en `fecha` y, como "anterior", el mismo día
+    // de la semana pasada (compara sábado contra sábado, no contra viernes).
+    const semanaPasada = periodoDeUnDia(sumarDias(fecha, -7));
+    const ultimos7: Periodo = { ...periodoDeUnDia(fecha), desde: sumarDias(fecha, -6) };
+    const [pl, ventas, contexto] = await Promise.all([
       datosPL(supabase, { desde: fecha, hasta: fecha }),
       datosVentas(supabase, null, actual, anterior),
+      datosVentas(supabase, null, ultimos7, semanaPasada),
     ]);
 
     return NextResponse.json({
+      extras: {
+        historia: contexto.dias.map((d) => ({ fecha: d.fecha, sucursal_id: d.sucursal_id, total: d.total, pedidos: d.pedidos })),
+        mismoDiaSemanaPasada: {
+          titulo: semanaPasada.titulo,
+          dias: contexto.anterior.dias,
+          canales: { pos: { dias: contexto.anterior.canales.pos.dias }, rappi: { dias: contexto.anterior.canales.rappi.dias } },
+        },
+      },
       periodo: { clave: actual.clave, titulo: actual.titulo, desde: actual.desde, hasta: actual.hasta, vacio: actual.vacio },
       anterior: { clave: anterior.clave, titulo: anterior.titulo, desde: anterior.desde, hasta: anterior.hasta },
       pl: {

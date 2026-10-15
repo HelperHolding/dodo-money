@@ -58,7 +58,7 @@ export async function actualizarSesion(request: NextRequest) {
 
   const esLogin = request.nextUrl.pathname.startsWith("/login");
   // Se autentican con su propio header x-api-key, no con la sesión de cookies.
-  const esReporteAutomatizado = request.nextUrl.pathname.startsWith("/api/reporte-semanal") || request.nextUrl.pathname.startsWith("/api/reporte-diario");
+  const esReporteAutomatizado = ["/api/reporte-semanal", "/api/reporte-diario", "/api/reporte-mensual"].some((ruta) => request.nextUrl.pathname.startsWith(ruta));
 
   const esInvitacion = request.nextUrl.pathname === "/auth/confirm" || request.nextUrl.pathname === "/invitacion";
   if (!user && !esLogin && !esReporteAutomatizado && !esInvitacion) {
