@@ -1,4 +1,6 @@
 import {RecepcionDirecta} from "../RecepcionDirecta";
+import {randomUUID} from 'node:crypto';
+import {guardarUuidManualFactura} from '../acciones';
 import {ConvertirPrefactura} from "../ConvertirPrefactura";
 import {OrigenPrefactura} from "../OrigenPrefactura";
 import {AdjuntarDocumento,AdjuntosCompra} from "../../adjuntos/Componentes";
@@ -30,7 +32,7 @@ import {
 } from "../acciones";
 
 type Factura = {
-  id: string; uuid: string | null; origen: "cfdi" | "manual"; sustituido_por: string | null; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string;
+  id: string; uuid: string | null; uuid_manual:string|null; origen: "cfdi" | "manual"; sustituido_por: string | null; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string;
   rfc_receptor:string;rfc_emisor: string; nombre_emisor: string; regimen_emisor: string; metodo_pago: string | null; forma_pago: string | null;
   subtotal: number; descuento: number; iva: number; retenciones: number; total: number; saldo: number; proveedor_id: string; sucursal_id: string | null; cuenta_pl: string | null;
   cubre_desde: string; cubre_hasta: string;
@@ -49,7 +51,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: f } = await supabase.from("facturas_saldo")
-    .select("id, uuid, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_receptor, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, cubre_desde, cubre_hasta, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, recepcion_programada_el,pago_programado_forma, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal,dias_entrega)")
+    .select("id, uuid, uuid_manual, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_receptor, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, cubre_desde, cubre_hasta, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, recepcion_programada_el,pago_programado_forma, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal,dias_entrega)")
     .eq("id", id).maybeSingle<Factura>();
   if (!f) notFound();
 
@@ -140,10 +142,18 @@ export default async function DetalleFactura({ params, searchParams }: { params:
         <p>{nombreEstadoFactura(f.tipo, f.estado)}{f.motivo_cancelacion ? ` · ${f.motivo_cancelacion}` : ""}{f.origen === "manual" ? " · Sin CFDI" : ` · UUID ${f.uuid}`}</p>
       </div>
       <p className="saldo-nota">Empresa: {razon?.razon_social??f.rfc_receptor} · {f.rfc_receptor}</p>
+      {f.origen==='manual'&&f.uuid_manual&&<p className="saldo-nota">UUID: <strong>{f.uuid_manual}</strong> · capturado manualmente · XML pendiente</p>}
       {!ligadas.length&&f.tipo==="ingreso"&&f.estado!=="cancelada"&&<RecepcionDirecta id={id} conceptos={conceptos??[]} recepciones={directas} hoy={hoy} edita={edita}/>}
       <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={f.estado}>{nombreEstadoFactura(f.tipo, f.estado)}</strong></div><div><small>Total original</small><strong>{pesos(f.total)}</strong></div><div><small>Saldo pendiente</small><strong>{pesos(f.estado === "cancelada" ? 0 : f.saldo)}</strong></div><div><small>Fecha de vencimiento</small><strong>{fechaTexto(f.vence_el)}</strong></div></div>
       <div className="orden-acciones-encabezado ficha-barra">
         {edita&&<AdjuntarDocumento tipo="factura" id={f.id}/>}
+        {edita&&f.origen==='manual'&&f.tipo==='ingreso'&&!f.sustituido_por&&!f.xml_ruta&&<details className="orden-accion-desplegable"><summary className="boton boton-secundario">{f.uuid_manual?'Corregir UUID manual':'Capturar UUID sin XML'}</summary><div className="orden-accion-formulario"><form action={guardarUuidManualFactura} className="formulario">
+          <input type="hidden" name="id" value={id}/><input type="hidden" name="solicitud" value={randomUUID()}/><input type="hidden" name="uuid_anterior" value={f.uuid_manual??''}/>
+          <label className="campo">UUID del comprobante<input name="uuid_manual" defaultValue={f.uuid_manual??''} maxLength={36} pattern="[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" required={!f.uuid_manual}/></label>
+          <label className="campo">Motivo<input name="motivo" minLength={5} maxLength={500} required placeholder="UUID tomado del PDF; XML pendiente"/></label>
+          <p className="saldo-nota">Se guarda como dato manual y aparece en Tesorería. No cambia importes, pagos ni convierte la prefactura a CFDI. Cuando tengas el XML, usa «Convertir con XML».{f.uuid_manual?' Puedes dejar el campo vacío para quitar un UUID equivocado, conservando el historial.':''}</p>
+          <BotonEnviar>Guardar UUID manual</BotonEnviar>
+        </form></div></details>}
         {edita&&f.origen==='manual'&&f.tipo==='ingreso'&&f.estado!=='cancelada'&&!f.sustituido_por&&<ConvertirPrefactura id={f.id}/>}
         {edita && f.tipo === "ingreso" && opcionesOrden.filter(o=>ligadas.includes(o.id)&&o.estado==="confirmada").map(o=><Link key={o.id} className="boton boton-secundario" href={`/compras/ordenes/${o.id}?recibir=1#recepcion-orden`}>Registrar recepción{ligadas.length>1?` · ${o.folio}`:""}</Link>)}
         {edita && <details><summary>Programar / revisar</summary>      {edita && (

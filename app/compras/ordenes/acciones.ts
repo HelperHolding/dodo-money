@@ -11,6 +11,15 @@ const ruta = (id: string) => `/compras/ordenes/${id}`;
 const texto = (fd: FormData, campo: string) => String(fd.get(campo) ?? "").trim();
 const sucursalDe = (valor: string) => (valor === "oficina" || valor === "" ? null : valor);
 
+export async function corregirSucursalOrden(fd:FormData) {
+ const id=texto(fd,'id'),supabase=await clienteAdmin(ruta(id));
+ if(!texto(fd,'sucursal_nueva'))volver(ruta(id),'error','Elige la nueva sucursal.');
+ const {error}=await supabase.rpc('corregir_sucursal_orden',{p_solicitud:texto(fd,'solicitud'),p_orden:id,p_anterior:sucursalDe(texto(fd,'sucursal_anterior')),p_nueva:sucursalDe(texto(fd,'sucursal_nueva')),p_motivo:texto(fd,'motivo')});
+ if(error)volver(ruta(id),'error',error.message);
+ revalidatePath('/finanzas','layout');revalidatePath('/','page');
+ listo(id,'Sucursal corregida. Se conservaron las cantidades y fechas de recepción.');
+}
+
 export async function facturarOrden(fd:FormData) {
   const id=texto(fd,'id'),supabase=await clienteAdmin(ruta(id));
   const {data:factura,error}=await supabase.rpc('facturar_orden',{p_orden:id});

@@ -31,7 +31,7 @@ export function seleccionarCorrida(facturas:readonly FacturaCorrida[],ligas:read
   const advertencias:string[]=[];
   if(sinDistribuir)advertencias.push('La factura cubre varias sucursales y no tiene distribución de saldo por sucursal. No se incluyó en la corrida para evitar duplicarla.');
   if(!f.formaPrevista)advertencias.push('Falta definir la forma de pago prevista.');
-  if(f.origen==='manual')advertencias.push('Documento sin CFDI.');
+  if(f.origen==='manual')advertencias.push(f.uuid?'UUID capturado manualmente; XML pendiente.':'Documento sin CFDI.');
   if(f.falta_complemento)advertencias.push('Complemento de pago pendiente.');
   if(!f.empresaActiva)advertencias.push('RFC receptor histórico o razón social inactiva: revisar antes de pagar.');
   filas.push({...f,saldo:centavos(f.saldo)/100,total:centavos(f.total)/100,fechaPago,destino,destinoId,sinDistribuir,advertencias});

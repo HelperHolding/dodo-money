@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {filtrarCosteo,agruparCosteo,margenFila,type FilaCosteo} from './lista.ts';
 const base:FilaCosteo={id:1,nombre:'Pizza Álamo',categoria:'Pizzas',tamano:'Grande',costo:40,desde:'2026-10-01',fuente:null,nota:null,pos:116,rappi:232,rappiFecha:'2026-10-08',bom:true,costoBOM:40,insumos:['Queso mozzarella']};
+
+test('costeo: aproximación en producto e insumo, códigos literales y orden por columna',()=>{
+ const filas=[{...base,id:2,nombre:'Pizza Alano',costo:20},base];
+ assert.equal(filtrarCosteo(filas,{q:'alamo'})[0].id,1);
+ assert.equal(filtrarCosteo(filas,{q:'alamo',orden:'costo'})[0].id,2);
+ assert.equal(filtrarCosteo([base],{q:'mozarela'}).length,1);
+ assert.equal(filtrarCosteo([base],{q:'alammo',categoria:'Bebidas'}).length,0);
+ assert.equal(filtrarCosteo([{...base,id:12345}],{q:'12346'}).length,0);
+});
 test('costeo lista: palabras, acentos, insumos y filtros combinados',()=>{
  assert.equal(filtrarCosteo([base],{q:'alamo queso',categoria:'Pizzas',tamano:'Grande',min:'40',max:'40',posMin:'116',posMax:'116'}).length,1);
  assert.equal(filtrarCosteo([base],{q:'alamo inexistente'}).length,0);

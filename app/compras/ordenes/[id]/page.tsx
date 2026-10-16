@@ -1,7 +1,7 @@
 import {FormularioRecepcionOrden} from "../FormularioRecepcionOrden";
 import { HistorialCompra } from "@/components/HistorialCompra";
 import {AdjuntarDocumento,AdjuntosCompra} from "../../adjuntos/Componentes";
-import { agregarNotaOrden } from "../acciones";
+import { agregarNotaOrden,corregirSucursalOrden } from "../acciones";
 import { FichaPestanas } from "@/components/FichaPestanas";
 import { randomUUID } from "node:crypto";
 import { Fragment } from "react";
@@ -107,6 +107,14 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
       </div>
       <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={o.estado}>{NOMBRE_ESTADO_ORDEN[o.estado]}</strong></div><div><small>Total de la orden</small><strong>{pesos(t.total)}</strong></div><div><small>Facturado</small><strong>{pesos(facturado)}</strong></div><div><small>Recepción</small><strong>{NOMBRE_AVANCE[avanceOrden(rs)]}</strong></div></div>
       <section className="seccion orden-acciones-encabezado" aria-label="Acciones de la orden">
+        {edita&&['confirmada','cerrada'].includes(o.estado)&&<details><summary>Corregir sucursal</summary><form action={corregirSucursalOrden} className="formulario">
+          <input type="hidden" name="id" value={o.id}/><input type="hidden" name="solicitud" value={randomUUID()}/><input type="hidden" name="sucursal_anterior" value={o.sucursal_id??'oficina'}/>
+          <p>Sucursal actual: <strong>{o.sucursales?.nombre??'Oficina'}</strong>. El cambio aplica a la orden completa y sus recepciones en Dodo MX. Las facturas vinculadas que puedan corregirse se actualizarán juntas.</p>
+          <div className="campo"><label htmlFor="corregir-sucursal">Nueva sucursal</label><select id="corregir-sucursal" name="sucursal_nueva" required defaultValue=""><option value="" disabled>Elige una sucursal</option>{(sucursales.data??[]).filter(s=>s.id!==o.sucursal_id).map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}{o.sucursal_id!==null&&<option value="oficina">Oficina</option>}</select></div>
+          <div className="campo"><label htmlFor="motivo-sucursal">Motivo de la corrección</label><textarea id="motivo-sucursal" name="motivo" minLength={5} maxLength={1000} required placeholder="Explica en qué sucursal se recibió realmente y por qué se corrige."/></div>
+          <p className="saldo-nota">Se conservan cantidades, fechas y documentos. Si existen pagos, reservas o vínculos que requieren revisión, el cambio se detendrá sin modificar la orden. No cambia registros en Dodo IS.</p>
+          <BotonEnviar className="boton boton-secundario">Corregir sucursal de toda la orden</BotonEnviar>
+        </form></details>}
         {edita && o.estado === "confirmada" && !recepcionCompleta && (
           <details className="orden-programar-entrega"><summary>Programar entrega</summary><form action={cambiarEntregaEsperada} className="acciones">
             <input type="hidden" name="id" value={o.id} />

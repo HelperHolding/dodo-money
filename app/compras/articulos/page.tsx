@@ -9,7 +9,7 @@ import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { cambiarActivoArticulo, guardarArticulo, guardarProveedoresArticulo } from "../acciones";
 import { FormValidado } from "../FormValidado";
-import {BusquedaArticulos,ArticuloBuscable,GrupoArticulosBuscable} from "./BusquedaArticulos";
+import {ArticulosOrdenados,BusquedaArticulos,ArticuloBuscable,GrupoArticulosBuscable} from "./BusquedaArticulos";
 
 type Articulo = { id: string; nombre: string; unidad: string; tipo: CategoriaCompra; tasa_iva: TasaIva; dodo_insumo_id: string | null; activo: boolean; motivo_desactivacion: string | null };
 type Liga = { articulo_id: string; proveedor_id: string; principal: boolean };
@@ -96,7 +96,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
             {vista === "lista" ? (
               <ul className="lista-filas" style={{ "--columnas": 4 } as React.CSSProperties}>
                 <li className="fila fila-encabezado" aria-hidden="true"><span>Artículo</span><span>Lo surten</span><span>IVA</span><span>Mejor precio</span><span>Última compra</span></li>
-                {lista.map((a) => {
+                <ArticulosOrdenados>{lista.map((a) => {
                   const ps = preciosDe.get(a.id) ?? [];
                   const mejor = ps.reduce<Precio | null>((m, p) => (!m || Number(p.precio) < Number(m.precio) ? p : m), null);
                   const ultima = ps.reduce<string | null>((u, p) => (!u || p.fecha > u ? p.fecha : u), null);
@@ -113,11 +113,11 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                       </div>
                     </li></ArticuloBuscable>
                   );
-                })}
+                })}</ArticulosOrdenados>
               </ul>
             ) : (
             <div className="tarjetas">
-              {lista.map((a) => {
+              <ArticulosOrdenados>{lista.map((a) => {
                 const ps = preciosDe.get(a.id) ?? [];
                 return (
                   <ArticuloBuscable key={a.id} id={a.id}><article id={`a-${a.id}`} className="tarjeta" data-alerta={a.activo ? undefined : "si"}>
@@ -178,7 +178,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                     })()}
                   </article></ArticuloBuscable>
                 );
-              })}
+              })}</ArticulosOrdenados>
             </div>
             )}
           </GrupoArticulosBuscable>

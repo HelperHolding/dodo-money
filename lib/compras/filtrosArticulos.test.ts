@@ -12,3 +12,11 @@ test('artículos: distingue IVA cero de exento, sin proveedor y limpiar filtros'
  assert.deepEqual(filtrarArticulos(indice,{...FILTROS_ARTICULOS_VACIOS,proveedor:'sin-proveedor'}).map(a=>a.id),['c']);
  assert.equal(filtrarArticulos(indice,FILTROS_ARTICULOS_VACIOS).length,3);
 });
+
+test('artículos: nombres aproximados, prioridad exacta y filtros protegidos',()=>{
+ const mas=[{...indice[0],id:'parecido',texto:'Azucer kg'},...indice];
+ assert.deepEqual(filtrarArticulos(mas,{...FILTROS_ARTICULOS_VACIOS,q:'azucar'}).map(a=>a.id),['a','parecido']);
+ assert.equal(filtrarArticulos(indice,{...FILTROS_ARTICULOS_VACIOS,q:'azucar',iva:'16'}).length,0);
+ assert.equal(filtrarArticulos(indice,{...FILTROS_ARTICULOS_VACIOS,q:'electirco'})[0].id,'c');
+ assert.equal(filtrarArticulos([{...indice[0],texto:'Azúcar 12345'}],{...FILTROS_ARTICULOS_VACIOS,q:'12346'}).length,0);
+});

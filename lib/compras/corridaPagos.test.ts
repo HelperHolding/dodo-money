@@ -7,6 +7,14 @@ const filtro={desde:'2026-10-15',hasta:'2026-10-16',fecha:'2026-10-16'};
 const sedes=new Map([['z','Zapopan-1'],['d','dodo-2']]);
 const factura:FacturaCorrida={id:'f1',uuid:'12345678-1234-1234-1234-123456789ABC',proveedor_id:'p',proveedor:'Proveedor de prueba',nombre:'001',rfc_receptor:'HCM260306B93',empresa:'HELPER COMERCIALIZADORA MASTER',empresaActiva:true,sucursal_id:'z',fecha_emision:'2026-10-10',vence_el:'2026-10-15',fechaPago:'2026-10-15',pago_programado_el:'2026-10-15',formaPrevista:'Transferencia',estado:'parcial',tipo:'ingreso',saldo:60.20,total:100.20,origen:'cfdi',falta_complemento:false,conceptos:['Insumos']};
 
+test('corrida: el UUID manual aparece identificado sin alterar el saldo',()=>{
+ const filas=seleccionarCorrida([{...factura,origen:'manual'}],[],sedes,filtro);
+ assert.ok(filas[0].advertencias.includes('UUID capturado manualmente; XML pendiente.'));
+ const libro=libroCorrida(filas,filtro,'2026-10-16');const z=libro.hojas.find(h=>h.nombre==='Zapopan-1')!;
+ assert.equal(z.filas[4][10],factura.uuid);assert.equal(libro.total,60.20);
+ assert.ok(String(z.filas[4][9]).includes('XML pendiente'));
+});
+
 test('corrida: UUID real o vacío y liga al calendario en todas las hojas',()=>{
  const filas=seleccionarCorrida([factura,{...factura,id:'manual',uuid:null,origen:'manual'}],[],sedes,filtro);
  const libro=libroCorrida(filas,filtro,'2026-10-16');
