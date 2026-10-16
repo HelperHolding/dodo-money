@@ -3,15 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Icono } from "@/components/Icono";
-import { enlaceActivo, enlacesDelMenu, grupoAbierto, type Menu } from "@/lib/roles";
+import { Icono, type NombreIcono } from "@/components/Icono";
+import { enlaceActivo, enlacesDelMenu, grupoAbierto, type Enlace, type Menu } from "@/lib/roles";
+
+/** Icono de cada grupo del menú (por título; un grupo nuevo sin icono se muestra sin él). */
+const ICONO_GRUPO: Record<string, NombreIcono> = {
+  Sucursal: "tienda", Efectivo: "cartera", Ventas: "grafica", Compras: "carrito", Finanzas: "banco",
+  "Proyectos y admin.": "maletin", Conocimiento: "libro",
+};
+/** Icono de cada acceso rápido de la barra inferior. */
+const ICONO_ACCESO: Record<string, NombreIcono> = {
+  "/": "casa", "/corporativo": "casa", "/arqueo": "billete", "/checklists": "lista", "/ventas": "grafica",
+  "/compras/documentos": "carrito", "/finanzas": "banco",
+};
 
 /**
  * Menú lateral con grupos plegables. En computadora queda fijo a la izquierda;
  * en celular se abre como cajón con el botón de menú y se cierra al elegir una opción.
+ * En celular, además, una barra inferior con los accesos que el puesto usa más y el botón del menú completo.
  */
-export function MenuLateral({ menu, titulo, cabecera, pie }: {
-  menu: Menu; titulo: string; cabecera: React.ReactNode; pie: React.ReactNode;
+export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
+  menu: Menu; titulo: string; cabecera: React.ReactNode; pie: React.ReactNode; accesos: readonly Enlace[];
 }) {
   const ruta = usePathname();
   const actual = enlaceActivo(ruta, enlacesDelMenu(menu));
@@ -35,6 +47,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie }: {
   const alternar = (grupo: string, abierto: boolean) =>
     setAbiertos((a) => (abierto ? (a.includes(grupo) ? a : [...a, grupo]) : a.filter((g) => g !== grupo)));
   const marcar = (href: string) => (href === actual ? "page" : undefined);
+  const accesoActual = enlaceActivo(ruta, accesos);
 
   return (
     <>
@@ -56,7 +69,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie }: {
           {menu.grupos.map((g) => (
             <details key={g.titulo} className="lateral-grupo" open={abiertos.includes(g.titulo)}
               onToggle={(e) => alternar(g.titulo, e.currentTarget.open)}>
-              <summary>{g.titulo}</summary>
+              <summary>{ICONO_GRUPO[g.titulo] && <Icono nombre={ICONO_GRUPO[g.titulo]} tamano={18} />}<span>{g.titulo}</span></summary>
               <ul>
                 {g.enlaces.map((e) => (
                   <li key={e.href}>
@@ -69,6 +82,16 @@ export function MenuLateral({ menu, titulo, cabecera, pie }: {
         </nav>
         <div className="lateral-pie">{pie}</div>
       </aside>
+      <nav className="barra-inferior" aria-label="Accesos rápidos">
+        {accesos.map((a) => (
+          <Link key={a.href} href={a.href} aria-current={a.href === accesoActual ? "page" : undefined}>
+            <Icono nombre={ICONO_ACCESO[a.href] ?? "derecha"} tamano={22} />{a.texto}
+          </Link>
+        ))}
+        <button type="button" aria-expanded={cajon} aria-controls="menu-lateral" onClick={() => setCajon(true)}>
+          <Icono nombre="menu" tamano={22} />Menú
+        </button>
+      </nav>
     </>
   );
 }

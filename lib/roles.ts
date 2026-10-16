@@ -70,7 +70,8 @@ export function menuLateral(rol: Rol): Menu {
       ENLACE_ARQUEO,
       ...(puedeVerTurnos(rol) ? [{ href: "/turnos", texto: "Turnos" }] : []),
       ...ENLACES_SUCURSAL,
-      ...(puedeRecibirCompras(rol) ? [{ href: "/recepciones", texto: "Recepciones" }] : []),
+      // El admin ve las dos recepciones en una sola entrada (Compras), con pestañas En tienda / De compras.
+      ...(puedeRecibirCompras(rol) && !puedeVerCompras(rol) ? [{ href: "/recepciones", texto: "Recepciones" }] : []),
     ],
   }];
   if (puedeVerEfectivo(rol)||rol==='gerente') {
@@ -95,7 +96,7 @@ export function menuLateral(rol: Rol): Menu {
         { href: "/compras", texto: "Proveedores" },
         { href: "/compras/articulos", texto: "Artículos" },
         { href: "/compras/documentos", texto: "Compras y facturas", aliases:["/compras/ordenes","/compras/facturas"] },
-        { href: "/compras/recepciones", texto: "Recepciones" },
+        { href: "/compras/recepciones", texto: "Recepciones", ...(puedeRecibirCompras(rol) ? { aliases: ["/recepciones"] } : {}) },
         { href: "/compras/pagos", texto: "Pagos" },
         { href: "/compras/pagos/reservas", texto: "Reservas de bóveda" },
         ...(puedeEditarCompras(rol) ? [{ href: "/compras/cargar", texto: "Cargar Excel" }] : []),
@@ -115,13 +116,29 @@ export function menuLateral(rol: Rol): Menu {
       ],
     });
   }
-  if (rol === "admin") {
-    grupos.push({ titulo: "Administración", enlaces: [{ href: "/administracion/usuarios", texto: "Usuarios y sucursales" }] });
-  }
+  // Aperturas, Activos y Usuarios tenían un grupo cada uno con un solo enlace: van juntos.
+  const proyectos: Enlace[] = [
+    ...(puedeVerCompras(rol) ? [{ href: "/aperturas", texto: "Aperturas" }, { href: "/activos", texto: "Activos" }] : []),
+    ...(rol === "admin" ? [{ href: "/administracion/usuarios", texto: "Usuarios y sucursales" }] : []),
+  ];
+  if (proyectos.length) grupos.push({ titulo: "Proyectos y admin.", enlaces: proyectos });
+  grupos.push({
+    titulo: "Conocimiento",
+    enlaces: [{ href: "/conocimiento", texto: "Manuales y Q&A" }, ...(puedeVerVentas(rol) ? [{ href: "/asistente", texto: "Asistente IA" }] : [])],
+  });
   return {
     inicio: corporativo ? { href: "/corporativo", texto: "Vista general" } : { href: "/", texto: "Inicio" },
-    grupos: [...grupos,...(puedeVerCompras(rol)?[{titulo:"Aperturas",enlaces:[{href:"/aperturas",texto:"Proyectos"}]},{titulo:"Activos",enlaces:[{href:"/activos",texto:"Inventario y mantenimiento"}]}]:[]),{titulo:"Conocimiento",enlaces:[{href:"/conocimiento",texto:"Manuales y Q&A"},...(puedeVerVentas(rol)?[{href:"/asistente",texto:"Asistente IA"}]:[])]}],
+    grupos,
   };
+}
+
+/** Barra inferior en celular: los 3 destinos que cada puesto usa más (el 4º botón abre el menú completo). */
+export function accesosRapidos(rol: Rol): Enlace[] {
+  const inicio: Enlace = puedeVerVistaGeneral(rol) ? { href: "/corporativo", texto: "General" } : { href: "/", texto: "Inicio" };
+  if (rol === "admin") return [inicio, { href: "/ventas", texto: "Ventas" }, { href: "/compras/documentos", texto: "Compras" }];
+  if (rol === "corporativo") return [inicio, { href: "/ventas", texto: "Ventas" }, { href: "/finanzas", texto: "Finanzas" }];
+  if (rol === "gerente") return [inicio, { href: "/arqueo", texto: "Arqueo" }, { href: "/ventas", texto: "Ventas" }];
+  return [inicio, { href: "/arqueo", texto: "Arqueo" }, { href: "/checklists", texto: "Checklists" }];
 }
 
 /** Todos los enlaces del menú, para marcar el activo. */

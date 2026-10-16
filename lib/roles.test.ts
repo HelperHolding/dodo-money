@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
+  accesosRapidos, enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
   puedeVerFinanzas, puedeEditarFinanzas, puedeCambiarSucursal, puedeVerVistaGeneral } from "./roles.ts";
 
@@ -64,8 +64,10 @@ test("menú lateral: cada puesto ve solo sus grupos", () => {
   assert.deepEqual(grupos("operacion"), ["Sucursal", "Conocimiento"]);
   assert.deepEqual(grupos("encargado"), ["Sucursal", "Conocimiento"]);
   assert.deepEqual(grupos("gerente"), ["Sucursal", "Efectivo", "Ventas", "Conocimiento"]);
-  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Administración", "Aperturas", "Activos", "Conocimiento"]);
-  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Aperturas", "Activos", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Proyectos y admin.", "Conocimiento"]);
+  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Proyectos y admin.", "Conocimiento"]);
+  assert.deepEqual(grupo("admin", "Proyectos y admin."), ["/aperturas", "/activos", "/administracion/usuarios"]);
+  assert.deepEqual(grupo("corporativo", "Proyectos y admin."), ["/aperturas", "/activos"]);
 });
 
 test("menú lateral: Inicio arriba; corporativo empieza en la vista general", () => {
@@ -82,7 +84,8 @@ test("menú lateral: grupo Sucursal por puesto (Recepciones solo para quien reci
     assert.deepEqual(grupo(rol, "Sucursal"), ["/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists", "/recepciones"]);
   }
   // El admin entra por la vista general y opera en la sucursal que elija.
-  assert.deepEqual(grupo("admin", "Sucursal"), ["/corporativo", "/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists", "/recepciones"]);
+  // El admin tiene una sola "Recepciones" (en Compras): la de tienda es una pestaña dentro.
+  assert.deepEqual(grupo("admin", "Sucursal"), ["/corporativo", "/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
   assert.deepEqual(grupo("corporativo", "Sucursal"), ["/", "/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
 });
 
@@ -106,6 +109,7 @@ test("enlaceActivo elige la ruta más larga de todo el menú", () => {
   assert.equal(enlaceActivo("/compras/proveedores/abc", todos), "/compras");
   assert.equal(enlaceActivo("/compras/ordenes/abc", todos), "/compras/documentos");
   assert.equal(enlaceActivo("/compras/facturas/abc", todos), "/compras/documentos");
+  assert.equal(enlaceActivo("/recepciones", todos), "/compras/recepciones");
   assert.equal(enlaceActivo("/otra", todos), undefined);
 });
 
@@ -161,3 +165,21 @@ test("cambiar de sucursal y vista general: el admin cambia y opera; corporativo 
   for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerVistaGeneral(rol), false);
 });
 
+test("una sola entrada Recepciones por puesto", () => {
+  const recepciones = (rol: R) => enlacesDelMenu(menuLateral(rol)).filter((e) => e.texto === "Recepciones").map((e) => e.href);
+  assert.deepEqual(recepciones("admin"), ["/compras/recepciones"]);
+  assert.deepEqual(recepciones("corporativo"), ["/compras/recepciones"]);
+  for (const rol of ["encargado", "gerente"] as const) assert.deepEqual(recepciones(rol), ["/recepciones"]);
+  assert.deepEqual(recepciones("operacion"), []);
+});
+
+test("accesos rápidos del celular: 3 por puesto y todos están en su menú", () => {
+  for (const rol of ["operacion", "encargado", "gerente", "admin", "corporativo"] as const) {
+    const accesos = accesosRapidos(rol);
+    assert.equal(accesos.length, 3);
+    const todos = enlacesDelMenu(menuLateral(rol));
+    for (const a of accesos) assert.ok(enlaceActivo(a.href, todos), `${rol}: ${a.href} no está en su menú`);
+  }
+  assert.deepEqual(accesosRapidos("gerente").map((a) => a.href), ["/", "/arqueo", "/ventas"]);
+  assert.deepEqual(accesosRapidos("admin").map((a) => a.href), ["/corporativo", "/ventas", "/compras/documentos"]);
+});
