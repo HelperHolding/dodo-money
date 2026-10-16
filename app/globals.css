@@ -1229,3 +1229,37 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
     position: sticky; left: 0; z-index: 1; background: var(--blanco); box-shadow: 1px 0 0 var(--linea);
   }  .compra-tabla-marco > .compra-tabla th:first-child { background: var(--papel-2); }
 }
+
+/* ─── Estados de datos (PLAN-REDISENO §4.7): cargando y error ─── */
+.cargando-pagina { display: flex; flex-direction: column; gap: 16px; }
+.esqueleto {
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--papel-2) 0%, color-mix(in srgb, var(--papel-2), var(--tinta) 5%) 50%, var(--papel-2) 100%) 0 0 / 200% 100%;
+  animation: esqueleto-brillo 1.4s ease-in-out infinite;
+}
+@keyframes esqueleto-brillo { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } }
+.esqueleto-titulo { height: 36px; width: min(280px, 60%); }
+.esqueleto-linea { height: 16px; width: min(420px, 80%); }
+.esqueleto-fila { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.esqueleto-fila-ancha { grid-template-columns: 2fr 1fr; }
+.esqueleto-filtros { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.esqueleto-tarjeta { height: 112px; border-radius: var(--r-md); }
+.esqueleto-bloque { height: 260px; border-radius: var(--r-md); }
+.esqueleto-campo { height: 48px; }
+.esqueleto-tabla { display: flex; flex-direction: column; gap: 1px; padding: 12px; border-radius: var(--r-md); animation: none; background: var(--blanco); border: 1px solid var(--linea); }
+.esqueleto-renglon { height: 44px; border-bottom: 1px solid var(--papel-2); background: linear-gradient(90deg, var(--papel-2) 0 34%, transparent 34% 46%, var(--papel-2) 46% 70%, transparent 70% 82%, var(--papel-2) 82% 100%) center / 100% 12px no-repeat; }
+.esqueleto-renglon:last-child { border-bottom: 0; }
+@media (max-width: 640px) {
+  .esqueleto-fila { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .esqueleto-fila-ancha, .esqueleto-filtros { grid-template-columns: 1fr; }
+}
+
+.error-pagina {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 28px;
+  background: var(--blanco); border: 1px solid var(--alerta-borde); border-left: 4px solid var(--alerta); border-radius: var(--r-md);
+}
+.error-pagina > .icono { color: var(--alerta); }
+.error-pagina h1 { font-size: var(--t-2xl); }
+.error-pagina p { max-width: 62ch; }
+.error-pagina code { font-size: 0.9em; padding: 1px 6px; border-radius: var(--r-sm); background: var(--papel-2); }
