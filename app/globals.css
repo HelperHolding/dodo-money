@@ -411,7 +411,7 @@ input[type="checkbox"], input[type="radio"] { min-height: auto; width: 22px; hei
 .accesos { display: flex; flex-wrap: wrap; gap: 8px; }
 .accesos a {
   padding: 6px 12px; border-radius: var(--r-full); border: 1.5px solid var(--linea);
-  background: var(--blanco); color: var(--tinta); text-decoration: none; font-size: 0.9rem; min-height: 36px;
+  background: var(--blanco); color: var(--tinta); text-decoration: none; font-size: 0.9rem; min-height: 40px;
   display: inline-flex; align-items: center;
 }
 .accesos a[aria-current="page"] { border-color: var(--accion); background: var(--accion); color: var(--accion-texto); font-weight: 700; }
@@ -724,7 +724,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .lista-checks { border: 1px solid var(--linea); border-radius: var(--r-sm); padding: 6px 10px; margin: 0; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; }
 .check-proveedor { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; padding: 6px 0; border-top: 1px solid var(--linea); }
 .check-proveedor:first-of-type { border-top: 0; }
-.check-proveedor label { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; overflow-wrap: anywhere; }
+.check-proveedor label { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; overflow-wrap: anywhere; }
 .check-proveedor input { width: 20px; height: 20px; min-height: 0; flex: none; }
 .lista-simple { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.9rem; }
 .fila-extra { grid-column: 1 / -1; }
@@ -938,7 +938,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .ap-dona strong { font-size:1.8rem; }.ap-dona small { color:var(--tinta-2); font-size:.8rem; }
 .ap-leyenda { list-style:none; padding:0; margin:0; flex:1 1 180px; display:flex; flex-direction:column; gap:12px; }
 .ap-leyenda a { display:flex; align-items:center; gap:9px; color:var(--tinta); text-decoration:none; font-size:.85rem; }
-.ap-leyenda a:hover { text-decoration:underline; }.ap-leyenda a > span:nth-child(2) { flex:1; }.ap-leyenda small { min-width:38px; text-align:right; color:var(--tinta-2); }
+.ap-leyenda a:hover { text-decoration:underline; }.ap-leyenda a > span:nth-child(2) { flex:1; }.ap-leyenda small { min-width:38px; text-align:right; color:var(--tinta-2); font-size:var(--t-xs); }
 .ap-punto { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 .ap-titulo { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
 .ap-titulo h2 { margin:0; }.ap-titulo > span { font-size:.85rem; color:var(--tinta-2); }
@@ -967,7 +967,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .caja-chica-acordeon > summary { cursor:pointer; color:var(--tinta); font-weight:600; }
 .compra-busqueda-barra { display:flex; align-items:stretch; gap:14px; margin:24px 0 12px; }
 .compra-busqueda { display:flex; align-items:center; gap:14px; flex:1; min-width:0; padding:6px 20px; border:1px solid var(--linea); border-radius: var(--r-md); background:var(--blanco); }
-.compra-busqueda:focus-within { border-color:var(--accion); box-shadow:0 0 0 3px color-mix(in srgb, var(--accion) 10%, transparent); }
+.compra-busqueda:focus-within { border-color:var(--accion-oscuro); box-shadow:0 0 0 3px color-mix(in srgb, var(--accion) 25%, transparent); }
 .compra-busqueda svg { width:25px; height:25px; flex-shrink:0; color:var(--tinta-2); }
 .compra-busqueda input { width:100%; min-width:0; border:0; background:transparent; padding:16px 0; font-size:1.15rem; box-shadow:none; }
 .compra-busqueda input:focus { outline:none; box-shadow:none; }
@@ -1263,3 +1263,6 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .error-pagina h1 { font-size: var(--t-2xl); }
 .error-pagina p { max-width: 62ch; }
 .error-pagina code { font-size: 0.9em; padding: 1px 6px; border-radius: var(--r-sm); background: var(--papel-2); }
+
+/* Desplegables sin estilo propio (p. ej. "Simular un margen objetivo"): objetivo táctil de 40 px. */
+details > summary:not([class]) { cursor: pointer; min-height: 40px; padding-block: 8px; }

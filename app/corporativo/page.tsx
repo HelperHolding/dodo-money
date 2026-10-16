@@ -1,6 +1,7 @@
 import {DashboardVentasInicio} from "@/components/DashboardVentasInicio";
 import Link from "next/link";
 import { BotonEnviar } from "@/components/BotonEnviar";
+import { Icono } from "@/components/Icono";
 import { resumenPagos, type PorPagar } from "@/lib/compras/pagos";
 import { diaDePagoSugerido } from "@/lib/compras/diasPago";
 import { diasDePago } from "@/app/compras/servidor";
@@ -87,7 +88,7 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
                 <div className="tarjeta-encabezado">
                   <div>
                     <h2 id={`s-${f.id}`}>{f.nombre}</h2>
-                    <p className="tarjeta-estado">{n ? `⚠ ${n} ${n === 1 ? "cosa" : "cosas"} por revisar` : "Todo en orden"}</p>
+                    <p className="tarjeta-estado">{n ? <><Icono nombre="alerta" /> {n} {n === 1 ? "cosa" : "cosas"} por revisar</> : "Todo en orden"}</p>
                   </div>
                   <form action={verSucursal}>
                     <input type="hidden" name="sucursal_id" value={f.id} />
