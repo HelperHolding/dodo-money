@@ -1,3 +1,4 @@
+import {leerRazonesSociales} from "@/lib/compras/razonesSociales";
 import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { obtenerPerfil } from "@/lib/contexto";
@@ -17,6 +18,7 @@ export default async function NuevoGastoManual({ searchParams }: { searchParams:
       .returns<{ id: string; razon_social: string; nombre_comercial: string | null; sucursal_id: string | null; cuenta_pl: string | null; cubre_meses: number; cubre_inicio: InicioCubre }[]>(),
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
   ]);
+  const razones=await leerRazonesSociales(supabase);
   return (
     <>
       <div className="encabezado">
@@ -24,7 +26,7 @@ export default async function NuevoGastoManual({ searchParams }: { searchParams:
         <p>Para una prefactura, un recibo o un pago sin factura. Se paga en Pagos y entra al P&L con la cuenta de cada renglón. Cuando llegue el CFDI, súbelo y elige qué gasto sustituye.</p>
       </div>
       <Aviso error={error} />
-      <FormGastoManual hoy={hoyCalendarioMX()} sucursales={sucursales ?? []}
+      <FormGastoManual razones={razones} hoy={hoyCalendarioMX()} sucursales={sucursales ?? []}
         proveedores={(proveedores ?? []).map((p) => ({ id: p.id, nombre: p.nombre_comercial ?? p.razon_social, sucursal_id: p.sucursal_id, cuenta_pl: p.cuenta_pl, cubre_meses: p.cubre_meses, cubre_inicio: p.cubre_inicio }))}
         cuentas={[...CUENTAS_GASTO, ...CUENTAS_MEMO].map((c) => ({ clave: c, nombre: NOMBRE_CUENTA[c] }))} />
     </>

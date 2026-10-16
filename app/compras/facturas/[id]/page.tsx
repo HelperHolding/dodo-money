@@ -2,7 +2,7 @@ import {RecepcionDirecta} from "../RecepcionDirecta";
 import {ConvertirPrefactura} from "../ConvertirPrefactura";
 import {OrigenPrefactura} from "../OrigenPrefactura";
 import {AdjuntarDocumento,AdjuntosCompra} from "../../adjuntos/Componentes";
-import type {RecepcionFactura} from "@/lib/compras/recepcionFactura";
+import {avanceFactura,type RecepcionFactura} from "@/lib/compras/recepcionFactura";
 import {leerTodo} from "@/lib/ventas/paginar";
 import {soloInsumos} from "@/lib/compras/periodoInsumos";
 import { HistorialCompra, type EventoCompra } from "@/components/HistorialCompra";
@@ -31,7 +31,7 @@ import {
 
 type Factura = {
   id: string; uuid: string | null; origen: "cfdi" | "manual"; sustituido_por: string | null; serie: string | null; folio: string | null; tipo: "ingreso" | "egreso"; fecha_emision: string;
-  rfc_emisor: string; nombre_emisor: string; regimen_emisor: string; metodo_pago: string | null; forma_pago: string | null;
+  rfc_receptor:string;rfc_emisor: string; nombre_emisor: string; regimen_emisor: string; metodo_pago: string | null; forma_pago: string | null;
   subtotal: number; descuento: number; iva: number; retenciones: number; total: number; saldo: number; proveedor_id: string; sucursal_id: string | null; cuenta_pl: string | null;
   cubre_desde: string; cubre_hasta: string;
   uuid_relacionado: string | null; vence_el: string; estado: EstadoFactura; revisada: boolean; revision_nota: string | null;
@@ -49,7 +49,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: f } = await supabase.from("facturas_saldo")
-    .select("id, uuid, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, cubre_desde, cubre_hasta, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, recepcion_programada_el,pago_programado_forma, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal,dias_entrega)")
+    .select("id, uuid, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_receptor, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, cubre_desde, cubre_hasta, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, recepcion_programada_el,pago_programado_forma, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal,dias_entrega)")
     .eq("id", id).maybeSingle<Factura>();
   if (!f) notFound();
 
@@ -59,14 +59,14 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const [{ data: conceptos }, { data: ligas }, { data: candidatas }, { data: sucursales }, { data: relacionadas }, { data: sinCfdi }, { data: sustituye }] = await Promise.all([
     supabase.from("factura_conceptos").select("id, descripcion, cantidad, unidad, valor_unitario, importe, cuenta_pl").eq("factura_id", id).order("id").returns<Concepto[]>(),
     supabase.from("factura_ordenes").select("orden_id").eq("factura_id", id).returns<{ orden_id: string }[]>(),
-    supabase.from("ordenes_compra").select("id, folio, estado, sucursales(nombre)").eq("proveedor_id", f.proveedor_id).in("estado", ["confirmada", "cerrada"])
+    supabase.from("ordenes_compra").select("id, folio, estado, sucursales(nombre)").eq("proveedor_id", f.proveedor_id).eq("rfc_receptor",f.rfc_receptor).in("estado", ["confirmada", "cerrada"])
       .order("confirmada_en", { ascending: false }).limit(50).returns<Orden[]>(),
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     f.tipo === "ingreso"
       ? supabase.from("facturas").select("id, serie, folio, uuid, tipo, total, estado").eq("uuid_relacionado", f.uuid ?? "").returns<Relacionada[]>()
       : supabase.from("facturas").select("id, serie, folio, uuid, tipo, total, estado").eq("uuid", f.uuid_relacionado ?? "").returns<Relacionada[]>(),
     f.origen === "cfdi" && f.tipo === "ingreso"
-      ? supabase.from("facturas").select("id, folio, fecha_emision, total").eq("proveedor_id", f.proveedor_id).eq("origen", "manual").neq("estado", "cancelada")
+      ? supabase.from("facturas").select("id, folio, fecha_emision, total").eq("proveedor_id", f.proveedor_id).eq("rfc_receptor",f.rfc_receptor).eq("origen", "manual").neq("estado", "cancelada")
         .order("fecha_emision").returns<{ id: string; folio: string; fecha_emision: string; total: number }[]>()
       : Promise.resolve({ data: [] as { id: string; folio: string; fecha_emision: string; total: number }[] }),
     supabase.from("facturas").select("id, folio").eq("sustituido_por", f.id).returns<{ id: string; folio: string }[]>(),
@@ -91,11 +91,15 @@ export default async function DetalleFactura({ params, searchParams }: { params:
     : { data: [] as Orden[] };
   const opcionesOrden = [...(candidatas ?? []), ...(ligadasViejas ?? [])];
   const rs = renglones ?? [];
+  const recepcionCompleta = ligadas.length > 0
+    ? rs.length > 0 && avanceOrden(rs) === "completa"
+    : avanceFactura(conceptos ?? [], directas) === "completa";
   const cotejo = cotejar({
     tieneOrdenes: ligadas.length > 0, ordenado: totalesOrden(rs).total, recibido: valorRecibido(rs),
     recepcionCompleta: rs.length > 0 && avanceOrden(rs) === "completa", facturado,
   });
 
+  const {data:razon}=await supabase.from("razones_sociales").select("razon_social").eq("rfc",f.rfc_receptor).maybeSingle<{razon_social:string}>();
   const firmar = async (ruta: string | null) => (ruta ? (await supabase.storage.from("facturas").createSignedUrl(ruta, 3600)).data?.signedUrl ?? null : null);
   const [urlXml, urlPdf] = await Promise.all([firmar(f.xml_ruta), firmar(f.pdf_ruta)]);
   const { data: cancelacion } = await supabase.from("factura_cancelaciones").select("motivo, creado_en, ordenes, perfiles!usuario_id(nombre)").eq("factura_id", id).maybeSingle<{motivo:string;creado_en:string;ordenes:string[];perfiles:{nombre:string}|null}>();
@@ -135,6 +139,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
         <h1>{f.tipo === "egreso" ? "Nota de crédito" : "Factura"} {f.serie ?? ""}{f.folio ?? ""} · {f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social}</h1>
         <p>{nombreEstadoFactura(f.tipo, f.estado)}{f.motivo_cancelacion ? ` · ${f.motivo_cancelacion}` : ""}{f.origen === "manual" ? " · Sin CFDI" : ` · UUID ${f.uuid}`}</p>
       </div>
+      <p className="saldo-nota">Empresa: {razon?.razon_social??f.rfc_receptor} · {f.rfc_receptor}</p>
       {!ligadas.length&&f.tipo==="ingreso"&&f.estado!=="cancelada"&&<RecepcionDirecta id={id} conceptos={conceptos??[]} recepciones={directas} hoy={hoy} edita={edita}/>}
       <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={f.estado}>{nombreEstadoFactura(f.tipo, f.estado)}</strong></div><div><small>Total original</small><strong>{pesos(f.total)}</strong></div><div><small>Saldo pendiente</small><strong>{pesos(f.estado === "cancelada" ? 0 : f.saldo)}</strong></div><div><small>Fecha de vencimiento</small><strong>{fechaTexto(f.vence_el)}</strong></div></div>
       <div className="orden-acciones-encabezado ficha-barra">
@@ -176,7 +181,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
               <BotonEnviar className="boton boton-secundario">Programar pago</BotonEnviar>
             </form>
           )}
-          {f.tipo==="ingreso" && <form action={programarRecepcionFactura} className="formulario">
+          {f.tipo==="ingreso" && !recepcionCompleta && <form action={programarRecepcionFactura} className="formulario">
             <h3>Programar recepción de insumos</h3>
             <input type="hidden" name="id" value={f.id}/>
             <div className="campo"><label htmlFor="recepcion_programada_el">Fecha de recepción prevista</label>

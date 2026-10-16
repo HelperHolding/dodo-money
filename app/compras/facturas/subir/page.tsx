@@ -10,8 +10,8 @@ export default async function Subir() {
   const { data: e } = await supabase.from("empresa").select("rfc").maybeSingle<{ rfc: string }>();
   return (
     <>
-      <div className="encabezado"><h1>Subir facturas</h1><p>Se leen del XML: folio fiscal, proveedor, montos, impuestos y conceptos.</p></div>
-      {!e ? (
+      <div className="encabezado"><h1>Subir facturas</h1><p>El RFC receptor del XML determina la razón social del grupo. Se leen folio fiscal, proveedor, montos, impuestos y conceptos.</p></div>
+      <p><Link href="/compras/razones-sociales">Razones sociales autorizadas</Link></p>{!e ? (
         <p className="aviso aviso-error">Antes configura el RFC de la empresa. <Link href="/compras/facturas/empresa">Datos de la empresa</Link></p>
       ) : <FormSubir />}
     </>

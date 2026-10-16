@@ -1,4 +1,5 @@
 "use server";
+import {leerRazonesSociales} from "@/lib/compras/razonesSociales";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -20,8 +21,7 @@ export async function subirComplementos(_previo: ResultadoComplementos | null, f
   if (!puedeEditarCompras(perfil.rol)) return { resultados: [{ archivo: "", ok: false, texto: SOLO_CONSULTA }] };
   const xmls = fd.getAll("archivos").filter((a): a is File => a instanceof File && a.size > 0 && a.name.toLowerCase().endsWith(".xml"));
   if (!xmls.length) return { resultados: [{ archivo: "", ok: false, texto: "Elige al menos un XML de complemento de pago." }] };
-  const { data: empresa } = await supabase.from("empresa").select("rfc").maybeSingle<{ rfc: string }>();
-  if (!empresa) return { resultados: [{ archivo: "", ok: false, texto: "Configura primero los datos de la empresa." }] };
+  const empresas=await leerRazonesSociales(supabase);
 
   const resultados: ResultadoComplementos["resultados"] = [];
   for (const xml of xmls) {
@@ -29,7 +29,7 @@ export async function subirComplementos(_previo: ResultadoComplementos | null, f
     const leido = leerComplementoPago(await xml.text());
     if ("error" in leido) { resultados.push({ archivo: xml.name, ok: false, texto: leido.error }); continue; }
     const c = leido.complemento;
-    if (c.rfc_receptor !== empresa.rfc) { resultados.push({ archivo: xml.name, ok: false, texto: `Es para el RFC ${c.rfc_receptor}, no para la empresa (${empresa.rfc}).` }); continue; }
+    if (!empresas.some(e=>e.activa&&e.rfc===c.rfc_receptor)) { resultados.push({ archivo: xml.name, ok: false, texto: `El RFC receptor ${c.rfc_receptor} no está registrado como razón social activa del grupo.` }); continue; }
     const { data: previo } = await supabase.from("complementos_pago").select("id").eq("uuid", c.uuid).maybeSingle();
     if (previo) { resultados.push({ archivo: xml.name, ok: false, texto: "Este complemento ya se registró." }); continue; }
     const ruta = `complementos/${c.uuid}.xml`;

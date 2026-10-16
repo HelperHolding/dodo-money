@@ -1,4 +1,6 @@
 "use client";
+import {CampoRazonSocial} from "@/components/CampoRazonSocial";
+import type {RazonSocial} from "@/lib/compras/razonesSociales";
 import {soloInsumos} from "@/lib/compras/periodoInsumos";
 
 import { useState } from "react";
@@ -14,7 +16,8 @@ type Proveedor = { id: string; nombre: string; sucursal_id: string | null; cuent
 type Renglon = { descripcion: string; importe: string; cuenta: string };
 
 /** Alta de un gasto sin CFDI: renglones con su cuenta, IVA y retenciones con el total a la vista. */
-export function FormGastoManual({ proveedores, sucursales, cuentas, hoy }: {
+export function FormGastoManual({ proveedores, sucursales, cuentas, hoy, razones }: {
+ razones:RazonSocial[];
   proveedores: Proveedor[]; sucursales: { id: string; nombre: string }[]; cuentas: { clave: string; nombre: string }[]; hoy: string;
 }) {
   const [proveedor, setProveedor] = useState("");
@@ -44,7 +47,7 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy }: {
 
   const esInsumos=soloInsumos(renglones.map(r=>r.cuenta),proveedores.find(p=>p.id===proveedor)?.cuenta_pl);
   return (
-    <form action={registrarGastoManual} className="formulario seccion">
+    <form action={registrarGastoManual} className="formulario seccion"><CampoRazonSocial razones={razones} sucursal={sucursal}/>
       <div className="rejilla">
         <div className="campo">
           <label htmlFor="proveedor_id">Proveedor</label>

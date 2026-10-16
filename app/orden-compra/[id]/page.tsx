@@ -11,14 +11,14 @@ export default async function OrdenImprimible({ params }: { params: Promise<{ id
   const { id } = await params;
   const { supabase, perfil } = await obtenerPerfil();
   if (!puedeVerCompras(perfil.rol)) redirect("/");
-  const [{ data: o }, { data: renglones }, { data: empresa }] = await Promise.all([
+  const [{ data: o }, { data: renglones }] = await Promise.all([
     supabase.from("ordenes_compra")
-      .select("folio, estado, notas, creado_en, confirmada_en, entrega_esperada, proveedores(razon_social, nombre_comercial, rfc, contacto_nombre, telefono, correo, numero_cliente, dias_credito), sucursales(nombre)")
-      .eq("id", id).maybeSingle<Orden>(),
+      .select("rfc_receptor, folio, estado, notas, creado_en, confirmada_en, entrega_esperada, proveedores(razon_social, nombre_comercial, rfc, contacto_nombre, telefono, correo, numero_cliente, dias_credito), sucursales(nombre)")
+      .eq("id", id).maybeSingle<Orden & {rfc_receptor:string}>(),
     supabase.from("orden_renglones").select("id, descripcion, cantidad, precio, tasa_iva, articulos(nombre, unidad)")
       .eq("orden_id", id).order("creado_en").order("id").returns<Renglon[]>(),
-    supabase.from("empresa").select("rfc, razon_social, regimen_fiscal, codigo_postal, domicilio, correo_compras").maybeSingle<DatosEmpresa>(),
   ]);
   if (!o) notFound();
+  const {data:empresa}=await supabase.from("razones_sociales").select("rfc,razon_social,regimen_fiscal,codigo_postal,domicilio,correo_compras").eq("rfc",o.rfc_receptor).maybeSingle<DatosEmpresa>();
   return <FormatoOrden o={o} renglones={renglones ?? []} empresa={empresa ?? null} />;
 }

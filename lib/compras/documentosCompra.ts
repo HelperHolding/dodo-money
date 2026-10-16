@@ -4,7 +4,7 @@ import type { EstadoFactura } from "./facturas";
 export type EtapaCompra = "cotizacion" | "orden" | "factura";
 export type TonoCompra = "ambar" | "azul" | "violeta" | "verde" | "gris";
 export const ETAPAS_COMPRA: Record<EtapaCompra,string> = {cotizacion:"Cotización",orden:"Orden de compra",factura:"Factura"};
-type Base = {id:string;nombre:string;proveedor_id:string;proveedor:string;sucursal_id:string|null;destino:string;fecha:string;importe:number};
+type Base = {rfc_receptor?:string;empresa?:string;id:string;nombre:string;proveedor_id:string;proveedor:string;sucursal_id:string|null;destino:string;fecha:string;importe:number};
 export type OrdenCompraVista = Base & {estado:EstadoOrden;recepcion?:"nada"|"parcial"|"completa"};
 export type FacturaCompraVista = Base & {estado:EstadoFactura;saldo:number;vence_el:string;tipo:"ingreso"|"egreso";origen:"manual"|"cfdi";sustituido_por:string|null};
 export type LigaCompra = {orden_id:string;factura_id:string};
@@ -34,9 +34,9 @@ export function documentosCompra(ordenes:readonly OrdenCompraVista[],facturas:re
  return filas.sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.clave.localeCompare(b.clave));
 }
 const normalizar=(s:string)=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-export function filtrarDocumentosCompra(filas:readonly DocumentoCompra[],f:{etapa?:string;estado?:string;proveedor?:string;sucursal?:string;q?:string;canceladas?:boolean;desde?:string;hasta?:string}){
+export function filtrarDocumentosCompra(filas:readonly DocumentoCompra[],f:{empresa?:string;etapa?:string;estado?:string;proveedor?:string;sucursal?:string;q?:string;canceladas?:boolean;desde?:string;hasta?:string}){
  const palabras=normalizar(f.q?.trim()??"").split(/\s+/).filter(Boolean);
- return filas.filter(d=>(f.canceladas||d.estado!=="cancelada")&&(!f.etapa||d.etapa===f.etapa)&&(!f.estado||d.estado===f.estado)&&(!f.proveedor||d.proveedor_id===f.proveedor)&&(!f.sucursal||(f.sucursal==="oficina"?d.sucursal_id===null:d.sucursal_id===f.sucursal))&&(!f.desde||d.fecha>=f.desde)&&(!f.hasta||d.fecha<=f.hasta)&&palabras.every(q=>normalizar([d.nombre,d.proveedor,d.destino,...d.ordenes.map(o=>o.nombre)].join(" ")).includes(q)));
+ return filas.filter(d=>(!f.empresa||d.rfc_receptor===f.empresa)&&(f.canceladas||d.estado!=="cancelada")&&(!f.etapa||d.etapa===f.etapa)&&(!f.estado||d.estado===f.estado)&&(!f.proveedor||d.proveedor_id===f.proveedor)&&(!f.sucursal||(f.sucursal==="oficina"?d.sucursal_id===null:d.sucursal_id===f.sucursal))&&(!f.desde||d.fecha>=f.desde)&&(!f.hasta||d.fecha<=f.hasta)&&palabras.every(q=>normalizar([d.nombre,d.proveedor,d.destino,d.empresa??"",d.rfc_receptor??"",...d.ordenes.map(o=>o.nombre)].join(" ")).includes(q)));
 }
 
 export function agruparDocumentosCompra(filas:readonly DocumentoCompra[],por?:string){

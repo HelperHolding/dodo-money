@@ -58,3 +58,12 @@ test('recepción: factura hereda avance de todas sus órdenes sin inferir por pa
  assert.equal(documentosCompra([], [{...factura,estado:'pagada'}],[],'2026-10-09')[0].recepcion,null);
  assert.equal(documentosCompra([{...orden,recepcion:'parcial'}],[],[],'2026-10-09')[0].recepcion,'parcial');
 });
+
+
+test('razones sociales: filtra por RFC y busca razón social sin mezclar empresas',()=>{
+ const filas=documentosCompra([], [{...factura,rfc_receptor:'HCM260306B93',empresa:'HELPER COMERCIALIZADORA MASTER'},{...factura,id:'cms',rfc_receptor:'CMS230321FI8',empresa:'COMERCIALIZADORA MASTER SITRU'}],[],'2026-10-15');
+ assert.equal(filtrarDocumentosCompra(filas,{empresa:'CMS230321FI8'}).length,1);
+ assert.equal(filtrarDocumentosCompra(filas,{q:'sitru'})[0].id,'cms');
+ assert.equal(filtrarDocumentosCompra(filas,{empresa:'HCM260306B93',q:'sitru'}).length,0);
+ assert.equal(filtrarDocumentosCompra(filas,{}).length,2);
+});

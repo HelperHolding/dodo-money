@@ -1,3 +1,4 @@
+import {FormularioRecepcionOrden} from "../FormularioRecepcionOrden";
 import { HistorialCompra } from "@/components/HistorialCompra";
 import {AdjuntarDocumento,AdjuntosCompra} from "../../adjuntos/Componentes";
 import { agregarNotaOrden } from "../acciones";
@@ -19,12 +20,12 @@ import {
 import { NOMBRE_TASA_IVA, type TasaIva } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import {
-  agregarRenglon, anularRecepcionApp, cancelarOrden, cerrarOrden, confirmarOrden, copiarOrden, editarOrden, editarRenglon, enviarOrden, quitarRenglon, cambiarEntregaEsperada, facturarOrden, registrarRecepcionOrden,
+  agregarRenglon, anularRecepcionApp, cancelarOrden, cerrarOrden, confirmarOrden, copiarOrden, editarOrden, editarRenglon, enviarOrden, quitarRenglon, cambiarEntregaEsperada, facturarOrden,
 } from "../acciones";
 import { CamposRenglon } from "../CamposRenglon";
 
 type Orden = {
-  id: string; folio: string; estado: EstadoOrden; grupo_id: string; proveedor_id: string; sucursal_id: string | null; notas: string | null;
+  id: string; folio: string; rfc_receptor:string; estado: EstadoOrden; grupo_id: string; proveedor_id: string; sucursal_id: string | null; notas: string | null;
   motivo: string | null; creado_en: string; confirmada_en: string | null; entrega_esperada: string | null;
   proveedores: { razon_social: string; nombre_comercial: string | null } | null; sucursales: { nombre: string } | null;
 };
@@ -45,7 +46,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const [{ id }, { ok, error,recibir }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: o, error: errorOrden } = await supabase.from("ordenes_compra")
-    .select("id, folio, estado, grupo_id, proveedor_id, sucursal_id, notas, motivo, creado_en, confirmada_en, entrega_esperada, proveedores(razon_social, nombre_comercial), sucursales(nombre)")
+    .select("id, folio, rfc_receptor, estado, grupo_id, proveedor_id, sucursal_id, notas, motivo, creado_en, confirmada_en, entrega_esperada, proveedores(razon_social, nombre_comercial), sucursales(nombre)")
     .eq("id", id).maybeSingle<Orden>();
   if (errorOrden) throw new Error(errorOrden.message);
   if (!o) notFound();
@@ -56,6 +57,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
     supabase.from("orden_historial").select("id, evento, nota, en, perfiles(nombre)").eq("orden_id", id).order("en").returns<Evento[]>(),
     supabase.from("ordenes_compra").select("id").eq("grupo_id", o.grupo_id).returns<{ id: string }[]>(),
   ]);
+  const {data:razon}=await supabase.from("razones_sociales").select("razon_social").eq("rfc",o.rfc_receptor).maybeSingle<{razon_social:string}>();
   const rs = renglones ?? [];
   const ids = rs.map((r) => r.id);
   const [{ data: recDodo }, { data: recApp }] = ids.length
@@ -73,6 +75,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   const {data:notas,error:errorNotas}=await supabase.from("compra_notas").select("id,texto,creado_en,perfiles!usuario_id(nombre)").eq("orden_id",id).order("creado_en").returns<{id:string;texto:string;creado_en:string;perfiles:{nombre:string}|null}[]>();
   if(errorNotas)throw Error("No se pudieron consultar las notas de la orden.");
   const edita = puedeEditarCompras(perfil.rol);
+  const recepcionCompleta = avanceOrden(rs) === "completa";
   const hayRecepciones = rs.some((r) => Number(r.recibido) > 0);
   const acciones = edita ? accionesDe(o.estado, hayRecepciones) : [];
   // Lo recibido solo tiene sentido en una orden ya confirmada (o cerrada).
@@ -99,12 +102,12 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
   return (
     <>
       <div className="encabezado ficha-encabezado">
-        <h1>{o.folio} · {o.proveedores?.nombre_comercial ?? o.proveedores?.razon_social}</h1>
+        <p className="saldo-nota">Empresa: {razon?.razon_social??o.rfc_receptor} · {o.rfc_receptor}</p><h1>{o.folio} · {o.proveedores?.nombre_comercial ?? o.proveedores?.razon_social}</h1>
         <p>{NOMBRE_ESTADO_ORDEN[o.estado]} · para {o.sucursales?.nombre ?? "Oficina"}{o.motivo ? ` · ${o.motivo}` : ""}</p>
       </div>
       <div className="ficha-indicadores"><div><small>Estado del documento</small><strong className="ficha-estado" data-estado={o.estado}>{NOMBRE_ESTADO_ORDEN[o.estado]}</strong></div><div><small>Total de la orden</small><strong>{pesos(t.total)}</strong></div><div><small>Facturado</small><strong>{pesos(facturado)}</strong></div><div><small>Recepción</small><strong>{NOMBRE_AVANCE[avanceOrden(rs)]}</strong></div></div>
       <section className="seccion orden-acciones-encabezado" aria-label="Acciones de la orden">
-        {edita && o.estado === "confirmada" && (
+        {edita && o.estado === "confirmada" && !recepcionCompleta && (
           <details className="orden-programar-entrega"><summary>Programar entrega</summary><form action={cambiarEntregaEsperada} className="acciones">
             <input type="hidden" name="id" value={o.id} />
             <div className="campo">
@@ -118,14 +121,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
           {edita&&<AdjuntarDocumento tipo="orden" id={o.id}/>}
           {edita && o.estado === 'confirmada' && facturas.length===0 && <form action={facturarOrden}><input type="hidden" name="id" value={o.id}/><BotonEnviar pendiente="Creando factura…" confirmar={`Crear una prefactura sin CFDI por ${pesos(t.total)}, copiando el proveedor, la sucursal y los renglones de esta orden. Después podrás registrar el pago. ¿Continuar?`}>Crear factura para pagar</BotonEnviar></form>}
           {edita && facturas.map(f=><Link key={f.id} className="boton" href={`/compras/facturas/${f.id}`}>Ver {nombreFactura(f)} y pagos</Link>)}
-          {edita && o.estado === "confirmada" && <details id="recepcion-orden" open={recibir==="1"} className="orden-accion-desplegable"><summary className="boton boton-secundario">Registrar recepción</summary><form action={registrarRecepcionOrden} className="formulario orden-accion-formulario">
- <input type="hidden" name="id" value={o.id}/><input type="hidden" name="lote" value={randomUUID()}/>
- <label className="campo">Fecha real de recepción<input type="date" name="fecha_recepcion" required max={hoyCalendarioMX()} defaultValue={hoyCalendarioMX()}/></label>
- <label className="campo">Motivo / nota de recepción<textarea name="motivo" required maxLength={1000} placeholder="Por ejemplo: entrega del 7 de octubre capturada hoy"/></label>
- <p className="saldo-nota">No necesitas haber pagado la factura. Puedes registrar días anteriores. Esto confirma la recepción en DODO MX; no registra entradas en Dodo IS. Deja vacíos los artículos que no llegaron.</p>
- {rs.map(r=><label className="campo" key={r.id}>{r.descripcion} · pendiente {Math.max(0,Number(r.cantidad)-Number(r.recibido))} {r.articulos?.unidad}<input type="hidden" name="renglon" value={r.id}/><input name={`cantidad_${r.id}`} type="number" min="0" step="0.001" inputMode="decimal" placeholder="Cantidad recibida"/></label>)}
- <BotonEnviar pendiente="Registrando…">Guardar recepción</BotonEnviar>
- </form></details>}
+          {edita && o.estado === "confirmada" && <details id="recepcion-orden" open={recibir==="1"} className="orden-accion-desplegable"><summary className="boton boton-secundario">Registrar recepción</summary><FormularioRecepcionOrden id={o.id} lote={randomUUID()} hoy={hoyCalendarioMX()} renglones={rs.map(r=>({id:r.id,descripcion:r.descripcion,pendiente:Math.max(0,Number(r.cantidad)-Number(r.recibido)),unidad:r.articulos?.unidad??""}))}/></details>}
           <Link className="boton boton-secundario" href={`/orden-compra/${o.id}`} target="_blank">Ver PDF</Link>
           {(grupo?.length ?? 0) > 1 && <Link className="boton boton-secundario" href={`/compras/ordenes/${o.id}/comparar`}>Comparar {grupo!.length} cotizaciones</Link>}
         </div>

@@ -31,7 +31,7 @@ export async function crearOrden(fd: FormData) {
   const proveedor_id = texto(fd, "proveedor_id");
   if (!proveedor_id) volver(destino, "error", "Elige el proveedor.");
   const { data, error } = await supabase.from("ordenes_compra")
-    .insert({ proveedor_id, sucursal_id: sucursalDe(texto(fd, "sucursal_id")), notas: texto(fd, "notas") || null })
+    .insert({ proveedor_id, rfc_receptor:texto(fd,"rfc_receptor")||null, sucursal_id: sucursalDe(texto(fd, "sucursal_id")), notas: texto(fd, "notas") || null })
     .select("id").single();
   if (error) volver(destino, "error", error.message);
   revalidatePath("/compras", "layout");
@@ -135,12 +135,14 @@ export async function anularRecepcionApp(fd: FormData) {
 }
 
 /** Recepción real, también anterior a la captura de la orden. */
-export async function registrarRecepcionOrden(fd: FormData) {
+export async function registrarRecepcionOrden(_estado: {error:string}|null, fd: FormData):Promise<{error:string}|null> {
  const id=texto(fd,"id"), db=await clienteAdmin(ruta(id));
  const renglones=fd.getAll("renglon").map(x=>({id:String(x),cantidad:Number(String(fd.get(`cantidad_${x}`)??"").replace(/[$,\s]/g,""))})).filter(x=>x.cantidad!==0);
- if(!renglones.length||renglones.some(x=>!Number.isFinite(x.cantidad)||x.cantidad<=0))volver(ruta(id),"error","Indica las cantidades recibidas; deja vacíos los renglones que no llegaron.");
- const {error}=await db.rpc("registrar_recepcion_orden",{p_orden:id,p_fecha:texto(fd,"fecha_recepcion"),p_motivo:texto(fd,"motivo"),p_renglones:renglones,p_lote:texto(fd,"lote")});
- if(error)volver(ruta(id),"error",error.message);
+ if(!renglones.length||renglones.some(x=>!Number.isFinite(x.cantidad)||x.cantidad<=0))return {error:"Indica al menos una cantidad recibida mayor que cero; deja vacíos los renglones que no llegaron."};
+ const motivo=texto(fd,"motivo");
+ if(motivo.length<5||motivo.length>1000)return {error:`La nota de recepción debe tener entre 5 y 1000 caracteres; ahora tiene ${motivo.length}. Por ejemplo: Entrega completa.`};
+ const {error}=await db.rpc("registrar_recepcion_orden",{p_orden:id,p_fecha:texto(fd,"fecha_recepcion"),p_motivo:motivo,p_renglones:renglones,p_lote:texto(fd,"lote")});
+ if(error)return {error:error.message==="Agrega cantidades y un motivo específico de recepción."?"Revisa la nota (mínimo 5 caracteres sin espacios al inicio o final) y las cantidades recibidas. Se conservaron tus datos.":error.message};
  listo(id,"Recepción registrada con su fecha real.");
 }
 

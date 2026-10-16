@@ -36,7 +36,7 @@ export default async function Facturas({ searchParams }: { searchParams: Promise
     <>
       <div className="encabezado">
         <h1>Facturas</h1>
-        <p>{empresa ? `A nombre de ${empresa.razon_social} (${empresa.rfc}).` : "Falta configurar el RFC de la empresa."} <Link href="/compras/facturas/empresa">Datos de la empresa</Link></p>
+        <p>Facturas de las razones sociales del grupo. <Link href="/compras/razones-sociales">Razones sociales</Link> · <Link href="/compras/documentos">Filtrar por empresa</Link></p>
       </div>
       <Aviso ok={ok} error={error} />
       <form className="seccion formulario" role="search">

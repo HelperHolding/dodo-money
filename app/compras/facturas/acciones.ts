@@ -10,6 +10,7 @@ import { leerDiasPago } from "@/lib/compras/diasPago";
 import { CUENTAS_GASTO, CUENTAS_MEMO } from "@/lib/finanzas/cuentas";
 import { leerPeriodoMeses } from "@/lib/finanzas/cubre";
 import { REGIMENES } from "@/lib/compras/proveedores";
+import {leerRazonesSociales} from "@/lib/compras/razonesSociales";
 import { leerEmpresa } from "@/lib/compras/empresa";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
 import { clienteAdmin, volver } from "../servidor";
@@ -48,8 +49,7 @@ export async function subirFacturas(_previo: ResultadoSubida | null, fd: FormDat
   if (!xmls.length) return { resultados: [{ archivo: "", ok: false, texto: "Elige al menos un XML de factura." }] };
   const altaProveedor = fd.get("alta_proveedor") === "si";
 
-  const { data: empresa } = await supabase.from("empresa").select("rfc, razon_social").maybeSingle<{ rfc: string; razon_social: string }>();
-  if (!empresa) return { resultados: [{ archivo: "", ok: false, texto: "Configura primero los datos de la empresa." }] };
+  const empresas = await leerRazonesSociales(supabase);
 
   const resultados: ResultadoSubida["resultados"] = [];
   const vistos = new Set<string>();
@@ -60,8 +60,8 @@ export async function subirFacturas(_previo: ResultadoSubida | null, fd: FormDat
     const cfdi = leido.cfdi;
     if (vistos.has(cfdi.uuid)) { resultados.push({ archivo: xml.name, ok: false, texto: "Viene dos veces en esta subida." }); continue; }
     vistos.add(cfdi.uuid);
-    if (cfdi.rfc_receptor !== empresa.rfc) {
-      resultados.push({ archivo: xml.name, ok: false, texto: `Es para el RFC ${cfdi.rfc_receptor}, no para ${empresa.razon_social} (${empresa.rfc}).` });
+    if (!empresas.some(e=>e.activa&&e.rfc===cfdi.rfc_receptor)) {
+      resultados.push({ archivo: xml.name, ok: false, texto: `El RFC receptor ${cfdi.rfc_receptor} no está dado de alta como razón social activa del grupo.` });
       continue;
     }
     const { data: previa } = await supabase.from("facturas").select("id, creado_en").eq("uuid", cfdi.uuid).maybeSingle<{ id: string; creado_en: string }>();
@@ -93,7 +93,7 @@ export async function subirFacturas(_previo: ResultadoSubida | null, fd: FormDat
     if (cfdi.tipo === "ingreso") {
       const { data: nueva } = await supabase.from("facturas").select("proveedor_id").eq("id", id as string).maybeSingle<{ proveedor_id: string }>();
       const { count } = nueva
-        ? await supabase.from("facturas").select("id", { count: "exact", head: true }).eq("proveedor_id", nueva.proveedor_id).eq("origen", "manual").neq("estado", "cancelada")
+        ? await supabase.from("facturas").select("id", { count: "exact", head: true }).eq("proveedor_id", nueva.proveedor_id).eq("rfc_receptor",cfdi.rfc_receptor).eq("origen", "manual").neq("estado", "cancelada")
         : { count: 0 };
       avisoSinCfdi = avisoGastosSinCfdi(count ?? 0);
     }
@@ -177,7 +177,7 @@ export async function registrarGastoManual(fd: FormData) {
     const { error } = await supabase.storage.from(BUCKET).upload(adjunto, archivo, { contentType: archivo.type, upsert: false });
     if (error) volver(ruta, "error", `No se pudo subir el adjunto: ${error.message}`);
   }
-  const { data: id, error } = await supabase.rpc("registrar_gasto_manual", { p: { ...datos, adjunto } });
+  const { data: id, error } = await supabase.rpc("registrar_gasto_manual", { p: { ...datos, adjunto, rfc_receptor:texto(fd,"rfc_receptor") } });
   if (error) volver(ruta, "error", error.message);
   // La base ya le puso el periodo de la regla del proveedor; se guarda el del formulario (el admin pudo cambiarlo).
   let aviso = "";

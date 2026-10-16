@@ -1,3 +1,5 @@
+import {CampoRazonSocial} from "@/components/CampoRazonSocial";
+import {leerRazonesSociales} from "@/lib/compras/razonesSociales";
 import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
@@ -14,12 +16,13 @@ export default async function NuevaOrden({ searchParams }: { searchParams: Promi
       .returns<{ id: string; razon_social: string; nombre_comercial: string | null }[]>(),
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
   ]);
+  const razones=await leerRazonesSociales(supabase);
   const proveedorInicial = (proveedores ?? []).some(p => p.id === proveedor) ? proveedor : "";
   return (
     <>
       <div className="encabezado"><h1>Nueva cotización</h1><p>Después agregas los artículos. Al confirmarla se vuelve orden de compra.</p></div>
       <Aviso error={error} />
-      <form action={crearOrden} className="seccion formulario">
+      <form action={crearOrden} className="seccion formulario"><CampoRazonSocial razones={razones}/>
         <div className="rejilla">
           <div className="campo">
             <label htmlFor="proveedor_id">Proveedor</label>
