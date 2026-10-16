@@ -110,3 +110,16 @@ test("escribirXlsx: renglones con fondo, color de letra y formato contable", () 
   assert.match(hoja, /<c r="B2" s="\d+"><v>-10<\/v><\/c>/);
   assert.equal(leerHojas(new Uint8Array(b))[0].celdas.get("B2"), -10);
 });
+
+
+test('escribirXlsx: fórmulas con caché, entradas editables y formato de la corrida',()=>{
+ const bytes=escribirXlsx([{nombre:'Resumen',filas:[['Corrida'],[{fecha:'2026-10-15'},{texto:'',estilo:{fondo:'FFF2CC',texto:'0000FF'}}],[{formula:'SUM(1,2)',resultado:3,formato:'pesos'},{formula:'IF(COUNT(B2)=0,"",B2-A3)',resultado:''}]],estilos:{0:{fuente:'Arial',tamano:10,fondo:'1A1A1A',texto:'FFFFFF',negrita:true,ajustarTexto:true}},combinadas:['A1:B1'],inmovilizar:1,ocultarCuadricula:true,altos:{0:25},impresion:{area:'$A$1:$B$3',repetirFilas:'$1:$1'}}],{nombres:{FECHA_CORRIDA:"'Resumen'!$A$2"}});
+ const hoja=parte(Buffer.from(bytes),'xl/worksheets/sheet1.xml'),libro=parte(Buffer.from(bytes),'xl/workbook.xml');
+ assert.match(hoja,/<f>SUM\(1,2\)<\/f><v>3<\/v>/);assert.match(hoja,/<mergeCell ref="A1:B1"/);assert.match(hoja,/state="frozen"/);assert.match(hoja,/showGridLines="0"/);assert.match(hoja,/ht="25"/);assert.match(libro,/name="FECHA_CORRIDA"/);assert.match(libro,/_xlnm.Print_Titles/);assert.match(libro,/fullCalcOnLoad="1"/);
+ const c=leerHojas(bytes)[0].celdas;assert.equal(c.get('A3'),3);assert.equal(c.get('B3'),'');
+});
+
+test('escribirXlsx: texto ajeno se conserva como texto, no se ejecuta como fórmula',()=>{
+ const bytes=escribirXlsx([{nombre:'Datos',filas:[['=HYPERLINK("https://example.invalid","factura")','<script> & proveedor']]}]);
+ const hoja=parte(Buffer.from(bytes),'xl/worksheets/sheet1.xml');assert.ok(!hoja.includes('<f>'));assert.match(hoja,/inlineStr/);assert.equal(leerHojas(bytes)[0].celdas.get('B1'),'<script> & proveedor');
+});

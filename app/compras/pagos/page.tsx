@@ -142,7 +142,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
         <button className="boton boton-secundario" type="submit">Filtrar</button>
       </form>
 
-      <CalendarioPagos hoy={hoy} porDia={porDia} />
+      <CalendarioPagos hoy={hoy} porDia={porDia} filtros={{proveedor,sucursal,complemento}} />
 
       {complemento === "si" && sinComplemento.length > 0 && (
         <Plegable id="t-sin-complemento" titulo="Falta complemento de pago" resumen={`${sinComplemento.length} facturas`} alerta>

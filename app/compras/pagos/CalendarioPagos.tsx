@@ -15,17 +15,30 @@ const tituloMes = (anio: number, mes: number) => {
 };
 
 /** Cada día muestra lo que se paga ese día (programado o por vencer); en rojo si incluye vencidas. Al tocarlo, sus facturas. */
-export function CalendarioPagos({ hoy, porDia }: { hoy: string; porDia: Record<string, FacturaDelDia[]> }) {
+export function CalendarioPagos({ hoy, porDia, filtros={} }: { hoy: string; porDia: Record<string, FacturaDelDia[]>;filtros?:{proveedor?:string;sucursal?:string;complemento?:string} }) {
   const [mes, setMes] = useState(mesDe(hoy));
   const [dia, setDia] = useState<string | null>(null);
+  const limites=(m:{anio:number;mes:number})=>{const primero=`${m.anio}-${String(m.mes).padStart(2,'0')}-01`;const ultimo=new Date(Date.UTC(m.anio,m.mes,0)).toISOString().slice(0,10);return {desde:primero,hasta:ultimo};};
+  const [rango,setRango]=useState(()=>limites(mes));
+  const [fecha,setFecha]=useState(hoy);
+  const cambiarMes=(m:{anio:number;mes:number})=>{setMes(m);setDia(null);setRango(limites(m));};
+  const seleccionarDia=(d:string)=>{if(d===dia){setDia(null);setRango(limites(mes));}else{setDia(d);setRango({desde:d,hasta:d});setFecha(d);}};
   const lista = dia ? porDia[dia] ?? [] : [];
   return (
     <section className="seccion calendario" aria-label="Calendario de pagos">
       <div className="calendario-cabecera">
-        <button type="button" className="calendario-flecha" aria-label="Mes anterior" onClick={() => setMes(moverMes(mes, -1))}>‹</button>
+        <button type="button" className="calendario-flecha" aria-label="Mes anterior" onClick={() => cambiarMes(moverMes(mes, -1))}>‹</button>
         <h2>{tituloMes(mes.anio, mes.mes)}</h2>
-        <button type="button" className="calendario-flecha" aria-label="Mes siguiente" onClick={() => setMes(moverMes(mes, 1))}>›</button>
+        <button type="button" className="calendario-flecha" aria-label="Mes siguiente" onClick={() => cambiarMes(moverMes(mes, 1))}>›</button>
       </div>
+      <details className="seccion"><summary className="boton boton-secundario">Exportar corrida para Tesorería</summary>
+       <form action="/reporte/pagos/excel" method="get" className="formulario" style={{marginTop:16}}>
+        {Object.entries(filtros).map(([k,v])=>v?<input type="hidden" key={k} name={k} value={v}/>:null)}
+        <div className="rejilla"><label className="campo">Fecha de pago desde<input type="date" name="desde" required value={rango.desde} onChange={e=>setRango(r=>({...r,desde:e.target.value}))}/></label><label className="campo">Hasta<input type="date" name="hasta" min={rango.desde} required value={rango.hasta} onChange={e=>setRango(r=>({...r,hasta:e.target.value}))}/></label><label className="campo">Fecha de corrida<input type="date" name="fecha" required value={fecha} onChange={e=>setFecha(e.target.value)}/></label></div>
+        <p className="saldo-nota">Resumen y una hoja por sucursal, con saldos pendientes actuales. Incluye las fechas programadas o sugeridas del rango y respeta los filtros de arriba. Las observaciones van en Pendientes de revisión. Exportar no registra pagos.</p>
+        <button type="submit" className="boton">Descargar Excel de Tesorería</button>
+       </form>
+      </details>
       <div className="calendario-rejilla" role="grid">
         {DIAS.map((d) => <span key={d} className="calendario-dia-semana" role="columnheader">{d}</span>)}
         {semanasDelMes(mes.anio, mes.mes).flat().map((d, i) => {
@@ -37,7 +50,7 @@ export function CalendarioPagos({ hoy, porDia }: { hoy: string; porDia: Record<s
             <button key={d} type="button" className="calendario-dia" data-vacio={facturas.length ? undefined : "si"}
               data-estado={d === dia ? "extremo" : undefined} aria-pressed={d === dia}
               aria-label={`${fechaTexto(d)}: ${facturas.length ? pesos(total) : "nada por pagar"}${vencidas ? ", con vencidas" : ""}`}
-              onClick={() => setDia(d === dia ? null : d)}>
+              onClick={() => seleccionarDia(d)}>
               <span className="calendario-numero">{Number(d.slice(8))}{d === hoy ? " ·" : ""}</span>
               <span className="calendario-venta" style={vencidas && d !== dia ? { color: "var(--alerta-texto)" } : undefined}>{facturas.length ? pesosCortos(total) : "—"}</span>
             </button>

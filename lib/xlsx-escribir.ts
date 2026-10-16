@@ -9,8 +9,10 @@ export type Celda =
   | string
   | number
   | null
-  | { valor: number; formato: "pesos" | "porcentaje" | "puntos" | "contable" }
-  | { fecha: string };
+  | { valor: number; formato: "pesos" | "porcentaje" | "puntos" | "contable"; estilo?:EstiloFila }
+  | { fecha: string; estilo?:EstiloFila }
+  | { texto:string; estilo?:EstiloFila }
+  | { formula:string; resultado:number|string; formato?:Formato; estilo?:EstiloFila };
 
 export type HojaXlsx = {
   nombre: string;
@@ -21,34 +23,40 @@ export type HojaXlsx = {
   anchos?: number[];
   /** Estilo de renglones completos (índice desde 0): fondo y color de letra en hex RRGGBB y negritas. Con fondo se pinta hasta la última columna. */
   estilos?: Record<number, EstiloFila>;
+  combinadas?: string[];
+  inmovilizar?: number;
+  ocultarCuadricula?: boolean;
+  altos?: Record<number,number>;
+  impresion?: {area:string;repetirFilas?:string};
 };
 
-export type EstiloFila = { fondo?: string; texto?: string; negrita?: boolean };
+export type EstiloFila = { fondo?: string; texto?: string; negrita?: boolean; fuente?:string;tamano?:number;ajustarTexto?:boolean };
 
 type Formato = "general" | "pesos" | "porcentaje" | "fecha" | "puntos" | "contable";
 const NUM_FMT: Record<Formato, number> = { general: 0, pesos: 164, porcentaje: 10, fecha: 165, puntos: 166, contable: 167 };
-type Estilo = { negrita: boolean; fondo?: string; texto?: string };
+type Estilo = EstiloFila & {negrita:boolean};
 
 /** Estilos del libro: el 0 es el normal; los demás se agregan según se usen (formato, negritas, fondo, color de letra). */
 class Estilos {
-  private claves = ["general|0||"];
+  private claves = ["general|0|||Calibri|11|0"];
   indice(formato: Formato, e: Estilo): number {
-    const clave = `${formato}|${e.negrita ? 1 : 0}|${e.fondo ?? ""}|${e.texto ?? ""}`;
+    const clave = `${formato}|${e.negrita ? 1 : 0}|${e.fondo ?? ""}|${e.texto ?? ""}|${e.fuente??'Calibri'}|${e.tamano??11}|${e.ajustarTexto?1:0}`;
     let i = this.claves.indexOf(clave);
     if (i < 0) { i = this.claves.length; this.claves.push(clave); }
     return i;
   }
   xml(): string {
-    const partes = this.claves.map((c) => { const [formato, b, fondo, texto] = c.split("|"); return { formato: formato as Formato, negrita: b === "1", fondo, texto }; });
-    const fuentes = [...new Set(["0|", "1|", ...partes.map((p) => `${p.negrita ? 1 : 0}|${p.texto}`)])];
+    const partes = this.claves.map((c) => { const [formato, b, fondo, texto,fuente,tamano,ajustar] = c.split("|"); return { formato: formato as Formato, negrita: b === "1", fondo, texto,fuente,tamano,ajustar }; });
+    const fuentes = [...new Set(["0||Calibri|11", "1||Calibri|11", ...partes.map((p) => `${p.negrita ? 1 : 0}|${p.texto}|${p.fuente}|${p.tamano}`)])];
     const fondos = [...new Set(partes.map((p) => p.fondo).filter(Boolean))];
     const fuente = (f: string) => {
-      const [b, color] = f.split("|");
-      return `<font>${b === "1" ? "<b/>" : ""}<sz val="11"/>${color ? `<color rgb="FF${color}"/>` : ""}<name val="Calibri"/></font>`;
+      const [b, color,nombre,tamano] = f.split("|");
+      return `<font>${b === "1" ? "<b/>" : ""}<sz val="${tamano}"/>${color ? `<color rgb="FF${color}"/>` : ""}<name val="${escapar(nombre)}"/></font>`;
     };
     const xf = (p: (typeof partes)[number]) => {
-      const fontId = fuentes.indexOf(`${p.negrita ? 1 : 0}|${p.texto}`), fillId = p.fondo ? fondos.indexOf(p.fondo) + 2 : 0, num = NUM_FMT[p.formato];
-      return `<xf numFmtId="${num}" fontId="${fontId}" fillId="${fillId}" borderId="0" xfId="0"${num ? ' applyNumberFormat="1"' : ""}${fontId ? ' applyFont="1"' : ""}${fillId ? ' applyFill="1"' : ""}/>`;
+      const fontId = fuentes.indexOf(`${p.negrita ? 1 : 0}|${p.texto}|${p.fuente}|${p.tamano}`), fillId = p.fondo ? fondos.indexOf(p.fondo) + 2 : 0, num = NUM_FMT[p.formato];
+      const base=`<xf numFmtId="${num}" fontId="${fontId}" fillId="${fillId}" borderId="0" xfId="0"${num ? ' applyNumberFormat="1"' : ""}${fontId ? ' applyFont="1"' : ""}${fillId ? ' applyFill="1"' : ""}`;
+      return p.ajustar==='1'?`${base} applyAlignment="1"><alignment wrapText="1" vertical="center"/></xf>`:`${base}/>`;
     };
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -78,10 +86,16 @@ function columna(i: number): string {
 const serial = (fecha: string) => (Date.parse(`${fecha}T00:00:00Z`) - Date.UTC(1899, 11, 30)) / 86_400_000;
 
 function celdaXml(ref: string, c: Celda, e: Estilo, estilos: Estilos): string {
+  if(c!==null&&typeof c==='object'&&c.estilo)e={...e,...c.estilo};
   const s = (f: Formato) => { const i = estilos.indice(f, e); return i ? ` s="${i}"` : ""; };
   if (c === null || c === "") return e.fondo ? `<c r="${ref}"${s("general")}/>` : "";
   if (typeof c === "string") return `<c r="${ref}" t="inlineStr"${s("general")}><is><t xml:space="preserve">${escapar(c)}</t></is></c>`;
   if (typeof c === "number") return Number.isFinite(c) ? `<c r="${ref}"${s("general")}><v>${c}</v></c>` : "";
+  if('texto' in c)return `<c r="${ref}" t="inlineStr"${s('general')}><is><t xml:space="preserve">${escapar(c.texto)}</t></is></c>`;
+  if('formula' in c){
+    if(typeof c.resultado==='number'&&!Number.isFinite(c.resultado))throw Error('Resultado de fórmula no finito.');
+    return `<c r="${ref}"${typeof c.resultado==='string'?' t="str"':''}${s(c.formato??'general')}><f>${escapar(c.formula.replace(/^=/,''))}</f><v>${escapar(String(c.resultado))}</v></c>`;
+  }
   if ("fecha" in c) return `<c r="${ref}"${s("fecha")}><v>${serial(c.fecha)}</v></c>`;
   return Number.isFinite(c.valor) ? `<c r="${ref}"${s(c.formato)}><v>${c.valor}</v></c>` : "";
 }
@@ -94,18 +108,18 @@ function hojaXml(h: HojaXlsx, estilos: Estilos): string {
     : "";
   const filas = h.filas.map((fila, r) => {
     const x = h.estilos?.[r];
-    const e: Estilo = { negrita: x?.negrita ?? negritas.has(r), fondo: x?.fondo, texto: x?.texto };
+    const e: Estilo = { ...x,negrita: x?.negrita ?? negritas.has(r) };
     const celdas = e.fondo ? Array.from({ length: ancho }, (_, i) => fila[i] ?? null) : fila;
-    return `<row r="${r + 1}">${celdas.map((c, i) => celdaXml(`${columna(i)}${r + 1}`, c, e, estilos)).join("")}</row>`;
+    return `<row r="${r + 1}"${h.altos?.[r]?` ht="${h.altos[r]}" customHeight="1"`:''}>${celdas.map((c, i) => celdaXml(`${columna(i)}${r + 1}`, c, e, estilos)).join("")}</row>`;
   }).join("");
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${cols}<sheetData>${filas}</sheetData></worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${h.impresion?'<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>':''}<sheetViews><sheetView workbookViewId="0"${h.ocultarCuadricula?' showGridLines="0"':''}>${h.inmovilizar?`<pane ySplit="${h.inmovilizar}" topLeftCell="A${h.inmovilizar+1}" activePane="bottomLeft" state="frozen"/>`:''}</sheetView></sheetViews>${cols}<sheetData>${filas}</sheetData>${h.combinadas?.length?`<mergeCells count="${h.combinadas.length}">${h.combinadas.map(r=>`<mergeCell ref="${escapar(r)}"/>`).join('')}</mergeCells>`:''}${h.impresion?'<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>':''}</worksheet>`;
 }
 
 /** Excel no acepta en el nombre de hoja \ / ? * [ ] : ni más de 31 caracteres. */
 const nombreHoja = (n: string) => n.replace(/[\\/?*[\]:]/g, " ").slice(0, 31) || "Hoja";
 
-export function escribirXlsx(hojas: readonly HojaXlsx[]): Uint8Array {
+export function escribirXlsx(hojas: readonly HojaXlsx[],opciones:{nombres?:Record<string,string>}={}): Uint8Array {
   const estilos = new Estilos();
   const hojasXml = hojas.map((h) => hojaXml(h, estilos));
   const archivos: [string, string][] = [
@@ -124,6 +138,8 @@ ${hojas.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" Con
     ["xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <sheets>${hojas.map((h, i) => `<sheet name="${escapar(nombreHoja(h.nombre))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets>
+<definedNames>${Object.entries(opciones.nombres??{}).map(([n,r])=>`<definedName name="${escapar(n)}">${escapar(r)}</definedName>`).join('')}${hojas.map((h,i)=>h.impresion?`<definedName name="_xlnm.Print_Area" localSheetId="${i}">'${escapar(nombreHoja(h.nombre).replace(/'/g,"''"))}'!${h.impresion.area}</definedName>${h.impresion.repetirFilas?`<definedName name="_xlnm.Print_Titles" localSheetId="${i}">'${escapar(nombreHoja(h.nombre).replace(/'/g,"''"))}'!${h.impresion.repetirFilas}</definedName>`:''}`:'').join('')}</definedNames>
+<calcPr calcMode="auto" fullCalcOnLoad="1"/>
 </workbook>`],
     ["xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
