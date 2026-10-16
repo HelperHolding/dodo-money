@@ -45,7 +45,11 @@ const normal:EstiloFila={fuente:'Arial',tamano:9,ajustarTexto:true};
 const editable:EstiloFila={fondo:'FFF2CC',texto:'0000FF'};
 const moneda=(valor:number):Celda=>({valor,formato:'pesos'});
 const formula=(formula:string,resultado:number|string,formato:'pesos'|'general'='pesos'):Celda=>({formula,resultado,formato});
-const calendario=()=>formula('HYPERLINK("https://dodo-money-j31t.vercel.app/compras/pagos","Abrir calendario de pagos de Dodo MX")','Abrir calendario de pagos de Dodo MX','general');
+export function urlCalendarioCorrida(f:FiltroCorrida){
+ const q=new URLSearchParams({desde:f.desde,hasta:f.hasta});
+ for(const k of ['proveedor','sucursal','complemento'] as const)if(f[k])q.set(k,f[k]!);
+ return `https://dodo-money-j31t.vercel.app/compras/pagos?${q}`;
+}
 const refHoja=(nombre:string)=>`'${nombre.replace(/'/g,"''")}'`;
 /** Nombres únicos, válidos en Excel y ajenos a las hojas reservadas. */
 export function nombresCorrida(destinos:readonly {id:string;nombre:string}[]):Map<string,string>{
@@ -54,6 +58,7 @@ export function nombresCorrida(destinos:readonly {id:string;nombre:string}[]):Ma
  return nombres;
 }
 export function libroCorrida(filas:readonly LineaCorrida[],filtro:FiltroCorrida,generado:string){
+ const calendario=()=>formula(`HYPERLINK("${urlCalendarioCorrida(filtro).replace(/"/g,'""')}","Abrir calendario de pagos de Dodo MX")`,'Abrir calendario de pagos de Dodo MX','general');
  const incluidas=filas.filter(f=>!f.sinDistribuir),excluidas=filas.filter(f=>f.sinDistribuir);
  const destinos=[...new Map(incluidas.map(f=>[f.destinoId,{id:f.destinoId,nombre:f.destino}])).values()];
  const nombres=nombresCorrida(destinos),hojas:HojaXlsx[]=[],referencias:{nombre:string;filaTotal:number;saldo:number;metodos:Map<string,{fila:number;monto:number}>}[]=[];

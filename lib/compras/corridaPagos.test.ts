@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {seleccionarCorrida,libroCorrida,nombresCorrida,validarFiltroCorrida,type FacturaCorrida} from './corridaPagos.ts';
+import {seleccionarCorrida,libroCorrida,nombresCorrida,validarFiltroCorrida,urlCalendarioCorrida,type FacturaCorrida} from './corridaPagos.ts';
 import {escribirXlsx} from '../xlsx-escribir.ts';
 import {leerHojas} from '../ventas/xlsx.ts';
 const filtro={desde:'2026-10-15',hasta:'2026-10-16',fecha:'2026-10-16'};
@@ -22,7 +22,7 @@ test('corrida: UUID real o vacío y liga al calendario en todas las hojas',()=>{
  const z=hojas.find(h=>h.nombre==='Zapopan-1')!;
  assert.equal(z.celdas.get('K3'),'UUID');assert.equal(z.celdas.get('K5'),factura.uuid);assert.equal(z.celdas.get('K6')??'','');
  const pendientes=hojas.at(-1)!;assert.equal(pendientes.celdas.get('I3'),'UUID');assert.equal(pendientes.celdas.get('I4')??'','');
- for(const h of libro.hojas)assert.ok(h.filas.some(f=>f.some(c=>typeof c==='object'&&c!==null&&'formula' in c&&c.formula==='HYPERLINK("https://dodo-money-j31t.vercel.app/compras/pagos","Abrir calendario de pagos de Dodo MX")')));
+ for(const h of libro.hojas)assert.ok(h.filas.some(f=>f.some(c=>typeof c==='object'&&c!==null&&'formula' in c&&c.formula===`HYPERLINK("${urlCalendarioCorrida(filtro)}","Abrir calendario de pagos de Dodo MX")`)));
  assert.equal(libro.total,120.40);
 });
 test('corrida: rango inclusivo, saldo real restante y sin pagadas, canceladas, notas ni cero',()=>{
@@ -63,4 +63,9 @@ test('corrida: Oficina, sin datos y nombres incompatibles con Excel',()=>{
 });
 test('corrida: rechaza fechas inexistentes, rango invertido y rango excesivo',()=>{
  assert.equal(validarFiltroCorrida(filtro),null);assert.ok(validarFiltroCorrida({...filtro,fecha:'2026-02-30'}));assert.ok(validarFiltroCorrida({...filtro,hasta:'2026-10-01'}));assert.ok(validarFiltroCorrida({...filtro,hasta:'2028-10-01'}));
+});
+
+test('corrida: liga conserva fechas y filtros con codificación segura',()=>{
+ const url=new URL(urlCalendarioCorrida({...filtro,proveedor:'p&1',sucursal:'z',complemento:'si'}));
+ assert.equal(url.pathname,'/compras/pagos');assert.equal(url.searchParams.get('desde'),filtro.desde);assert.equal(url.searchParams.get('hasta'),filtro.hasta);assert.equal(url.searchParams.get('proveedor'),'p&1');assert.equal(url.searchParams.get('sucursal'),'z');assert.equal(url.searchParams.get('complemento'),'si');
 });

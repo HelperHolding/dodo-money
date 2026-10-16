@@ -606,6 +606,8 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .calendario-dia:disabled { opacity: 0.35; cursor: not-allowed; }
 .calendario-dia[data-estado="dentro"] { background: var(--accion-suave); border-color: var(--accion-suave-borde); }
 .calendario-dia[data-estado="extremo"] { background: var(--accion); border-color: var(--accion); color: var(--accion-texto); }
+/* Calendario de Pagos: días dentro del rango de la corrida de Tesorería. */
+.calendario-dia[data-estado="rango"] { background: var(--accion-suave); border-color: var(--accion); }
 .calendario-dia[data-hoy] { box-shadow: inset 0 0 0 2px var(--tinta); }
 .calendario-numero { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
 .calendario-venta { font-size: 0.8rem; font-weight: 800; white-space: nowrap; }
@@ -1050,6 +1052,15 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .costeo-rapidos button[aria-pressed="true"] {background:var(--accion-tinte);box-shadow:inset 0 0 0 1px var(--accion);}
 
 .recepcion-hecha {color:#16724f;font-weight:600;font-size:.85rem;}
+.pagos-hoy { border-top:4px solid var(--acento, #ff6900); }
+.pagos-hoy-resumen { display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+.pagos-hoy-resumen h2 { margin-bottom:8px; }
+.pagos-hoy-monto { font-size:clamp(2.4rem,5vw,4rem); line-height:1.1; letter-spacing:-.04em; }
+.pagos-tabla { min-width:1000px; }
+.pagos-tabla td { vertical-align:top; }
+.pagos-tabla .acciones { gap:6px; }
+.pagos-tabla .boton { font-size:.8rem; padding:8px 10px; white-space:nowrap; }
+.pagos-uuid { min-width:200px; max-width:260px; overflow-wrap:anywhere; font-size:.85rem; }
 
 /* ─── Insignias de estado (PLAN-REDISENO §4.4): un solo tamaño y forma para todos los sistemas de "badge" ─── */
 .insignia, .estado, .compra-etapa, .compra-estado, .compra-vencida, .compra-meta, .ficha-estado, .ap-estado, .proveedor-documento-estado {
