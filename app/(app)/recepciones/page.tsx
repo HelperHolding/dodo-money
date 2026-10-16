@@ -6,7 +6,8 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto } from "@/lib/contexto";
 import { fechaMX, fechaTexto, hoyCalendarioMX } from "@/lib/formato";
 import { avanceRenglon } from "@/lib/compras/ordenes";
-import { puedeRecibirCompras } from "@/lib/roles";
+import { puedeRecibirCompras, puedeVerCompras } from "@/lib/roles";
+import { PestanasRecepciones } from "@/components/PestanasRecepciones";
 import { recibirRenglon } from "./actions";
 
 type PorRecibir = {
@@ -33,6 +34,7 @@ export default async function RecepcionesSucursal({ searchParams }: { searchPara
         <h1>Recepciones</h1>
         <p>Equipo, servicios y otros pedidos por oficina. Los insumos (consumibles) se siguen recibiendo en Dodo IS.</p>
       </div>
+      {puedeVerCompras(perfil.rol) && <PestanasRecepciones actual="tienda" />}
       <Aviso ok={ok} error={error} />
       <Plegable id="ya-recibidas" titulo="Ya recibidas" resumen={`${recibidas.length} renglones completos`}><div className="tabla-contenedor"><table className="tabla"><thead><tr><th>Orden / proveedor</th><th>Artículo</th><th>Recibido</th><th>Estado</th></tr></thead><tbody>{recibidas.map(r=><tr key={r.renglon_id}><td>{r.folio} · {r.proveedor}</td><td>{r.descripcion}</td><td>{r.recibido} / {r.cantidad} {r.unidad}</td><td><span className="compra-estado" data-tono="verde">Ya recibido</span></td></tr>)}</tbody></table></div>{!recibidas.length&&<p className="vacio">Sin renglones recibidos completos.</p>}</Plegable>
       {!ordenes.length && <p className="vacio">No hay nada por recibir.</p>}

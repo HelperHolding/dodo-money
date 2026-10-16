@@ -15,6 +15,7 @@ export function BotonEnviar({
       className={className}
       type="submit"
       disabled={pending}
+      aria-busy={pending || undefined}
       onClick={confirmar ? (e) => { if (!window.confirm(confirmar)) e.preventDefault(); } : undefined}
     >
       {pending ? pendiente : children}

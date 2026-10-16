@@ -1,3 +1,4 @@
+import { Icono } from "@/components/Icono";
 import { pesosRedondos, porcentaje } from "@/lib/formato";
 import type { Indicador } from "@/lib/ventas/tablero";
 
@@ -8,28 +9,37 @@ function valor(i: Indicador) {
   return pesosRedondos(i.valor);
 }
 
-function cambio(i: Indicador) {
-  if (i.cambio === null) return "Sin periodo anterior";
-  const flecha = i.cambio > 0 ? "▲" : i.cambio < 0 ? "▼" : "=";
+/** El cambio se lee por flecha y signo, no solo por color (el color dice si es bueno o malo para el negocio). */
+function Cambio({ i }: { i: Indicador }) {
+  if (i.cambio === null) return <>Sin periodo anterior</>;
   const monto = i.unidad === "puntos" ? `${Math.abs(i.cambio).toFixed(1)} pts` : porcentaje(Math.abs(i.cambio));
-  return `${flecha} ${monto}`;
+  const sentido = i.cambio > 0 ? "sube" : i.cambio < 0 ? "baja" : "igual";
+  const signo = i.cambio > 0 ? "+" : i.cambio < 0 ? "−" : "";
+  return (
+    <>
+      <Icono nombre={sentido} etiqueta={sentido === "sube" ? "Sube" : sentido === "baja" ? "Baja" : "Sin cambio"} />
+      {signo}{monto}
+    </>
+  );
 }
 
 /** Los números clave del tablero, cada uno con su cambio contra el periodo anterior (verde si es bueno, rojo si es malo). */
 export function Indicadores({ lista, detalle }: { lista: readonly Indicador[]; detalle: Partial<Record<Indicador["clave"], string>> }) {
   return (
-    <div className="indicadores">
-      {lista.map((i) => (
-        <div key={i.clave} className="indicador">
-          <span className="indicador-etiqueta">{i.etiqueta}</span>
-          <strong className="indicador-valor">{valor(i)}</strong>
-          <span className="indicador-cambio" data-favorable={i.favorable === null ? undefined : i.favorable ? "si" : "no"}
-            title="Contra el periodo anterior del mismo largo">
-            {cambio(i)}
-          </span>
-          {detalle[i.clave] && <span className="indicador-detalle">{detalle[i.clave]}</span>}
-        </div>
-      ))}
+    <div className="indicadores-marco">
+      <div className="indicadores">
+        {lista.map((i) => (
+          <div key={i.clave} className="indicador">
+            <span className="indicador-etiqueta">{i.etiqueta}</span>
+            <strong className="indicador-valor">{valor(i)}</strong>
+            <span className="indicador-cambio" data-favorable={i.favorable === null ? undefined : i.favorable ? "si" : "no"}
+              title="Contra el periodo anterior del mismo largo">
+              <Cambio i={i} />
+            </span>
+            {detalle[i.clave] && <span className="indicador-detalle">{detalle[i.clave]}</span>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

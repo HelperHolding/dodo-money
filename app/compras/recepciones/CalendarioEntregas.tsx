@@ -1,5 +1,6 @@
 "use client";
 
+import { Icono } from "@/components/Icono";
 import Link from "next/link";
 import { useState } from "react";
 import { fechaTexto } from "@/lib/formato";
@@ -23,9 +24,9 @@ export function CalendarioEntregas({ hoy, porDia,realizadas={} }: { hoy: string;
   return (
     <section className="seccion calendario" aria-label="Calendario de recepciones programadas y realizadas">
       <div className="calendario-cabecera">
-        <button type="button" className="calendario-flecha" aria-label="Mes anterior" onClick={() => setMes(moverMes(mes, -1))}>‹</button>
+        <button type="button" className="boton-icono calendario-flecha" aria-label="Mes anterior" onClick={() => setMes(moverMes(mes, -1))}><Icono nombre="izquierda" tamano={22} /></button>
         <h2>{tituloMes(mes.anio, mes.mes)}</h2>
-        <button type="button" className="calendario-flecha" aria-label="Mes siguiente" onClick={() => setMes(moverMes(mes, 1))}>›</button>
+        <button type="button" className="boton-icono calendario-flecha" aria-label="Mes siguiente" onClick={() => setMes(moverMes(mes, 1))}><Icono nombre="derecha" tamano={22} /></button>
       </div>
       <p className="saldo-nota">Programadas · <span className="recepcion-hecha">Recibidas en verde (fecha real)</span></p>
       <div className="calendario-rejilla" role="grid">
