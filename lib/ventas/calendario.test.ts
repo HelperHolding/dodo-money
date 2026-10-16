@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { diasEntreFechas, elegirDia, mesDe, moverMes, rangoElegido, semanasDelMes, ventaDelRango } from "./calendario.ts";
+import { alElegirDia, diasEntreFechas, elegirDia, mesDe, moverMes, rangoElegido, semanasDelMes, ventaDelRango } from "./calendario.ts";
 
 test("semanasDelMes: semanas de lunes a domingo con huecos al inicio y al final", () => {
   const sep = semanasDelMes(2026, 9);
@@ -46,4 +46,27 @@ test("ventaDelRango suma los días con venta dentro del rango", () => {
   const venta = { "2026-09-20": 100, "2026-09-21": 9649, "2026-09-22": 4092, "2026-09-27": 8900 };
   assert.deepEqual(ventaDelRango(venta, { desde: "2026-09-21", hasta: "2026-09-26" }), { total: 13741, diasConVenta: 2 });
   assert.deepEqual(ventaDelRango(venta, { desde: "2026-01-01", hasta: "2026-01-31" }), { total: 0, diasConVenta: 0 });
+});
+
+test("alElegirDia: el primer toque solo marca; el segundo carga el rango sin botón", () => {
+  const cargado = { inicio: "2026-10-09", fin: "2026-10-15" };
+  const primero = alElegirDia(cargado, "2026-10-12", 92);
+  assert.deepEqual(primero, { sel: { inicio: "2026-10-12", fin: null }, cargar: null, excede: false });
+  const segundo = alElegirDia(primero.sel, "2026-10-05", 92);
+  assert.deepEqual(segundo.cargar, { desde: "2026-10-05", hasta: "2026-10-12" });
+  assert.deepEqual(segundo.sel, { inicio: "2026-10-05", fin: "2026-10-12" });
+});
+
+test("alElegirDia: doble toque en el mismo día carga solo ese día", () => {
+  const primero = alElegirDia({ inicio: null, fin: null }, "2026-10-12", 92);
+  assert.equal(primero.cargar, null);
+  assert.deepEqual(alElegirDia(primero.sel, "2026-10-12", 92).cargar, { desde: "2026-10-12", hasta: "2026-10-12" });
+});
+
+test("alElegirDia: un rango de más días que el máximo no carga y conserva el primer día", () => {
+  const primero = alElegirDia({ inicio: null, fin: null }, "2026-10-12", 7);
+  const largo = alElegirDia(primero.sel, "2026-10-30", 7);
+  assert.deepEqual(largo, { sel: { inicio: "2026-10-12", fin: null }, cargar: null, excede: true });
+  // Justo en el máximo sí carga.
+  assert.deepEqual(alElegirDia(primero.sel, "2026-10-18", 7).cargar, { desde: "2026-10-12", hasta: "2026-10-18" });
 });

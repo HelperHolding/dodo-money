@@ -1152,3 +1152,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   .periodo-sucursal { flex: none; width: 100%; margin-top: -16px; }
 }
 @media print { .periodo-barra { position: static; box-shadow: none; } }
+/* Mientras se carga el periodo nuevo, los datos de abajo se atenúan (siguen visibles hasta que llegan los nuevos). */
+.pagina > * { transition: opacity var(--dur-media) var(--curva); }
+.pagina:has(.periodo-barra[aria-busy]) > :not(.periodo-barra):not(.calendario):not(.encabezado-pagina):not(.migas):not(.periodo-actual):not(.periodo-sucursal) { opacity: 0.5; }
+.calendario-rejilla[aria-busy] { opacity: 0.7; }

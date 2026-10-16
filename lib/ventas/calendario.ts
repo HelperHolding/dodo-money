@@ -51,3 +51,19 @@ export function ventaDelRango(venta: Readonly<Record<string, number>>, r: Rango)
   }
   return { total: Math.round(total * 100) / 100, diasConVenta };
 }
+
+export type Eleccion = { sel: Seleccion; cargar: Rango | null; excede: boolean };
+
+/**
+ * Qué pasa al tocar un día (los datos se cargan solos, sin botón):
+ * - primer toque: marca el inicio y espera otro día (no carga);
+ * - segundo toque en otro día: carga ese rango; en el mismo día (doble toque): carga solo ese día;
+ * - si el rango pasa de maxDias: no carga y conserva el primer día marcado.
+ */
+export function alElegirDia(s: Seleccion, dia: string, maxDias: number): Eleccion {
+  const nueva = elegirDia(s, dia);
+  if (!nueva.fin) return { sel: nueva, cargar: null, excede: false };
+  const rango = rangoElegido(nueva)!;
+  if (diasEntreFechas(rango) > maxDias) return { sel: { inicio: s.inicio, fin: null }, cargar: null, excede: true };
+  return { sel: nueva, cargar: rango, excede: false };
+}
