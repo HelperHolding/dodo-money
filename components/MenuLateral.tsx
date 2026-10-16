@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Icono } from "@/components/Icono";
 import { enlaceActivo, enlacesDelMenu, grupoAbierto, type Menu } from "@/lib/roles";
 
 /**
  * Menú lateral con grupos plegables. En computadora queda fijo a la izquierda;
- * en celular se abre como cajón con el botón ☰ y se cierra al elegir una opción.
+ * en celular se abre como cajón con el botón de menú y se cierra al elegir una opción.
  */
 export function MenuLateral({ menu, titulo, cabecera, pie }: {
   menu: Menu; titulo: string; cabecera: React.ReactNode; pie: React.ReactNode;
@@ -39,7 +40,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie }: {
     <>
       <div className="franja-movil">
         <button type="button" className="franja-movil-boton" aria-expanded={cajon} aria-controls="menu-lateral" onClick={() => setCajon(true)}>
-          <span aria-hidden="true">☰</span><span className="solo-lector">Abrir menú</span>
+          <Icono nombre="menu" tamano={24} /><span className="solo-lector">Abrir menú</span>
         </button>
         <img className="lateral-logo" src="/logo-dodo.png" alt="" width={28} height={28} />
         <span className="franja-movil-titulo">{titulo}</span>
@@ -48,7 +49,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie }: {
       <aside id="menu-lateral" className="lateral" data-abierto={cajon ? "si" : undefined}>
         <div className="lateral-cabecera">
           {cabecera}
-          <button type="button" className="lateral-cerrar" aria-label="Cerrar menú" onClick={() => setCajon(false)}>×</button>
+          <button type="button" className="lateral-cerrar" aria-label="Cerrar menú" onClick={() => setCajon(false)}><Icono nombre="cerrar" tamano={24} /></button>
         </div>
         <nav className="lateral-nav" aria-label="Secciones">
           <Link className="lateral-enlace" href={menu.inicio.href} aria-current={marcar(menu.inicio.href)}>{menu.inicio.texto}</Link>
