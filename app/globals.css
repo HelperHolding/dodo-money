@@ -47,7 +47,15 @@
   --neutro-texto: #525252;
 
   /* Datos (gráficas y categorías) */
-  --dato-azul: #3977cc;
+  /* Serie categórica validada con scripts/validate_palette.js de la skill dataviz (todos los pares, fondo claro).
+     Siempre con nombre visible al lado (leyenda): aqua y rosa quedan bajo 3:1 contra el blanco. */
+  --dato-1: var(--accion);   /* naranja de marca */
+  --dato-2: #2a78d6;         /* azul */
+  --dato-3: #1baf7a;         /* aqua */
+  --dato-4: #e87ba4;         /* rosa */
+  --dato-otro: #888780;      /* "Otros": gris a propósito */
+  --dato-sin: #b4b2a9;       /* sin categoría */
+  --dato-azul: var(--dato-2);
   --dato-pista: #edf0f4;
 
   /* Menú lateral y barras negras */
@@ -515,12 +523,13 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .corregir small { color: var(--tinta-2); font-size: 0.85rem; }
 
 /* ─── Tablero de Ventas ─── */
-.cat-pizza { --cat: var(--accion); }
-.cat-snack { --cat: #1f6b4f; }
-.cat-postre { --cat: #993556; }
-.cat-bebida { --cat: #185fa5; }
-.cat-otro { --cat: #888780; }
-.cat-sin { --cat: #b4b2a9; }
+/* Color fijo por categoría (sigue a la categoría, nunca a su lugar en el ranking). */
+.cat-pizza { --cat: var(--dato-1); }
+.cat-bebida { --cat: var(--dato-2); }
+.cat-snack { --cat: var(--dato-3); }
+.cat-postre { --cat: var(--dato-4); }
+.cat-otro { --cat: var(--dato-otro); }
+.cat-sin { --cat: var(--dato-sin); }
 
 .indicadores { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 /* 4 en fila si hay espacio; 2×2 cuando el contenido es angosto (celular o ventana chica con menú). */
@@ -596,12 +605,15 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .calendario-dia[data-vacio] { background: transparent; }
 .calendario-dia:disabled { opacity: 0.35; cursor: not-allowed; }
 .calendario-dia[data-estado="dentro"] { background: var(--accion-suave); border-color: var(--accion-suave-borde); }
-.calendario-dia[data-estado="extremo"] { background: var(--accion-oscuro); border-color: var(--accion-oscuro); color: var(--blanco); }
-.calendario-dia[data-estado="rango"] { background:var(--accion-suave); border-color:var(--accion); }
+.calendario-dia[data-estado="extremo"] { background: var(--accion); border-color: var(--accion); color: var(--accion-texto); }
+/* Calendario de Pagos: días dentro del rango de la corrida de Tesorería. */
+.calendario-dia[data-estado="rango"] { background: var(--accion-suave); border-color: var(--accion); }
+.calendario-dia[data-hoy] { box-shadow: inset 0 0 0 2px var(--tinta); }
 .calendario-numero { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
 .calendario-venta { font-size: 0.8rem; font-weight: 800; white-space: nowrap; }
 .calendario-dia[data-vacio] .calendario-venta { color: var(--tinta-2); font-weight: 500; }
-.calendario-dia[data-estado="extremo"] .calendario-venta { color: var(--blanco); }
+.calendario-dia[data-estado="extremo"] .calendario-venta { color: var(--accion-texto); }
+.calendario-dia[data-estado="extremo"] .calendario-numero { opacity: 1; font-weight: 800; }
 @media (max-width: 480px) {
   .calendario-rejilla { gap: 3px; }
   .calendario-dia { min-height: 50px; border-radius: var(--r-sm); }
@@ -1020,9 +1032,9 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .inicio-ventas-cambio[data-direccion="sube"] { color:#17613f; }
 .inicio-ventas-cambio[data-direccion="baja"] { color:#923b36; }
 .inicio-dona-canales .cat-pos { stroke:var(--accion); }
-.inicio-dona-canales .cat-rappi { stroke:#347a9e; }
+.inicio-dona-canales .cat-rappi { stroke:var(--dato-2); }
 .inicio-dona-canales .dona-punto.cat-pos { background:var(--accion); }
-.inicio-dona-canales .dona-punto.cat-rappi { background:#347a9e; }
+.inicio-dona-canales .dona-punto.cat-rappi { background:var(--dato-2); }
 .inicio-ventas h3 { font-size:1rem; margin-bottom:16px; }
 
 .compra-etapas button {font:inherit;cursor:pointer;text-align:left;}
@@ -1117,3 +1129,37 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .proveedor-documento-preview { width:100%; height:60vh; min-height:300px; border:1px solid var(--linea); border-radius:var(--r-sm,8px); }
 .proveedor-documento-imagen { display:block; max-width:100%; max-height:70vh; object-fit:contain; margin:auto; }
 @media(max-width:700px) { .proveedor-documentos-resumen { grid-template-columns:1fr; } }
+
+/* ─── Barra del periodo de Ventas (PLAN-REDISENO §6): fija al bajar, siempre dice qué periodo estás viendo ─── */
+.periodo-barra {
+  position: sticky; top: 0; z-index: 15; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  padding: 10px 14px; background: var(--blanco); border: 1px solid var(--linea); border-radius: var(--r-md); box-shadow: var(--sombra-1);
+}
+.periodo-actual {
+  display: flex; align-items: center; gap: 10px; flex: 1 1 280px; min-width: 0; min-height: 44px; padding: 6px 12px;
+  font: inherit; color: var(--tinta); text-align: left; cursor: pointer;
+  background: var(--blanco); border: 1.5px solid var(--linea); border-radius: var(--r-sm);
+  transition: background-color var(--dur-rapida) var(--curva), border-color var(--dur-rapida) var(--curva);
+}
+.periodo-actual:hover { background: var(--papel-2); border-color: var(--linea-fuerte); }
+.periodo-actual > .icono:first-child { color: var(--accion-oscuro); }
+.periodo-texto { flex: 1; min-width: 0; }
+.periodo-flecha { color: var(--tinta-2); }
+.periodo-cargando { color: var(--tinta-2); }
+.periodo-barra[aria-busy] .periodo-texto strong { opacity: 0.6; }
+.periodo-sucursal { min-height: 44px; padding: 6px 10px; flex: 0 1 240px; }
+/* La sección .seccion es flex: sin esto, el atributo hidden no ocultaría el calendario. */
+.calendario[hidden] { display: none; }
+/* En celular la franja negra de arriba también es fija: la barra va justo debajo. */
+@media (max-width: 900px) { .periodo-barra { top: 60px; padding: 8px; gap: 8px; } }
+/* Celular: solo el botón del periodo queda fijo (una línea); la sucursal se queda en su lugar. */
+@media (max-width: 640px) {
+  .periodo-barra { display: contents; }
+  .periodo-barra > .periodo-actual { flex: none; position: sticky; top: 60px; z-index: 15; box-shadow: var(--sombra-1); }
+  .periodo-sucursal { flex: none; width: 100%; margin-top: -16px; }
+}
+@media print { .periodo-barra { position: static; box-shadow: none; } }
+/* Mientras se carga el periodo nuevo, los datos de abajo se atenúan (siguen visibles hasta que llegan los nuevos). */
+.pagina > * { transition: opacity var(--dur-media) var(--curva); }
+.pagina:has(.periodo-barra[aria-busy]) > :not(.periodo-barra):not(.calendario):not(.encabezado-pagina):not(.migas):not(.periodo-actual):not(.periodo-sucursal) { opacity: 0.5; }
+.calendario-rejilla[aria-busy] { opacity: 0.7; }

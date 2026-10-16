@@ -86,13 +86,12 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   return (
     <>
       <EncabezadoPagina titulo="Ventas"
-        descripcion={`${titulo} · ${fechaTexto(periodo.desde)} a ${fechaTexto(periodo.hasta)} · ${resumen.dias} ${resumen.dias === 1 ? "día" : "días"} con datos`}
+        descripcion={`${titulo} · ${resumen.dias} ${resumen.dias === 1 ? "día" : "días"} con datos`}
         acciones={<>
           <Link className="boton boton-secundario" href={`/reporte/ventas?${filtroReporte}`} target="_blank"><Icono nombre="documento" /> Reporte PDF</Link>
           <a className="boton boton-secundario" href={`/reporte/ventas/excel?${filtroReporte}`} download><Icono nombre="descargar" /> Descargar Excel</a>
         </>} />
 
-      <VentasPorCanal canales={reporteCanales(d.canales,d.anterior.canales)} />
       <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
         maxDias={MAX_DIAS} sucursal={sucursal} sucursales={todas ? sucursales ?? [] : null} />
 
@@ -122,6 +121,8 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
           }))} />
         </section>
       </div>
+
+      <VentasPorCanal canales={reporteCanales(d.canales,d.anterior.canales)} />
 
       <div className="tablero-fila">
         <Plegable id="productos" titulo="Los 10 que más vendieron" resumen={`${productos.length} productos`}>
