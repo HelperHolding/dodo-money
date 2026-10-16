@@ -1,6 +1,6 @@
 import type {Celda,HojaXlsx,EstiloFila} from '../xlsx-escribir';
 export type FacturaCorrida={
- id:string;proveedor_id:string;proveedor:string;nombre:string;rfc_receptor:string;empresa:string;empresaActiva:boolean;
+ id:string;uuid:string|null;proveedor_id:string;proveedor:string;nombre:string;rfc_receptor:string;empresa:string;empresaActiva:boolean;
  sucursal_id:string|null;fecha_emision:string;vence_el:string;pago_programado_el:string|null;pago_sugerido_el?:string|null;
  fechaPago:string;formaPrevista:string|null;estado:string;tipo:string;saldo:number;total:number;origen:string;falta_complemento:boolean;conceptos:string[];
 };
@@ -45,6 +45,7 @@ const normal:EstiloFila={fuente:'Arial',tamano:9,ajustarTexto:true};
 const editable:EstiloFila={fondo:'FFF2CC',texto:'0000FF'};
 const moneda=(valor:number):Celda=>({valor,formato:'pesos'});
 const formula=(formula:string,resultado:number|string,formato:'pesos'|'general'='pesos'):Celda=>({formula,resultado,formato});
+const calendario=()=>formula('HYPERLINK("https://dodo-money-j31t.vercel.app/compras/pagos","Abrir calendario de pagos de Dodo MX")','Abrir calendario de pagos de Dodo MX','general');
 const refHoja=(nombre:string)=>`'${nombre.replace(/'/g,"''")}'`;
 /** Nombres únicos, válidos en Excel y ajenos a las hojas reservadas. */
 export function nombresCorrida(destinos:readonly {id:string;nombre:string}[]):Map<string,string>{
@@ -68,7 +69,7 @@ export function libroCorrida(filas:readonly LineaCorrida[],filtro:FiltroCorrida,
    for(const f of documentos){const num=h.filas.length+1;
     const nota=[`Empresa: ${f.empresa} (${f.rfc_receptor}).`,`Pago ${f.pago_programado_el?'programado':'sugerido'}: ${f.fechaPago}.`,f.estado==='parcial'?'Saldo restante después de abonos.':'',f.conceptos.join('; '),...f.advertencias].filter(Boolean).join(' ');
     const notaVisible=nota.length>30000?nota.slice(0,29900)+'… Consulta el documento para ver el detalle completo.':nota;
-    h.filas.push([formula(`IF(COUNT(C${num})=0,"",IF(C${num}<FECHA_CORRIDA,"Vencido","Abierto"))`,f.vence_el<filtro.fecha?'Vencido':'Abierto','general'),{fecha:f.fecha_emision},{fecha:f.vence_el},f.nombre,f.proveedor,moneda(f.saldo),moneda(f.total),f.formaPrevista??'Sin definir',f.destino,notaVisible]);
+    h.filas.push([formula(`IF(COUNT(C${num})=0,"",IF(C${num}<FECHA_CORRIDA,"Vencido","Abierto"))`,f.vence_el<filtro.fecha?'Vencido':'Abierto','general'),{fecha:f.fecha_emision},{fecha:f.vence_el},f.nombre,f.proveedor,moneda(f.saldo),moneda(f.total),f.formaPrevista??'Sin definir',f.destino,notaVisible,f.uuid??'']);
     h.estilos![num-1]=normal;h.altos![num-1]=Math.min(105,Math.max(42,Math.ceil(nota.length/65)*12));
    }
   }
@@ -80,7 +81,9 @@ export function libroCorrida(filas:readonly LineaCorrida[],filtro:FiltroCorrida,
    const monto=total(lista.filter(f=>(f.formaPrevista??'Sin definir')===metodo)),fila=h.filas.length+1;
    h.filas.push([metodo,null,null,null,null,formula(`SUMIF(H4:H${fin},"${metodo.replace(/"/g,'""')}",F4:F${fin})`,monto)]);h.estilos![fila-1]=normal;metodos.set(metodo,{fila,monto});
   }
-  h.impresion={area:`$A$1:$J$${h.filas.length}`,repetirFilas:'$1:$3'};hojas.push(h);referencias.push({nombre,filaTotal,saldo:total(lista),metodos});
+  h.filas[2].push('UUID');h.anchos!.push(40);h.combinadas![0]='A1:K1';h.combinadas![1]='A2:K2';
+  h.filas.push([], [calendario()]);h.combinadas!.push(`A${h.filas.length}:E${h.filas.length}`);
+  h.impresion={area:`$A$1:$K$${h.filas.length}`,repetirFilas:'$1:$3'};hojas.push(h);referencias.push({nombre,filaTotal,saldo:total(lista),metodos});
  }
  const resumen:HojaXlsx={nombre:'Resumen',filas:[['CORRIDA DE PAGO — DODO MX'],[contexto],['PAGO A PROVEEDORES (MXN)'],['SUCURSAL',null,'SALDO A PAGAR','FLUJO REAL DISPONIBLE','DIFERENCIA (FLUJO − PAGO)']],anchos:[48,4,24,25,28],combinadas:['A1:E1','A2:E2','A3:E3','A4:B4'],estilos:{0:oscuro,1:normal,2:oscuro,3:cabecera},altos:{0:26,1:34,3:32},inmovilizar:4,ocultarCuadricula:true};
  for(const r of referencias){const num=resumen.filas.length+1;resumen.filas.push([r.nombre,null,formula(`${refHoja(r.nombre)}!F${r.filaTotal}`,r.saldo),{texto:'',estilo:editable},formula(`IF(COUNT(D${num})=0,"",D${num}-C${num})`,'')]);resumen.combinadas!.push(`A${num}:B${num}`);resumen.estilos![num-1]=normal;resumen.altos![num-1]=24;}
@@ -100,10 +103,14 @@ export function libroCorrida(filas:readonly LineaCorrida[],filtro:FiltroCorrida,
  while(resumen.filas.length<19)resumen.filas.push([]);
  const fechaFila=resumen.filas.length+1;resumen.filas.push(['FECHA DE CORRIDA',null,{fecha:filtro.fecha,estilo:editable}]);resumen.estilos![fechaFila-1]=grupo;resumen.combinadas!.push(`A${fechaFila}:B${fechaFila}`);
  resumen.filas.push(['Editar la fecha actualiza Estado; los saldos y documentos son los de esta exportación.']);num=resumen.filas.length;resumen.combinadas!.push(`A${num}:E${num}`);resumen.altos![num-1]=30;resumen.estilos![num-1]=normal;
+ resumen.filas.push([], [calendario()]);resumen.combinadas!.push(`A${resumen.filas.length}:E${resumen.filas.length}`);
  resumen.impresion={area:`$A$1:$E$${resumen.filas.length}`};
  const pendientes:HojaXlsx={nombre:'Pendientes de revisión',filas:[['PENDIENTES DE REVISIÓN'],['Los incluidos ya forman parte de las hojas de sucursal. No sumes estos importes otra vez.'],['#','Estatus','Hoja','Proveedor','Factura / Referencia','Monto','Qué encontré','Acción sugerida']],anchos:[5,20,24,34,26,18,65,45],combinadas:['A1:H1','A2:H2'],estilos:{0:oscuro,1:normal,2:cabecera},altos:{0:25,1:32,2:28},inmovilizar:3,ocultarCuadricula:true};
  let indice=1;for(const f of filas.filter(f=>f.advertencias.length)){const r=pendientes.filas.length;pendientes.filas.push([indice++,f.sinDistribuir?'NO INCLUIDO':'INCLUIDO · REVISAR',f.sinDistribuir?'Sin distribuir':nombres.get(f.destinoId)!,f.proveedor,f.nombre,moneda(f.saldo),f.advertencias.join(' '),f.sinDistribuir?'Asignar el saldo a cada sucursal antes de enviar a pago.':'Revisar el documento y completar los datos en Dodo MX.']);pendientes.estilos![r]={...normal,fondo:'FFF2CC'};pendientes.altos![r]=65;}
  if(indice===1){pendientes.filas.push(['Sin pendientes detectados']);pendientes.estilos![3]=normal;}
- pendientes.impresion={area:`$A$1:$H$${pendientes.filas.length}`,repetirFilas:'$1:$3'};
+ pendientes.filas[2].push('UUID');pendientes.anchos!.push(40);
+ let pendienteFila=3;for(const f of filas.filter(f=>f.advertencias.length))pendientes.filas[pendienteFila++].push(f.uuid??'');
+ pendientes.filas.push([], [calendario()]);pendientes.combinadas!.push(`A${pendientes.filas.length}:E${pendientes.filas.length}`);
+ pendientes.impresion={area:`$A$1:$I$${pendientes.filas.length}`,repetirFilas:'$1:$3'};
  return {hojas:[resumen,...hojas,pendientes],nombres:{FECHA_CORRIDA:`'Resumen'!$C$${fechaFila}`},incluidas:incluidas.length,excluidas:excluidas.length,total:total(incluidas)};
 }

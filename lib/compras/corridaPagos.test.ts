@@ -5,7 +5,18 @@ import {escribirXlsx} from '../xlsx-escribir.ts';
 import {leerHojas} from '../ventas/xlsx.ts';
 const filtro={desde:'2026-10-15',hasta:'2026-10-16',fecha:'2026-10-16'};
 const sedes=new Map([['z','Zapopan-1'],['d','dodo-2']]);
-const factura:FacturaCorrida={id:'f1',proveedor_id:'p',proveedor:'Proveedor de prueba',nombre:'001',rfc_receptor:'HCM260306B93',empresa:'HELPER COMERCIALIZADORA MASTER',empresaActiva:true,sucursal_id:'z',fecha_emision:'2026-10-10',vence_el:'2026-10-15',fechaPago:'2026-10-15',pago_programado_el:'2026-10-15',formaPrevista:'Transferencia',estado:'parcial',tipo:'ingreso',saldo:60.20,total:100.20,origen:'cfdi',falta_complemento:false,conceptos:['Insumos']};
+const factura:FacturaCorrida={id:'f1',uuid:'12345678-1234-1234-1234-123456789ABC',proveedor_id:'p',proveedor:'Proveedor de prueba',nombre:'001',rfc_receptor:'HCM260306B93',empresa:'HELPER COMERCIALIZADORA MASTER',empresaActiva:true,sucursal_id:'z',fecha_emision:'2026-10-10',vence_el:'2026-10-15',fechaPago:'2026-10-15',pago_programado_el:'2026-10-15',formaPrevista:'Transferencia',estado:'parcial',tipo:'ingreso',saldo:60.20,total:100.20,origen:'cfdi',falta_complemento:false,conceptos:['Insumos']};
+
+test('corrida: UUID real o vacío y liga al calendario en todas las hojas',()=>{
+ const filas=seleccionarCorrida([factura,{...factura,id:'manual',uuid:null,origen:'manual'}],[],sedes,filtro);
+ const libro=libroCorrida(filas,filtro,'2026-10-16');
+ const hojas=leerHojas(escribirXlsx(libro.hojas,{nombres:libro.nombres}));
+ const z=hojas.find(h=>h.nombre==='Zapopan-1')!;
+ assert.equal(z.celdas.get('K3'),'UUID');assert.equal(z.celdas.get('K5'),factura.uuid);assert.equal(z.celdas.get('K6')??'','');
+ const pendientes=hojas.at(-1)!;assert.equal(pendientes.celdas.get('I3'),'UUID');assert.equal(pendientes.celdas.get('I4')??'','');
+ for(const h of libro.hojas)assert.ok(h.filas.some(f=>f.some(c=>typeof c==='object'&&c!==null&&'formula' in c&&c.formula==='HYPERLINK("https://dodo-money-j31t.vercel.app/compras/pagos","Abrir calendario de pagos de Dodo MX")')));
+ assert.equal(libro.total,120.40);
+});
 test('corrida: rango inclusivo, saldo real restante y sin pagadas, canceladas, notas ni cero',()=>{
  const filas=seleccionarCorrida([factura,{...factura,id:'fin',fechaPago:'2026-10-16'},...['pagada','cancelada'].map(estado=>({...factura,id:estado,estado})),{...factura,id:'cero',saldo:0},{...factura,id:'nota',tipo:'egreso'},{...factura,id:'fuera',fechaPago:'2026-10-17'}],[],sedes,filtro);
  assert.deepEqual(filas.map(f=>f.id),['f1','fin']);assert.equal(filas[0].saldo,60.20);assert.equal(filas[0].total,100.20);
