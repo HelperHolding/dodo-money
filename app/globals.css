@@ -1056,11 +1056,30 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .pagos-hoy-resumen { display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
 .pagos-hoy-resumen h2 { margin-bottom:8px; }
 .pagos-hoy-monto { font-size:clamp(2.4rem,5vw,4rem); line-height:1.1; letter-spacing:-.04em; }
-.pagos-tabla { min-width:1000px; }
-.pagos-tabla td { vertical-align:top; }
+.pagos-tabla-marco { container-type:inline-size; min-width:0; width:100%; }
+.pagos-tabla { min-width:0; width:100%; table-layout:fixed; }
+.pagos-tabla th, .pagos-tabla td { white-space:normal; overflow-wrap:anywhere; min-width:0; vertical-align:top; }
+.pagos-tabla th:nth-child(1) { width:15%; }
+.pagos-tabla th:nth-child(2) { width:20%; }
+.pagos-tabla th:nth-child(3) { width:20%; }
+.pagos-tabla th:nth-child(4) { width:13%; }
+.pagos-tabla th:nth-child(5) { width:13%; }
+.pagos-tabla th:nth-child(6) { width:19%; }
 .pagos-tabla .acciones { gap:6px; }
-.pagos-tabla .boton { font-size:.8rem; padding:8px 10px; white-space:nowrap; }
-.pagos-uuid { min-width:200px; max-width:260px; overflow-wrap:anywhere; font-size:.85rem; }
+.pagos-tabla .boton { font-size:.8rem; padding:8px 10px; white-space:normal; max-width:100%; text-align:center; overflow-wrap:anywhere; }
+.pagos-uuid { overflow-wrap:anywhere; font-size:.85rem; }
+@container(max-width:960px) {
+ .pagos-tabla, .pagos-tabla tbody { display:block; }
+ .pagos-tabla thead { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); }
+ .pagos-tabla tbody { display:grid; gap:16px; }
+ .pagos-tabla tbody tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border:1px solid var(--linea); border-radius:var(--r-sm,8px); padding:8px; }
+ .pagos-tabla td { display:block; padding:10px; border:0; }
+ .pagos-tabla td::before { content:attr(data-etiqueta); display:block; color:var(--tinta-2); font-size:.8rem; font-weight:700; margin-bottom:6px; }
+ .pagos-tabla td:last-child { grid-column:1/-1; border-top:1px solid var(--linea); }
+}
+@container(max-width:480px) {
+ .pagos-tabla tbody tr { grid-template-columns:minmax(0,1fr); }
+}
 
 /* ─── Insignias de estado (PLAN-REDISENO §4.4): un solo tamaño y forma para todos los sistemas de "badge" ─── */
 .insignia, .estado, .compra-etapa, .compra-estado, .compra-vencida, .compra-meta, .ficha-estado, .ap-estado, .proveedor-documento-estado {

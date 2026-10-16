@@ -10,7 +10,7 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
  if(!f)return new Response('Factura no encontrada',{status:404});
  let ruta=tipo==='pdf'?f.pdf_ruta:f.xml_ruta,bucket='facturas';
  if(tipo==='pdf'&&!ruta?.toLowerCase().endsWith('.pdf')){
-  const {data:adjuntos,error:fallo}=await supabase.from('compra_adjuntos').select('ruta').eq('factura_id',id).eq('mime','application/pdf').not('confirmado_en','is',null).order('creado_en',{ascending:false}).order('id').limit(1).returns<{ruta:string}[]>();
+  const {data:adjuntos,error:fallo}=await supabase.from('compra_adjuntos').select('ruta').eq('factura_id',id).eq('mime','application/pdf').not('confirmado_en','is',null).is('retirado_en',null).order('creado_en',{ascending:false}).order('id').limit(1).returns<{ruta:string}[]>();
   if(fallo)return new Response('No se pudieron consultar los adjuntos',{status:500});ruta=adjuntos?.[0]?.ruta??null;bucket='adjuntos-compras';
  }
  if(!ruta)return new Response('Archivo pendiente',{status:404});

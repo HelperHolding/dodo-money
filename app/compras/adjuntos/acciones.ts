@@ -36,3 +36,16 @@ export async function adjuntarDocumento(fd:FormData) {
   revalidatePath(ruta);
   redirect(`${ruta}?ok=${encodeURIComponent('Documento adjuntado. Se conservaron estado, importes y pagos.')}`);
 }
+
+export async function retirarDocumento(fd:FormData) {
+ const {supabase,perfil}=await obtenerPerfil();
+ if(perfil.rol!=='admin')redirect('/compras/documentos');
+ const tipo=String(fd.get('tipo')),id=String(fd.get('documento_id'));
+ if(!['orden','factura'].includes(tipo)||!/^[0-9a-f-]{36}$/i.test(id))redirect('/compras/documentos');
+ const ruta=`/compras/${tipo==='orden'?'ordenes':'facturas'}/${id}`;
+ if(fd.get('confirmar')!=='si')redirect(`${ruta}?error=${encodeURIComponent('Confirma que deseas retirar el adjunto.')}`);
+ const {error}=await supabase.rpc('retirar_adjunto_compra',{p_id:String(fd.get('adjunto_id')),p_tipo:tipo,p_documento:id,p_motivo:String(fd.get('motivo')??'').trim()});
+ if(error)redirect(`${ruta}?error=${encodeURIComponent(error.message)}`);
+ revalidatePath(ruta);revalidatePath('/compras/pagos');
+ redirect(`${ruta}?ok=${encodeURIComponent('Adjunto retirado. El motivo quedó en el historial.')}`);
+}

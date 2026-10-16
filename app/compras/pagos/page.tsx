@@ -67,7 +67,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
 
   const pdfAdjuntos=new Set<string>();
   for(let i=0;i<visibles.length;i+=200){const ids=visibles.slice(i,i+200).map(f=>f.id);
-   const adjuntos=await leerTodo<{factura_id:string}>((d,h)=>supabase.from('compra_adjuntos').select('factura_id').in('factura_id',ids).eq('mime','application/pdf').not('confirmado_en','is',null).order('id').range(d,h));
+   const adjuntos=await leerTodo<{factura_id:string}>((d,h)=>supabase.from('compra_adjuntos').select('factura_id').in('factura_id',ids).eq('mime','application/pdf').not('confirmado_en','is',null).is('retirado_en',null).order('id').range(d,h));
    for(const a of adjuntos)pdfAdjuntos.add(a.factura_id);
   }
   const r = resumenPagos(visibles, [], hoy);
