@@ -1194,3 +1194,17 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 /* El botón principal de cada sección plegable: a su tamaño en computadora, a todo lo ancho en celular. */
 .plegable-cuerpo > .boton { align-self: flex-start; }
 @media (max-width: 640px) { .plegable-cuerpo > .boton { align-self: stretch; } }
+
+/* Calendario mensual de servicios de activos. */
+.pagina:has(.activos-calendario) { max-width:none; width:100%; padding-inline:clamp(16px,2vw,28px); }
+.activos-mes { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; margin:20px 0; }
+.activos-semana { text-align:center; font-size:.8rem; color:var(--tinta-2); }
+.activos-dia { display:flex; flex-direction:column; align-items:flex-start; gap:5px; min-width:0; min-height:110px; padding:10px; background:var(--blanco); color:var(--tinta); border:1px solid var(--linea); border-radius:8px; text-align:left; cursor:pointer; overflow-wrap:anywhere; }
+.activos-dia > span { font-size:.8rem; }
+.activos-dia small { color:var(--tinta-2); font-size:.75rem; }
+.activos-dia[data-vencido] { border-left:4px solid var(--alerta); }
+.activos-dia[aria-current="date"] > strong { color:var(--acento); }
+.activos-dia[aria-pressed="true"] { outline:2px solid var(--acento); background:var(--accion-tinte); }
+.activos-dia:hover { background:var(--papel-2); }
+.activos-calendario [id] { scroll-margin-top:20px; }
+@media(max-width:640px) { .activos-mes { gap:3px; }.activos-dia { min-height:70px; padding:5px; }.activos-dia-nombres,.activos-dia-palabra { display:none; }.activos-calendario { padding:12px; } }
