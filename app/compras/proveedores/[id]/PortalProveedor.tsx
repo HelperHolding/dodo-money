@@ -26,7 +26,7 @@ export function PortalProveedor({ id, portal, disponible }: { id: string; portal
         <dt>Usuario</dt><dd>{guardado.usuario}</dd>
         <dt>Contraseña</dt><dd>
           {guardado.tiene_password ? <>
-            <span style={{ overflowWrap: "anywhere" }}>{password ?? "••••••••"}</span>{" "}
+            <span className="texto-partible">{password ?? "••••••••"}</span>{" "}
             <button type="button" className="boton boton-secundario boton-compacto" disabled={ocupado} onClick={async () => {
               if (password !== null) { setPassword(null); return; }
               setOcupado(true); setMensaje("");
@@ -37,7 +37,7 @@ export function PortalProveedor({ id, portal, disponible }: { id: string; portal
             {password !== null && <small> Se oculta automáticamente en un minuto.</small>}
           </> : "Sin contraseña guardada"}
         </dd>
-        {guardado.notas && <><dt>Notas de acceso</dt><dd style={{ whiteSpace: "pre-wrap" }}>{guardado.notas}</dd></>}
+        {guardado.notas && <><dt>Notas de acceso</dt><dd className="texto-saltos">{guardado.notas}</dd></>}
       </dl>}
       <details open={!guardado}><summary>{guardado ? "Editar acceso" : "Agregar acceso"}</summary>
         <form ref={formulario} className="formulario" onSubmit={async e => {

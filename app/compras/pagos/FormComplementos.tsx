@@ -15,7 +15,7 @@ export function FormComplementos() {
       {estado && (
         <ul style={{ listStyle: "none", paddingLeft: 0, display: "grid", gap: 8 }}>
           {estado.resultados.map((r, i) => (
-            <li key={i} className={r.ok ? "aviso aviso-ok" : "aviso aviso-error"} style={{ overflowWrap: "anywhere" }}>
+            <li key={i} className={r.ok ? "aviso aviso-ok texto-partible" : "aviso aviso-error texto-partible"}>
               {r.archivo && <strong>{r.archivo}: </strong>}{r.texto}
             </li>
           ))}
