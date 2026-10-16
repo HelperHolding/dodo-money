@@ -6,7 +6,8 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { avanceOrden, NOMBRE_AVANCE } from "@/lib/compras/ordenes";
 import { esperadasPorDia, estadoEntrega,recibidasPorDia } from "@/lib/compras/entregas";
-import { puedeEditarCompras } from "@/lib/roles";
+import { puedeEditarCompras, puedeRecibirCompras } from "@/lib/roles";
+import { PestanasRecepciones } from "@/components/PestanasRecepciones";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { clasificarRecepcion, conciliarRecepcion } from "./acciones";
 import { FormImportarRecepciones } from "./FormImportarRecepciones";
@@ -87,6 +88,7 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
         <h1>Recepciones</h1>
         <p>Lo que se recibió en Dodo IS, ligado a las órdenes de compra. Los consumibles se ligan solos por su ID de insumo.</p>
       </div>
+      {puedeRecibirCompras(perfil.rol) && <PestanasRecepciones actual="compras" />}
       <Aviso ok={ok} error={error} />
       <CalendarioEntregas hoy={hoy} porDia={porDia} realizadas={realizadas} />
       {(atrasadas.length > 0 || sinFecha.length > 0) && (
