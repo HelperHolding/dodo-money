@@ -1,3 +1,4 @@
+import {precioUnitario} from '@/lib/formato';
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
@@ -154,7 +155,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
                     <small>{s.articulos?.unidad}{s.articulos?.activo === false ? " · inactivo" : ""}</small>
                   </div>
                   <div className="fila-datos">
-                    <span>{pr ? `${pesos(pr.precio)} (${fechaTexto(pr.fecha)})` : "Sin compras"}</span>
+                    <span>{pr ? `${precioUnitario(pr.precio)} (${fechaTexto(pr.fecha)})` : "Sin compras"}</span>
                     <span>{s.principal ? "Proveedor principal" : "Alterno"}</span>
                   </div>
                 </li>

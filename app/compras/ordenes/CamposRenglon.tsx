@@ -23,7 +23,7 @@ export function CamposRenglon({ articulos, precios, surtidos = [], ordenId }: {
       <div className="campo">
         <label htmlFor="articulo_id">Artículo</label>
         <select id="articulo_id" name="articulo_id" required value={seleccionado}
-          onChange={(e) => { setSeleccionado(e.target.value); const p = precios[e.target.value]; setUltimo(p ?? null); setPrecio(p ? String(p) : ""); }}>
+          onChange={(e) => { setSeleccionado(e.target.value); const p = precios[e.target.value]; setUltimo(p ?? null); setPrecio(p ? Number(p).toFixed(4) : ""); }}>
           <option value="" disabled>Elige…</option>
           {suyos.size > 0 ? (
             <>
@@ -39,9 +39,9 @@ export function CamposRenglon({ articulos, precios, surtidos = [], ordenId }: {
         <input id="cantidad" name="cantidad" inputMode="decimal" required />
       </div>
       <div className="campo">
-        <label htmlFor="precio">Precio unitario sin IVA</label>
+        <label htmlFor="precio">Precio unitario sin IVA (4 decimales)</label>
         <input id="precio" name="precio" inputMode="decimal" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Vacío si aún no lo sabes" />
-        {ultimo !== null && <small>Última compra a este proveedor: ${ultimo.toFixed(2)}</small>}
+        {ultimo !== null && <small>Última compra a este proveedor: ${ultimo.toFixed(4)}</small>}
       </div>
     </div>
   );

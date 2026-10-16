@@ -1,3 +1,4 @@
+import {precioUnitario} from '@/lib/formato';
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
@@ -132,7 +133,7 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
                   <p className="tarjeta-estado">{r.cantidad} {r.unidad} · {fechaTexto(r.fecha)} · {r.sucursales?.nombre}</p>
                 </div>
               </div>
-              <dl className="tarjeta-datos"><dt>Precio Dodo IS</dt><dd>{pesos(r.precio)} por {r.unidad}</dd></dl>
+              <dl className="tarjeta-datos"><dt>Precio Dodo IS</dt><dd>{precioUnitario(r.precio)} por {r.unidad}</dd></dl>
               {edita&&candidatas(r).length>0&&<details className="seccion"><summary>Conciliar con recepción manual ({candidatas(r).length})</summary><p>Elige la captura de esta misma entrega. Se conservarán ambas fuentes sin duplicar cantidades.</p><form action={conciliarRecepcion} className="formulario"><input type="hidden" name="dodo_id" value={r.id}/><label className="campo">Recepción manual<select name="manual_id" required defaultValue=""><option value="" disabled>Elige…</option>{candidatas(r).map(m=><option key={m.id} value={m.id}>{abiertos?.find(a=>a.id===m.orden_renglon_id)?.ordenes_compra?.folio} · {m.fecha} · {m.cantidad}</option>)}</select></label><BotonEnviar pendiente="Conciliando…">Conciliar recepción</BotonEnviar></form></details>}
 
               {edita && (

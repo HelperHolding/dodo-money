@@ -1,3 +1,4 @@
+import {precioUnitario} from '@/lib/formato';
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
@@ -133,7 +134,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                       <dt>Lo surten</dt><dd>{textoSurten(a.id) || "Sin proveedor"}</dd>
                       <dt>Precios</dt>
                       <dd>{ps.length ? ps.map((p, i) => (
-                        <span key={i}>{p.proveedores?.nombre_comercial ?? p.proveedores?.razon_social}: {pesos(p.precio)} ({fechaTexto(p.fecha)})</span>
+                        <span key={i}>{p.proveedores?.nombre_comercial ?? p.proveedores?.razon_social}: {precioUnitario(p.precio)} ({fechaTexto(p.fecha)})</span>
                       )) : "Sin compras todavía"}</dd>
                     </dl>
                     {edita && (

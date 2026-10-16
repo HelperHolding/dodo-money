@@ -61,7 +61,7 @@ export function leerIncomingSupplies(hojas: readonly Hoja[], sucursales: readonl
         if (!(cantidad > 0)) continue;
         recepciones.push({
           sucursal_id: sucursal, dodo_insumo_id: id, material: texto(fila.get("B")), unidad: texto(fila.get("C")),
-          fecha, cantidad, precio: Number.isFinite(precio) ? Math.round(precio * 100) / 100 : 0,
+          fecha, cantidad, precio: Number.isFinite(precio) ? Math.round(precio * 10000) / 10000 : 0,
         });
       }
     }
