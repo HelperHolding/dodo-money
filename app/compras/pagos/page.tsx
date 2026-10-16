@@ -130,7 +130,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
 
       <section className="seccion">
         <div className="rejilla">
-          <div className="saldo" style={r.vencido > 0 ? { borderLeftColor: "var(--alerta)" } : undefined}>
+          <div className="saldo" data-alerta={r.vencido > 0 ? "si" : undefined}>
             <span>Vencido</span><span className="saldo-monto">{pesos(r.vencido)}</span><span className="saldo-nota">{grupos.vencidas.length} facturas</span>
           </div>
           <div className="saldo"><span>Esta semana</span><span className="saldo-monto">{pesos(r.semana)}</span><span className="saldo-nota">hasta el domingo</span></div>

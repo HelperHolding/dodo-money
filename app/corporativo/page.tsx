@@ -59,7 +59,7 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
       <section className="seccion" aria-labelledby="t-proveedores">
         <h2 id="t-proveedores">Pagos a proveedores</h2>
         <div className="rejilla">
-          <div className="saldo" style={proveedoresResumen.vencido > 0 ? { borderLeftColor: "var(--alerta)" } : undefined}>
+          <div className="saldo" data-alerta={proveedoresResumen.vencido > 0 ? "si" : undefined}>
             <span>Vencido</span><span className="saldo-monto">{pesos(proveedoresResumen.vencido)}</span>
           </div>
           <div className="saldo"><span>Esta semana</span><span className="saldo-monto">{pesos(proveedoresResumen.semana)}</span></div>
@@ -70,7 +70,7 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
       <section className="seccion" aria-labelledby="t-efectivo">
         <h2 id="t-efectivo">Efectivo por recibir</h2>
         <div className="rejilla">
-          <div className="saldo" style={efectivo.cuantas > 0 ? { borderLeftColor: "var(--alerta)" } : undefined}>
+          <div className="saldo" data-alerta={efectivo.cuantas > 0 ? "si" : undefined}>
             <span>En camino ({efectivo.cuantas})</span><span className="saldo-monto">{pesos(efectivo.total)}</span>
           </div>
           <div className="saldo"><span>Por recoger</span><span className="saldo-monto">{efectivo.porRecoger}</span></div>

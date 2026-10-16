@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avance } from "@/components/Avance";
 import { Franjas } from "@/components/Franjas";
 import { obtenerContexto } from "@/lib/contexto";
 import { diaOperativoMX, estadoCasilla } from "@/lib/franjas";
@@ -84,6 +85,9 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
   const totalRecorrido = listas.reduce((s, c) => s + c.horas.length, 0);
   const esHoy = fecha === hoy;
   const totalMermas = mermas ?? 0;
+  // Avance del día: horas y listas registradas de todo lo que tiene casillas.
+  const hechasDia = hechasRonda + conteoListas.hechas + (lecturas ?? []).length + (recorridos ?? []).length;
+  const totalDia = totalRonda + conteoListas.total + (normas ?? []).length + totalRecorrido;
 
   return (
     <>
@@ -100,9 +104,16 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
       </form>
       <p className="saldo-nota">Listo: registrado y en norma · Revisar: fuera de norma o con puntos que no cumplen · Ahora: se puede registrar · Falta: no se registró a tiempo.</p>
 
+      {totalDia > 0 && (
+        <section className="seccion" aria-label="Avance del día">
+          <Avance etiqueta={esHoy ? "Avance de hoy" : `Avance del ${fecha}`} hechas={hechasDia} total={totalDia}
+            alerta={fallasRonda + masaFuera + lotesFuera > 0} />
+        </section>
+      )}
+
       {porRevisar > 0 && <p className="aviso aviso-info">{porRevisar} {porRevisar === 1 ? "registro espera" : "registros esperan"} "Revisado" del encargado.</p>}
 
-      <Plegable id="t-ronda" titulo="Ronda de la hora" alerta={fallasRonda > 0}
+      <Plegable id="t-ronda" titulo="Ronda de la hora" alerta={fallasRonda > 0} avance={{ hechas: hechasRonda, total: totalRonda }}
         resumen={`${hechasRonda} de ${totalRonda} horas${fallasRonda ? ` · ${fallasRonda} con fallas` : ""}`}>
         {esHoy && !soloLectura && <Link className="boton" href="/checklists/ronda">Registrar ronda</Link>}
         {zonasRonda.map((c) => (
@@ -113,7 +124,7 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
         ))}
       </Plegable>
 
-      <Plegable id="t-turno" titulo="Listas del turno" resumen={`${conteoListas.hechas} de ${conteoListas.total} hechas`}>
+      <Plegable id="t-turno" titulo="Listas del turno" avance={{ hechas: conteoListas.hechas, total: conteoListas.total }} resumen={`${conteoListas.hechas} de ${conteoListas.total} hechas`}>
         {esHoy && !soloLectura && <Link className="boton" href="/checklists/turno">Abrir listas</Link>}
         <TarjetasListas filas={filas} enlace={esHoy} />
       </Plegable>
@@ -130,13 +141,13 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
         </p>
       </Plegable>
 
-      <Plegable id="t-masa" titulo="Temperatura de masa" alerta={masaFuera > 0}
+      <Plegable id="t-masa" titulo="Temperatura de masa" alerta={masaFuera > 0} avance={{ hechas: (lecturas ?? []).length, total: (normas ?? []).length }}
         resumen={`${(lecturas ?? []).length} de ${(normas ?? []).length} horas${masaFuera ? ` · ${masaFuera} por revisar` : ""}`}>
         {esHoy && !soloLectura && <Link className="boton" href="/checklists/masa">Registrar masa</Link>}
         <Franjas titulo="Horas de temperatura de masa" casillas={casillasMasa} />
       </Plegable>
 
-      <Plegable id="t-recorrido" titulo="Recorrido de supervisor" resumen={`${(recorridos ?? []).length} de ${totalRecorrido} horas`}>
+      <Plegable id="t-recorrido" titulo="Recorrido de supervisor" avance={{ hechas: (recorridos ?? []).length, total: totalRecorrido }} resumen={`${(recorridos ?? []).length} de ${totalRecorrido} horas`}>
         {esHoy && !soloLectura && <Link className="boton" href="/checklists/recorrido">Registrar recorrido</Link>}
         {listas.map((c) => (
           <div key={c.id} className="formulario">

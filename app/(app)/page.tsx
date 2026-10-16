@@ -2,6 +2,7 @@ import {DashboardVentasInicio} from "@/components/DashboardVentasInicio";
 import Link from "next/link";
 import { IconoInicio } from "@/components/IconoInicio";
 import { Aviso } from "@/components/Aviso";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto, puedeAbrirTurno } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, hora, pesos } from "@/lib/formato";
@@ -59,11 +60,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
 
   return (
     <>
-      <div className="encabezado">
-        <p className="saldo-nota">Inicio · {fechaTexto(hoyCalendarioMX())}</p>
-        <h1>{sucursal.nombre}</h1>
-        <p>Ventas, finanzas y operación en un solo lugar.</p>
-      </div>
+      <EncabezadoPagina titulo={sucursal.nombre} descripcion={`${fechaTexto(hoyCalendarioMX())} · Ventas, finanzas y operación en un solo lugar.`} />
       <Aviso ok={ok} error={error} />
       {["admin","corporativo"].includes(perfil.rol)&&<DashboardVentasInicio supabase={supabase} rol={perfil.rol} mes={ventas_mes} sucursal={ventas_sucursal} porDefecto={sucursal.id} ruta="/"/>}
 
