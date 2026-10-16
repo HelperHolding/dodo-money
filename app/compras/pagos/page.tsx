@@ -81,7 +81,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const porDia: Record<string, FacturaDelDia[]> = {};
   for (const f of visibles) {
     const d = fechaDePago(f);
-    (porDia[d] ??= []).push({ id: f.id, nombre: nombre(f), proveedor: proveedorDe(f), saldo: Number(f.saldo), vencida: vencida(f, hoy),uuid:f.uuid??f.uuid_manual,uuidManual:!f.uuid&&!!f.uuid_manual,pdf:!!f.pdf_ruta?.toLowerCase().endsWith('.pdf')||pdfAdjuntos.has(f.id),xml:!!f.xml_ruta,fechaPago:d,formaPrevista:f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:undefined });
+    (porDia[d] ??= []).push({ id: f.id, nombre: nombre(f), proveedor: proveedorDe(f), saldo: Number(f.saldo), vencida: vencida(f, hoy),proveedorId:f.proveedor_id,uuid:f.uuid??f.uuid_manual,uuidManual:!f.uuid&&!!f.uuid_manual,pdf:!!f.pdf_ruta?.toLowerCase().endsWith('.pdf')||pdfAdjuntos.has(f.id),xml:!!f.xml_ruta,fechaPago:d,formaPrevista:f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:undefined });
   }
   const grupos = { vencidas: [] as Factura[], semana: [] as Factura[], despues: [] as Factura[] };
   for (const f of visibles) grupos[grupoPorPagar(f, hoy)].push(f);

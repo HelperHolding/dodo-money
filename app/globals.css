@@ -1110,3 +1110,10 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 }
 .pestanas-nav a:hover { color: var(--tinta); }
 .pestanas-nav a[aria-current="page"] { color: var(--tinta); font-weight: 800; border-bottom-color: var(--accion); }
+.proveedor-datos-modal { width:min(1100px,96vw); }
+.proveedor-documentos-resumen { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.proveedor-documentos-resumen .seccion { margin:0 0 16px; padding:16px; }
+.proveedor-documentos-resumen h4 { margin:0 0 8px; }
+.proveedor-documento-preview { width:100%; height:60vh; min-height:300px; border:1px solid var(--linea); border-radius:var(--r-sm,8px); }
+.proveedor-documento-imagen { display:block; max-width:100%; max-height:70vh; object-fit:contain; margin:auto; }
+@media(max-width:700px) { .proveedor-documentos-resumen { grid-template-columns:1fr; } }
