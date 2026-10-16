@@ -27,7 +27,7 @@ export function PortalProveedor({ id, portal, disponible }: { id: string; portal
         <dt>Contraseña</dt><dd>
           {guardado.tiene_password ? <>
             <span style={{ overflowWrap: "anywhere" }}>{password ?? "••••••••"}</span>{" "}
-            <button type="button" disabled={ocupado} onClick={async () => {
+            <button type="button" className="boton boton-secundario boton-compacto" disabled={ocupado} onClick={async () => {
               if (password !== null) { setPassword(null); return; }
               setOcupado(true); setMensaje("");
               try { const r = await revelarPortal(id); if (typeof r.password === "string") { if (!document.hidden) setPassword(r.password); } else setMensaje(r.error ?? "No se pudo consultar la contraseña."); }

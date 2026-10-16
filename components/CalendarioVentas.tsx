@@ -1,5 +1,6 @@
 "use client";
 
+import { Icono } from "@/components/Icono";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { fechaTexto, pesos, pesosCortos } from "@/lib/formato";
@@ -57,9 +58,9 @@ export function CalendarioVentas({ venta, periodo, hoy, maxDias, sucursal, sucur
       )}
 
       <div className="calendario-cabecera">
-        <button type="button" className="calendario-flecha" aria-label="Mes anterior" onClick={() => setMes(moverMes(mes, -1))}>‹</button>
+        <button type="button" className="boton-icono calendario-flecha" aria-label="Mes anterior" onClick={() => setMes(moverMes(mes, -1))}><Icono nombre="izquierda" tamano={22} /></button>
         <h2>{tituloMes(mes.anio, mes.mes)}</h2>
-        <button type="button" className="calendario-flecha" aria-label="Mes siguiente" disabled={!puedeAvanzar} onClick={() => setMes(moverMes(mes, 1))}>›</button>
+        <button type="button" className="boton-icono calendario-flecha" aria-label="Mes siguiente" disabled={!puedeAvanzar} onClick={() => setMes(moverMes(mes, 1))}><Icono nombre="derecha" tamano={22} /></button>
       </div>
 
       <div className="calendario-rejilla" role="grid">

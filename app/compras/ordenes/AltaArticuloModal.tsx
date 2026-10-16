@@ -1,4 +1,5 @@
 "use client";
+import { Icono } from "@/components/Icono";
 import {useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import {CATEGORIAS_COMPRA,NOMBRE_CATEGORIA_COMPRA,TASAS_IVA,NOMBRE_TASA_IVA} from "@/lib/compras/proveedores";
@@ -10,7 +11,7 @@ export function AltaArticuloModal({ordenId,alCrear}:{ordenId:string;alCrear:(a:A
  useEffect(()=>setMontado(true),[]);
  return <><button type="button" className="boton boton-secundario" onClick={()=>{setError("");modal.current?.showModal();}}>Crear artículo</button>
  {montado&&createPortal(<dialog ref={modal} className="compra-filtros-modal" aria-labelledby="alta-articulo-titulo" onCancel={e=>{if(ocupado)e.preventDefault();}}>
- <header className="compra-modal-encabezado"><div><h2 id="alta-articulo-titulo">Nuevo artículo</h2><p>Se guardará en el catálogo y quedará seleccionado en la cotización.</p></div><button type="button" className="compra-modal-cerrar" disabled={ocupado} aria-label="Cerrar alta de artículo" onClick={()=>modal.current?.close()}>×</button></header>
+ <header className="compra-modal-encabezado"><div><h2 id="alta-articulo-titulo">Nuevo artículo</h2><p>Se guardará en el catálogo y quedará seleccionado en la cotización.</p></div><button type="button" className="boton-icono compra-modal-cerrar" disabled={ocupado} aria-label="Cerrar alta de artículo" onClick={()=>modal.current?.close()}><Icono nombre="cerrar" tamano={22} /></button></header>
  <form ref={form} className="formulario" onSubmit={async e=>{e.preventDefault();e.stopPropagation();if(ocupado)return;const fd=new FormData(e.currentTarget);setOcupado(true);setError("");try{const r=await crearArticuloDesdeCotizacion(ordenId,fd);if("error" in r){setError(r.error??"No se pudo guardar.");return;}alCrear(r.articulo);form.current?.reset();modal.current?.close();}catch{setError("No se pudo confirmar el alta. Revisa el catálogo antes de intentar de nuevo.");}finally{setOcupado(false);}}}>
  <fieldset disabled={ocupado} style={{border:0,padding:0,margin:0}}><div className="rejilla">
  <div className="campo"><label htmlFor="alta-articulo-nombre">Nombre</label><input id="alta-articulo-nombre" name="nombre" required/></div>

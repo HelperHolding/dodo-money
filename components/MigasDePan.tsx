@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Icono } from "@/components/Icono";
 import { migas } from "@/lib/migas";
 import type { Menu } from "@/lib/roles";
 
@@ -18,7 +19,7 @@ export function MigasDePan({ menu }: { menu: Menu }) {
           </li>
         ))}
       </ol>
-      {r.regresar?.href && <Link className="migas-regresar" href={r.regresar.href}>← {r.regresar.texto}</Link>}
+      {r.regresar?.href && <Link className="migas-regresar" href={r.regresar.href}><Icono nombre="regresar" /> {r.regresar.texto}</Link>}
     </nav>
   );
 }

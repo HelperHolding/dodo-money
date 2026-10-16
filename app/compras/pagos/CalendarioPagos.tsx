@@ -1,5 +1,6 @@
 "use client";
 
+import { Icono } from "@/components/Icono";
 import Link from "next/link";
 import { useState } from "react";
 import { fechaTexto, pesos, pesosCortos } from "@/lib/formato";
@@ -27,9 +28,9 @@ export function CalendarioPagos({ hoy, porDia, filtros={} }: { hoy: string; porD
   return (
     <section className="seccion calendario" aria-label="Calendario de pagos">
       <div className="calendario-cabecera">
-        <button type="button" className="calendario-flecha" aria-label="Mes anterior" onClick={() => cambiarMes(moverMes(mes, -1))}>‹</button>
+        <button type="button" className="boton-icono calendario-flecha" aria-label="Mes anterior" onClick={() => cambiarMes(moverMes(mes, -1))}><Icono nombre="izquierda" tamano={22} /></button>
         <h2>{tituloMes(mes.anio, mes.mes)}</h2>
-        <button type="button" className="calendario-flecha" aria-label="Mes siguiente" onClick={() => cambiarMes(moverMes(mes, 1))}>›</button>
+        <button type="button" className="boton-icono calendario-flecha" aria-label="Mes siguiente" onClick={() => cambiarMes(moverMes(mes, 1))}><Icono nombre="derecha" tamano={22} /></button>
       </div>
       <details className="seccion"><summary className="boton boton-secundario">Exportar corrida para Tesorería</summary>
        <form action="/reporte/pagos/excel" method="get" className="formulario" style={{marginTop:16}}>

@@ -3,6 +3,9 @@ import { AvisoSinCosto } from "@/components/AvisoSinCosto";
 import { BarrasVerticales } from "@/components/BarrasVerticales";
 import { CalendarioVentas } from "@/components/CalendarioVentas";
 import { Dona } from "@/components/Dona";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { EstadoVacio } from "@/components/EstadoVacio";
+import { Icono } from "@/components/Icono";
 import { Grafica } from "@/components/Grafica";
 import { Indicadores } from "@/components/Indicadores";
 import { Plegable } from "@/components/Plegable";
@@ -40,8 +43,10 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   if (!ultimo) {
     return (
       <>
-        <div className="encabezado"><h1>Ventas</h1><p>Aún no hay ventas importadas{sucursal ? ` de ${nombreDe.get(sucursal)}` : ""}.</p></div>
-        {puedeImportarVentas(perfil.rol) && <div className="acciones"><Link className="boton" href="/ventas/importar">Importar ventas</Link></div>}
+        <EncabezadoPagina titulo="Ventas" />
+        <EstadoVacio titulo={`Aún no hay ventas importadas${sucursal ? ` de ${nombreDe.get(sucursal)}` : ""}`}
+          descripcion="Cuando se importe el reporte de Dodo IS, aquí verás la venta, los pedidos y el costo del periodo."
+          accion={puedeImportarVentas(perfil.rol) && <Link className="boton" href="/ventas/importar">Importar ventas</Link>} />
       </>
     );
   }
@@ -80,14 +85,12 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Ventas</h1>
-        <p>{titulo} · {fechaTexto(periodo.desde)} a {fechaTexto(periodo.hasta)} · {resumen.dias} {resumen.dias === 1 ? "día" : "días"} con datos</p>
-      </div>
-      <div className="acciones">
-        <Link className="boton boton-secundario" href={`/reporte/ventas?${filtroReporte}`} target="_blank">Reporte PDF</Link>
-        <a className="boton boton-secundario" href={`/reporte/ventas/excel?${filtroReporte}`} download>Descargar Excel</a>
-      </div>
+      <EncabezadoPagina titulo="Ventas"
+        descripcion={`${titulo} · ${fechaTexto(periodo.desde)} a ${fechaTexto(periodo.hasta)} · ${resumen.dias} ${resumen.dias === 1 ? "día" : "días"} con datos`}
+        acciones={<>
+          <Link className="boton boton-secundario" href={`/reporte/ventas?${filtroReporte}`} target="_blank"><Icono nombre="documento" /> Reporte PDF</Link>
+          <a className="boton boton-secundario" href={`/reporte/ventas/excel?${filtroReporte}`} download><Icono nombre="descargar" /> Descargar Excel</a>
+        </>} />
 
       <VentasPorCanal canales={reporteCanales(d.canales,d.anterior.canales)} />
       <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}

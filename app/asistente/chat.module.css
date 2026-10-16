@@ -8,7 +8,7 @@
 .estado i.activo { background:#22805f; }
 .sucursal { display:flex; align-items:center; gap:8px; font-size:.8rem; color:var(--tinta-2); }
 .sucursal select { width:180px; min-height:40px; padding:8px 30px 8px 12px; border-radius:10px; font-size:.85rem; background:var(--papel-2); }
-.nueva { display:flex; align-items:center; gap:6px; min-height:40px; border:1px solid var(--linea); border-radius:10px; background:transparent; color:var(--tinta); padding:8px 12px; font-size:.8rem; cursor:pointer; }
+.nueva { display:flex; align-items:center; gap:6px; min-height:40px; border:1.5px solid var(--linea-fuerte); border-radius:var(--r-sm); background:transparent; color:var(--tinta); padding:8px 12px; font-size:.8rem; cursor:pointer; }
 .nueva:hover { background:var(--papel-2); }
 .aviso { padding:12px 24px; background:#fff8f2; color:var(--tinta-2); font-size:.8rem; line-height:1.6; border-bottom:1px solid #f3e7dc; }
 .aviso a { color:var(--accion-oscuro); text-underline-offset:3px; }
