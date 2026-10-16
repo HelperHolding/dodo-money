@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { Manrope } from "next/font/google";
 import "./globals.css";
+
+// Manrope servida desde el propio sitio: sin parpadeo de fuente ni petición a Google en cada visita.
+const manrope = Manrope({ subsets: ["latin"], display: "swap", variable: "--fuente-manrope" });
 
 export const metadata: Metadata = {
   title: "Dodo MX",
@@ -12,15 +16,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&display=swap"
-        />
-      </head>
+    <html lang="es" className={manrope.variable}>
       <body>{children}</body>
     </html>
   );
