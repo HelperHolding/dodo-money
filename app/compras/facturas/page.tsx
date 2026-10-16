@@ -34,7 +34,7 @@ export default async function Facturas({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <div className="encabezado">
+      <div className="encabezado compras-listado">
         <h1>Facturas</h1>
         <p>Facturas de las razones sociales del grupo. <Link href="/compras/razones-sociales">Razones sociales</Link> · <Link href="/compras/documentos">Filtrar por empresa</Link></p>
       </div>

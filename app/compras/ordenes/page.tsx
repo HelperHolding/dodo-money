@@ -52,7 +52,7 @@ export default async function Ordenes({ searchParams }: {
 
   return (
     <>
-      <div className="encabezado">
+      <div className="encabezado compras-listado">
         <h1>Órdenes de compra</h1>
         <p>Cada documento empieza como cotización y, al confirmarlo, es la orden de compra que ve la sucursal.</p>
       </div>

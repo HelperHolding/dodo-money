@@ -1063,7 +1063,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .pagos-hoy-resumen { display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
 .pagos-hoy-resumen h2 { margin-bottom:8px; }
 .pagos-hoy-monto { font-size:clamp(2.4rem,5vw,4rem); line-height:1.1; letter-spacing:-.04em; }
-.pagina:has(.pagos-hoy) { max-width:none; width:100%; padding-inline:clamp(16px,2vw,28px); }
+.pagina:has(.pagos-hoy, .compras-listado) { max-width:none; width:100%; padding-inline:clamp(16px,2vw,28px); }
 .pagos-tabla-marco { min-width:0; width:100%; overflow-x:auto; }
 .pagos-tabla { min-width:1000px; width:100%; table-layout:fixed; }
 .pagos-tabla th, .pagos-tabla td { white-space:normal; overflow-wrap:anywhere; min-width:0; vertical-align:top; }
