@@ -4,6 +4,21 @@ import {documentosCompra,filtrarDocumentosCompra,agruparDocumentosCompra,type Or
 const base={id:'o',nombre:'OC-0001',proveedor_id:'p',proveedor:'Proveedor Álamo',sucursal_id:'s',destino:'Zapopan-1',fecha:'2026-10-08',importe:116};
 const orden:OrdenCompraVista={...base,estado:'confirmada'};
 const factura:FacturaCompraVista={...base,id:'f',nombre:'F-1',estado:'por_pagar',saldo:116,vence_el:'2026-10-07',tipo:'ingreso',origen:'cfdi',sustituido_por:null};
+
+test('artículo: última factura por emisión, incluye pagadas y excluye canceladas, sustituidas y notas',()=>{
+ const fs=[{...factura,id:'anterior',fecha:'2026-10-01',articulos:['Alitas de pollo']},{...factura,id:'ultima',fecha:'2026-10-10',estado:'pagada' as const,saldo:0,articulos:['Alitas de pollo']},...['cancelada','nota','sustituida'].map(id=>({...factura,id,fecha:'2026-10-15',articulos:['Alitas de pollo'],estado:id==='nota'?'pagada' as const:'cancelada' as const,tipo:id==='nota'?'egreso' as const:'ingreso' as const,sustituido_por:id==='sustituida'?'ultima':null}))];
+ const filas=documentosCompra([],fs,[],'2026-10-16');assert.equal(filtrarDocumentosCompra(filas,{q:'alitas',ultima:'si',canceladas:true})[0].id,'ultima');
+ assert.equal(filtrarDocumentosCompra(filas,{q:'alitas',ultima:'si',hasta:'2026-10-05'})[0].id,'anterior');
+ assert.equal(filtrarDocumentosCompra(filas,{q:'alitas',ultima:'si',proveedor:'otro'}).length,0);
+ assert.equal(filtrarDocumentosCompra(filas,{ultima:'si'}).length,0);
+});
+test('artículo: busca conceptos y pequeños errores, sin inferir por nombre del proveedor',()=>{
+ const filas=documentosCompra([], [{...factura,id:'alitas',articulos:['Alitas de pollo'],registrado_en:'2026-10-08T12:00:00Z'},{...factura,id:'falso',proveedor:'Alitas del Norte',articulos:['Tortilla']},{...factura,id:'reciente',articulos:['Alitas de pollo'],registrado_en:'2026-10-08T15:00:00Z'}],[],'2026-10-16');
+ assert.equal(filtrarDocumentosCompra(filas,{q:'alti as',articulo:'si'}).length,0);
+ assert.equal(filtrarDocumentosCompra(filas,{q:'alitas',ultima:'si'})[0].id,'reciente');
+ assert.equal(filtrarDocumentosCompra(filas,{q:'alitsa',ultima:'si'})[0].id,'reciente');
+ assert.equal(filtrarDocumentosCompra(filas,{q:'alitas',articulo:'si'}).length,2);
+});
 test('documentos: cotización cambia a orden al confirmar sin crear otro registro',()=>{
  assert.equal(documentosCompra([{...orden,estado:'borrador'}],[],[],'2026-10-08')[0].etapa,'cotizacion');
  assert.equal(documentosCompra([{...orden,estado:'enviada'}],[],[],'2026-10-08')[0].etapa,'cotizacion');

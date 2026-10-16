@@ -103,7 +103,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                   return (
                     <ArticuloBuscable key={a.id} id={a.id}><li className="fila" data-alerta={a.activo ? undefined : "si"}>
                       <div className="fila-nombre">
-                        <Link href={`/compras/articulos#a-${a.id}`}>{a.nombre}</Link>
+                        <Link href={`/compras/articulos#a-${a.id}`}>{a.nombre}</Link><small><Link href={`/compras/documentos?etapa=factura&articulo=si&ultima=si&q=${encodeURIComponent(a.nombre)}`}>Última factura de este artículo</Link></small>
                         <small>{a.unidad} · {NOMBRE_TASA_IVA[a.tasa_iva]}{a.activo ? "" : " · inactivo"}</small>
                       </div>
                       <div className="fila-datos">
@@ -123,7 +123,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
                   <ArticuloBuscable key={a.id} id={a.id}><article id={`a-${a.id}`} className="tarjeta" data-alerta={a.activo ? undefined : "si"}>
                     <div className="tarjeta-encabezado">
                       <div>
-                        <h3>{a.nombre}</h3>
+                        <h3>{a.nombre}</h3><p><Link href={`/compras/documentos?etapa=factura&articulo=si&ultima=si&q=${encodeURIComponent(a.nombre)}`}>Última factura de este artículo</Link></p>
                         <p className="tarjeta-estado">{a.unidad} · {NOMBRE_TASA_IVA[a.tasa_iva]}{a.activo ? "" : " · inactivo"}</p>
                       </div>
                     </div>

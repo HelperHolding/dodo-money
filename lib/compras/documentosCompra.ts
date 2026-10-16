@@ -1,10 +1,12 @@
 import type { EstadoOrden } from "./ordenes";
 import type { EstadoFactura } from "./facturas";
+// @ts-expect-error Node strip-types requiere extensión explícita.
+import {buscarAproximado} from '../busquedaAproximada.ts';
 
 export type EtapaCompra = "cotizacion" | "orden" | "factura";
 export type TonoCompra = "ambar" | "azul" | "violeta" | "verde" | "gris";
 export const ETAPAS_COMPRA: Record<EtapaCompra,string> = {cotizacion:"Cotización",orden:"Orden de compra",factura:"Factura"};
-type Base = {rfc_receptor?:string;empresa?:string;id:string;nombre:string;proveedor_id:string;proveedor:string;sucursal_id:string|null;destino:string;fecha:string;importe:number};
+type Base = {articulos?:string[];registrado_en?:string;rfc_receptor?:string;empresa?:string;id:string;nombre:string;proveedor_id:string;proveedor:string;sucursal_id:string|null;destino:string;fecha:string;importe:number};
 export type OrdenCompraVista = Base & {estado:EstadoOrden;recepcion?:"nada"|"parcial"|"completa"};
 export type FacturaCompraVista = Base & {estado:EstadoFactura;saldo:number;vence_el:string;tipo:"ingreso"|"egreso";origen:"manual"|"cfdi";sustituido_por:string|null};
 export type LigaCompra = {orden_id:string;factura_id:string};
@@ -34,9 +36,15 @@ export function documentosCompra(ordenes:readonly OrdenCompraVista[],facturas:re
  return filas.sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.clave.localeCompare(b.clave));
 }
 const normalizar=(s:string)=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-export function filtrarDocumentosCompra(filas:readonly DocumentoCompra[],f:{empresa?:string;etapa?:string;estado?:string;proveedor?:string;sucursal?:string;q?:string;canceladas?:boolean;desde?:string;hasta?:string}){
- const palabras=normalizar(f.q?.trim()??"").split(/\s+/).filter(Boolean);
- return filas.filter(d=>(!f.empresa||d.rfc_receptor===f.empresa)&&(f.canceladas||d.estado!=="cancelada")&&(!f.etapa||d.etapa===f.etapa)&&(!f.estado||d.estado===f.estado)&&(!f.proveedor||d.proveedor_id===f.proveedor)&&(!f.sucursal||(f.sucursal==="oficina"?d.sucursal_id===null:d.sucursal_id===f.sucursal))&&(!f.desde||d.fecha>=f.desde)&&(!f.hasta||d.fecha<=f.hasta)&&palabras.every(q=>normalizar([d.nombre,d.proveedor,d.destino,d.empresa??"",d.rfc_receptor??"",...d.ordenes.map(o=>o.nombre)].join(" ")).includes(q)));
+export function filtrarDocumentosCompra(filas:readonly DocumentoCompra[],f:{empresa?:string;etapa?:string;estado?:string;proveedor?:string;sucursal?:string;q?:string;canceladas?:boolean;desde?:string;hasta?:string;articulo?:string;ultima?:string}){
+ const ultima=f.ultima==='si',soloArticulo=f.articulo==='si'||ultima;
+ const base=filas.filter(d=>(!f.empresa||d.rfc_receptor===f.empresa)&&((!ultima&&f.canceladas)||d.estado!=="cancelada")&&(!ultima||d.etapa==='factura'&&!d.notaCredito&&d.estadoTexto!=='Sustituida')&&(!f.etapa||ultima||d.etapa===f.etapa)&&(!f.estado||d.estado===f.estado)&&(!f.proveedor||d.proveedor_id===f.proveedor)&&(!f.sucursal||(f.sucursal==="oficina"?d.sucursal_id===null:d.sucursal_id===f.sucursal))&&(!f.desde||d.fecha>=f.desde)&&(!f.hasta||d.fecha<=f.hasta));
+ const coincidencias=buscarAproximado(base,f.q??'',d=>({nombres:soloArticulo?d.articulos??[]:[d.nombre,d.proveedor,d.destino,d.empresa??'',d.rfc_receptor??'',...d.ordenes.map(o=>o.nombre),...(d.articulos??[])]}));
+ if(!ultima)return coincidencias;
+ if(!f.q?.trim())return [];
+ const palabras=normalizar(f.q).trim().split(/\s+/).filter(Boolean);
+ const exactas=coincidencias.filter(d=>palabras.every(p=>normalizar((d.articulos??[]).join(' ')).includes(p)));
+ return (exactas.length?exactas:coincidencias).sort((a,b)=>b.fecha.localeCompare(a.fecha)||(b.registrado_en??'').localeCompare(a.registrado_en??'')||a.clave.localeCompare(b.clave)).slice(0,1);
 }
 
 export function agruparDocumentosCompra(filas:readonly DocumentoCompra[],por?:string){
