@@ -36,7 +36,7 @@ export default async function Turnos({ searchParams }: { searchParams: Promise<{
       <div className="rejilla">
         <div className="saldo"><span>Turnos</span><span className="saldo-monto">{total.turnos}</span>
           {total.abiertos > 0 && <span className="saldo-nota">{total.abiertos} sin cerrar</span>}</div>
-        <div className="saldo" style={Math.round(total.diferencia * 100) !== 0 ? { borderLeftColor: "var(--alerta)" } : undefined}>
+        <div className="saldo" data-alerta={Math.round(total.diferencia * 100) !== 0 ? "si" : undefined}>
           <span>Diferencia de cierres</span><span className="saldo-monto">{pesos(total.diferencia)}</span>
         </div>
         <div className="saldo"><span>Cierre del día</span><span className="saldo-monto">{dia.cierre ? "Hecho" : "Falta"}</span></div>

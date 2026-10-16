@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaMX, fechaTexto, hora, hoyCalendarioMX, pesos } from "@/lib/formato";
@@ -71,18 +72,17 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Salidas a corporativo</h1><Link className="boton boton-secundario" href="/recolecciones">Recolecciones por rango de cierres</Link>
-        <p>La sucursal registra la salida, un admin la recoge y corporativo cuenta el efectivo y confirma que llegó.</p>
-      </div>
+      <EncabezadoPagina titulo="Salidas a corporativo"
+        descripcion="La sucursal registra la salida, un admin la recoge y corporativo cuenta el efectivo y confirma que llegó."
+        acciones={<Link className="boton boton-secundario" href="/recolecciones">Recolecciones por rango de cierres</Link>} />
       <Aviso ok={ok} error={error} />
 
       <div className="rejilla">
-        <div className="saldo" style={resumen.cuantas ? { borderLeftColor: "var(--alerta)" } : undefined}>
+        <div className="saldo" data-alerta={resumen.cuantas ? "si" : undefined}>
           <span>En camino ({resumen.cuantas})</span><span className="saldo-monto">{pesos(resumen.total)}</span>
         </div>
         <div className="saldo"><span>Por recoger</span><span className="saldo-monto">{resumen.porRecoger}</span></div>
-        <div className="saldo" style={resumen.noCuadro ? { borderLeftColor: "var(--alerta)" } : undefined}>
+        <div className="saldo" data-alerta={resumen.noCuadro ? "si" : undefined}>
           <span>No cuadró (30 días)</span><span className="saldo-monto">{resumen.noCuadro}</span>
         </div>
       </div>
