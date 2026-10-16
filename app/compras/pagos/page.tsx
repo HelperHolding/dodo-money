@@ -1,3 +1,4 @@
+import {leerRazonesSociales} from '@/lib/compras/razonesSociales';
 import {TablaFacturasPago} from './TablaFacturasPago';
 import {validarFiltroCorrida} from '@/lib/compras/corridaPagos';
 import Link from "next/link";
@@ -16,7 +17,7 @@ import { diasDePago } from "../servidor";
 import { FormComplementos } from "./FormComplementos";
 
 type Factura = {
-  id: string; uuid: string | null; uuid_manual:string|null; pdf_ruta:string|null; xml_ruta:string|null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null;
+  rfc_receptor:string; id: string; uuid: string | null; uuid_manual:string|null; pdf_ruta:string|null; xml_ruta:string|null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null;
   pago_programado_forma:FormaPago|null; estado: EstadoFactura; proveedor_id: string; sucursal_id: string | null; falta_complemento: boolean;
   proveedores: { razon_social: string; nombre_comercial: string | null } | null;
 };
@@ -30,7 +31,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const hoy = hoyCalendarioMX();
   const [facturasLeidas, pagos, ligas, { data: proveedores }, { data: sucursales }, { data: conComplemento }, aplicacionesMes] = await Promise.all([
     leerTodo<Factura>((d, h) => supabase.from("facturas_saldo")
-      .select("id, uuid, uuid_manual, pdf_ruta, xml_ruta, serie, folio, saldo, vence_el, pago_programado_el,pago_programado_forma, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
+      .select("rfc_receptor, id, uuid, uuid_manual, pdf_ruta, xml_ruta, serie, folio, saldo, vence_el, pago_programado_el,pago_programado_forma, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
       .eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).order("vence_el").order("id").range(d, h).returns<Factura[]>()),
     leerTodo<Pago>((d, h) => supabase.from("pagos").select("id, fecha, monto, forma, referencia, anulado_en, proveedores(razon_social, nombre_comercial)")
       .gte("fecha", `${hoy.slice(0, 7)}-01`).order("fecha", { ascending: false }).order("id").range(d, h).returns<Pago[]>()),
@@ -39,7 +40,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     // Falta complemento: cualquier estado (lo normal es una PPD ya pagada completa).
     supabase.from("facturas_saldo")
-      .select("id, uuid, uuid_manual, pdf_ruta, xml_ruta, serie, folio, saldo, vence_el, pago_programado_el,pago_programado_forma, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
+      .select("rfc_receptor, id, uuid, uuid_manual, pdf_ruta, xml_ruta, serie, folio, saldo, vence_el, pago_programado_el,pago_programado_forma, estado, proveedor_id, sucursal_id, falta_complemento, proveedores(razon_social, nombre_comercial)")
       .eq("falta_complemento", true).order("vence_el").returns<Factura[]>(),
     // Lo aplicado en el mes, para que "Pagado este mes" respete los filtros.
     leerTodo<Aplicacion>((d, h) => supabase.from("pago_aplicaciones")
@@ -65,11 +66,19 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
     && (complemento !== "si" || f.falta_complemento));
   const sinComplemento = (conComplemento ?? []).filter((f) => (!proveedor || f.proveedor_id === proveedor) && (!sucursal || deSucursal(f, sucursal)));
 
-  const pdfAdjuntos=new Set<string>();
+  const razones=await leerRazonesSociales(supabase);
+  const empresas=new Map(razones.map(e=>[e.rfc,e.razon_social]));
+  type Comprobante={href:string;nombre:string;formato:string};
+  const comprobantesAdjuntos=new Map<string,Comprobante[]>();
   for(let i=0;i<visibles.length;i+=200){const ids=visibles.slice(i,i+200).map(f=>f.id);
-   const adjuntos=await leerTodo<{factura_id:string}>((d,h)=>supabase.from('compra_adjuntos').select('factura_id').in('factura_id',ids).eq('mime','application/pdf').not('confirmado_en','is',null).is('retirado_en',null).order('id').range(d,h));
-   for(const a of adjuntos)pdfAdjuntos.add(a.factura_id);
+   const adjuntos=await leerTodo<{id:string;factura_id:string;nombre:string;mime:string}>((d,h)=>supabase.from('compra_adjuntos').select('id,factura_id,nombre,mime').in('factura_id',ids).in('mime',['application/pdf','image/jpeg','image/png','image/webp']).not('confirmado_en','is',null).is('retirado_en',null).order('id').range(d,h));
+   for(const a of adjuntos)comprobantesAdjuntos.set(a.factura_id,[...(comprobantesAdjuntos.get(a.factura_id)??[]),{href:`/compras/adjuntos/${a.id}?ver=si`,nombre:a.nombre,formato:a.mime==='application/pdf'?'PDF':'Foto'}]);
   }
+  const comprobantesDe=(f:Factura):Comprobante[]=>[
+   ...(/\.(pdf|jpe?g|png|webp)$/i.test(f.pdf_ruta??'')?[{href:`/compras/facturas/${f.id}/archivo?tipo=comprobante`,nombre:'Comprobante original',formato:/\.pdf$/i.test(f.pdf_ruta??'')?'PDF':'Foto'}]:[]),
+   ...(comprobantesAdjuntos.get(f.id)??[])
+  ];
+  const empresaDe=(f:Factura)=>({empresa:empresas.get(f.rfc_receptor)??'Razón social por identificar',rfcReceptor:f.rfc_receptor});
   const r = resumenPagos(visibles, [], hoy);
   const aplicadas = aplicacionesMes.filter((a) => (!proveedor || a.pagos.proveedor_id === proveedor)
     && (!sucursal || deSucursalId(a.factura_id, a.facturas?.sucursal_id ?? null, sucursal)));
@@ -81,7 +90,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const porDia: Record<string, FacturaDelDia[]> = {};
   for (const f of visibles) {
     const d = fechaDePago(f);
-    (porDia[d] ??= []).push({ id: f.id, nombre: nombre(f), proveedor: proveedorDe(f), saldo: Number(f.saldo), vencida: vencida(f, hoy),proveedorId:f.proveedor_id,uuid:f.uuid??f.uuid_manual,uuidManual:!f.uuid&&!!f.uuid_manual,pdf:!!f.pdf_ruta?.toLowerCase().endsWith('.pdf')||pdfAdjuntos.has(f.id),xml:!!f.xml_ruta,fechaPago:d,formaPrevista:f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:undefined });
+    (porDia[d] ??= []).push({ id: f.id, nombre: nombre(f), proveedor: proveedorDe(f), saldo: Number(f.saldo), vencida: vencida(f, hoy),proveedorId:f.proveedor_id,uuid:f.uuid??f.uuid_manual,uuidManual:!f.uuid&&!!f.uuid_manual,...empresaDe(f),comprobantes:comprobantesDe(f),xml:!!f.xml_ruta,fechaPago:d,formaPrevista:f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:undefined });
   }
   const grupos = { vencidas: [] as Factura[], semana: [] as Factura[], despues: [] as Factura[] };
   for (const f of visibles) grupos[grupoPorPagar(f, hoy)].push(f);
@@ -92,7 +101,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const delRango=rango?visibles.filter(f=>fechaDePago(f)>=rango.desde&&fechaDePago(f)<=rango.hasta):[];
   const suma=(fs:Factura[])=>fs.reduce((n,f)=>n+Math.round(Number(f.saldo)*100),0)/100;
   const nombreSucursal=new Map((sucursales??[]).map(s=>[s.id,s.nombre]));
-  const datosTabla=(fs:typeof visibles)=>fs.map(f=>({id:f.id,nombre:nombre(f),proveedor:proveedorDe(f),saldo:Number(f.saldo),uuid:f.uuid??f.uuid_manual,uuidManual:!f.uuid&&!!f.uuid_manual,fechaPago:fechaDePago(f),formaPrevista:f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:undefined,pdf:!!f.pdf_ruta?.toLowerCase().endsWith('.pdf')||pdfAdjuntos.has(f.id),xml:!!f.xml_ruta,proveedorId:f.proveedor_id,sucursal:[...(sucursalesDe.get(f.id)??new Set([f.sucursal_id??'oficina']))].map(s=>s==='oficina'?'Oficina':nombreSucursal.get(s)??s).join(', ')}));
+  const datosTabla=(fs:typeof visibles)=>fs.map(f=>({id:f.id,nombre:nombre(f),proveedor:proveedorDe(f),saldo:Number(f.saldo),uuid:f.uuid??f.uuid_manual,uuidManual:!f.uuid&&!!f.uuid_manual,fechaPago:fechaDePago(f),formaPrevista:f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:undefined,...empresaDe(f),comprobantes:comprobantesDe(f),xml:!!f.xml_ruta,proveedorId:f.proveedor_id,sucursal:[...(sucursalesDe.get(f.id)??new Set([f.sucursal_id??'oficina']))].map(s=>s==='oficina'?'Oficina':nombreSucursal.get(s)??s).join(', ')}));
 
 
   const Tarjetas = ({ lista }: { lista: Factura[] }) => (

@@ -1067,11 +1067,11 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .pagos-tabla-marco { min-width:0; width:100%; overflow-x:auto; }
 .pagos-tabla { min-width:1000px; width:100%; table-layout:fixed; }
 .pagos-tabla th, .pagos-tabla td { white-space:normal; overflow-wrap:anywhere; min-width:0; vertical-align:top; }
-.pagos-tabla th:nth-child(1) { width:15%; }
-.pagos-tabla th:nth-child(2) { width:20%; }
-.pagos-tabla th:nth-child(3) { width:20%; }
-.pagos-tabla th:nth-child(4) { width:13%; }
-.pagos-tabla th:nth-child(5) { width:13%; }
+.pagos-tabla th:nth-child(1) { width:20%; }
+.pagos-tabla th:nth-child(2) { width:18%; }
+.pagos-tabla th:nth-child(3) { width:19%; }
+.pagos-tabla th:nth-child(4) { width:12%; }
+.pagos-tabla th:nth-child(5) { width:12%; }
 .pagos-tabla th:nth-child(6) { width:19%; }
 .pagos-tabla .acciones { gap:6px; }
 .pagos-tabla .boton { font-size:.8rem; padding:8px 10px; white-space:normal; max-width:100%; text-align:center; overflow-wrap:anywhere; }
