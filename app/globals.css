@@ -40,6 +40,7 @@
   --info-fondo: #e8f0fd;
   --alerta-2: #a82020;
   --violeta: #67408d;
+  --ambar: #ae7b11;
   --violeta-fondo: #f0e9ff;
   --turquesa: #1a7070;
   --turquesa-fondo: #e3f5f5;
@@ -56,6 +57,13 @@
   --dato-otro: #888780;      /* "Otros": gris a propósito */
   --dato-sin: #b4b2a9;       /* sin categoría */
   --dato-azul: var(--dato-2);
+
+  /* P&L: los mismos colores de sección que el Excel de Finanzas (la gente ya los reconoce). */
+  --pl-venta: #bdd7ee;
+  --pl-costo: #d9ead3;
+  --pl-operacion: #fce4d6;
+  --pl-oficina: #ead1dc;
+  --pl-memo: #f2f2f2;
   --dato-pista: #edf0f4;
 
   /* Menú lateral y barras negras */
@@ -301,9 +309,9 @@ input[type="number"] { text-align: right; }
 .contactos-encabezado h2 { margin:0; }
 .contactos-encabezado .boton { flex:0 0 auto; }
 .proveedor-indicadores { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:16px 0; }
-.proveedor-indicador { display:flex; flex-direction:column; gap:8px; align-items:flex-start; text-align:left; font:inherit; color:var(--tinta); background:var(--blanco); border:1px solid var(--linea); border-top:3px solid #c58b16; border-radius: var(--r-sm); padding:16px 18px; cursor:pointer; }
-.proveedor-indicador[data-tono="azul"] { border-top-color:#2376ab; }
-.proveedor-indicador[data-tono="violeta"] { border-top-color:#7955bd; }
+.proveedor-indicador { display:flex; flex-direction:column; gap:8px; align-items:flex-start; text-align:left; font:inherit; color:var(--tinta); background:var(--blanco); border:1px solid var(--linea); border-top:3px solid var(--ambar); border-radius: var(--r-sm); padding:16px 18px; cursor:pointer; }
+.proveedor-indicador[data-tono="azul"] { border-top-color:var(--info); }
+.proveedor-indicador[data-tono="violeta"] { border-top-color:var(--violeta); }
 .proveedor-indicador strong { font-size:1.8rem; line-height:1.2; }
 .proveedor-indicador small { color:var(--tinta-2); }
 .proveedor-indicador:hover, .proveedor-indicador[aria-expanded="true"] { background:var(--papel-2); }
@@ -751,12 +759,12 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .tabla th.monto { text-align: right; }
 
 /* ─── P&L como estado de resultados: secciones con color, subtotales en barra, montos contables ─── */
-.tabla-pl { --pl-fondo: var(--papel-2); --pl-barra: #7f7f7f; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.tabla-pl .pl-venta { --pl-fondo: #bdd7ee; }
-.tabla-pl .pl-costo { --pl-fondo: #d9ead3; }
-.tabla-pl .pl-operacion { --pl-fondo: #fce4d6; }
-.tabla-pl .pl-oficina { --pl-fondo: #ead1dc; }
-.tabla-pl .pl-memo { --pl-fondo: #f2f2f2; }
+.tabla-pl { --pl-fondo: var(--papel-2); --pl-barra: var(--tinta-3); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.tabla-pl .pl-venta { --pl-fondo: var(--pl-venta); }
+.tabla-pl .pl-costo { --pl-fondo: var(--pl-costo); }
+.tabla-pl .pl-operacion { --pl-fondo: var(--pl-operacion); }
+.tabla-pl .pl-oficina { --pl-fondo: var(--pl-oficina); }
+.tabla-pl .pl-memo { --pl-fondo: var(--pl-memo); }
 .tabla-pl .pl-seccion th {
   background: var(--pl-fondo); color: var(--tinta); font-size: 0.85rem; font-weight: 800; text-transform: uppercase;
   letter-spacing: 0.03em; padding: 8px 10px; border-bottom: 0;
@@ -880,15 +888,15 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .compra-etiquetas { display:flex; align-items:center; flex-wrap:wrap; gap:6px; max-width:260px; }
 .compra-etapa,.compra-estado,.compra-vencida,.compra-meta { display:inline-block; font-size:.72rem; line-height:1.4; font-weight:700; border-radius: var(--r-sm); padding:4px 8px; }
 .compra-etapa[data-tono="ambar"],.compra-estado[data-tono="ambar"] { background:var(--aviso-fondo); color:var(--aviso-texto); }
-.compra-etapa[data-tono="azul"],.compra-estado[data-tono="azul"] { background:#e7efff; color:#24528d; }
-.compra-etapa[data-tono="violeta"],.compra-estado[data-tono="violeta"] { background:#f0e9ff; color:#67408d; }
+.compra-etapa[data-tono="azul"],.compra-estado[data-tono="azul"] { background:var(--info-fondo); color:var(--info); }
+.compra-etapa[data-tono="violeta"],.compra-estado[data-tono="violeta"] { background:var(--violeta-fondo); color:var(--violeta); }
 .compra-estado[data-tono="verde"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); }
 .compra-etapa[data-tono="gris"],.compra-estado[data-tono="gris"],.compra-meta { background:var(--neutro-fondo); color:var(--neutro-texto); }
 .compra-vencida { background:var(--alerta-fondo); color:var(--alerta-texto); }
 .compra-tarjeta { gap:12px; border-top:3px solid var(--linea); }
-.compra-tarjeta[data-tono="ambar"] { border-top-color:#ae7b11; }
-.compra-tarjeta[data-tono="azul"] { border-top-color:#3c6fad; }
-.compra-tarjeta[data-tono="violeta"] { border-top-color:#8864b0; }
+.compra-tarjeta[data-tono="ambar"] { border-top-color:var(--ambar); }
+.compra-tarjeta[data-tono="azul"] { border-top-color:var(--info); }
+.compra-tarjeta[data-tono="violeta"] { border-top-color:var(--violeta); }
 .compra-tarjeta[data-tono="verde"] { border-top-color:var(--cuadra); }
 .compra-regreso { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:10px 0 18px; font-size:.85rem; }
 @media(max-width:700px) {
@@ -911,12 +919,12 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 /* Indicadores y roadmap de aperturas. */
 .ap-indicadores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
 .ap-indicador { display:flex; flex-direction:column; gap:10px; padding:20px; border:1px solid var(--linea); border-top:3px solid var(--dato-azul); border-radius: var(--r-md); color:var(--tinta); text-decoration:none; background:var(--blanco); min-width:0; }
-.ap-indicador:hover { border-color:var(--dato-azul); box-shadow:0 3px 12px #172b4d0c; }
+.ap-indicador:hover { border-color:var(--dato-azul); box-shadow:var(--sombra-1); }
 .ap-indicador > span { color:var(--tinta-2); font-size:.9rem; font-weight:600; }
 .ap-indicador > strong { font-size:clamp(1.4rem,2.2vw,2rem); overflow-wrap:anywhere; }
 .ap-indicador small, .ap-nota { color:var(--tinta-2); font-size:.85rem; line-height:1.5; }
-.ap-indicador[data-alerta="true"] { border-top-color:#c84343; }
-.ap-indicador[data-alerta="true"] > strong { color:#af3030; }
+.ap-indicador[data-alerta="true"] { border-top-color:var(--alerta); }
+.ap-indicador[data-alerta="true"] > strong { color:var(--alerta-texto); }
 .ap-indicadores progress, .ap-roadmap progress { width:100%; height:8px; border:0; border-radius: var(--r-sm); overflow:hidden; accent-color:var(--dato-azul); background:var(--dato-pista); }
 .ap-indicadores progress::-webkit-progress-bar, .ap-roadmap progress::-webkit-progress-bar { background:var(--dato-pista); border-radius: var(--r-sm); }
 .ap-indicadores progress::-webkit-progress-value, .ap-roadmap progress::-webkit-progress-value { background:var(--ap-color,var(--dato-azul)); border-radius: var(--r-sm); }
@@ -935,12 +943,12 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .ap-titulo { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
 .ap-titulo h2 { margin:0; }.ap-titulo > span { font-size:.85rem; color:var(--tinta-2); }
 .ap-roadmap { padding:0; margin:24px 0 0; list-style:none; display:flex; flex-direction:column; gap:0; }
-.ap-roadmap li { --ap-color:#8b93a3; display:grid; grid-template-columns:36px minmax(0,1fr); gap:16px; padding:0 0 24px; position:relative; }
+.ap-roadmap li { --ap-color:var(--tinta-3); display:grid; grid-template-columns:36px minmax(0,1fr); gap:16px; padding:0 0 24px; position:relative; }
 .ap-roadmap li:not(:last-child)::before { content:''; position:absolute; top:36px; bottom:0; left:17px; width:2px; background:var(--dato-pista); }
-.ap-roadmap li:last-child { padding-bottom:0; }.ap-roadmap li[data-tono="verde"] { --ap-color:#23845b; }.ap-roadmap li[data-tono="azul"] { --ap-color:var(--dato-azul); }.ap-roadmap li[data-tono="rojo"] { --ap-color:#c84343; }.ap-roadmap li[data-tono="ambar"] { --ap-color:#ae7a13; }
+.ap-roadmap li:last-child { padding-bottom:0; }.ap-roadmap li[data-tono="verde"] { --ap-color:var(--cuadra); }.ap-roadmap li[data-tono="azul"] { --ap-color:var(--dato-azul); }.ap-roadmap li[data-tono="rojo"] { --ap-color:var(--alerta); }.ap-roadmap li[data-tono="ambar"] { --ap-color:var(--ambar); }
 .ap-numero { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; color:var(--ap-color); border:2px solid var(--ap-color); font-weight:700; background:var(--blanco); z-index:1; }
 .ap-roadmap a { color:var(--tinta); font-weight:600; text-decoration:none; }.ap-roadmap a:hover { text-decoration:underline; }.ap-roadmap progress { margin:12px 0 8px; accent-color:var(--ap-color); }
-.ap-estado { display:inline-block; padding:4px 9px; border-radius: var(--r-sm); font-size:.85rem; background:var(--dato-pista); color:#525b6b; }
+.ap-estado { display:inline-block; padding:4px 9px; border-radius: var(--r-sm); font-size:.85rem; background:var(--dato-pista); color:var(--neutro-texto); }
 .ap-estado[data-tono="bloqueado"] { background:var(--alerta-fondo); color:var(--alerta-texto); }.ap-estado[data-tono="en_curso"] { background:var(--info-fondo); color:var(--info); }.ap-estado[data-tono="terminado"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); }.ap-estado[data-tono="recibido"] { background:var(--turquesa-fondo); color:var(--turquesa); }
 @media(max-width:1100px) { .ap-indicadores { grid-template-columns:repeat(2,minmax(0,1fr)); } .ap-graficas { grid-template-columns:1fr; } }
 @media(max-width:520px) { .ap-indicadores { gap:10px; }.ap-indicador { padding:14px; }.ap-panel { padding:16px; }.ap-distribucion { gap:16px; }.ap-dona { width:120px; height:120px; flex-basis:120px; }.ap-roadmap li { gap:10px; } }
@@ -954,7 +962,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .rappi-leyenda { display:flex; align-items:center; gap:9px; font-size:.85rem; }
 .rappi-leyenda > span:nth-child(2) { flex:1; }.rappi-leyenda small { min-width:38px; text-align:right; color:var(--tinta-2); }
 .rappi-top-titulo { font-size:1rem; margin-top:26px; }
-.rappi-producto { display:flex; flex-direction:column; gap:7px; margin-top:14px; font-size:.85rem; }.rappi-producto > div:first-child { display:flex; justify-content:space-between; gap:12px; }.rappi-producto strong { white-space:nowrap; }.rappi-producto .rappi-barra > span { background:#23845b; }
+.rappi-producto { display:flex; flex-direction:column; gap:7px; margin-top:14px; font-size:.85rem; }.rappi-producto > div:first-child { display:flex; justify-content:space-between; gap:12px; }.rappi-producto strong { white-space:nowrap; }.rappi-producto .rappi-barra > span { background:var(--cuadra); }
 .rappi-acordeon > summary { cursor:pointer; color:var(--tinta); font-weight:600; }
 .caja-chica-acordeon > summary { cursor:pointer; color:var(--tinta); font-weight:600; }
 .compra-busqueda-barra { display:flex; align-items:stretch; gap:14px; margin:24px 0 12px; }
@@ -965,7 +973,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .compra-busqueda input:focus { outline:none; box-shadow:none; }
 .compra-abrir-filtros { display:flex; align-items:center; justify-content:center; gap:10px; }
 .compra-abrir-filtros svg { width:22px; height:22px; }
-.compra-filtros-cantidad { background:var(--accion); color:#000; padding:2px 8px; border-radius: var(--r-full); font-size:.85rem; }
+.compra-filtros-cantidad { background:var(--accion); color:var(--accion-texto); padding:2px 8px; border-radius: var(--r-full); font-size:.85rem; }
 .compra-filtros-modal { width:min(760px,calc(100vw - 32px)); max-height:calc(100dvh - 40px); box-sizing:border-box; overflow:auto; border:1px solid var(--linea); border-radius: var(--r-lg); padding:28px; color:var(--tinta); background:var(--blanco); box-shadow:var(--sombra-2); }
 .compra-filtros-modal::backdrop { background:#0007; }
 .compra-modal-encabezado { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:24px; }
@@ -1036,8 +1044,8 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .inicio-ventas-filtros .campo { min-width:180px; }
 .inicio-ventas-kpis strong { font-size:clamp(1.1rem,1.6vw,1.5rem); }
 .inicio-ventas-cambio { font-size:.75rem; }
-.inicio-ventas-cambio[data-direccion="sube"] { color:#17613f; }
-.inicio-ventas-cambio[data-direccion="baja"] { color:#923b36; }
+.inicio-ventas-cambio[data-direccion="sube"] { color:var(--cuadra-texto); }
+.inicio-ventas-cambio[data-direccion="baja"] { color:var(--alerta-texto); }
 .inicio-dona-canales .cat-pos { stroke:var(--accion); }
 .inicio-dona-canales .cat-rappi { stroke:var(--dato-2); }
 .inicio-dona-canales .dona-punto.cat-pos { background:var(--accion); }
@@ -1048,8 +1056,8 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .compra-barra .accesos button {font:inherit;font-weight:600;border:1.5px solid var(--linea-fuerte);background:var(--blanco);color:var(--tinta);border-radius: var(--r-sm);min-height:40px;padding:8px 14px;cursor:pointer;}
 .compra-barra .accesos button[aria-current="page"] {background:var(--accion-tinte);border-color:var(--accion);color:var(--accion-oscuro);}
 .compra-grupo {margin-bottom:18px;}
-.compra-grupo>details>summary {cursor:pointer;padding:16px 20px;background:#f5f6f8;border:1px solid #e1e3e6;border-radius: var(--r-md);font-weight:700;}
-.compra-grupo>details>summary span {font-weight:400;font-size:.85rem;margin-left:14px;color:#59616d;}
+.compra-grupo>details>summary {cursor:pointer;padding:16px 20px;background:var(--papel-2);border:1px solid var(--linea);border-radius: var(--r-md);font-weight:700;}
+.compra-grupo>details>summary span {font-weight:400;font-size:.85rem;margin-left:14px;color:var(--tinta-2);}
 .compra-grupo>details[open]>summary {margin-bottom:10px;}
 
 .costeo-rango {display:flex;gap:8px;}
@@ -1058,8 +1066,8 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .costeo-ordenar:focus-visible {outline:3px solid var(--anillo);outline-offset:4px;}
 .costeo-rapidos button[aria-pressed="true"] {background:var(--accion-tinte);box-shadow:inset 0 0 0 1px var(--accion);}
 
-.recepcion-hecha {color:#16724f;font-weight:600;font-size:.85rem;}
-.pagos-hoy { border-top:4px solid var(--acento, #ff6900); }
+.recepcion-hecha {color:var(--cuadra);font-weight:600;font-size:.85rem;}
+.pagos-hoy { border-top:4px solid var(--accion); }
 .pagos-hoy-resumen { display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
 .pagos-hoy-resumen h2 { margin-bottom:8px; }
 .pagos-hoy-monto { font-size:clamp(2.4rem,5vw,4rem); line-height:1.1; letter-spacing:-.04em; }
@@ -1194,3 +1202,30 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 /* El botón principal de cada sección plegable: a su tamaño en computadora, a todo lo ancho en celular. */
 .plegable-cuerpo > .boton { align-self: flex-start; }
 @media (max-width: 640px) { .plegable-cuerpo > .boton { align-self: stretch; } }
+
+/* ─── Utilidades de texto (antes estilos en línea) ─── */
+.texto-libre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.texto-saltos { white-space: pre-wrap; }
+.texto-partible { overflow-wrap: anywhere; }
+
+/* Cifra grande suelta (márgenes por canal); data-alerta la pone en rojo. */
+.cifra-grande { font-family: var(--display); font-size: var(--t-kpi); font-weight: 800; letter-spacing: -0.01em; margin: 12px 0; font-variant-numeric: tabular-nums; }
+.cifra-grande[data-alerta] { color: var(--alerta-texto); }
+
+/* Saldo con color de grupo (presupuesto de aperturas). */
+.saldo[data-tono="info"] { border-left-color: var(--info); }
+.saldo[data-tono="cuadra"] { border-left-color: var(--cuadra); }
+.saldo[data-tono="ambar"] { border-left-color: var(--ambar); }
+
+/* Barra apilada: partes de un total (el ancho de cada parte va en el componente). */
+.barra-apilada { display: flex; height: 14px; border-radius: var(--r-full); overflow: hidden; margin-top: 18px; background: var(--papel-2); gap: 2px; }
+
+/* Tablas anchas que se desplazan en celular: la primera columna queda fija para no perder de qué fila se trata. */
+@media (max-width: 640px) {
+  .tabla-contenedor > .tabla:not(.tabla-tarjetas) th:first-child,
+  .tabla-contenedor > .tabla:not(.tabla-tarjetas) td:first-child,
+  .compra-tabla-marco > .compra-tabla th:first-child,
+  .compra-tabla-marco > .compra-tabla td:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--blanco); box-shadow: 1px 0 0 var(--linea);
+  }  .compra-tabla-marco > .compra-tabla th:first-child { background: var(--papel-2); }
+}
