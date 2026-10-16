@@ -55,7 +55,7 @@ export function CalendarioEntregas({ hoy, porDia,realizadas={} }: { hoy: string;
           <ul style={{ listStyle: "none", paddingLeft: 0, display: "grid", gap: 6 }}>
             {lista.length>0&&<li><strong>Programadas</strong></li>}
             {lista.map((o) => (
-              <li key={o.id} style={{ overflowWrap: "anywhere" }}>
+              <li key={o.id} className="texto-partible">
                 <Link href={o.href??`/compras/ordenes/${o.id}`}>{o.folio}</Link> · {o.proveedor} · {o.destino} · {o.avance}{o.atrasada ? " · atrasada" : ""}
               </li>
             ))}
