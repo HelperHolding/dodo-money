@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { BuscadorPaginas } from "@/components/BuscadorPaginas";
 import { Icono, type NombreIcono } from "@/components/Icono";
 import { enlaceActivo, enlacesDelMenu, grupoAbierto, type Enlace, type Menu } from "@/lib/roles";
 
@@ -64,6 +65,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
           {cabecera}
           <button type="button" className="lateral-cerrar" aria-label="Cerrar menú" onClick={() => setCajon(false)}><Icono nombre="cerrar" tamano={24} /></button>
         </div>
+        <div className="lateral-buscar"><BuscadorPaginas menu={menu} /></div>
         <nav className="lateral-nav" aria-label="Secciones">
           <Link className="lateral-enlace" href={menu.inicio.href} aria-current={marcar(menu.inicio.href)}>{menu.inicio.texto}</Link>
           {menu.grupos.map((g) => (
