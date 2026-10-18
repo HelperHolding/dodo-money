@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { ENCABEZADOS, ENCABEZADOS_ARTICULOS } from "@/lib/compras/proveedores";
@@ -13,10 +14,7 @@ export default async function CargarExcel() {
   if (!puedeEditarCompras(perfil.rol)) redirect("/compras");
   return (
     <>
-      <div className="encabezado">
-        <h1>Cargar desde Excel</h1>
-        <p>Primera fila: encabezados. Un registro por renglón. Si algún renglón tiene un error, no se guarda ninguno y te decimos cuál corregir.</p>
-      </div>
+      <EncabezadoPagina titulo="Cargar desde Excel" descripcion="Primera fila: encabezados. Un registro por renglón. Si algún renglón tiene un error, no se guarda ninguno y te decimos cuál corregir." />
 
       <section className="seccion">
         <h2>Proveedores</h2>

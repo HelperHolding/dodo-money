@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { Aviso } from "@/components/Aviso";
 import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
 import { fueraDeRango } from "@/lib/amasado";
@@ -19,10 +20,7 @@ export default async function Amasado({ searchParams }: { searchParams: Promise<
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Amasado de masa</h1>
-        <p>Un registro por lote. La masa debe quedar entre 24 y 26 °C; si alguna temperatura sale de norma, escribe qué pasó.</p>
-      </div>
+      <EncabezadoPagina titulo="Amasado de masa" descripcion="Un registro por lote. La masa debe quedar entre 24 y 26 °C; si alguna temperatura sale de norma, escribe qué pasó." />
       <Aviso ok={ok} error={error} />
       <section className="seccion" aria-labelledby="t-lote">
         <h2 id="t-lote">Registrar lote</h2>

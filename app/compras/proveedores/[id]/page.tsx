@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import {precioUnitario} from '@/lib/formato';
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -57,11 +58,8 @@ export default async function FichaProveedor({ params, searchParams }: { params:
 
   return (
     <>
-      <div className="encabezado">
-        <h1>{p.nombre_comercial ?? p.razon_social}</h1>
-        <p>{p.rfc}{p.activo ? "" : " · inactivo"}</p>
-        {edita && p.activo && <div className="acciones"><Link className="boton" href={`/compras/ordenes/nueva?proveedor=${encodeURIComponent(id)}`}>Crear cotización</Link></div>}
-      </div>
+      <EncabezadoPagina titulo={p.nombre_comercial ?? p.razon_social} descripcion={<>{p.rfc}{p.activo ? "" : " · inactivo"}</>}
+        acciones={edita && p.activo && <Link className="boton" href={`/compras/ordenes/nueva?proveedor=${encodeURIComponent(id)}`}>Crear cotización</Link>} />
       <Aviso ok={ok} error={error} />
       <ComprasProveedor id={id}/>
       {edita && <PortalProveedor id={id} portal={acceso?.data ?? null} disponible={!acceso?.error} />}

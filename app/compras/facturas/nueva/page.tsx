@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import {leerRazonesSociales} from "@/lib/compras/razonesSociales";
 import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
@@ -21,10 +22,7 @@ export default async function NuevoGastoManual({ searchParams }: { searchParams:
   const razones=await leerRazonesSociales(supabase);
   return (
     <>
-      <div className="encabezado">
-        <h1>Agregar gasto sin CFDI</h1>
-        <p>Para una prefactura, un recibo o un pago sin factura. Se paga en Pagos y entra al P&L con la cuenta de cada renglón. Cuando llegue el CFDI, súbelo y elige qué gasto sustituye.</p>
-      </div>
+      <EncabezadoPagina titulo="Agregar gasto sin CFDI" descripcion="Para una prefactura, un recibo o un pago sin factura. Se paga en Pagos y entra al P&L con la cuenta de cada renglón. Cuando llegue el CFDI, súbelo y elige qué gasto sustituye." />
       <Aviso error={error} />
       <FormGastoManual razones={razones} hoy={hoyCalendarioMX()} sucursales={sucursales ?? []}
         proveedores={(proveedores ?? []).map((p) => ({ id: p.id, nombre: p.nombre_comercial ?? p.razon_social, sucursal_id: p.sucursal_id, cuenta_pl: p.cuenta_pl, cubre_meses: p.cubre_meses, cubre_inicio: p.cubre_inicio }))}
