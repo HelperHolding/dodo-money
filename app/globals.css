@@ -1755,3 +1755,10 @@ body { background: var(--papel-2); }
 .veredicto-masa[data-estado="revisar"] { background: var(--alerta-fondo); color: var(--alerta-texto); }
 .registro-enviar .boton, .zona-cuerpo > .acciones .boton { min-height: 52px; padding-inline: 28px; }
 @media (max-width: 640px) { .registro-enviar .boton, .zona-cuerpo > .acciones .boton { width: 100%; } }
+/* ─── Finanzas: nómina, retenciones y filtros ─── */
+.nomina-total { display: inline-flex; align-items: center; gap: 10px; }
+.nomina-total strong { font-size: var(--t-xl); font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.retenciones-indicadores { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@container (max-width: 640px) { .retenciones-indicadores { grid-template-columns: minmax(0, 1fr); } }
+.seccion-cabecera > div > .insignia { margin-top: 6px; white-space: normal; }
+.barra-filtros input[type="search"] { min-height: 42px; border-radius: var(--r-full); padding-inline: 16px; min-width: min(320px, 100%); background-color: var(--blanco); }

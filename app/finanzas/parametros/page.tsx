@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
@@ -23,7 +24,7 @@ export default async function Parametros({ searchParams }: { searchParams: Promi
   const claves = Object.keys(NOMBRE_PARAMETRO) as ClaveParametro[];
   return (
     <>
-      <div className="encabezado"><h1>Parámetros y metas</h1><p>Los parámetros valen desde su fecha (no cambian meses anteriores). Las metas son por sucursal.</p></div>
+      <EncabezadoPagina titulo="Parámetros y metas" descripcion="Los parámetros valen desde su fecha (no cambian meses anteriores). Las metas son por sucursal." />
       <Aviso ok={q.ok} error={q.error} />
       <section className="seccion">
         <h2>Parámetros</h2>
@@ -52,7 +53,7 @@ export default async function Parametros({ searchParams }: { searchParams: Promi
       {suc && (
         <section className="seccion">
           <h2>Metas · {suc.nombre}</h2>
-          <form className="acciones" method="get"><select name="sucursal" defaultValue={suc.id} aria-label="Sucursal">{(sucursales ?? []).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}</select><button className="boton boton-secundario" type="submit">Ver</button></form>
+          <form className="barra-filtros" method="get"><select name="sucursal" defaultValue={suc.id} aria-label="Sucursal">{(sucursales ?? []).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}</select><button className="boton boton-secundario boton-compacto" type="submit">Ver</button></form>
           <ul className="lista-filas" style={{ "--columnas": 1 } as React.CSSProperties}>
             {RENGLONES.filter((r) => r.tipo === "gasto").map((r) => {
               const m = (metas ?? []).find((x) => x.sucursal_id === suc.id && x.renglon === r.clave);
