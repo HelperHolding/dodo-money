@@ -8,6 +8,7 @@ import { EstadoVacio } from "@/components/EstadoVacio";
 import { Icono } from "@/components/Icono";
 import { Grafica } from "@/components/Grafica";
 import { Indicadores } from "@/components/Indicadores";
+import { RankingProductos } from "@/components/RankingProductos";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { diaYNumero, fechaTexto, hoyMX, pesos, pesosRedondos, porcentaje } from "@/lib/formato";
@@ -24,7 +25,6 @@ import { VentasPorCanal } from "@/components/VentasPorCanal";
 import { reporteCanales } from "./reporte-datos";
 
 const categoria = (c: Categoria | null) => (c ? NOMBRE_CATEGORIA[c] : "Sin categoría");
-const cambio = (f: number | null) => (f === null ? "nuevo" : `${f >= 0 ? "▲" : "▼"} ${porcentaje(Math.abs(f))}`);
 
 export default async function PaginaVentas({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; sucursal?: string }> }) {
   const q = await searchParams;
@@ -102,6 +102,14 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         costo: `${pesosRedondos(costos.total.costo)} sobre venta con costo`,
       }} />
 
+      {conDiferencia.length > 0 && (
+        <a className="atencion-tarjeta" data-tono="peligro" href="#cierre">
+          <span className="atencion-icono"><Icono nombre="alerta" tamano={20} /></span>
+          <span><strong>{conDiferencia.length} {conDiferencia.length === 1 ? "día no coincide" : "días no coinciden"} con el cierre del gerente</strong><small>Revisa el cierre contra Dodo IS</small></span>
+          <Icono nombre="derecha" />
+        </a>
+      )}
+
       <div className="tablero-fila tablero-fila-ancha">
         <section className="seccion" aria-labelledby="t-diaria">
           <h2 id="t-diaria">Venta diaria</h2>
@@ -126,9 +134,8 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
 
       <div className="tablero-fila">
         <Plegable id="productos" titulo="Los 10 que más vendieron" resumen={`${productos.length} productos`}>
-          <Grafica titulo="Productos que más vendieron" barras={top.map((p) => ({
-            clave: String(p.dodo_id), etiqueta: p.nombre, valor: p.importe,
-            texto: `${pesos(p.importe)} · ${p.piezas} pzs · ${cambio(p.cambio)}`,
+          <RankingProductos titulo="Productos que más vendieron" filas={top.map((p) => ({
+            clave: String(p.dodo_id), nombre: p.nombre, importe: p.importe, piezas: p.piezas, cambio: p.cambio,
           }))} />
           <p className="saldo-nota">El cambio es contra los mismos días justo antes del periodo.</p>
         </Plegable>
