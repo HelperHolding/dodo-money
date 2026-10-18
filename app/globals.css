@@ -1762,3 +1762,8 @@ body { background: var(--papel-2); }
 @container (max-width: 640px) { .retenciones-indicadores { grid-template-columns: minmax(0, 1fr); } }
 .seccion-cabecera > div > .insignia { margin-top: 6px; white-space: normal; }
 .barra-filtros input[type="search"] { min-height: 42px; border-radius: var(--r-full); padding-inline: 16px; min-width: min(320px, 100%); background-color: var(--blanco); }
+/* ─── Compras: proveedores, órdenes y recepciones ─── */
+.proveedores-filtros .barra-filtros > .campo:first-child { flex: 1 1 340px; max-width: 460px; }
+.proveedores-filtros input[type="search"] { width: 100%; }
+.proveedores-filtros .acciones, .compras-listado.barra-filtros .acciones { gap: 8px; }
+.recepciones-conteo { display: inline-flex; flex-wrap: wrap; gap: 6px; }

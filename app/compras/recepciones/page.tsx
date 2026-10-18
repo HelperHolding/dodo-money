@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import {precioUnitario} from '@/lib/formato';
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
@@ -85,17 +86,19 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Recepciones</h1>
-        <p>Lo que se recibió en Dodo IS, ligado a las órdenes de compra. Los consumibles se ligan solos por su ID de insumo.</p>
-      </div>
+      <EncabezadoPagina titulo="Recepciones" descripcion="Lo que se recibió en Dodo IS, ligado a las órdenes de compra. Los consumibles se ligan solos por su ID de insumo." />
       {puedeRecibirCompras(perfil.rol) && <PestanasRecepciones actual="compras" />}
       <Aviso ok={ok} error={error} />
       <CalendarioEntregas hoy={hoy} porDia={porDia} realizadas={realizadas} />
       {(atrasadas.length > 0 || sinFecha.length > 0) && (
         <section className="seccion" aria-labelledby="t-atrasadas">
-          <h2 id="t-atrasadas">Por seguir</h2>
-          {atrasadas.length > 0 && <p className="aviso aviso-error">{atrasadas.length} {atrasadas.length === 1 ? "orden atrasada" : "órdenes atrasadas"}.</p>}
+          <div className="seccion-cabecera">
+            <h2 id="t-atrasadas">Por seguir</h2>
+            <span className="recepciones-conteo">
+              {atrasadas.length > 0 && <span className="insignia" data-tono="peligro">{atrasadas.length} {atrasadas.length === 1 ? "orden atrasada" : "órdenes atrasadas"}</span>}
+              {sinFecha.length > 0 && <span className="insignia" data-tono="aviso">{sinFecha.length} sin fecha</span>}
+            </span>
+          </div>
           <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
             <li className="fila fila-encabezado" aria-hidden="true"><span>Orden</span><span>Proveedor</span><span>Para</span><span>Esperada</span></li>
             {[...atrasadas, ...sinFecha].map((o) => (
