@@ -23,18 +23,33 @@ export function FormMasa({ franjas, normas }: { franjas: Franja[]; normas: Norma
     ? motivoComentario(norma, tempArea, Number(bolas), tempNum)
     : null;
 
+  const completo = !!norma && !!tempArea && bolas !== "" && Number.isFinite(tempNum) && temperatura !== "";
+
   return (
     <form action={registrarLectura} className="formulario">
-      <div className="rejilla">
-        <div className="campo">
-          <label htmlFor="franja">Hora</label>
-          <select id="franja" name="franja" value={franja} onChange={(e) => setFranja(e.target.value)}>
-            {franjas.map((f) => (
-              <option key={clave(f)} value={clave(f)}>{etiquetaHora(f.hora)} – {etiquetaHora((f.hora + 1) % 24)}</option>
-            ))}
-          </select>
-          {norma && <small>Norma: {norma.bolas_25} bolas a 25 °C · {norma.bolas_30} a 30 °C · {norma.bolas_35} a 35 °C</small>}
+      <div className="campo">
+        <label htmlFor="franja">Hora</label>
+        <select id="franja" name="franja" value={franja} onChange={(e) => setFranja(e.target.value)}>
+          {franjas.map((f) => (
+            <option key={clave(f)} value={clave(f)}>{etiquetaHora(f.hora)} – {etiquetaHora((f.hora + 1) % 24)}</option>
+          ))}
+        </select>
+        {norma && <small>Norma: {norma.bolas_25} bolas a 25 °C · {norma.bolas_30} a 30 °C · {norma.bolas_35} a 35 °C</small>}
+      </div>
+
+      <fieldset className="campo">
+        <legend className="etiqueta">Temperatura del área</legend>
+        <div className="si-no si-no-grande">
+          {TEMPS_AREA.map((t) => (
+            <label key={t}>
+              <input type="radio" name="temp_area" value={t} required checked={tempArea === t} onChange={() => setTempArea(t)} />
+              <span>{t} °C</span>
+            </label>
+          ))}
         </div>
+      </fieldset>
+
+      <div className="rejilla rejilla-corta">
         <div className="campo">
           <label htmlFor="bolas">Bolas sacadas</label>
           <input
@@ -52,17 +67,11 @@ export function FormMasa({ franjas, normas }: { franjas: Franja[]; normas: Norma
         </div>
       </div>
 
-      <fieldset className="campo">
-        <legend className="etiqueta">Temperatura del área</legend>
-        <div className="si-no">
-          {TEMPS_AREA.map((t) => (
-            <label key={t}>
-              <input type="radio" name="temp_area" value={t} required checked={tempArea === t} onChange={() => setTempArea(t)} />
-              <span>{t} °C</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {completo && (
+        <p className="veredicto-masa" data-estado={motivo ? "revisar" : "norma"} role="status">
+          {motivo ? <>Fuera de norma: {motivo}.</> : <>En norma</>}
+        </p>
+      )}
 
       <div className="campo">
         <label htmlFor="comentario">Comentario{motivo ? " (obligatorio)" : ""}</label>
@@ -73,7 +82,7 @@ export function FormMasa({ franjas, normas }: { franjas: Franja[]; normas: Norma
         {motivo && <small role="status">Escribe qué pasó: {motivo}.</small>}
       </div>
 
-      <div className="acciones"><BotonEnviar>Registrar temperatura</BotonEnviar></div>
+      <div className="acciones registro-enviar"><BotonEnviar>Registrar temperatura</BotonEnviar></div>
     </form>
   );
 }

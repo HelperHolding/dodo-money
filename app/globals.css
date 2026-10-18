@@ -1736,3 +1736,22 @@ body { background: var(--papel-2); }
   .ranking-barra span { animation: grow-x 600ms var(--curva) both; transform-origin: left; }
 }
 @keyframes grow-x { from { transform: scaleX(0); } }
+/* ─── Checklists: registro en celular ─── */
+.puntos-progreso {
+  position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px;
+  margin: 0 -4px; padding: 10px 12px; border-radius: var(--r-md); background: var(--blanco);
+  border: 1px solid var(--linea); box-shadow: var(--sombra-1); font-size: var(--t-sm); color: var(--tinta-2);
+}
+.puntos-progreso strong { color: var(--tinta); font-size: var(--t-base); }
+.puntos-progreso-barra { flex-basis: 100%; height: 6px; border-radius: var(--r-full); background: var(--papel-2); overflow: hidden; }
+.puntos-progreso-barra span { display: block; height: 100%; border-radius: var(--r-full); background: var(--accion); transition: width var(--dur-media) var(--curva); }
+.puntos-progreso[data-completo] .puntos-progreso-barra span { background: var(--cuadra); }
+@media (max-width: 900px) { .puntos-progreso { top: 64px; } }
+.punto[data-estado] { padding-left: 12px; border-left: 3px solid var(--cuadra); }
+.punto[data-estado="no"] { border-left-color: var(--alerta); }
+.si-no-grande label { min-height: 56px; font-size: var(--t-lg); }
+.veredicto-masa { display: inline-flex; align-items: center; gap: 8px; width: fit-content; padding: 8px 14px; border-radius: var(--r-full); font-weight: 800; }
+.veredicto-masa[data-estado="norma"] { background: var(--cuadra-fondo); color: var(--cuadra-texto); }
+.veredicto-masa[data-estado="revisar"] { background: var(--alerta-fondo); color: var(--alerta-texto); }
+.registro-enviar .boton, .zona-cuerpo > .acciones .boton { min-height: 52px; padding-inline: 28px; }
+@media (max-width: 640px) { .registro-enviar .boton, .zona-cuerpo > .acciones .boton { width: 100%; } }

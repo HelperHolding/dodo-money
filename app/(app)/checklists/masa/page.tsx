@@ -1,5 +1,6 @@
 import { Aviso } from "@/components/Aviso";
 import { obtenerContexto } from "@/lib/contexto";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { claveFranjas, diaOperativoMX, etiquetaHora, franjasAbiertas, siguienteFranja } from "@/lib/franjas";
 import { hora } from "@/lib/formato";
 import { bolasNorma } from "@/lib/masa";
@@ -33,10 +34,7 @@ export default async function Masa({ searchParams }: { searchParams: Promise<{ o
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Temperatura de masa</h1>
-        <p>Cada hora saca las bolas que marca la norma para la temperatura del área y toma la temperatura de la masa. En norma: de 12 a 22 °C.</p>
-      </div>
+      <EncabezadoPagina titulo="Temperatura de masa" descripcion="Cada hora saca las bolas que marca la norma para la temperatura del área y toma la temperatura de la masa. En norma: de 12 a 22 °C." />
       <Aviso ok={ok} error={error} />
 
       <section className="seccion" aria-labelledby="t-registro">

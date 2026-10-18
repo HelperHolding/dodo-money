@@ -1,5 +1,6 @@
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
 import { diaOperativoMX } from "@/lib/franjas";
 import { hora, numeroCorto } from "@/lib/formato";
@@ -34,10 +35,7 @@ export default async function Mermas({ searchParams }: { searchParams: Promise<{
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Mermas</h1>
-        <p>Registra cada merma cuando pase, con el nombre de quien la hizo. Al final del día el encargado las captura en Dodo IS y cierra la lista.</p>
-      </div>
+      <EncabezadoPagina titulo="Mermas" descripcion="Registra cada merma cuando pase, con el nombre de quien la hizo. Al final del día el encargado las captura en Dodo IS y cierra la lista." />
       <Aviso ok={ok} error={error} />
 
       {cierre ? (
