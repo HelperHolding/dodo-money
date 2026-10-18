@@ -1671,3 +1671,18 @@ body { background: var(--papel-2); }
 .campo-contado[data-estado="difiere"] input { border-color: var(--alerta-borde); }
 .cierre-enviar .boton { min-height: 52px; padding-inline: 28px; }
 @media (max-width: 640px) { .cierre-enviar .boton { width: 100%; } }
+/* ─── Compras · Pagos ─── */
+.indicador-enlazado { color: var(--tinta); text-decoration: none; transition: border-color var(--dur-rapida) var(--curva), transform var(--dur-rapida) var(--curva); }
+.indicador-enlazado:hover { border-color: var(--linea-fuerte); transform: translateY(-1px); }
+.indicador-enlazado[data-alerta="peligro"]:hover { border-color: var(--alerta); }
+.pagos-filtros .campo { gap: 0; }
+.pagos-filtros select { max-width: 280px; }
+.pagos-casilla { min-height: 42px; padding: 0 14px; border: 1px solid var(--linea); border-radius: var(--r-full); background: var(--blanco); font-size: var(--t-sm); font-weight: 600; }
+.factura-tarjeta .tarjeta-encabezado { align-items: flex-start; }
+.factura-tarjeta h3 { font-size: 1rem; }
+.factura-tarjeta-folio { font-size: var(--t-sm); margin-top: 2px; }
+.factura-tarjeta-monto { font-size: var(--t-xl); font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.factura-tarjeta[data-alerta] .factura-tarjeta-monto { color: var(--alerta-texto); }
+.factura-tarjeta-estados { display: flex; flex-wrap: wrap; gap: 6px; }
+.factura-tarjeta-estados:empty { display: none; }
+.tarjeta-estado .insignia { margin-left: 6px; }
