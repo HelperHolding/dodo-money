@@ -5,6 +5,7 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { cuadre, pideVentas } from "@/lib/arqueo";
 import { BILLETES, MONEDAS, claveBillete, claveMoneda, totalConteo } from "@/lib/denominaciones";
 import { pesos } from "@/lib/formato";
+import { Icono } from "@/components/Icono";
 import { NOMBRE_MOMENTO, type MomentoArqueo } from "@/lib/tipos";
 import { registrarArqueo } from "./actions";
 
@@ -26,16 +27,24 @@ export function FormArqueo({
     : estado === "faltante" ? `Faltan ${pesos(-diferencia)}`
     : `Sobran ${pesos(diferencia)}`;
 
+  const cambiar = (clave: string, n: number) => setConteo((c) => ({ ...c, [clave]: Math.max(0, Math.floor(n || 0)) }));
+  const sumar = (clave: string, paso: number) => setConteo((c) => ({ ...c, [clave]: Math.max(0, (c[clave] ?? 0) + paso) }));
   const fila = (clave: string, etiqueta: string, valor: number) => (
-    <tr key={clave}>
+    <tr key={clave} data-lleno={(conteo[clave] ?? 0) > 0 ? "si" : undefined}>
       <td>{etiqueta}</td>
       <td>
-        <input
-          type="number" inputMode="numeric" min="0" step="1" name={clave}
-          aria-label={`Cantidad de ${etiqueta}`}
-          value={conteo[clave] ?? ""}
-          onChange={(e) => setConteo({ ...conteo, [clave]: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-        />
+        <span className="contador">
+          <button type="button" className="contador-boton" aria-label={`Una pieza menos de ${etiqueta}`}
+            onClick={() => sumar(clave, -1)} disabled={!(conteo[clave] ?? 0)}><Icono nombre="menos" /></button>
+          <input
+            type="number" inputMode="numeric" min="0" step="1" name={clave}
+            aria-label={`Cantidad de ${etiqueta}`}
+            value={conteo[clave] ?? ""}
+            onChange={(e) => cambiar(clave, Number(e.target.value))}
+          />
+          <button type="button" className="contador-boton" aria-label={`Una pieza más de ${etiqueta}`}
+            onClick={() => sumar(clave, 1)}><Icono nombre="mas" /></button>
+        </span>
       </td>
       <td>{pesos((conteo[clave] ?? 0) * valor)}</td>
     </tr>
@@ -47,10 +56,10 @@ export function FormArqueo({
 
       <section className="seccion" aria-labelledby="t-momento">
         <h2 id="t-momento">Momento</h2>
-        <div className="acciones" role="radiogroup" aria-labelledby="t-momento">
+        <div className="opciones-chip" role="radiogroup" aria-labelledby="t-momento">
           {momentosPosibles.map((m) => (
-            <label key={m} className="acciones" style={{ gap: 8, minHeight: 48 }}>
-              <input type="radio" name="momento" value={m} checked={m === momento} onChange={() => setMomento(m)} style={{ minHeight: 0, width: 20, height: 20 }} />
+            <label key={m} className="opcion-chip">
+              <input type="radio" name="momento" value={m} checked={m === momento} onChange={() => setMomento(m)} />
               {NOMBRE_MOMENTO[m]}
             </label>
           ))}
@@ -137,6 +146,12 @@ export function FormArqueo({
           </div>
         </div>
       </section>
+
+      <div className="cuadre-fijo" data-estado={estado} aria-hidden="true">
+        <span><small>Contado</small><strong>{pesos(contado)}</strong></span>
+        <span><small>Esperado</small><strong>{estado === "pendiente" && conVentas && ventas === "" ? "—" : pesos(esperado)}</strong></span>
+        <span className="cuadre-fijo-veredicto">{veredicto}</span>
+      </div>
 
       <div className="acciones">
         <BotonEnviar pendiente="Guardando arqueo…"

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { EstadoVacio } from "@/components/EstadoVacio";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { momentosDelTurno } from "@/lib/arqueo";
 import { obtenerContexto, puedeGestionar } from "@/lib/contexto";
@@ -16,9 +18,10 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
   if (!turno) {
     return (
       <>
-        <div className="encabezado"><h1>Arqueo de turno</h1></div>
+        <EncabezadoPagina titulo="Arqueo de turno" />
         <Aviso ok={ok} error={error} />
-        <p className="aviso aviso-info">No hay turno abierto. El encargado lo abre desde <Link href="/">Inicio</Link>.</p>
+        <EstadoVacio icono="reloj" titulo="No hay turno abierto" descripcion="El encargado abre el turno desde Inicio; después aquí cuentas el efectivo del cajero."
+          accion={<Link className="boton" href="/">Ir a Inicio</Link>} />
       </>
     );
   }
@@ -37,10 +40,7 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Arqueo de turno</h1>
-        <p>Cuenta el efectivo por denominación. El fondo y los retiros a bóveda salen de los movimientos confirmados del turno.</p>
-      </div>
+      <EncabezadoPagina titulo="Arqueo de turno" descripcion="Cuenta el efectivo por denominación. El fondo y los retiros a bóveda salen de los movimientos confirmados del turno." />
       <Aviso ok={ok} error={error} />
       {!!pendientes && (
         <p className="aviso aviso-error">
