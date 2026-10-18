@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { EstadoVacio } from "@/components/EstadoVacio";
+import { Icono } from "@/components/Icono";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { CampoArchivo } from "@/components/CampoArchivo";
@@ -35,14 +38,19 @@ export default async function Retenciones({ searchParams }: { searchParams: Prom
     for (const d of data ?? []) if (d.path && d.signedUrl) enlaces.set(d.path, d.signedUrl);
   }
   return <>
-    <div className="encabezado"><h1>Retenciones</h1><p>IVA e ISR retenidos al pagar a proveedores. Fecha límite: el 17 del mes siguiente al pago.</p></div>
+    <EncabezadoPagina titulo="Retenciones" descripcion="IVA e ISR retenidos al pagar a proveedores. Fecha límite: el 17 del mes siguiente al pago." />
     <Aviso ok={q.ok} error={q.error} />
-    {!meses.length && <p className="seccion">Todavía no hay pagos con retenciones ni enteros registrados.</p>}
+    {!meses.length && <EstadoVacio icono="banco" titulo="Sin retenciones todavía" descripcion="Aquí aparecerán los meses con pagos que retienen IVA o ISR, y sus enteros al SAT." />}
     {meses.map((m) => <section className="seccion" key={m.mes}>
-      <div className="encabezado"><h2>{nombreMes(m.mes)}</h2><Link className="boton boton-secundario" href={`/reporte/retenciones/excel?mes=${m.mes}`}>Excel</Link></div>
-      <p className={`aviso ${m.estado === "enterado" ? "aviso-ok" : m.estado === "sin_retenciones" ? "" : "aviso-error"}`}>{aviso(m)}</p>
-      <div className="rejilla"><div><strong>IVA retenido</strong><p>{pesos(m.iva)} · Enterado {pesos(m.enteradoIva)}</p></div><div><strong>ISR retenido</strong><p>{pesos(m.isr)} · Enterado {pesos(m.enteradoIsr)}</p></div></div>
-      <p>Enterar a más tardar el <strong>{fecha(m.limite)}</strong>.</p>
+      <div className="seccion-cabecera">
+        <div><h2>{nombreMes(m.mes)}</h2><span className="insignia" data-tono={m.estado === "enterado" ? "exito" : m.estado === "sin_retenciones" ? undefined : m.estado === "por_vencer" ? "aviso" : "peligro"}>{aviso(m)}</span></div>
+        <Link className="boton boton-secundario boton-compacto" href={`/reporte/retenciones/excel?mes=${m.mes}`}><Icono nombre="descargar" />Excel</Link>
+      </div>
+      <div className="indicadores-marco"><div className="indicadores retenciones-indicadores">
+        <div className="indicador"><span className="indicador-etiqueta">IVA retenido</span><strong className="indicador-valor">{pesos(m.iva)}</strong><span className="indicador-detalle">Enterado {pesos(m.enteradoIva)}</span></div>
+        <div className="indicador"><span className="indicador-etiqueta">ISR retenido</span><strong className="indicador-valor">{pesos(m.isr)}</strong><span className="indicador-detalle">Enterado {pesos(m.enteradoIsr)}</span></div>
+        <div className="indicador" data-alerta={m.estado === "vencido" || (m.estado === "falta" && m.vencido) ? "peligro" : undefined}><span className="indicador-etiqueta">Enterar a más tardar</span><strong className="indicador-valor">{fecha(m.limite)}</strong></div>
+      </div></div>
       <details><summary>Detalle de pagos ({m.renglones.length})</summary>
         <ul className="lista-filas" style={{ "--columnas": 4 } as React.CSSProperties}>
           <li className="fila fila-encabezado" aria-hidden="true"><span>Proveedor / Factura</span><span>Pago</span><span>Pagado</span><span>IVA retenido</span><span>ISR retenido</span></li>
