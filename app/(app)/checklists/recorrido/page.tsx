@@ -1,5 +1,6 @@
 import { Aviso } from "@/components/Aviso";
 import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { claveFranjas, diaOperativoMX, etiquetaHora, franjasAbiertas, siguienteFranja } from "@/lib/franjas";
 import { hora } from "@/lib/formato";
 import type { Checklist, PuntoChecklist } from "@/lib/tipos";
@@ -46,10 +47,7 @@ export default async function Recorrido({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Recorrido de supervisor</h1>
-        <p>Cada hora recorre la pizzería y marca cada punto. Si algo no cumple, escribe qué pasó.</p>
-      </div>
+      <EncabezadoPagina titulo="Recorrido de supervisor" descripcion="Cada hora recorre la pizzería y marca cada punto. Si algo no cumple, escribe qué pasó." />
       <Aviso ok={ok} error={error} />
 
       <section className="seccion" aria-labelledby="t-registro">

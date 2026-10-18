@@ -7,8 +7,15 @@ export function FormPuntos({
   puntos, prefijo = "", requerido,
 }: { puntos: { id: string; orden: number; texto: string }[]; prefijo?: string; requerido: boolean }) {
   const [valores, setValores] = useState<Record<string, "si" | "no">>({});
+  const revisados = puntos.filter((p) => valores[p.id]).length;
+  const fallan = puntos.filter((p) => valores[p.id] === "no").length;
   return (
     <>
+    <p className="puntos-progreso" data-completo={revisados === puntos.length ? "si" : undefined} aria-live="polite">
+      <strong>{revisados} de {puntos.length}</strong> revisados
+      {fallan > 0 && <span className="texto-alerta"> · {fallan} no {fallan === 1 ? "cumple" : "cumplen"}</span>}
+      <span className="puntos-progreso-barra" aria-hidden="true"><span style={{ width: `${puntos.length ? (revisados / puntos.length) * 100 : 0}%` }} /></span>
+    </p>
     <div className="acciones">
       <button type="button" className="boton boton-secundario"
         onClick={() => setValores(Object.fromEntries(puntos.map((p) => [p.id, "si" as const])))}>
@@ -18,7 +25,7 @@ export function FormPuntos({
     </div>
     <ol className="puntos">
       {puntos.map((p) => (
-        <li key={p.id} className="punto">
+        <li key={p.id} className="punto" data-estado={valores[p.id]}>
           <fieldset className="campo">
             <legend className="etiqueta">{p.texto}</legend>
             <div className="si-no">
