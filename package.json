@@ -17,7 +17,8 @@
     "next": "15.5.26",
     "pdf-lib": "1.17.1",
     "react": "19.1.9",
-    "react-dom": "19.1.9"
+    "react-dom": "19.1.9",
+    "thinking-orbs": "^0.3.2"
   },
   "devDependencies": {
     "@types/node": "^22.7.4",
