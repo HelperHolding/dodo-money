@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import {precioUnitario} from '@/lib/formato';
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
@@ -72,10 +73,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Artículos</h1>
-        <p>Lo que se compra, con el último precio de cada proveedor. Los precios se llenan solos al confirmar órdenes de compra.</p>
-      </div>
+      <EncabezadoPagina titulo="Artículos" descripcion="Lo que se compra, con el último precio de cada proveedor. Los precios se llenan solos al confirmar órdenes de compra." />
       <Aviso ok={ok} error={error} />
       {edita && (
         <details className="seccion">

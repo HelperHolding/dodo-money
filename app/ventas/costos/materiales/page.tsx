@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import Link from "next/link";
 import {obtenerPerfil} from "@/lib/contexto";
 import {puedeImportarVentas} from "@/lib/roles";
@@ -18,7 +19,7 @@ export default async function PaginaMateriales({searchParams}:{searchParams:Prom
   const q=(filtros.q??"").toLocaleLowerCase("es-MX"),tab=filtros.ver==="insumos" ? "insumos" : filtros.ver==="preparaciones" ? "preparaciones" : "recetas";
   const href=(ver:string)=>`/ventas/costos/materiales?ver=${ver}${v?`&version=${v.id}`:""}`;
   return <>
-    <div className="encabezado"><h1>Costeo y listas de materiales</h1><p>Insumos, cantidades y costo por producto. Cada versión conserva el archivo de origen y la fecha desde la que aplica.</p></div>
+    <EncabezadoPagina titulo="Costeo y listas de materiales" descripcion="Insumos, cantidades y costo por producto. Cada versión conserva el archivo de origen y la fecha desde la que aplica." />
     <nav className="acciones" aria-label="Costeo">{puedeImportarVentas(perfil.rol)&&<Link className="boton boton-secundario" href="/ventas/costos">Costos de venta e historial</Link>}{[['recetas','Listas de materiales'],['insumos','Insumos'],['preparaciones','Preparaciones']].map(([k,n])=><Link key={k} className="boton boton-secundario" href={href(k)} aria-current={tab===k ? "page" : undefined}>{n}</Link>)}</nav>
     {error&&<p role="alert" className="aviso aviso-error">No se pudo cargar el catálogo: {error.message}. Si aún no lo has hecho, aplica la migración 0033_costeo_bom.sql.</p>}
     {v&&<>

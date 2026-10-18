@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import {precioUnitario} from '@/lib/formato';
 import { Fragment } from "react";
 import Link from "next/link";
@@ -30,10 +31,7 @@ export default async function Comparar({ params, searchParams }: { params: Promi
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Comparar cotizaciones</h1>
-        <p>Mismo pedido con distintos proveedores. Al confirmar una, las demás se cancelan solas.</p>
-      </div>
+      <EncabezadoPagina titulo="Comparar cotizaciones" descripcion="Mismo pedido con distintos proveedores. Al confirmar una, las demás se cancelan solas." />
       <Aviso ok={ok} error={error} />
       <div className="tarjetas">
         {(ordenes ?? []).map((o) => (

@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
@@ -27,10 +28,7 @@ export default async function LimpiezaProfundaPagina({ searchParams }: { searchP
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Limpieza profunda</h1>
-        <p>Un área distinta cada día, en un ciclo de dos semanas. El encargado la revisa al terminar.</p>
-      </div>
+      <EncabezadoPagina titulo="Limpieza profunda" descripcion="Un área distinta cada día, en un ciclo de dos semanas. El encargado la revisa al terminar." />
       <Aviso ok={ok} error={error} />
       <section className="seccion" aria-labelledby="t-hoy">
         <h2 id="t-hoy">Hoy toca: {NOMBRE_DIA[diaSemanaISO(fecha)]} · {areaHoy ?? "sin área"}</h2>

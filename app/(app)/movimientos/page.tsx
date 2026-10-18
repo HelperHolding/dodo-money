@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto } from "@/lib/contexto";
@@ -25,10 +26,7 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Movimientos entre cajas</h1>
-        <p>Cada vez que el efectivo pasa de una caja a otra se registra aquí. Quien lo recibe lo confirma con su propio usuario.</p>
-      </div>
+      <EncabezadoPagina titulo="Movimientos entre cajas" descripcion="Cada vez que el efectivo pasa de una caja a otra se registra aquí. Quien lo recibe lo confirma con su propio usuario." />
       <Aviso ok={ok} error={error} />
       {!soloLectura && <FormMovimiento limiteRetiro={Number(sucursal.limite_retiro)} fondoCajon={Number(sucursal.fondo_caja_venta)}
         boveda={boveda} fondoEmergencia={Number(sucursal.fondo_emergencia)} />}

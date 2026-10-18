@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
@@ -44,10 +45,7 @@ export default async function ListasDelTurno({
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Listas del turno</h1>
-        <p>Apertura, cambio de turno, durante el turno, cierre y tareas del día. Toca una casilla para llenarla o verla.</p>
-      </div>
+      <EncabezadoPagina titulo="Listas del turno" descripcion="Apertura, cambio de turno, durante el turno, cierre y tareas del día. Toca una casilla para llenarla o verla." />
       <Aviso ok={ok} error={error} />
 
       {elegida && columna && (

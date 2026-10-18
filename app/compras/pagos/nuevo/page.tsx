@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { obtenerPerfil } from "@/lib/contexto";
@@ -47,7 +48,7 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
   const ventas=await Promise.all((turnosVentas??[]).map(async t=>{const {data,error}=await supabase.rpc("disponibilidad_ventas",{p_turno:t.id});if(error)throw new Error(error.message);return {id:t.id,nombre:`${t.sucursales?.nombre??"Sucursal"} · ${t.tipo}`,disponible:Number(data?.disponible??0)};}));
   return (
     <>
-      <div className="encabezado"><h1>Registrar pago</h1><p>Un pago puede cubrir varias facturas del mismo proveedor, completas o en abono.</p></div>
+      <EncabezadoPagina titulo="Registrar pago" descripcion="Un pago puede cubrir varias facturas del mismo proveedor, completas o en abono." />
       <Aviso error={error} />
       <form className="seccion formulario" role="search">
         <div className="campo">

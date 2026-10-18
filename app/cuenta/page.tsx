@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { MIN_CARACTERES } from "@/lib/contrasena";
@@ -9,14 +10,9 @@ export default async function PaginaCuenta({ searchParams }: { searchParams: Pro
   const { user, perfil } = await obtenerPerfil({ permitirCambioPendiente: true });
   return (
     <>
-      <div className="encabezado">
-        <h1>{perfil.debe_cambiar_contrasena ? "Cambia tu contraseña" : "Mi contraseña"}</h1>
-        <p>
-          {perfil.debe_cambiar_contrasena
+      <EncabezadoPagina titulo={<>{perfil.debe_cambiar_contrasena ? "Cambia tu contraseña" : "Mi contraseña"}</>} descripcion={<>{perfil.debe_cambiar_contrasena
             ? "Entraste con una contraseña temporal. Elige una nueva para empezar a usar la app; solo tú la vas a conocer."
-            : `Cambia la contraseña con la que entras (${user.email}).`}
-        </p>
-      </div>
+            : `Cambia la contraseña con la que entras (${user.email}).`}</>} />
       <Aviso ok={ok} error={error} />
       <form action={cambiarContrasena} className="seccion formulario formulario-corto">
         <div className="campo">
