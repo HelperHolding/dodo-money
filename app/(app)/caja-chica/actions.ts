@@ -69,7 +69,7 @@ export async function solicitarReposicion(formData: FormData) {
   const monto = numero(formData.get("monto"));
   if (monto <= 0) volver("error", "No hay gastos por reponer.");
   const {data:ultima,error:errUltima}=await supabase.from("movimientos").select("creado_en").eq("sucursal_id",sucursal.id).eq("tipo","reposicion_caja_chica").neq("estado","rechazado").order("creado_en",{ascending:false}).limit(1).maybeSingle();
-  let consulta=supabase.from("gastos_caja_chica").select("monto").eq("sucursal_id",sucursal.id).eq("origen","caja_chica").eq("informativo",false);
+  let consulta=supabase.from("gastos_caja_chica").select("monto").eq("sucursal_id",sucursal.id).eq("origen","caja_chica").eq("informativo",false).is("anulado_en",null);
   if(ultima)consulta=consulta.gt("creado_en",ultima.creado_en);
   const {data:gastos,error:errGastos}=await consulta;
   if(errUltima||errGastos)volver("error","No se pudieron verificar los gastos por reponer.");
@@ -94,7 +94,7 @@ export async function solicitarReposicion(formData: FormData) {
 /** Corrige solo el registro elegido: conserva importe, fecha y fuente original del P&L. */
 export async function corregirGastoInformativo(fd:FormData) {
   const {supabase,sucursal,perfil}=await obtenerContextoParaEscribir("/caja-chica");
-  if(!puedeGestionar(perfil.rol))volver("error","Solo gerencia o administración corrige gastos.");
+  if(perfil.rol!=="admin")volver("error","Solo administración corrige gastos.");
   const id=String(fd.get("id")??"");
   const {data:g,error:lectura}=await supabase.from("gastos_caja_chica").select("id,foto_path,informativo").eq("id",id).eq("sucursal_id",sucursal.id).maybeSingle();
   if(lectura||!g)volver("error","No se encontró el gasto en esta sucursal.");

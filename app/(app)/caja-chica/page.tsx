@@ -6,11 +6,12 @@ import { fechaTexto, hoyMX, pesos } from "@/lib/formato";
 import { BUCKET_FOTOS } from "@/lib/fotos";
 import { porReponerAEmpleados, sumaPorOrigen } from "@/lib/gastos";
 import {ListaGastos,type Gasto} from "./ListaGastos";
+import type {HistorialGasto} from './EdicionGasto';
 import {leerTodo} from "@/lib/ventas/paginar";
 import { CampoOrigen } from "./CampoOrigen";
 import { marcarRepuesto, registrarGasto, solicitarReposicion } from "./actions";
 
-const COLUMNAS = "id, fecha, fecha_capturada_original, concepto, proveedor, monto, comprobante, creado_en, foto_path, origen, pagado_por, repuesto_en, informativo, motivo_informativo, referencia_informativa, informado_por, informado_en, respaldo_informativo";
+const COLUMNAS = "id, fecha, fecha_capturada_original, concepto, proveedor, monto, comprobante, creado_en, foto_path, origen, pagado_por, repuesto_en, informativo, motivo_informativo, referencia_informativa, informado_por, informado_en, respaldo_informativo, uuid_cfdi, cuenta_pl, version, anulado_en, motivo_anulacion";
 
 export default async function CajaChica({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
@@ -22,16 +23,19 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
       .order("creado_en", { ascending: false }).limit(1).maybeSingle<{ creado_en: string }>(),
     supabase.from("saldos_cajas").select("saldo").eq("sucursal_id", sucursal.id).eq("tipo", "caja_chica")
       .maybeSingle<{ saldo: number }>(),
-    supabase.from("perfiles").select("id, nombre").eq("sucursal_id", sucursal.id).eq("activo", true).order("nombre")
-      .returns<{ id: string; nombre: string }[]>(),
+    supabase.from("perfiles").select("id, nombre, sucursal_id, activo").order("nombre")
+      .returns<{ id: string; nombre: string; sucursal_id:string|null; activo:boolean }[]>(),
     supabase.from("gastos_caja_chica").select(COLUMNAS).eq("sucursal_id", sucursal.id)
-      .eq("origen", "empleado").eq("informativo", false).is("repuesto_en", null).order("fecha").returns<Gasto[]>(),
+      .eq("origen", "empleado").eq("informativo", false).is("anulado_en",null).is("repuesto_en", null).order("fecha").returns<Gasto[]>(),
   ]);
   const nombre = new Map((personas ?? []).map((p) => [p.id, p.nombre]));
+  const pagadores=(personas??[]).filter(p=>p.sucursal_id===sucursal.id),pagadoresNombre=new Map(pagadores.map(p=>[p.id,p.nombre]));
 
   const todos=await leerTodo<Gasto>((d,h)=>supabase.from("gastos_caja_chica").select(COLUMNAS).eq("sucursal_id",sucursal.id).order("creado_en",{ascending:false}).order("id").range(d,h).returns<Gasto[]>());
-  const gastos=ultima?todos.filter(g=>new Date(g.creado_en).getTime()>new Date(ultima.creado_en).getTime()):todos;
-  const anteriores=ultima?todos.filter(g=>new Date(g.creado_en).getTime()<=new Date(ultima.creado_en).getTime()):[];
+  const activos=todos.filter(g=>!g.anulado_en),eliminados=todos.filter(g=>g.anulado_en);
+  const historial=await leerTodo<HistorialGasto>((d,h)=>supabase.from("gastos_historial").select("id,gasto_id,autor_id,accion,motivo,antes,despues,creado_en,gastos_caja_chica!inner(sucursal_id)").eq("gastos_caja_chica.sucursal_id",sucursal.id).order("creado_en",{ascending:false}).order("id").range(d,h).returns<HistorialGasto[]>());
+  const gastos=ultima?activos.filter(g=>new Date(g.creado_en).getTime()>new Date(ultima.creado_en).getTime()):activos;
+  const anteriores=ultima?activos.filter(g=>new Date(g.creado_en).getTime()<=new Date(ultima.creado_en).getTime()):[];
 
   // Enlaces temporales (1 hora): las fotos están en un bucket privado.
   const rutas = todos.flatMap(g=>[g.foto_path,g.respaldo_informativo].filter((p):p is string=>Boolean(p)));
@@ -79,7 +83,7 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
           <div className="campo"><label htmlFor="fecha">Fecha</label><input id="fecha" name="fecha" type="date" defaultValue={hoyMX()} max={hoyMX()} required /></div>
           <div className="campo"><label htmlFor="concepto">Concepto</label><input id="concepto" name="concepto" required placeholder="Ej. garrafón de agua" /></div>
           <div className="campo"><label htmlFor="proveedor">Proveedor</label><input id="proveedor" name="proveedor" /></div>
-          <CampoOrigen personas={personas ?? []} yo={perfil.id} />
+          <CampoOrigen personas={pagadores.filter(p=>p.activo)} yo={perfil.id} />
           <div className="campo"><label htmlFor="monto">Monto</label><input id="monto" name="monto" type="number" inputMode="decimal" min="0.5" step="0.01" required /></div>
           <div className="campo">
             <label htmlFor="comprobante">Comprobante</label>
@@ -129,10 +133,11 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
 
       <details className="seccion caja-chica-acordeon">
         <summary id="t-gastos">Gastos desde la última reposición <span>{gastos?.length ?? 0} registros · {pesos((gastos ?? []).reduce((total, g) => total + Number(g.monto), 0))}</span></summary>
-        <ListaGastos gastos={gastos} nombres={nombre} fotos={urlFoto} edita={marca}/>
+        <ListaGastos gastos={gastos} nombres={nombre} fotos={urlFoto} edita={perfil.rol==="admin"} historial={historial} pagadores={pagadoresNombre}/>
 
       </details>
-      {anteriores.length>0&&<details className="seccion caja-chica-acordeon"><summary>Gastos anteriores <span>{anteriores.length} registros · historial</span></summary><ListaGastos gastos={anteriores} nombres={nombre} fotos={urlFoto} edita={marca}/></details>}
+      {anteriores.length>0&&<details className="seccion caja-chica-acordeon"><summary>Gastos anteriores <span>{anteriores.length} registros · historial</span></summary><ListaGastos gastos={anteriores} nombres={nombre} fotos={urlFoto} edita={perfil.rol==="admin"} historial={historial} pagadores={pagadoresNombre}/></details>}
+      {eliminados.length>0&&<details className="seccion caja-chica-acordeon"><summary>Eliminados <span>{eliminados.length} capturas · no cuentan en saldo ni P&L</span></summary><ListaGastos gastos={eliminados} nombres={nombre} fotos={urlFoto} edita={false} historial={historial} pagadores={pagadoresNombre}/></details>}
     </>
   );
 }
