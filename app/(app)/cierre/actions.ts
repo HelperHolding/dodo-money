@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { obtenerContextoParaEscribir, puedeGestionar } from "@/lib/contexto";
+import { obtenerContextoParaEscribir, puedeCerrarDia } from "@/lib/contexto";
 import { hoyMX, numero } from "@/lib/formato";
 import { BUCKET_FOTOS } from "@/lib/fotos";
 import { leerCorteRappi, problemaArchivoCorte, rutaCorteRappi } from "@/lib/rappi";
@@ -12,7 +12,7 @@ const volver = (clave: "ok" | "error", texto: string) => redirect(`/cierre?${cla
 
 export async function cerrarDia(formData: FormData) {
   const { supabase, perfil, sucursal, turno } = await obtenerContextoParaEscribir("/cierre");
-  if (!puedeGestionar(perfil.rol)) volver("error", "Solo el gerente cierra el día.");
+  if (!puedeCerrarDia(perfil.rol)) volver("error", "Solo encargado, gerente o administrador puede cerrar el día.");
   if (turno) volver("error", "Hay un turno abierto. Ciérralo con su arqueo antes de cerrar el día.");
 
   const fecha = hoyMX();
@@ -70,7 +70,7 @@ async function subirCorte(supabase: Awaited<ReturnType<typeof obtenerContextoPar
 /** El reporte de Rappi llegó después de cerrar: el gerente o el admin lo registran una sola vez. */
 export async function registrarCorteRappi(formData: FormData) {
   const { supabase, perfil, sucursal } = await obtenerContextoParaEscribir("/cierre");
-  if (!puedeGestionar(perfil.rol)) volver("error", "Solo el gerente o el admin registran el corte de Rappi.");
+  if (!puedeCerrarDia(perfil.rol)) volver("error", "Solo encargado, gerente o administrador registra el corte de Rappi.");
   const corte = leerCorteRappi(String(formData.get("rappi_corte") ?? ""));
   if ("error" in corte) volver("error", corte.error);
   if (!("monto" in corte) || corte.monto === null) volver("error", "Escribe el total del corte de Rappi.");

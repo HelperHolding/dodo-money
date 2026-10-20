@@ -3,7 +3,7 @@ import { Aviso } from "@/components/Aviso";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { CampoContado } from "./CampoContado";
 import { BotonEnviar } from "@/components/BotonEnviar";
-import { obtenerContexto, puedeGestionar } from "@/lib/contexto";
+import { obtenerContexto, puedeCerrarDia } from "@/lib/contexto";
 import { hoyMX, pesos } from "@/lib/formato";
 import { CampoArchivo } from "@/components/CampoArchivo";
 import { BUCKET_FOTOS } from "@/lib/fotos";
@@ -81,7 +81,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             {difRappi !== null && <Fila texto="Diferencia (Rappi − Dodo IS)" valor={pesos(difRappi)} fuerte />}
           </tbody></table>
           {urlCorte && <p><a href={urlCorte} target="_blank" rel="noopener noreferrer">Ver el corte de Rappi</a></p>}
-          {cierre.rappi_corte === null && puedeGestionar(perfil.rol) && !soloLectura && (
+          {cierre.rappi_corte === null && puedeCerrarDia(perfil.rol) && !soloLectura && (
             <form action={registrarCorteRappi} className="formulario">
               <input type="hidden" name="cierre_id" value={cierre.id} />
               <input type="hidden" name="fecha" value={fecha} />
@@ -98,11 +98,11 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
     );
   }
 
-  if (!puedeGestionar(perfil.rol)) {
+  if (!puedeCerrarDia(perfil.rol)) {
     return (
       <>
         <EncabezadoPagina titulo="Cierre del día" />
-        <p className="aviso aviso-info">{soloLectura ? "Este día todavía no se cierra." : "El cierre del día lo hace el gerente."}</p>
+        <p className="aviso aviso-info">{soloLectura ? "Este día todavía no se cierra." : "El cierre del día lo hace el encargado o el gerente."}</p>
       </>
     );
   }

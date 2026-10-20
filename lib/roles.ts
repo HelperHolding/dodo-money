@@ -19,6 +19,8 @@ export const puedeAbrirTurno = (rol: Rol) => rol === "encargado" || rol === "ger
 /** Recorrido de supervisor y cierre de mermas. */
 export const puedeSupervisar = puedeAbrirTurno;
 export const puedeGestionar = (rol: Rol) => rol === "gerente" || rol === "admin";
+/** Cierre diario y corte de Rappi de su propia sucursal. */
+export const puedeCerrarDia = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
 
 /** Reportes de ventas importadas de Dodo IS. Encargado y operación no ven ventas. */
 export const puedeVerVentas = (rol: Rol) => rol === "gerente" || rol === "admin" || rol === "corporativo";

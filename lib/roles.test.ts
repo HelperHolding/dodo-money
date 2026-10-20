@@ -1,5 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { puedeCerrarDia } from './roles.ts';
+
+test('corte diario: encargado de sucursal puede cerrar sin ampliar otros permisos',()=>{
+ for(const rol of ['encargado','gerente','admin'] as const)assert.equal(puedeCerrarDia(rol),true);
+ for(const rol of ['operacion','corporativo'] as const)assert.equal(puedeCerrarDia(rol),false);
+ assert.equal(puedeGestionar('encargado'),false);
+ assert.equal(puedeImportarVentas('encargado'),false);
+ assert.equal(puedeEditarCompras('encargado'),false);
+});
 import {
   accesosRapidos, enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
