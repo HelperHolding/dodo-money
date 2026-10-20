@@ -1,0 +1,14 @@
+#!/bin/sh
+while read local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "No se permite push directo a main. Abre un PR." >&2
+    exit 1
+  fi
+  case "$remote_ref" in refs/heads/*) ;; *) continue ;; esac
+  case "$local_sha" in 0000000000000000000000000000000000000000) continue ;; esac
+  base="$remote_sha"
+  case "$base" in 0000000000000000000000000000000000000000)
+    base=$(git merge-base origin/main "$local_sha") || exit 1 ;;
+  esac
+  node scripts/verificar-historial.mjs "$base" "$local_sha" || exit 1
+done
