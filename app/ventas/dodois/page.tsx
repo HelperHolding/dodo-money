@@ -10,6 +10,9 @@ import { actualizarAhora, ligarUnidad } from "./acciones";
 
 type Conexion = { conectado_en: string; estado: string; ultimo_error: string | null; unidades: { id: string; name: string }[]; perfiles: { nombre: string } | null };
 type Registro = { id: number; inicio: string; origen: string; fecha: string | null; pedidos: number | null; total: number | null; estado: string; mensaje: string | null; sucursales: { nombre: string } | null };
+// "Actualizar ahora" puede renovar el token y reintentar: que no se corte a la mitad.
+export const maxDuration = 60;
+
 const ORIGEN: Record<string, string> = { cron: "Cada 15 min", noche: "Cierre 3 a.m.", manual: "Manual" };
 
 /** Conexión con Dodo IS: estado, sucursales ligadas, actualizar ahora y últimas sincronizaciones. Solo admin. */

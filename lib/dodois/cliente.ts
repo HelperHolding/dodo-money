@@ -1,22 +1,22 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ErrorDodo, tokenDeAcceso as resolverToken, type Almacen } from "./tokens";
 import type { VentaApi } from "./ventas";
+
+export { ErrorDodo };
 
 export const AUTH = "https://auth.dodois.com";
 export const API = "https://api.dodois.com";
 export const SCOPES = "openid offline_access user.role:read sales accounting:read unit:read productionefficiency";
 
-export class ErrorDodo extends Error {
-  constructor(mensaje: string, readonly reconectar = false) { super(mensaje); }
-}
-
 export type Tokens = { access_token: string; refresh_token: string; expires_in: number; scope?: string };
-const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Canje o renovación en el servidor de tokens de Dodo IS (desde Vercel; Dodo ya no lo bloquea). */
 export async function pedirToken(campos: Record<string, string>): Promise<Tokens> {
+  // Menos que los 30 s del turno de renovación: si Dodo tarda más, otra sincronización no gasta el mismo token.
   const r = await fetch(`${AUTH}/connect/token`, {
-    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    method: "POST", signal: AbortSignal.timeout(20_000), headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ client_id: process.env.DODOIS_CLIENT_ID ?? "", client_secret: process.env.DODOIS_CLIENT_SECRET ?? "", ...campos }),
   });
   const t = await r.json().catch(() => ({})) as Partial<Tokens> & { error?: string };
@@ -26,27 +26,21 @@ export async function pedirToken(campos: Record<string, string>): Promise<Tokens
   return t as Tokens;
 }
 
-/** Token de acceso vigente: el guardado si le quedan más de 5 minutos; si no, lo renueva uno a la vez y guarda el nuevo par. */
+/** Token de acceso vigente (ver lib/dodois/tokens.ts): lee y guarda en la base con la llave de servicio. */
 export async function tokenDeAcceso(admin: SupabaseClient): Promise<string> {
-  for (let intento = 0; intento < 5; intento++) {
-    const { data, error } = await admin.rpc("dodois_tokens").maybeSingle<{ refresh: string | null; access: string | null; access_expira: string | null; estado: string }>();
-    if (error || !data) throw new ErrorDodo("Dodo IS no está conectado.");
-    if (data.estado === "requiere_reconectar") throw new ErrorDodo("Hay que reconectar Dodo IS.", true);
-    if (data.access && data.access_expira && Date.parse(data.access_expira) - Date.now() > 5 * 60_000) return data.access;
-    const { data: toca } = await admin.rpc("dodois_tomar_renovacion");
-    if (toca) {
-      try {
-        const t = await pedirToken({ grant_type: "refresh_token", refresh_token: data.refresh ?? "" });
-        await admin.rpc("dodois_guardar_tokens", { p_refresh: t.refresh_token, p_access: t.access_token, p_expira: new Date(Date.now() + t.expires_in * 1000).toISOString() });
-        return t.access_token;
-      } catch (e) {
-        await admin.rpc("dodois_marcar_error", { p_mensaje: (e as Error).message, p_reconectar: e instanceof ErrorDodo && e.reconectar });
-        throw e;
-      }
-    }
-    await esperar(2000);
-  }
-  throw new ErrorDodo("Otra sincronización está renovando el token; se reintenta en la siguiente.");
+  const almacen: Almacen = {
+    leer: async () => {
+      const { data, error } = await admin.rpc("dodois_tokens").maybeSingle<{ refresh: string | null; access: string | null; access_expira: string | null; estado: string }>();
+      return error ? null : data;
+    },
+    tomarRenovacion: async () => Boolean((await admin.rpc("dodois_tomar_renovacion")).data),
+    guardar: async (refresh, access, expira) => {
+      const { error } = await admin.rpc("dodois_guardar_tokens", { p_refresh: refresh, p_access: access, p_expira: expira });
+      return { error: error?.message ?? null };
+    },
+    marcarError: async (mensaje, reconectar) => { await admin.rpc("dodois_marcar_error", { p_mensaje: mensaje, p_reconectar: reconectar }); },
+  };
+  return resolverToken(almacen, (refresh) => pedirToken({ grant_type: "refresh_token", refresh_token: refresh }), { esperar, ahora: Date.now });
 }
 
 /** GET con el token; reintenta 429 y 5xx dos veces. */
