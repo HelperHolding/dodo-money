@@ -4,7 +4,7 @@
 
 do $$
 declare
-  v_a uuid; v_s uuid; v_rfc text; v_p1 uuid; v_p2 uuid; v_art uuid; v_o1 uuid; v_o2 uuid; v_r1 uuid; v_r2 uuid; v_imp uuid; v_f1 uuid; v_res jsonb; v_ok text[] := '{}';
+  v_a uuid; v_s uuid; v_rfc text; v_p1 uuid; v_p2 uuid; v_art uuid; v_o1 uuid; v_o2 uuid; v_r1 uuid; v_r2 uuid; v_imp uuid; v_f1 uuid; v_app uuid; v_res jsonb; v_ok text[] := '{}';
   servidor text := json_build_object('role', 'service_role')::text;
   ins text := 'AAAA0000000000000000000000000001';
   fila jsonb := jsonb_build_object('dodo_insumo_id', 'AAAA0000000000000000000000000001', 'material', 'Insumo prueba', 'unidad', 'kg',
@@ -94,6 +94,56 @@ begin
      or not exists (select 1 from recepciones_dodo where dodo_documento_id = 'D1') then raise exception 'FALLÓ: el Excel no pisa un día con API'; end if;
   if not exists (select 1 from recepciones_dodo where sucursal_id = v_s and fuente = 'excel' and fecha = '2020-02-06') then raise exception 'FALLÓ: un día sin API sí entra del Excel'; end if;
   v_ok := array_append(v_ok, 'el Excel respeta los días de la API');
+
+  -- Una respuesta vacía no borra lo que ya había (ni sus clasificaciones manuales).
+  perform set_config('request.jwt.claims', servidor, true);
+  begin
+    perform sincronizar_recepciones_dodo(v_s, '2020-02-03', '2020-02-05', '[]'::jsonb);
+    raise exception 'FALLÓ: una respuesta vacía no borra';
+  exception when others then
+    if sqlerrm like 'FALLÓ%' then raise; end if;
+    if sqlerrm <> 'Dodo IS no trajo recepciones de días que ya tenían; no se borran.' then raise exception 'FALLÓ: mensaje inesperado (vacía): %', sqlerrm; end if;
+  end;
+  v_ok := array_append(v_ok, 'una respuesta vacía no borra');
+
+  -- La sincronización (sin usuario) liga a la orden.
+  perform sincronizar_recepciones_dodo(v_s, '2020-02-07', '2020-02-07', jsonb_build_array(fila || jsonb_build_object(
+    'dodo_documento_id', 'D7', 'fecha', '2020-02-07', 'cantidad', 1, 'importe_sin_iva', 26.45, 'importe_con_iva', 30.68, 'factura_texto', null)));
+  if (select orden_renglon_id from recepciones_dodo where dodo_documento_id = 'D7') is distinct from v_r1 then raise exception 'FALLÓ: la sincronización sin usuario liga a la orden'; end if;
+  v_ok := array_append(v_ok, 'la sincronización sin usuario liga a la orden');
+
+  -- Dos entregas el mismo día con una recepción de la app: se concilia contra la suma; la otra entrega no se liga sola
+  -- por la conciliación y se puede reclasificar.
+  insert into recepciones_app (orden_renglon_id, cantidad, fecha, recibido_por) values (v_r1, 5, '2020-02-10', v_a) returning id into v_app;
+  perform sincronizar_recepciones_dodo(v_s, '2020-02-10', '2020-02-10', jsonb_build_array(
+    fila || jsonb_build_object('dodo_documento_id', 'D5', 'fecha', '2020-02-10', 'cantidad', 2, 'importe_sin_iva', 52.9, 'importe_con_iva', 61.36, 'factura_texto', null),
+    fila || jsonb_build_object('dodo_documento_id', 'D6', 'fecha', '2020-02-10', 'cantidad', 3, 'importe_sin_iva', 79.35, 'importe_con_iva', 92.05, 'factura_texto', null)));
+  perform set_config('request.jwt.claims', json_build_object('sub', v_a, 'role', 'authenticated')::text, true);
+  perform conciliar_recepcion_dodo((select id from recepciones_dodo where dodo_documento_id = 'D5'), v_app);
+  perform set_config('request.jwt.claims', servidor, true);
+  perform sincronizar_recepciones_dodo(v_s, '2020-02-10', '2020-02-10', jsonb_build_array(
+    fila || jsonb_build_object('dodo_documento_id', 'D5', 'fecha', '2020-02-10', 'cantidad', 2, 'importe_sin_iva', 52.9, 'importe_con_iva', 61.36, 'factura_texto', null),
+    fila || jsonb_build_object('dodo_documento_id', 'D6', 'fecha', '2020-02-10', 'cantidad', 3, 'importe_sin_iva', 79.35, 'importe_con_iva', 92.05, 'factura_texto', null)));
+  if (select clasificacion from recepciones_dodo where dodo_documento_id = 'D6') <> 'pendiente' then raise exception 'FALLÓ: con dos entregas la conciliación no liga la otra'; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', v_a, 'role', 'authenticated')::text, true);
+  perform clasificar_recepcion((select id from recepciones_dodo where dodo_documento_id = 'D6'), 'sin_orden', null);
+  if (select clasificacion from recepciones_dodo where dodo_documento_id = 'D6') <> 'sin_orden' then raise exception 'FALLÓ: la otra entrega se puede reclasificar'; end if;
+  v_ok := array_append(v_ok, 'dos entregas el mismo día: concilia contra la suma y la otra se reclasifica');
+
+  -- Un proveedor de la cartera con otro ID de Dodo: hay que desligarlo primero.
+  begin
+    perform ligar_proveedor_dodois(v_p1, 'OTROPRUEBA');
+    raise exception 'FALLÓ: no se pisa el ID de Dodo de un proveedor';
+  exception when others then
+    if sqlerrm like 'FALLÓ%' then raise; end if;
+    if sqlerrm <> 'Ese proveedor ya tiene ligado otro proveedor de Dodo IS; desligalo primero.' then raise exception 'FALLÓ: mensaje inesperado (pisar): %', sqlerrm; end if;
+  end;
+  perform desligar_proveedor_dodois(v_p1);
+  if (select dodois_supplier_id from proveedores where id = v_p1) is not null
+     or exists (select 1 from recepciones_dodo where dodo_proveedor_id = 'S1PRUEBA' and (proveedor_id is not null or factura_id is not null)) then
+    raise exception 'FALLÓ: desligar quita el proveedor y sus facturas ligadas';
+  end if;
+  v_ok := array_append(v_ok, 'no pisa un ID de Dodo y se puede desligar');
 
   raise exception 'PRUEBAS OK — %', array_to_string(v_ok, ' · ');
 end $$;

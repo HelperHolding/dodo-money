@@ -11,7 +11,7 @@ import { esperadasPorDia, estadoEntrega,recibidasPorDia } from "@/lib/compras/en
 import { puedeEditarCompras, puedeRecibirCompras } from "@/lib/roles";
 import { PestanasRecepciones } from "@/components/PestanasRecepciones";
 import { leerTodo } from "@/lib/ventas/paginar";
-import { clasificarRecepcion, conciliarRecepcion, ligarProveedorDodo } from "./acciones";
+import { clasificarRecepcion, conciliarRecepcion, desligarProveedorDodo, ligarProveedorDodo } from "./acciones";
 import { FormImportarRecepciones } from "./FormImportarRecepciones";
 import { CalendarioEntregas, type OrdenEsperada } from "./CalendarioEntregas";
 
@@ -98,6 +98,10 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
   const { data: cartera } = proveedoresDodo.length
     ? await supabase.from("proveedores").select("id, razon_social, nombre_comercial").eq("activo", true).order("razon_social").returns<{ id: string; razon_social: string; nombre_comercial: string | null }[]>()
     : { data: [] };
+  const { data: ligadosDodo } = edita
+    ? await supabase.from("proveedores").select("id, razon_social, nombre_comercial, dodois_supplier_id").not("dodois_supplier_id", "is", null).order("razon_social")
+      .returns<{ id: string; razon_social: string; nombre_comercial: string | null; dodois_supplier_id: string }[]>()
+    : { data: [] };
   const precioOrden = (r: Recepcion) => (r.orden_renglon_id ? (abiertos ?? []).find((a) => a.id === r.orden_renglon_id)?.precio ?? null : null);
   const precioDistinto = (r: Recepcion) => { const p = precioOrden(r); return p !== null && Number(p) > 0 && Math.abs(Number(r.precio) - Number(p)) / Number(p) > 0.01; };
   const datosDodo = (r: Recepcion) => (
@@ -170,6 +174,23 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
             ))}
           </div>
         </section>
+      )}
+      {edita && (ligadosDodo ?? []).length > 0 && (
+        <Plegable id="proveedores-ligados" titulo="Proveedores ligados a Dodo IS" resumen={`${(ligadosDodo ?? []).length}`}>
+          <ul className="lista-filas" style={{ "--columnas": 1 } as React.CSSProperties}>
+            {(ligadosDodo ?? []).map((p) => (
+              <li key={p.id} className="fila">
+                <div className="fila-nombre"><strong>{p.nombre_comercial ?? p.razon_social}</strong><small>ID Dodo IS {p.dodois_supplier_id}</small></div>
+                <div className="fila-datos"><span>
+                  <form action={desligarProveedorDodo}>
+                    <input type="hidden" name="proveedor_id" value={p.id} />
+                    <BotonEnviar className="boton boton-secundario" confirmar="¿Desligar este proveedor de Dodo IS? Sus recepciones vuelven a 'sin proveedor' y pierden la factura ligada por folio.">Desligar</BotonEnviar>
+                  </form>
+                </span></div>
+              </li>
+            ))}
+          </ul>
+        </Plegable>
       )}
       {edita && <Plegable id="respaldo-excel" titulo="Respaldo: importar Excel de Dodo IS" resumen="Solo para días sin recepciones de la API"><FormImportarRecepciones /></Plegable>}
 

@@ -66,7 +66,10 @@ begin
   update public.recepciones_dodo d set orden_renglon_id = c.renglon, clasificacion = 'orden' from
    (select dodo_sucursal, dodo_insumo, dodo_fecha, (array_agg(distinct orden_renglon_id))[1] renglon from public.recepciones_app
      where conciliada_en is not null and anulada_en is null group by dodo_sucursal, dodo_insumo, dodo_fecha having count(distinct orden_renglon_id) = 1) c
-   where d.clasificacion = 'pendiente' and d.sucursal_id = c.dodo_sucursal and d.dodo_insumo_id = c.dodo_insumo and d.fecha = c.dodo_fecha;
+   where d.clasificacion = 'pendiente' and d.sucursal_id = c.dodo_sucursal and d.dodo_insumo_id = c.dodo_insumo and d.fecha = c.dodo_fecha
+     and (d.fuente = 'excel' or (
+       (select count(*) from public.recepciones_dodo x where x.fuente = 'api' and x.sucursal_id = d.sucursal_id and x.dodo_insumo_id = d.dodo_insumo_id and x.fecha = d.fecha) = 1
+       and d.proveedor_id = (select o.proveedor_id from public.orden_renglones r join public.ordenes_compra o on o.id = r.orden_id where r.id = c.renglon)));
   for rec in select * from recepciones_dodo where clasificacion = 'pendiente'
       and (fuente = 'excel' or proveedor_id is not null)
       and not exists (select 1 from public.recepciones_app m join public.orden_renglones r on r.id = m.orden_renglon_id
@@ -118,6 +121,10 @@ begin
       precio numeric, importe_sin_iva numeric, importe_con_iva numeric, tasa_iva numeric, dodo_proveedor_id text, factura_texto text,
       factura_fecha date, modificado_dodo timestamp)
     where x.fecha between p_desde and p_hasta and x.cantidad > 0;
+  if not exists (select 1 from tmp_rec)
+     and exists (select 1 from recepciones_dodo where fuente = 'api' and sucursal_id = p_sucursal and fecha between p_desde and p_hasta) then
+    raise exception 'Dodo IS no trajo recepciones de días que ya tenían; no se borran.';
+  end if;
 
   -- Días que traen recepciones de la API: lo del Excel se reemplaza, guardando su clasificación para pasarla.
   create temp table tmp_excel on commit drop as
@@ -171,6 +178,9 @@ declare v_supplier text := upper(nullif(trim(p_supplier), '')); v_n integer;
 begin
   perform exigir_admin_compras();
   if v_supplier is null then raise exception 'Falta el proveedor de Dodo IS.'; end if;
+  if exists (select 1 from proveedores where id = p_proveedor and dodois_supplier_id is not null and dodois_supplier_id <> v_supplier) then
+    raise exception 'Ese proveedor ya tiene ligado otro proveedor de Dodo IS; desligalo primero.';
+  end if;
   update proveedores set dodois_supplier_id = v_supplier where id = p_proveedor;
   if not found then raise exception 'Proveedor no encontrado.'; end if;
   update recepciones_dodo set proveedor_id = p_proveedor where dodo_proveedor_id = v_supplier and fuente = 'api';
@@ -204,7 +214,75 @@ begin
   return jsonb_build_object('recepciones', (select count(*) from recepciones_dodo where importacion_id = v_imp), 'ligadas', v_ligadas, 'pendientes', v_pendientes);
 end $$;
 
+-- Desligar un proveedor de Dodo IS (ligado por error): sus recepciones vuelven a "sin proveedor" y pierden la factura
+-- ligada por folio; las ligas a órdenes se quedan para revisión manual.
+create or replace function desligar_proveedor_dodois(p_proveedor uuid) returns integer
+language plpgsql security definer set search_path = public as $$
+declare v_n integer;
+begin
+  perform exigir_admin_compras();
+  if not exists (select 1 from proveedores where id = p_proveedor and dodois_supplier_id is not null) then
+    raise exception 'Ese proveedor no está ligado a Dodo IS.';
+  end if;
+  update proveedores set dodois_supplier_id = null where id = p_proveedor;
+  update recepciones_dodo set proveedor_id = null, factura_id = null where fuente = 'api' and proveedor_id = p_proveedor;
+  get diagnostics v_n = row_count;
+  return v_n;
+end $$;
+
+-- I2: conciliar contra la suma de las entregas de Dodo del día (las libres o ya del mismo renglón), no contra una sola.
+create or replace function public.conciliar_recepcion_dodo(p_dodo uuid,p_manual uuid) returns void
+language plpgsql security definer set search_path='' as $$
+declare d public.recepciones_dodo;m public.recepciones_app; o public.ordenes_compra; insumo text; suma numeric; total_dodo numeric;
+begin
+ perform public.exigir_admin_compras();
+ select * into d from public.recepciones_dodo where id=p_dodo;
+ if not found then raise exception 'Recepción de Dodo IS no encontrada.';end if;
+ select oc.* into o from public.ordenes_compra oc join public.orden_renglones r on r.orden_id=oc.id join public.recepciones_app a on a.orden_renglon_id=r.id where a.id=p_manual for update of oc;
+ select * into d from public.recepciones_dodo where id=p_dodo for update;
+ select * into m from public.recepciones_app where id=p_manual for update;
+ if o.id is null or m.anulada_en is not null then raise exception 'Recepción manual no disponible.';end if;
+ select a.dodo_insumo_id into insumo from public.orden_renglones r join public.articulos a on a.id=r.articulo_id where r.id=m.orden_renglon_id;
+ if o.sucursal_id is distinct from d.sucursal_id or m.fecha<>d.fecha or (insumo is not null and insumo is distinct from d.dodo_insumo_id) then raise exception 'Deben coincidir sucursal, insumo y fecha real.';end if;
+ if d.orden_renglon_id is not null and d.orden_renglon_id<>m.orden_renglon_id then raise exception 'Dodo IS ya está ligado a otro renglón.';end if;
+ if exists(select 1 from public.recepciones_app where dodo_sucursal=d.sucursal_id and dodo_insumo=d.dodo_insumo_id and dodo_fecha=d.fecha and anulada_en is null and orden_renglon_id<>m.orden_renglon_id) then raise exception 'El reporte diario ya se concilió con otra orden.';end if;
+ select coalesce(sum(cantidad),0) into suma from public.recepciones_app where dodo_sucursal=d.sucursal_id and dodo_insumo=d.dodo_insumo_id and dodo_fecha=d.fecha and anulada_en is null and id<>m.id;
+ select coalesce(sum(cantidad),0) into total_dodo from public.recepciones_dodo where sucursal_id=d.sucursal_id and dodo_insumo_id=d.dodo_insumo_id and fecha=d.fecha and (orden_renglon_id is null or orden_renglon_id=m.orden_renglon_id);
+ if suma+m.cantidad>total_dodo then raise exception 'La cantidad importada no cubre las recepciones manuales elegidas.';end if;
+ update public.recepciones_app set dodo_sucursal=d.sucursal_id,dodo_insumo=d.dodo_insumo_id,dodo_fecha=d.fecha,conciliada_por=auth.uid(),conciliada_en=now() where id=m.id;
+ perform public.clasificar_recepcion(d.id,'orden',m.orden_renglon_id);
+ insert into public.orden_historial(orden_id,evento,nota) values(o.id,'recepción conciliada','Dodo IS · '||d.fecha||' · '||m.cantidad);
+end $$;
+
+-- I2: con varias entregas el mismo día, la conciliación solo protege la entrega ligada al renglón conciliado.
+create or replace function clasificar_recepcion(p_id uuid, p_clasificacion text, p_renglon uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare rec recepciones_dodo; v_suc uuid; v_estado estado_orden; v_insumo text;
+begin
+  perform exigir_admin_compras();
+  select * into rec from recepciones_dodo where id = p_id for update;
+  if not found then raise exception 'Recepción no encontrada'; end if;
+  if exists(select 1 from public.recepciones_app m where m.anulada_en is null and m.dodo_sucursal=rec.sucursal_id and m.dodo_insumo=rec.dodo_insumo_id and m.dodo_fecha=rec.fecha
+              and (p_clasificacion<>'orden' or m.orden_renglon_id is distinct from p_renglon)
+              and (rec.fuente = 'excel' or rec.orden_renglon_id = m.orden_renglon_id)) then raise exception 'La recepción tiene una conciliación manual; conserva su renglón.';end if;
+  if p_clasificacion = 'orden' then
+    if exists(select 1 from public.recepciones_app m join public.orden_renglones r on r.id=m.orden_renglon_id join public.ordenes_compra o on o.id=r.orden_id join public.articulos a on a.id=r.articulo_id where m.anulada_en is null and m.fecha=rec.fecha and o.sucursal_id=rec.sucursal_id and (a.dodo_insumo_id=rec.dodo_insumo_id or r.id=p_renglon)) and not exists(select 1 from public.recepciones_app m where m.anulada_en is null and m.dodo_sucursal=rec.sucursal_id and m.dodo_insumo=rec.dodo_insumo_id and m.dodo_fecha=rec.fecha and m.orden_renglon_id=p_renglon) then raise exception 'Usa Conciliar con recepción manual para evitar duplicados.';end if;
+    select o.sucursal_id, o.estado, a.dodo_insumo_id into v_suc, v_estado, v_insumo
+      from orden_renglones r join ordenes_compra o on o.id = r.orden_id join articulos a on a.id = r.articulo_id
+     where r.id = p_renglon;
+    if not found then raise exception 'Elige el renglón de una orden'; end if;
+    if v_estado not in ('confirmada', 'cerrada') then raise exception 'La orden no está confirmada'; end if;
+    if v_suc is distinct from rec.sucursal_id then raise exception 'La orden es de otra sucursal'; end if;
+    if v_insumo is not null and v_insumo <> rec.dodo_insumo_id then raise exception 'El artículo de ese renglón es otro insumo de Dodo IS'; end if;
+    update recepciones_dodo set orden_renglon_id = p_renglon, clasificacion = 'orden' where id = p_id;
+  elsif p_clasificacion in ('sin_orden', 'traspaso', 'pendiente') then
+    update recepciones_dodo set orden_renglon_id = null, clasificacion = p_clasificacion where id = p_id;
+  else
+    raise exception 'Clasificación no válida';
+  end if;
+end $$;
+
 revoke execute on function ligar_facturas_recepciones(), sincronizar_recepciones_dodo(uuid, date, date, jsonb) from public, anon, authenticated;
 grant execute on function sincronizar_recepciones_dodo(uuid, date, date, jsonb) to service_role;
-revoke execute on function ligar_proveedor_dodois(uuid, text) from public, anon;
-grant execute on function ligar_proveedor_dodois(uuid, text) to authenticated;
+revoke execute on function ligar_proveedor_dodois(uuid, text), desligar_proveedor_dodois(uuid) from public, anon;
+grant execute on function ligar_proveedor_dodois(uuid, text), desligar_proveedor_dodois(uuid) to authenticated;

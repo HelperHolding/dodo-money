@@ -60,3 +60,12 @@ export async function ligarProveedorDodo(fd: FormData) {
   revalidatePath("/compras", "layout");
   volver(ruta, "ok", `Proveedor ligado: ${data ?? 0} recepciones actualizadas y ligadas donde se pudo.`);
 }
+
+export async function desligarProveedorDodo(fd: FormData) {
+  const ruta = "/compras/recepciones";
+  const supabase = await clienteAdmin(ruta);
+  const { data, error } = await supabase.rpc("desligar_proveedor_dodois", { p_proveedor: String(fd.get("proveedor_id") ?? "") });
+  if (error) volver(ruta, "error", error.message);
+  revalidatePath("/compras", "layout");
+  volver(ruta, "ok", `Proveedor desligado: ${data ?? 0} recepciones vuelven a "sin proveedor".`);
+}
