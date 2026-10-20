@@ -6,6 +6,7 @@ import { Icono } from "@/components/Icono";
 import { NOMBRE_ROL } from "@/lib/roles";
 import type { Perfil, Rol } from "@/lib/tipos";
 import { guardarUsuario } from "./acciones";
+import { ContrasenaTemporal } from './ContrasenaTemporal';
 import { verSucursal } from "@/app/corporativo/actions";
 import styles from "./usuarios.module.css";
 export type Usuario=Perfil;
@@ -91,6 +92,7 @@ export function ListaUsuarios({usuarios,sucursales,cambios,yo,editable}:{usuario
           {actual.id===yo&&<span className={styles.propia}>Tu cuenta</span>}
         </div>
         {editable?<Editor key={actual.id} u={actual} sucursales={sucursales} yo={yo}/>:<p className={styles.nota}>La edición de cuentas se habilita al aplicar la migración pendiente.</p>}
+        {editable&&actual.activo&&actual.id!==yo&&<ContrasenaTemporal key={actual.id} usuario={actual.id} nombre={actual.nombre}/>}
         {historial.length>0&&<section aria-labelledby="u-historial"><h3 id="u-historial">Historial y motivos</h3><ol className={styles.historial}>{historial.map(c=><li key={c.id}><strong>{c.motivo}</strong><small>{usuarios.find(a=>a.id===c.autor_id)?.nombre??"Administración"} · {new Date(c.creado_en).toLocaleString("es-MX",{timeZone:"America/Mexico_City"})}</small><small>{NOMBRE_ROL[c.antes.rol]} → {NOMBRE_ROL[c.despues.rol]} · {sucursales.find(s=>s.id===c.despues.sucursal_id)?.nombre??"Todas las sucursales"} · {c.despues.activo?"Activo":"Inactivo"}</small></li>)}</ol></section>}
       </div>}
     </Cajon>
