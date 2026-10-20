@@ -90,7 +90,7 @@ test("menú lateral: grupo Sucursal por puesto (Recepciones solo para quien reci
 });
 
 test("menú lateral: Ventas y Compras por puesto", () => {
-  assert.deepEqual(grupo("admin", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/importar", "/ventas/costos"]);
+  assert.deepEqual(grupo("admin", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/importar", "/ventas/dodois", "/ventas/costos"]);
   assert.deepEqual(grupo("gerente", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion"]);
   assert.deepEqual(grupo("corporativo", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/costos"]);
   assert.deepEqual(grupo("admin", "Compras"),
