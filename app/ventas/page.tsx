@@ -33,6 +33,14 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   // El aviso de productos sin costo lo ven admin y corporativo; asignar costos, solo el admin.
   const veAviso = veAvisoSinCosto(perfil.rol);
   const esAdmin = puedeImportarVentas(perfil.rol);
+  const { data: dodois } = puedeImportarVentas(perfil.rol)
+    ? await supabase.from("dodois_conexion").select("estado").maybeSingle<{ estado: string }>()
+    : { data: null };
+  const { data: ultimas } = puedeImportarVentas(perfil.rol)
+    ? await supabase.from("dodois_sincronizaciones").select("estado").order("inicio", { ascending: false }).limit(3).returns<{ estado: string }[]>()
+    : { data: null };
+  const avisoDodo = dodois?.estado === "requiere_reconectar" ? "Hay que reconectar Dodo IS: las ventas no se están actualizando."
+    : (ultimas ?? []).length === 3 && (ultimas ?? []).every((u) => u.estado === "error") ? "Las últimas 3 sincronizaciones con Dodo IS fallaron." : null;
 
   const { data: sucursales, error } = await supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>();
   if (error) throw new Error(`No se pudieron cargar las sucursales: ${error.message}`);
@@ -91,6 +99,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
           <Link className="boton boton-secundario" href={`/reporte/ventas?${filtroReporte}`} target="_blank"><Icono nombre="documento" /> Reporte PDF</Link>
           <a className="boton boton-secundario" href={`/reporte/ventas/excel?${filtroReporte}`} download><Icono nombre="descargar" /> Descargar Excel</a>
         </>} />
+      {avisoDodo && <p className="aviso aviso-error">{avisoDodo} <Link href="/ventas/dodois">Revisar</Link></p>}
 
       <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
         maxDias={MAX_DIAS} sucursal={sucursal} sucursales={todas ? sucursales ?? [] : null} />
