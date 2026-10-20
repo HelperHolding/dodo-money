@@ -32,7 +32,7 @@ begin
  select coalesce(jsonb_agg(jsonb_build_object('id',p.id,'fecha',p.fecha,'monto',p.monto,'referencia',p.referencia)),'[]') into historicos from public.pagos p
  where p.origen_fondos is null and p.forma='efectivo' and p.fecha between p_desde and greatest(p_hasta,op) and p.anulado_en is null and exists(select 1 from public.pago_aplicaciones pa join public.facturas f on f.id=pa.factura_id where pa.pago_id=p.id and f.sucursal_id=p_sucursal);
  return jsonb_build_object('cierres',cierres,'disponibilidad',d,'maximo',maximo,'base_maximo','disponibilidad_actual','permite_entrega_parcial',true,'incremento_periodo',ultimo.boveda_contado-primero.boveda_inicial,'pagos',pagos,'historicos_por_revisar',historicos,'capturado_en',now(),'desde',p_desde,'hasta',p_hasta);
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.registrar_recoleccion(p_id uuid, p_sucursal uuid, p_desde date, p_hasta date, p_monto numeric, p_folio text, p_nota text, p_historicos_revisados boolean DEFAULT false)
  RETURNS uuid
@@ -63,6 +63,6 @@ begin
  insert into public.recolecciones_corporativo(id,sucursal_id,desde,hasta,expediente,creado_por) values(p_id,p_sucursal,p_desde,p_hasta,exp,auth.uid());
  insert into public.recoleccion_cierres(recoleccion_id,cierre_id) select p_id,(c.valor->>'id')::uuid from jsonb_array_elements(exp->'cierres') as c(valor);
  return p_id;
-end $function$
+end $function$;
 
 commit;
