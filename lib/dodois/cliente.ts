@@ -1,0 +1,75 @@
+import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { VentaApi } from "./ventas";
+
+export const AUTH = "https://auth.dodois.com";
+export const API = "https://api.dodois.com";
+export const SCOPES = "openid offline_access user.role:read sales accounting:read unit:read productionefficiency";
+
+export class ErrorDodo extends Error {
+  constructor(mensaje: string, readonly reconectar = false) { super(mensaje); }
+}
+
+export type Tokens = { access_token: string; refresh_token: string; expires_in: number; scope?: string };
+const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Canje o renovación en el servidor de tokens de Dodo IS (desde Vercel; Dodo ya no lo bloquea). */
+export async function pedirToken(campos: Record<string, string>): Promise<Tokens> {
+  const r = await fetch(`${AUTH}/connect/token`, {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: process.env.DODOIS_CLIENT_ID ?? "", client_secret: process.env.DODOIS_CLIENT_SECRET ?? "", ...campos }),
+  });
+  const t = await r.json().catch(() => ({})) as Partial<Tokens> & { error?: string };
+  if (!r.ok || !t.access_token || !t.refresh_token) {
+    throw new ErrorDodo(`Dodo IS no dio el token (${r.status}${t.error ? ` ${t.error}` : ""}).`, t.error === "invalid_grant");
+  }
+  return t as Tokens;
+}
+
+/** Token de acceso vigente: el guardado si le quedan más de 5 minutos; si no, lo renueva uno a la vez y guarda el nuevo par. */
+export async function tokenDeAcceso(admin: SupabaseClient): Promise<string> {
+  for (let intento = 0; intento < 5; intento++) {
+    const { data, error } = await admin.rpc("dodois_tokens").maybeSingle<{ refresh: string | null; access: string | null; access_expira: string | null; estado: string }>();
+    if (error || !data) throw new ErrorDodo("Dodo IS no está conectado.");
+    if (data.estado === "requiere_reconectar") throw new ErrorDodo("Hay que reconectar Dodo IS.", true);
+    if (data.access && data.access_expira && Date.parse(data.access_expira) - Date.now() > 5 * 60_000) return data.access;
+    const { data: toca } = await admin.rpc("dodois_tomar_renovacion");
+    if (toca) {
+      try {
+        const t = await pedirToken({ grant_type: "refresh_token", refresh_token: data.refresh ?? "" });
+        await admin.rpc("dodois_guardar_tokens", { p_refresh: t.refresh_token, p_access: t.access_token, p_expira: new Date(Date.now() + t.expires_in * 1000).toISOString() });
+        return t.access_token;
+      } catch (e) {
+        await admin.rpc("dodois_marcar_error", { p_mensaje: (e as Error).message, p_reconectar: e instanceof ErrorDodo && e.reconectar });
+        throw e;
+      }
+    }
+    await esperar(2000);
+  }
+  throw new ErrorDodo("Otra sincronización está renovando el token; se reintenta en la siguiente.");
+}
+
+/** GET con el token; reintenta 429 y 5xx dos veces. */
+export async function getDodo<T>(token: string, url: string): Promise<T> {
+  for (let i = 0; ; i++) {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (r.ok) return r.json() as Promise<T>;
+    if (r.status === 401) throw new ErrorDodo("Dodo IS rechazó el token (401).");
+    if ((r.status === 429 || r.status >= 500) && i < 2) { await esperar(1500 * (i + 1)); continue; }
+    throw new ErrorDodo(`Dodo IS respondió ${r.status} en ${new URL(url).pathname}.`);
+  }
+}
+
+/** Ventas de una unidad en una ventana, página por página hasta `isEndOfListReached` (corta si una página no trae nada nuevo). */
+export async function ventasDelDia(token: string, unitId: string, ventana: { from: string; to: string }): Promise<VentaApi[]> {
+  const todas = new Map<string, VentaApi>();
+  for (let skip = 0, pagina = 0; pagina < 20; pagina++) {
+    const r = await getDodo<{ sales: VentaApi[]; isEndOfListReached: boolean }>(token,
+      `${API}/dodopizza/mx/accounting/sales?units=${unitId}&from=${ventana.from}&to=${ventana.to}&skip=${skip}&take=1000`);
+    const antes = todas.size;
+    for (const v of r.sales ?? []) todas.set(v.orderId, v);
+    if (r.isEndOfListReached || todas.size === antes) return [...todas.values()];
+    skip += (r.sales ?? []).length;
+  }
+  throw new ErrorDodo("La venta del día trae demasiadas páginas.");
+}
