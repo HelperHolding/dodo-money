@@ -10,3 +10,16 @@ test('recolección: agrupa cierres sin sumar saldos acumulados ni descontar pago
 test('recolección: conserva fondo y compromisos aunque la disponibilidad recibida sea mayor',()=>{
  assert.equal(resumirCierresRecoleccion([],{saldo:5000,fondo:4500,reservado:300,salidas:100,disponible:9999}).disponibleActual,100);
 });
+
+
+test('recolección: el efectivo acumulado sigue disponible aunque el incremento del rango sea cero',()=>{
+ const r=resumirCierresRecoleccion([{...cierre,boveda_inicial:26868.26,boveda_contado:26868.26}],{saldo:26868.26,fondo:4500,reservado:0,salidas:0,disponible:22368.26});
+ assert.equal(r.bovedaUltimoCierre!-r.bovedaInicial!,0);
+ assert.equal(r.disponibleActual,22368.26);
+});
+
+test('recolección: saldo acumulado conserva reservas, salidas pendientes y el fondo',()=>{
+ const r=resumirCierresRecoleccion([cierre],{saldo:26868.26,fondo:4500,reservado:3000,salidas:10000,disponible:22368.26});
+ assert.equal(r.disponibleActual,9368.26);
+ assert.equal(resumirCierresRecoleccion([cierre],{saldo:4000,fondo:4500,reservado:0,salidas:0,disponible:0}).disponibleActual,0);
+});
