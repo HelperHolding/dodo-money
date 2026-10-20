@@ -53,7 +53,7 @@ export async function cargarDia(supabase: SupabaseClient, sucursalId: string, fe
     supabase.from("movimientos").select(MOVS).eq("sucursal_id", sucursalId)
       .gte("creado_en", desde).lt("creado_en", hasta).order("creado_en").returns<MovimientoDia[]>(),
     supabase.from("movimientos").select(MOVS).in("turno_id", ids.length ? ids : sinIds).order("creado_en").returns<MovimientoDia[]>(),
-    supabase.from("gastos_caja_chica").select("id, fecha, concepto, proveedor, monto, comprobante, origen, pagado_por, repuesto_en, creado_en").eq("informativo", false)
+    supabase.from("gastos_caja_chica").select("id, fecha, concepto, proveedor, monto, comprobante, origen, pagado_por, repuesto_en, creado_en").eq("informativo", false).is("anulado_en",null)
       .eq("sucursal_id", sucursalId).gte("creado_en", desde).lt("creado_en", hasta).order("creado_en").returns<GastoDia[]>(),
     supabase.from("cierres_dia")
       .select("rappi, rappi_corte, venta_total, venta_neta, transacciones, ticket_promedio, boveda_inicial, retiros_dia, aperturas_dia, deposito_dia, gastos_boveda_dia, boveda_esperado, boveda_contado, boveda_diferencia, cambios_diferencia, deposito_ficha, cerrado_por, cerrado_en")
