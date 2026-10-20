@@ -19,3 +19,14 @@ Pagos históricos en efectivo sin origen se marcan por revisar y requieren confi
 Preparar registra salida pendiente con caja bloqueada y conserva snapshot. Un admin distinto recoge o rechaza usando la custodia existente; rechazo antes de recoger libera los cierres. Después de recoger, no se liberan aunque corporativo detecte diferencia: el dinero salió físicamente. Recepción exige conteo; coincidencia acepta y discrepancia requiere motivo y marca No cuadró. Repetir el mismo conteo es idempotente. Las entregas con expediente no se reciben desde el formulario antiguo sin conteo. Mismo movimiento: no hay salida duplicada ni ajustes a ingresos/P&L.
 
 Nuevas tablas de consulta con RLS y sin escritura directa. El enlace movimiento→expediente usa FK diferida para impedir nuevas salidas sin un expediente válido incluso vía inserción directa. Los helpers de sucursal y rol siguen el alcance existente; futuras empresas deberán ampliar ese alcance. Los ensayos son reversibles, no realizaron pagos reales ni carga de comprobantes. Falta validar el flujo con usuarios y datos reales tras despliegue.
+
+
+## Corrección: efectivo acumulado disponible
+
+La migración `recoleccion_efectivo_acumulado` elimina el límite por incremento entre cierres. Ese incremento puede ser cero aunque exista efectivo acumulado listo para entregar. El rango sigue respaldando la entrega y conserva la exclusividad de sus cierres; el máximo pasa a ser el disponible actual protegido de la bóveda (saldo menos fondo, reservas y salidas pendientes). No se suman saldos ni se vuelven a restar compras. Se conserva la exigencia de entregar exactamente el máximo y la validación atómica al registrar.
+
+Los expedientes nuevos identifican `base_maximo=disponibilidad_actual`. Los históricos siguen mostrando la explicación de su cálculo original. Si el máximo es cero, la pantalla muestra un aviso en lugar de ocultar silenciosamente la acción.
+
+Prueba aislada de la función SQL completa: `node tests/recoleccionMaximo.mjs` con `@electric-sql/pglite` disponible, o pasando el URL del módulo instalado como argumento. Usa tablas sintéticas en memoria; no ejecutar el fixture en producción. Incluye incremento cero con saldo acumulado, reservas/salidas pendientes y disponibilidad cero.
+
+Antes de publicar, aplicar la migración en el proyecto Supabase de Dodo y validar en modo lectura el expediente de Zapopan-1 con su rango real. No requiere registrar una salida real para verificar el cálculo.
