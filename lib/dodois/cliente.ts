@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ErrorDodo, tokenDeAcceso as resolverToken, type Almacen } from "./tokens";
+import type { RecepcionApi } from "./recepciones";
 import type { VentaApi } from "./ventas";
 
 export { ErrorDodo };
@@ -66,4 +67,18 @@ export async function ventasDelDia(token: string, unitId: string, ventana: { fro
     skip += (r.sales ?? []).length;
   }
   throw new ErrorDodo("La venta del día trae demasiadas páginas.");
+}
+
+/** Recepciones de insumos de una unidad en una ventana, página por página (corta si una página no trae nada nuevo). */
+export async function recepcionesDe(token: string, unitId: string, ventana: { from: string; to: string }): Promise<RecepcionApi[]> {
+  const todas = new Map<string, RecepcionApi>();
+  for (let skip = 0, pagina = 0; pagina < 20; pagina++) {
+    const r = await getDodo<{ incomingStockItems: RecepcionApi[]; isEndOfListReached: boolean }>(token,
+      `${API}/dodopizza/mx/accounting/incoming-stock-items?units=${unitId}&from=${ventana.from}&to=${ventana.to}&skip=${skip}&take=1000`);
+    const antes = todas.size;
+    for (const x of r.incomingStockItems ?? []) todas.set(JSON.stringify(x), x);
+    if (r.isEndOfListReached || todas.size === antes) return [...todas.values()];
+    skip += (r.incomingStockItems ?? []).length;
+  }
+  throw new ErrorDodo("Las recepciones traen demasiadas páginas.");
 }

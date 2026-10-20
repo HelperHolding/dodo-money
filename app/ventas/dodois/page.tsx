@@ -9,7 +9,7 @@ import { puedeImportarVentas } from "@/lib/roles";
 import { actualizarAhora, ligarUnidad } from "./acciones";
 
 type Conexion = { conectado_en: string; estado: string; ultimo_error: string | null; unidades: { id: string; name: string }[]; perfiles: { nombre: string } | null };
-type Registro = { id: number; inicio: string; origen: string; fecha: string | null; pedidos: number | null; total: number | null; estado: string; mensaje: string | null; sucursales: { nombre: string } | null };
+type Registro = { id: number; inicio: string; tipo: string; origen: string; fecha: string | null; pedidos: number | null; total: number | null; estado: string; mensaje: string | null; sucursales: { nombre: string } | null };
 // "Actualizar ahora" puede renovar el token y reintentar: que no se corte a la mitad.
 export const maxDuration = 60;
 
@@ -23,7 +23,7 @@ export default async function PaginaDodoIS({ searchParams }: { searchParams: Pro
   const [{ data: conexion }, { data: sucursales }, { data: registros }] = await Promise.all([
     supabase.from("dodois_conexion").select("conectado_en, estado, ultimo_error, unidades, perfiles(nombre)").maybeSingle<Conexion>(),
     supabase.from("sucursales").select("id, nombre, dodois_unit_id").order("nombre").returns<{ id: string; nombre: string; dodois_unit_id: string | null }[]>(),
-    supabase.from("dodois_sincronizaciones").select("id, inicio, origen, fecha, pedidos, total, estado, mensaje, sucursales(nombre)")
+    supabase.from("dodois_sincronizaciones").select("id, inicio, tipo, origen, fecha, pedidos, total, estado, mensaje, sucursales(nombre)")
       .order("inicio", { ascending: false }).limit(20).returns<Registro[]>(),
   ]);
   const unidades = conexion?.unidades ?? [];
@@ -86,10 +86,10 @@ export default async function PaginaDodoIS({ searchParams }: { searchParams: Pro
           <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
             {(registros ?? []).map((r) => (
               <li key={r.id} className="fila" data-alerta={r.estado === "error" ? "si" : undefined}>
-                <div className="fila-nombre"><strong>{r.sucursales?.nombre ?? "—"} · {r.fecha ? fechaTexto(r.fecha) : "—"}</strong><small>{ORIGEN[r.origen] ?? r.origen} · {fechaTexto(fechaMX(r.inicio))} {hora(r.inicio)}</small></div>
+                <div className="fila-nombre"><strong>{r.tipo === "recepciones" ? "Recepciones" : "Ventas"} · {r.sucursales?.nombre ?? "—"} · {r.fecha ? fechaTexto(r.fecha) : "—"}</strong><small>{ORIGEN[r.origen] ?? r.origen} · {fechaTexto(fechaMX(r.inicio))} {hora(r.inicio)}</small></div>
                 <div className="fila-datos">
                   <span>{r.estado === "ok" ? "Al día" : r.estado === "omitido" ? "Sin cambios" : "Error"}</span>
-                  <span>{r.pedidos ?? 0} pedidos · {pesos(Number(r.total ?? 0))}</span>
+                  <span>{r.pedidos ?? 0} {r.tipo === "recepciones" ? "renglones" : "pedidos"} · {pesos(Number(r.total ?? 0))}</span>
                   <span>{r.mensaje ?? ""}</span>
                 </div>
               </li>
