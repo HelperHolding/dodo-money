@@ -1,6 +1,8 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { leerPaginas } from "./paginas";
 import { ErrorDodo, tokenDeAcceso as resolverToken, type Almacen } from "./tokens";
+import type { RecepcionApi } from "./recepciones";
 import type { VentaApi } from "./ventas";
 
 export { ErrorDodo };
@@ -54,16 +56,21 @@ export async function getDodo<T>(token: string, url: string): Promise<T> {
   }
 }
 
-/** Ventas de una unidad en una ventana, página por página hasta `isEndOfListReached` (corta si una página no trae nada nuevo). */
+/** Ventas de una unidad en una ventana, página por página (ver lib/dodois/paginas.ts); un pedido repetido se cuenta una vez. */
 export async function ventasDelDia(token: string, unitId: string, ventana: { from: string; to: string }): Promise<VentaApi[]> {
-  const todas = new Map<string, VentaApi>();
-  for (let skip = 0, pagina = 0; pagina < 20; pagina++) {
+  const ventas = await leerPaginas(async (skip) => {
     const r = await getDodo<{ sales: VentaApi[]; isEndOfListReached: boolean }>(token,
       `${API}/dodopizza/mx/accounting/sales?units=${unitId}&from=${ventana.from}&to=${ventana.to}&skip=${skip}&take=1000`);
-    const antes = todas.size;
-    for (const v of r.sales ?? []) todas.set(v.orderId, v);
-    if (r.isEndOfListReached || todas.size === antes) return [...todas.values()];
-    skip += (r.sales ?? []).length;
-  }
-  throw new ErrorDodo("La venta del día trae demasiadas páginas.");
+    return { items: r.sales ?? [], fin: r.isEndOfListReached };
+  }).catch((e) => { throw new ErrorDodo((e as Error).message); });
+  return [...new Map(ventas.map((v) => [v.orderId, v])).values()];
+}
+
+/** Recepciones de insumos de una unidad en una ventana, página por página; las líneas iguales se conservan. */
+export async function recepcionesDe(token: string, unitId: string, ventana: { from: string; to: string }): Promise<RecepcionApi[]> {
+  return leerPaginas(async (skip) => {
+    const r = await getDodo<{ incomingStockItems: RecepcionApi[]; isEndOfListReached: boolean }>(token,
+      `${API}/dodopizza/mx/accounting/incoming-stock-items?units=${unitId}&from=${ventana.from}&to=${ventana.to}&skip=${skip}&take=1000`);
+    return { items: r.incomingStockItems ?? [], fin: r.isEndOfListReached };
+  }).catch((e) => { throw new ErrorDodo((e as Error).message); });
 }
