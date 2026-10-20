@@ -51,3 +51,12 @@ export async function conciliarRecepcion(fd: FormData) {
  if(error)volver(ruta,"error",error.message);
  revalidatePath("/compras","layout");volver(ruta,"ok","Recepciones conciliadas sin duplicar cantidades.");
 }
+
+export async function ligarProveedorDodo(fd: FormData) {
+  const ruta = "/compras/recepciones";
+  const supabase = await clienteAdmin(ruta);
+  const { data, error } = await supabase.rpc("ligar_proveedor_dodois", { p_proveedor: String(fd.get("proveedor_id") ?? ""), p_supplier: String(fd.get("supplier") ?? "") });
+  if (error) volver(ruta, "error", error.message);
+  revalidatePath("/compras", "layout");
+  volver(ruta, "ok", `Proveedor ligado: ${data ?? 0} recepciones actualizadas y ligadas donde se pudo.`);
+}
