@@ -95,6 +95,18 @@ begin
   if (select count(*) from pedidos where importacion_id = v_imp) <> 1 or exists (select 1 from pedidos where dodo_id = 'PRUEBA0040B') then raise exception 'FALLÓ: el pedido que ya no viene se quita'; end if;
   v_ok := array_append(v_ok, 'quita pedidos que ya no vienen');
 
+  -- Una respuesta vacía de la API no borra un día que ya tenía ventas.
+  begin
+    perform sincronizar_ventas_dodo(v_s, d1, res || jsonb_build_object('pedidos', 0, 'total', 0, 'efectivo', 0, 'tarjeta', 0, 'iva', 0, 'suma_productos', 0, 'productos', 0),
+      '[]'::jsonb, '[]'::jsonb, '[]'::jsonb);
+    raise exception 'FALLÓ: una respuesta vacía no borra el día';
+  exception when others then
+    if sqlerrm like 'FALLÓ%' then raise; end if;
+    if sqlerrm <> 'Dodo IS no trajo pedidos de un día que ya tenía ventas; no se borra.' then raise exception 'FALLÓ: mensaje inesperado (vacío): %', sqlerrm; end if;
+  end;
+  if (select count(*) from pedidos where importacion_id = v_imp) <> 1 then raise exception 'FALLÓ: el día sigue con su pedido'; end if;
+  v_ok := array_append(v_ok, 'una respuesta vacía no borra el día');
+
   -- Día del Excel: no se toca.
   insert into importaciones_ventas (sucursal_id, fecha, archivo_ventas, archivo_productos, total, suma_productos, productos, pedidos, formato, importado_por)
   values (v_s, d2, 'excel.xlsx', null, 100, 100, 1, 1, 'datos_brutos', v_a) returning id into v_imp2;

@@ -148,6 +148,10 @@ begin
     select formato into v_formato from importaciones_ventas where id = v_previa.importacion_id;
     if v_formato is distinct from 'api' then return 'excel'; end if;
     v_imp := v_previa.importacion_id;
+    -- Una respuesta vacía pasajera no debe borrar el día ni anular su conciliación.
+    if jsonb_array_length(coalesce(p_pedidos, '[]')) = 0 and coalesce(v_previa.pedidos, 0) > 0 then
+      raise exception 'Dodo IS no trajo pedidos de un día que ya tenía ventas; no se borra.';
+    end if;
   elsif jsonb_array_length(coalesce(p_pedidos, '[]')) = 0 then
     return 'vacio';
   end if;
