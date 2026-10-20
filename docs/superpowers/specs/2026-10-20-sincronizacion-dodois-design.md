@@ -28,14 +28,14 @@ aplicando aunque la sincronización vuelva a correr.
 | Frecuencia | Cada 15 min de 10:00 a 0:00 (CDMX) el día en curso completo; 3:00 a.m. el día anterior completo; botón "Actualizar ahora" |
 | Disparador | `pg_cron` de Supabase llama a `POST /api/dodois/sincronizar` con una clave compartida (`DODOIS_CRON_SECRET`) |
 | Unidad de trabajo | Un día de una sucursal; se trae completo cada vez (paginando hasta `isEndOfListReached`) |
-| Pedidos | Se guardan o actualizan por el número de Dodo (`pedidos.dodo_id`); sus piezas se reemplazan |
-| Datos que la API no trae | Tiempos de cocina/entrega, cliente y costo por pieza: si el pedido ya los tiene (vino del Excel) se conservan |
+| Pedidos | Se guardan o actualizan por el número de Dodo (`pedidos.dodo_id`); sus piezas se reemplazan; los pedidos sincronizados del día que ya no vienen en la API (cancelados o devueltos después) se quitan |
+| Días importados del Excel | La sincronización **no los toca** (el Excel trae además tiempos de cocina, cliente y costo por pieza); queda anotado en el registro |
 | Día | `ventas_dia`, desglose y `ventas_producto` se recalculan con la misma lógica de "Datos brutos" |
 | Registro de importación | Uno por día y sucursal con `formato = 'api'` que se **reutiliza** en cada sincronización (no se crea uno nuevo), así la conciliación sigue aplicando |
-| Conciliación | Si la venta del día cambia después de conciliar, la conciliación muestra "la venta cambió; revísala" |
+| Conciliación | Sigue aplicando mientras el efectivo, la tarjeta y el en línea del día no cambien; si cambian, la sincronización la anula con el motivo "La venta de Dodo IS cambió después de conciliar" (una conciliación exige conservar la suma original) |
 | Excel | La importación de "Datos brutos" se queda como respaldo; si se importa un día, reemplaza ese día como hoy |
 | Tokens | Token de renovación cifrado en el Vault; se reemplaza en cada renovación; el de acceso vive solo en memoria |
-| Escritura sin usuario | La ruta de sincronización usa la llave de servicio de Supabase (`SUPABASE_SERVICE_ROLE_KEY`, solo en Vercel) y una función de la base que solo ejecuta `service_role` |
+| Escritura sin usuario | La ruta de sincronización usa la llave de servicio de Supabase (`SUPABASE_SERVICE_ROLE_KEY`, ya usada por las invitaciones) y funciones de la base que solo ejecuta `service_role` |
 | Quién conecta | Solo admin; el registro guarda quién conectó y se usa como `importado_por` |
 
 ## 4. Traducción de la API a nuestras tablas
@@ -46,13 +46,13 @@ Por pedido (`sales[]`):
 |---|---|
 | `orderId` | `dodo_id` en **mayúsculas** (el Excel los guarda así: el 25/09 coincide pedido por pedido) |
 | `unitId` | `sucursal_id` (vía la unidad ligada a la sucursal) |
-| `soldAtLocal` | `fecha`, `hora` (con segundos; el Excel trae solo minutos) |
+| `soldAtLocal` | `fecha`, `hora` en minutos (`HH:MM`, como el Excel; los reportes de tiempos lo esperan así) |
 | `paymentMethod` | `pago`: Cash → efectivo, Card → tarjeta, Online/InternetAcquiring → en_linea, otro → otro |
 | `salesChannel` | `tipo`: Delivery → entrega, Dine-in/Takeaway → en_tienda; Takeaway → `para_llevar` |
 | `orderSource` | `origen`: Dine-in → mostrador, Kiosk → kiosco, Mobile/MobileApp → app, Site/Website → sitio, otro → otro; el valor crudo en `origen_dodo` |
 | `aggregatorName` | `agregador` |
 | `shiftId` | `turno_dodo` |
-| Σ `priceWithDiscount` | `total`; Σ `price` → `total_sin_descuento`; Σ `taxValue` → `iva` |
+| Σ `priceWithDiscount` | `total`; Σ `price` → `total_sin_descuento`; IVA por pieza con `ivaDe`, igual que el Excel |
 | número de piezas | `productos`; `discount.bonusActionName` → `promocion` |
 
 Por pieza (`products[]`) → `pedido_productos`: `productId` en mayúsculas → `dodo_uuid` (y `dodo_id` del catálogo como hoy),
@@ -83,7 +83,8 @@ Las ventas de la API son pedidos vendidos: `estado = entregado`. Un valor nuevo 
 - Rutas: `/api/dodois/conectar` y `/api/dodois/callback` (reemplazan las de prueba), `POST /api/dodois/sincronizar`
   (cron o admin), y se borra `/api/dodois/diagnostico` y la función `dodois_canjear_codigo`.
 - Pantalla Ventas → "Dodo IS": estado de la conexión, sucursales ligadas, últimas sincronizaciones, "Actualizar ahora",
-  "Conectar" / "Reconectar". Aviso en el inicio de admin si hay 3 errores seguidos.
+  "Conectar" / "Reconectar". Aviso en el tablero de Ventas (admin) si la conexión pide reconectar o hay 3 errores seguidos.
+- `POST /api/dodois/sincronizar?simular=1` (admin): calcula sin guardar, para comparar un día contra lo ya importado.
 
 ## 7. Fuera de alcance (siguientes fases)
 
