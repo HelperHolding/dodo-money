@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 const {PGlite}=await import(pathToFileURL(process.argv[2]).href);
 const ts=(await import(pathToFileURL(process.argv[3]).href)).default;
-for(const f of ['Expediente.tsx','page.tsx']){const r=ts.transpileModule(fs.readFileSync(new URL('./'+f,import.meta.url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},reportDiagnostics:true,fileName:f});assert.deepEqual(r.diagnostics.filter(d=>d.category===ts.DiagnosticCategory.Error),[]);}
+for(const f of ['Expediente.tsx','page.tsx']){const r=ts.transpileModule(fs.readFileSync(new URL('../../../app/recolecciones/'+f,import.meta.url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},reportDiagnostics:true,fileName:f});assert.deepEqual(r.diagnostics.filter(d=>d.category===ts.DiagnosticCategory.Error),[]);}
 const db=new PGlite();try{
  await db.exec(fs.readFileSync(process.argv[4],'utf8'));
  await db.query("select set_config('test.disponibilidad',$1,false)",[JSON.stringify({saldo:26600.28,fondo:4500,reservado:0,salidas:0,disponible:22100.28})]);
