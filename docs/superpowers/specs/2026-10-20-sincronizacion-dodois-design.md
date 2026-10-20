@@ -44,9 +44,9 @@ Por pedido (`sales[]`):
 
 | API | `pedidos` |
 |---|---|
-| `orderId` | `dodo_id` |
+| `orderId` | `dodo_id` en **mayúsculas** (el Excel los guarda así: el 25/09 coincide pedido por pedido) |
 | `unitId` | `sucursal_id` (vía la unidad ligada a la sucursal) |
-| `soldAtLocal` | `fecha`, `hora` |
+| `soldAtLocal` | `fecha`, `hora` (con segundos; el Excel trae solo minutos) |
 | `paymentMethod` | `pago`: Cash → efectivo, Card → tarjeta, Online/InternetAcquiring → en_linea, otro → otro |
 | `salesChannel` | `tipo`: Delivery → entrega, Dine-in/Takeaway → en_tienda; Takeaway → `para_llevar` |
 | `orderSource` | `origen`: Dine-in → mostrador, Kiosk → kiosco, Mobile/MobileApp → app, Site/Website → sitio, otro → otro; el valor crudo en `origen_dodo` |
@@ -55,7 +55,7 @@ Por pedido (`sales[]`):
 | Σ `priceWithDiscount` | `total`; Σ `price` → `total_sin_descuento`; Σ `taxValue` → `iva` |
 | número de piezas | `productos`; `discount.bonusActionName` → `promocion` |
 
-Por pieza (`products[]`) → `pedido_productos`: `productId` → `dodo_uuid` (y `dodo_id` del catálogo como hoy),
+Por pieza (`products[]`) → `pedido_productos`: `productId` en mayúsculas → `dodo_uuid` (y `dodo_id` del catálogo como hoy),
 `defaultProductName` → `nombre`, `priceWithDiscount` → `precio`, `price` → `precio_sin_descuento`, `combo.name` → `combo`.
 
 Las ventas de la API son pedidos vendidos: `estado = entregado`. Un valor nuevo que no esté en la tabla (por ejemplo un
