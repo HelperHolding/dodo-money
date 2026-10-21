@@ -38,9 +38,14 @@ export async function tokenDeAcceso(admin: SupabaseClient): Promise<string> {
     tomarRenovacion: async () => Boolean((await admin.rpc("dodois_tomar_renovacion")).data),
     guardar: async (refresh, access, expira) => {
       const { error } = await admin.rpc("dodois_guardar_tokens", { p_refresh: refresh, p_access: access, p_expira: expira });
+      if (error) console.error("Dodo IS: no se pudo guardar el token nuevo:", error.message);
       return { error: error?.message ?? null };
     },
-    marcarError: async (mensaje, reconectar) => { await admin.rpc("dodois_marcar_error", { p_mensaje: mensaje, p_reconectar: reconectar }); },
+    // Si ni el error se puede registrar, que quede en los logs de Vercel (antes se perdía en silencio).
+    marcarError: async (mensaje, reconectar) => {
+      const { error } = await admin.rpc("dodois_marcar_error", { p_mensaje: mensaje, p_reconectar: reconectar });
+      if (error) console.error("Dodo IS: no se pudo registrar el error de la conexión:", error.message, "· error original:", mensaje);
+    },
   };
   return resolverToken(almacen, (refresh) => pedirToken({ grant_type: "refresh_token", refresh_token: refresh }), { esperar, ahora: Date.now });
 }
