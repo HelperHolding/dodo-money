@@ -1,4 +1,5 @@
 .pagina { max-width: 1600px; margin-inline: auto; }
+:global(.pagina):has(> .pagina) { max-width: none; width: 100%; padding-inline: clamp(16px,2vw,28px); }
 .aviso { display: flex; align-items: center; gap: .65rem; color: var(--tinta-2); margin-block: 0 1.5rem; }
 .indicadores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
 .indicador, .panel, .fuente { border: 1px solid var(--linea); border-radius: 12px; background: var(--papel); padding: 1.4rem; }
@@ -26,6 +27,10 @@
 .tabla { overflow-x: auto; margin-top: 1rem; }
 .tabla table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .tabla th { background: var(--papel-2); padding: .85rem .6rem; text-align: left; border-bottom: 1px solid var(--linea); }
+.tabla td { padding: .8rem .6rem; border-bottom: 1px solid var(--linea); vertical-align: top; }
+.descripcion { min-width: 230px; overflow-wrap: anywhere; }
+.filtros { display: flex; flex-wrap: wrap; gap: .8rem; align-items: flex-end; margin-block: 1.5rem; }
+.filtros label { flex: 1; min-width: 150px; display: grid; gap: .35rem; }
 .vacio { text-align: center; padding: 3rem 1rem; color: var(--tinta-2); }
 .vacio h3 { color: var(--tinta); font-size: 1.1rem; }
 .vacio p { max-width: 560px; margin-inline: auto; line-height: 1.6; }
