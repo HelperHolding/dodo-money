@@ -1,6 +1,7 @@
 // Genera el flujo "Rappi_Ventas_Diarias" de n8n y lo sube (crea o actualiza).
 //   node --env-file=scripts/n8n/.env scripts/n8n/flujo-rappi.mjs            # sube a N8N_URL
 //   node scripts/n8n/flujo-rappi.mjs --archivo flujo.json                   # solo escribe el JSON
+// Corre a las 6:30, antes del Reporte_Diario de las 7:00 (que así ya incluye Rappi y no compite por memoria con gotenberg).
 // El flujo pide las órdenes al contenedor rappi-extractor (scripts/rappi/servidor.mjs), que mantiene la sesión
 // del portal en un navegador, y las manda a la app. Se crea inactivo: en n8n hay que elegir las credenciales
 // Header Auth (x-api-key) de "Leer Rappi" (RAPPI_EXTRACTOR_KEY), "Enviar a Dodo" y "Probar" (RAPPI_API_KEY) y activarlo.
@@ -27,7 +28,7 @@ const id = () => randomUUID();
 const nodo = (name, type, typeVersion, position, parameters, extra = {}) => ({ id: id(), name, type, typeVersion, position, parameters, ...extra });
 const headerAuth = { authentication: "genericCredentialType", genericAuthType: "httpHeaderAuth" };
 const nodes = [
-  nodo("Cada dia 7am", "n8n-nodes-base.scheduleTrigger", 1.2, [0, 0], { rule: { interval: [{ triggerAtHour: 7 }] } }),
+  nodo("Cada dia 6:30am", "n8n-nodes-base.scheduleTrigger", 1.2, [0, 0], { rule: { interval: [{ triggerAtHour: 6, triggerAtMinute: 30 }] } }),
   nodo("Probar (webhook)", "n8n-nodes-base.webhook", 2, [0, 200], { httpMethod: "POST", path: "rappi-ventas", authentication: "headerAuth", responseMode: "lastNode", options: {} }, { webhookId: id() }),
   // Desde el horario no hay body: el extractor toma "ayer" en hora de México. Desde el webhook: {fecha?, revisar?}.
   nodo("Leer Rappi", "n8n-nodes-base.httpRequest", 4.2, [240, 100], {
@@ -61,16 +62,18 @@ const nodes = [
     text: "={{ $json.mensaje }}\n\nOmitidas: {{ ($json.omitidas || []).join('\\n') || 'ninguna' }}\n\nSi la sesión expiró: npm run rappi:login -- --exportar rappi-sesion.json y copiarla al volumen del extractor.\nPara reponer el día: POST al webhook \"Probar\" con {\"fecha\":\"{{ $json.fecha }}\"}.",
     options: {},
   }, { credentials: { smtp: SMTP } }),
+  // Sin error: deja el resumen como respuesta del webhook "Probar".
+  nodo("Listo", "n8n-nodes-base.noOp", 1, [1340, 200], {}),
 ];
 const conecta = (de, ...a) => ({ [de]: { main: a.map((rama) => (Array.isArray(rama) ? rama : [rama]).map((node) => ({ node, type: "main", index: 0 }))) } });
 const connections = {
-  ...conecta("Cada dia 7am", "Leer Rappi"),
+  ...conecta("Cada dia 6:30am", "Leer Rappi"),
   ...conecta("Probar (webhook)", "Leer Rappi"),
   ...conecta("Leer Rappi", "¿Hay órdenes?"),
   ...conecta("¿Hay órdenes?", "Enviar a Dodo", "Resumen"),
   ...conecta("Enviar a Dodo", "Resumen"),
   ...conecta("Resumen", "¿Falló?"),
-  ...conecta("¿Falló?", "Avisar por correo", []),
+  ...conecta("¿Falló?", "Avisar por correo", "Listo"),
 };
 const flujo = { name: NOMBRE, nodes, connections, settings: { executionOrder: "v1", timezone: "America/Mexico_City" } };
 
