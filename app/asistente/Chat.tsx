@@ -5,6 +5,8 @@ import type {FuenteIA,MensajeIA} from '@/lib/ia/validacion';
 import estilos from './chat.module.css';
 import {Icono as IconoApp,type NombreIcono} from '@/components/Icono';
 import {ThinkingOrb} from 'thinking-orbs';
+import {MarkdownChat} from './MarkdownChat';
+import {siguientesConsultas} from '@/lib/ia/seguimiento';
 
 /** Tinta de los orbes: el naranja de texto de la marca (5.9:1 sobre blanco). */
 const TINTA_ORBE='#b83800';
@@ -20,10 +22,12 @@ export function Chat({sucursales,sucursalInicial,gerente,conectado}:{sucursales:
  const bloqueo=useRef(false),conversacion=useRef<HTMLDivElement>(null),entrada=useRef<HTMLTextAreaElement>(null);
  useEffect(()=>{const panel=conversacion.current;if(!panel||(!mensajes.length&&!pendiente))return;panel.scrollTop=panel.scrollHeight;},[mensajes,pendiente,error]);
  function nueva(){setMensajes([]);setError('');setPregunta('');setEnviada('');}
- async function enviar(e:React.FormEvent){
-  e.preventDefault();if(bloqueo.current||!pregunta.trim()||!conectado)return;
-  bloqueo.current=true;setPendiente(true);setError('');setEnviada(pregunta.trim());
-  const nuevo:Mensaje={role:'user',content:pregunta.trim()},historia=[...mensajes,nuevo].slice(-9);
+ async function enviar(e:React.FormEvent){e.preventDefault();await consultar(pregunta);}
+ async function consultar(texto:string){
+  if(bloqueo.current||!texto.trim()||!conectado)return;
+  setPregunta(texto);
+  bloqueo.current=true;setPendiente(true);setError('');setEnviada(texto.trim());
+  const nuevo:Mensaje={role:'user',content:texto.trim()},historia=[...mensajes,nuevo].slice(-9);
   while(historia[0]?.role==='assistant')historia.shift();
   while(historia.length>1&&historia.reduce((s,m)=>s+m.content.length,0)>20000)historia.splice(0,2);
   try{
@@ -43,7 +47,7 @@ export function Chat({sucursales,sucursalInicial,gerente,conectado}:{sucursales:
   {!conectado&&<div className={estilos.aviso}><span>Estamos preparando la conexión con Anthropic.</span> Mientras tanto, visita los <Link href="/conocimiento">manuales y preguntas</Link>.</div>}
   <div className={estilos.conversacion} ref={conversacion} role="log" aria-label="Conversación" aria-live="polite" aria-relevant="additions text">
    {!mensajes.length&&!pendiente&&<div className={estilos.bienvenida}><span className={estilos.saludoIcono} aria-hidden="true"><ThinkingOrb state="breathing" size={64} theme="light" color={TINTA_ORBE}/></span><h2>¿Qué quieres consultar hoy?</h2><p>Tus números, con contexto y fuentes.<br/>Costos, ventas, cortes y ayuda para usar DODO MX.</p><div className={estilos.sugerencias}>{sugerencias.map(s=><button type="button" key={s.titulo} disabled={!conectado} onClick={()=>{setPregunta(s.texto);entrada.current?.focus();}}><span className={estilos.sugerenciaIcono}><IconoApp nombre={s.icono} tamano={18}/></span><strong>{s.titulo}</strong><span>{s.texto}</span></button>)}</div></div>}
-   {mensajes.map((m,n)=><article key={n} className={`${estilos.mensaje} ${m.role==='user'?estilos.usuario:estilos.asistente}`}><span className={estilos.autor}>{m.role==='user'?'Tú':<><ThinkingOrb state="breathing" size={20} theme="light" color={TINTA_ORBE} paused={n<mensajes.length-1} aria-hidden/>DODO MX</>}</span><div className={estilos.burbuja}><p>{m.content}</p>{!!m.fuentes?.length&&<div className={estilos.fuentes}><small>Fuentes consultadas</small><ul>{m.fuentes.map(f=><li key={f.href}><Link href={f.href}><Icono tipo="fuente"/>{f.titulo}</Link></li>)}</ul></div>}</div></article>)}
+   {mensajes.map((m,n)=><article key={n} className={`${estilos.mensaje} ${m.role==='user'?estilos.usuario:estilos.asistente}`}><span className={estilos.autor}>{m.role==='user'?'Tú':<><ThinkingOrb state="breathing" size={20} theme="light" color={TINTA_ORBE} paused={n<mensajes.length-1} aria-hidden/>DODO MX</>}</span><div className={estilos.burbuja}>{m.role==='assistant'?<MarkdownChat texto={m.content} fuentes={m.fuentes}/>:<p>{m.content}</p>}{!!m.fuentes?.length&&<div className={estilos.fuentes}><small>Fuentes consultadas</small><ul>{m.fuentes.map(f=><li key={f.href}><Link href={f.href}><Icono tipo="fuente"/>{f.titulo}</Link></li>)}</ul></div>}</div>{m.role==='assistant'&&n===mensajes.length-1&&!pendiente&&<nav className={estilos.seguimiento} aria-label="Siguientes consultas"><small>Puedes seguir con</small><div>{siguientesConsultas(mensajes[n-1]?.content??'',m.fuentes??[],gerente).map(texto=><button type="button" key={texto} disabled={!conectado||pendiente} onClick={()=>consultar(texto)}>{texto}<span aria-hidden="true"> →</span></button>)}</div></nav>}</article>)}
    {pendiente&&<><article className={`${estilos.mensaje} ${estilos.usuario}`}><span className={estilos.autor}>Tú</span><div className={estilos.burbuja}><p>{enviada}</p></div></article><div className={estilos.escribiendo} role="status"><ThinkingOrb state="searching" size={20} theme="light" color={TINTA_ORBE} aria-hidden/>Consultando tus fuentes…</div></>}
   </div>
   <div className={estilos.pie}>{error&&<p role="alert" className={estilos.error}>{error} Tu pregunta sigue disponible para volver a intentar.</p>}<form onSubmit={enviar} className={estilos.compositor}><label className={estilos.sr} htmlFor="pregunta-ia">Tu pregunta</label><textarea id="pregunta-ia" ref={entrada} rows={2} maxLength={2000} required value={pregunta} onChange={e=>setPregunta(e.target.value)} disabled={pendiente||!conectado} placeholder={conectado?'Pregunta sobre tu operación…':'El chat estará disponible al conectar Anthropic'} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/><button type="submit" aria-label="Enviar pregunta" title="Enviar pregunta" disabled={pendiente||!conectado||!pregunta.trim()}><Icono tipo="enviar"/></button></form><div className={estilos.ayuda}><span>{gerente?'Consultas solo de tu sucursal.':'Cambiar de sucursal inicia otro chat.'}</span><span>Enter para enviar · Shift + Enter para otra línea</span></div><details className={estilos.privacidad}><summary>Privacidad y uso de la IA</summary><p>La conversación se conserva solo en esta pestaña. Se registra usuario, fecha, consumo y fuentes; no se guardan las preguntas ni las respuestas. Las consultas y los datos necesarios se envían a Anthropic. Verifica las fuentes antes de tomar decisiones.</p></details></div>
