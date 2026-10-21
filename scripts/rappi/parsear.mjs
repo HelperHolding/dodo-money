@@ -22,9 +22,10 @@ function despues(lineas, etiqueta) {
 /**
  * @param {string} texto innerText de la página de detalle
  * @param {string} tienda ID de tienda, p. ej. MX1930486109
+ * @param {object} [datos] JSON del detalle que carga el portal (orders/partner/status/v2); trae los montos con centavos.
  * @returns {{orden: object, productos: object[], avisos: string[]}}
  */
-export function parsearDetalle(texto, tienda) {
+export function parsearDetalle(texto, tienda, datos = null) {
   const lineas = texto.split("\n").map((l) => l.trim()).filter(Boolean);
   const avisos = [];
   const id = /^Orden #(\d{5,20})$/.exec(lineas.find((l) => /^Orden #\d+$/.test(l)) ?? "")?.[1];
@@ -57,7 +58,20 @@ export function parsearDetalle(texto, tienda) {
     if (opcion && productos.length) productos.at(-1).opciones.push(opcion[1] === "1" ? opcion[2] : `${opcion[1]}x ${opcion[2]}`);
   }
   if (!productos.length) throw Error(`Orden ${id}: no se leyeron productos.`);
-  for (const p of productos) p.opciones = p.opciones.join(", ");
+  // Mismo separador que las importaciones previas: la clave del producto depende del texto de las opciones.
+  for (const p of productos) p.opciones = p.opciones.join(" · ");
+  const pago = despues(lineas, "Método de pago:");
+  const salida = (montos) => ({ orden: { rappi_id: id, tienda_id: tienda, fecha, hora, estado, pago, ...montos }, productos, avisos });
+
+  const exactos = montosExactos(datos);
+  if (exactos) {
+    const suma = centavos(productos.reduce((s, p) => s + p.importe, 0));
+    if (suma !== exactos.bruto) throw Error(`Orden ${id}: los renglones suman ${suma} y Rappi reporta ${exactos.bruto}.`);
+    if (centavos(exactos.bruto - exactos.descuento_restaurante) !== exactos.subtotal_restaurante || centavos(exactos.subtotal_restaurante - exactos.descuento_rappi) !== exactos.facturar)
+      throw Error(`Orden ${id}: los montos de Rappi no cuadran (${JSON.stringify(exactos)}).`);
+    return salida(exactos);
+  }
+  avisos.push(`Orden ${id}: sin montos exactos de Rappi; se usan los redondeados de la página.`);
 
   let bruto = centavos(productos.reduce((s, p) => s + p.importe, 0));
   const facturar = monto(despues(lineas, "Total sugerido a facturar"));
@@ -75,12 +89,18 @@ export function parsearDetalle(texto, tienda) {
   if (descuento_rappi !== descRappi) avisos.push(`Orden ${id}: descuento Rappi ${descRappi} → ${descuento_rappi} para cuadrar.`);
   if (descuento_restaurante < 0 || descuento_rappi < 0) throw Error(`Orden ${id}: los montos no cuadran (productos ${bruto}, subtotal ${subtotal}, total ${facturar}).`);
 
-  const pago = despues(lineas, "Método de pago:");
-  return {
-    orden: { rappi_id: id, tienda_id: tienda, fecha, hora, estado, pago, bruto, descuento_restaurante, subtotal_restaurante: subtotal, descuento_rappi, facturar },
-    productos,
-    avisos,
-  };
+  return salida({ bruto, descuento_restaurante, subtotal_restaurante: subtotal, descuento_rappi, facturar });
+}
+
+/** Montos con centavos de order_totals: subtotal, discounts_partner_store, subtotal_rest, discounts_rappi y suggested_total. */
+export function montosExactos(datos) {
+  const t = datos?.order_totals;
+  if (!t || !Array.isArray(t.details) || typeof t.total?.value !== "number") return null;
+  const v = (id) => { const d = t.details.find((x) => x?.id === id); return typeof d?.value === "number" ? centavos(Math.abs(d.value)) : null; };
+  const bruto = v("subtotal");
+  if (bruto === null) return null;
+  const descuento_restaurante = v("discounts_partner_store") ?? 0, descuento_rappi = v("discounts_rappi") ?? 0;
+  return { bruto, descuento_restaurante, subtotal_restaurante: v("subtotal_rest") ?? centavos(bruto - descuento_restaurante), descuento_rappi, facturar: centavos(t.total.value) };
 }
 
 /** IDs y fechas de la tabla del historial (vista de escritorio): "#2481664517  18/10/2026 ...". */

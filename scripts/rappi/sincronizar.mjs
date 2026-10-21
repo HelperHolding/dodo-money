@@ -40,12 +40,24 @@ const contexto = await chromium.launchPersistentContext(perfil, {
 });
 const pagina = contexto.pages()[0] ?? await contexto.newPage();
 const enLogin = () => new URL(pagina.url()).pathname.startsWith("/login");
-// El portal redirige a /login desde el cliente después de cargar: espera el contenido o esa redirección.
-async function abrir(url, texto) {
+// El portal pasa por /login (con un spinner) mientras valida la sesión y luego regresa; solo se da por vencida
+// si se queda ahí. En una PC lenta o recién encendida esa validación tarda varios segundos.
+async function abrir(url, texto, intento = 1) {
   await pagina.goto(url, { waitUntil: "domcontentloaded" });
   const contenido = pagina.getByText(texto).first();
   await Promise.race([contenido.waitFor({ timeout: 60_000 }), pagina.waitForURL((u) => u.pathname.startsWith("/login"), { timeout: 60_000 })]).catch(() => {});
-  if (enLogin()) fin(EXPIRO, 2);
+  if (enLogin()) await pagina.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30_000 }).catch(() => {});
+  if (!enLogin() && !(await contenido.isVisible().catch(() => false))) {
+    // Validó la sesión pero aterrizó en otra página (p. ej. el inicio): se vuelve a pedir la original una vez.
+    if (intento === 1) return abrir(url, texto, 2);
+  }
+  if (enLogin()) {
+    // Evidencia para la bitácora: a dónde mandó el portal y cómo se veía.
+    const captura = join(process.env.LOCALAPPDATA ?? homedir(), "dodo-rappi-login.png");
+    await pagina.screenshot({ path: captura }).catch(() => {});
+    console.error(`Redirigido a ${new URL(pagina.url()).pathname} desde ${new URL(url).pathname}; captura en ${captura}`);
+    fin(EXPIRO, 2);
+  }
   await contenido.waitFor({ timeout: 30_000 });
 }
 
@@ -72,6 +84,8 @@ try {
     console.log("Inicia sesión en la ventana del navegador. Se cierra sola al confirmar el historial (máx. 10 min).");
     await pagina.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 10 * 60_000 });
     await abrir(historial, /Mostrando/);
+    // --exportar archivo.json: la sesión (cookies + localStorage) para el extractor del servidor.
+    if (arg("exportar")) { await contexto.storageState({ path: arg("exportar") }); console.log(`Sesión exportada a ${arg("exportar")}: súbela al servidor y no la compartas.`); }
     fin("Sesión guardada: el historial cargó.", 0);
   }
 
@@ -84,8 +98,11 @@ try {
   const ordenes = [], productos = [], omitidas = [];
   for (const id of ids) {
     try {
+      // El portal redondea a pesos en pantalla; los centavos vienen en el JSON que carga el detalle.
+      const json = pagina.waitForResponse((r) => r.url().includes(`/orders/partner/status/v2/store/${RAPPI_TIENDA.slice(2)}/orders/${id}`) && r.ok(), { timeout: 60_000 })
+        .then((r) => r.json()).catch(() => null);
       await abrir(`${PORTAL}/orders/history/${RAPPI_TIENDA.slice(2)}/${id}?storeIds=${RAPPI_TIENDA}`, "Total sugerido a facturar");
-      const r = parsearDetalle(await pagina.locator("body").innerText(), RAPPI_TIENDA);
+      const r = parsearDetalle(await pagina.locator("body").innerText(), RAPPI_TIENDA, await json);
       if (r.orden.fecha !== fecha) throw Error(`Orden ${id}: es del ${r.orden.fecha}.`);
       ordenes.push(r.orden); productos.push(...r.productos); r.avisos.forEach((a) => console.warn("Aviso:", a)); resultado.avisos.push(...r.avisos);
     } catch (e) { if (e instanceof Fin) throw e; omitidas.push(id); console.error("Omitida:", e instanceof Error ? e.message : e); }
