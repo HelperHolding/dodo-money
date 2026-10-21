@@ -21,7 +21,7 @@ Antes de fusionar: ejecutar migración 0032 y su prueba en Supabase; PRUEBAS OK 
 
 `POST /api/rappi/importar` recibe el mismo contenido que el Excel en JSON y usa la misma validación (`leerJsonRappi`) y el mismo RPC `importar_rappi`, así que reimportar actualiza sin duplicar. Header `x-api-key: RAPPI_API_KEY`. Body: `{ sucursal?, ordenes: [{rappi_id, tienda_id, fecha, hora, estado, pago, bruto, descuento_restaurante, subtotal_restaurante, descuento_rappi, facturar}], productos: [{rappi_id, linea, nombre, opciones, cantidad, importe}] }`. La sucursal sale de la tienda ya ligada; solo se manda la primera vez. `?revisar=1` valida sin guardar. Respuestas: 401 key, 400 JSON, 422 datos o RPC, 409 tienda ligada a otra sucursal.
 
-Variables en Vercel: `RAPPI_API_KEY` y una cuenta de automatización con rol **admin** (`RAPPI_CUENTA_EMAIL`, `RAPPI_CUENTA_PASSWORD`), porque el RPC exige `edita_finanzas()`.
+Variables en Vercel: `RAPPI_API_KEY` (Sensitive). La cuenta de automatización es la de los reportes (`REPORTE_CUENTA_EMAIL`, `REPORTE_CUENTA_PASSWORD`) salvo que se definan `RAPPI_CUENTA_EMAIL`/`RAPPI_CUENTA_PASSWORD`; debe tener rol **admin** porque el RPC exige `edita_finanzas()`.
 
 Extractor local (`scripts/rappi/sincronizar.mjs`, Playwright con Edge instalado, sin descargar navegadores):
 1. Copia `scripts/rappi/.env.example` a `scripts/rappi/.env` y llénalo.
