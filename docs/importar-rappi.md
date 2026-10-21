@@ -16,3 +16,20 @@ Solo Finalizado y fuente Rappi suman. Se incluyen en tablero, calendario, report
 Cuando una orden ya aparezca en Dodo IS se cambia su fuente a Dodo IS (por orden o por periodo). Conserva historial y deja de sumarse desde Rappi; reimportar no restablece la fuente. No hay conciliación automática por ID entre ambas plataformas mientras no esté disponible esa relación. P&L avisa cuando hay agregador Dodo y órdenes Rappi para el mismo día.
 
 Antes de fusionar: ejecutar migración 0032 y su prueba en Supabase; PRUEBAS OK es un error intencional que revierte los datos de prueba. Requiere admin y corporativo activos y sucursal. Los permisos dejan lectura según el rol y sucursal; todas las mutaciones pasan por RPC de admin.
+
+## Importación automática desde el portal
+
+`POST /api/rappi/importar` recibe el mismo contenido que el Excel en JSON y usa la misma validación (`leerJsonRappi`) y el mismo RPC `importar_rappi`, así que reimportar actualiza sin duplicar. Header `x-api-key: RAPPI_API_KEY`. Body: `{ sucursal?, ordenes: [{rappi_id, tienda_id, fecha, hora, estado, pago, bruto, descuento_restaurante, subtotal_restaurante, descuento_rappi, facturar}], productos: [{rappi_id, linea, nombre, opciones, cantidad, importe}] }`. La sucursal sale de la tienda ya ligada; solo se manda la primera vez. `?revisar=1` valida sin guardar. Respuestas: 401 key, 400 JSON, 422 datos o RPC, 409 tienda ligada a otra sucursal.
+
+Variables en Vercel: `RAPPI_API_KEY` y una cuenta de automatización con rol **admin** (`RAPPI_CUENTA_EMAIL`, `RAPPI_CUENTA_PASSWORD`), porque el RPC exige `edita_finanzas()`.
+
+Extractor local (`scripts/rappi/sincronizar.mjs`, Playwright con Edge instalado, sin descargar navegadores):
+1. Copia `scripts/rappi/.env.example` a `scripts/rappi/.env` y llénalo.
+2. `npm run rappi:login`: abre Edge con un perfil propio (`%LOCALAPPDATA%\dodo-rappi-perfil`); inicia sesión a mano. La sesión del portal caduca en unos días; cuando pase, el script sale con código 2 y hay que repetir este paso.
+3. `npm run rappi:sincronizar`: lee el historial, toma las órdenes de ayer (hora de México), abre cada detalle y las envía. Opciones: `-- --fecha AAAA-MM-DD`, `-- --ids id1,id2`, `-- --revisar`, `-- --headed`, `-- --json archivo.json`.
+4. Diario a las 07:00: `powershell -ExecutionPolicy Bypass -File scripts\rappi\programar.ps1` registra la tarea “Dodo - Ventas Rappi” (`-Hora 06:30` para cambiarla, `-Quitar` para borrarla). Corre con tu usuario mientras haya sesión de Windows; si la PC estaba apagada, corre al encenderla. Bitácora en `%LOCALAPPDATA%\dodo-rappi.log`. Si falta un día, `npm run rappi:sincronizar -- --fecha AAAA-MM-DD`; reimportar no duplica.
+5. Avisos (opcional, n8n): con `RAPPI_AVISO_URL` apuntando a un Webhook de n8n, cada corrida manda `{fecha, tienda, estado, mensaje, ordenes, renglones, omitidas, avisos, app}` con `estado` = `ok`, `sin_ordenes`, `sesion_expirada` o `error`. En n8n basta un IF sobre `estado != ok` → WhatsApp/correo para avisar que hay que correr `npm run rappi:login`.
+
+La sesión del portal vive en el perfil de Edge de esta PC, así que el extractor corre aquí y n8n solo recibe avisos; el login no se automatiza.
+
+El portal muestra pesos redondeados: los descuentos se recalculan como `productos − subtotal` y `subtotal − total sugerido` para que cuadren con lo que muestra Rappi, y cada ajuste sale como aviso. Las órdenes que no se pueden leer se omiten, se reportan y el script termina con código 1. No guarda nombres de cliente ni repartidor. Automatizar el portal puede ir contra los términos de Rappi; si Rappi da acceso a su API de integraciones, conviene cambiar el extractor por esa API y mantener el endpoint.
