@@ -3,7 +3,7 @@
 //   node scripts/n8n/flujo-rappi.mjs --archivo flujo.json                   # solo escribe el JSON
 // En vivo: cada 15 min de 10:00 a 23:45 importa las órdenes de hoy (con caché en el extractor: solo abre las nuevas).
 // Cierre: a las 6:30 vuelve a leer todo ayer sin caché, antes del Reporte_Diario de las 7:00 (que así ya incluye Rappi
-// y no compite por memoria con gotenberg). Los avisos por correo se limitan: uno al aparecer el problema y otro cada 6 h si sigue.
+// y no compite por memoria con gotenberg) y repasa los 7 días anteriores para reflejar cancelaciones tardías. Los avisos por correo se limitan: uno al aparecer el problema y otro cada 6 h si sigue.
 // El flujo pide las órdenes al contenedor rappi-extractor (scripts/rappi/servidor.mjs), que mantiene la sesión
 // del portal en un navegador, y las manda a la app. Se crea inactivo: en n8n hay que elegir las credenciales
 // Header Auth (x-api-key) de "Leer Rappi" (RAPPI_EXTRACTOR_KEY), "Enviar a Dodo" y "Probar" (RAPPI_API_KEY) y activarlo.
@@ -31,7 +31,7 @@ if (estado === 'error' || estado === 'sesion_expirada') {
   const previo = st.ultimoAviso;
   if (!previo || previo.estado !== estado || Date.now() - previo.t > 6 * 3600 * 1000) { avisar = true; st.ultimoAviso = { estado, t: Date.now() }; }
 } else if (estado === 'ok' || estado === 'sin_ordenes') st.ultimoAviso = null;
-return [{ json: { avisar, fecha: leido.fecha, tienda: leido.tienda, estado, mensaje, ordenes: leido.ordenes ?? 0, renglones: leido.renglones ?? 0, omitidas: leido.omitidas ?? [], app: envio ? { status: envio.statusCode, ...envio.body } : null } }];`;
+return [{ json: { avisar, fecha: leido.fecha, tienda: leido.tienda, estado, mensaje, cambios: leido.cambios ?? [], ordenes: leido.ordenes ?? 0, renglones: leido.renglones ?? 0, omitidas: leido.omitidas ?? [], app: envio ? { status: envio.statusCode, ...envio.body } : null } }];`;
 
 const id = () => randomUUID();
 const nodo = (name, type, typeVersion, position, parameters, extra = {}) => ({ id: id(), name, type, typeVersion, position, parameters, ...extra });
@@ -44,12 +44,14 @@ const nodes = [
   nodo("Cierre 6:30am (ayer)", "n8n-nodes-base.scheduleTrigger", 1.2, [0, 50], { rule: { interval: [{ triggerAtHour: 6, triggerAtMinute: 30 }] } }),
   nodo("Ayer completo", "n8n-nodes-base.set", 3.4, [200, 50], { assignments: { assignments: [
     { id: id(), name: "fecha", value: "", type: "string" }, { id: id(), name: "cache", value: false, type: "boolean" },
+    // Repasa los 7 días anteriores: reenvía solo órdenes que cambiaron de estado (p. ej. canceladas después de importarse).
+    { id: id(), name: "repasar", value: 7, type: "number" },
   ] }, options: {} }),
   nodo("Probar (webhook)", "n8n-nodes-base.webhook", 2, [0, 200], { httpMethod: "POST", path: "rappi-ventas", authentication: "headerAuth", responseMode: "lastNode", options: {} }, { webhookId: id() }),
   // En vivo manda fecha "hoy" con caché; el cierre manda fecha vacía (= ayer) sin caché; el webhook manda su {fecha?, revisar?}.
   nodo("Leer Rappi", "n8n-nodes-base.httpRequest", 4.2, [240, 100], {
     method: "POST", url: EXTRACTOR, ...headerAuth,
-    sendBody: true, specifyBody: "json", jsonBody: "={{ JSON.stringify({ fecha: $json.body?.fecha ?? $json.fecha, revisar: $json.body?.revisar === true, cache: $json.cache === true }) }}",
+    sendBody: true, specifyBody: "json", jsonBody: "={{ JSON.stringify({ fecha: $json.body?.fecha ?? $json.fecha, revisar: $json.body?.revisar === true, cache: $json.cache === true, repasar: $json.repasar ?? $json.body?.repasar ?? 0 }) }}",
     options: { timeout: 600000 },
   }, { notes: "Credencial: Header Auth x-api-key = RAPPI_EXTRACTOR_KEY del servidor." }),
   nodo("¿Hay órdenes?", "n8n-nodes-base.if", 2.2, [460, 100], {

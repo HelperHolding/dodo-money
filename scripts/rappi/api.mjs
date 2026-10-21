@@ -73,14 +73,32 @@ export const fechaListado = (item) => String(item?.created_at ?? "").slice(0, 10
  * @param {Record<string, {orden: object, productos: object[]}>} cache órdenes terminadas de vueltas anteriores
  */
 export function planearVuelta(items, fecha, cache = {}) {
-  const abrir = [], reusar = [];
+  const abrir = [], reusar = [], cambios = [];
   let enCurso = 0;
   for (const it of items) {
     if (fechaListado(it) !== fecha) continue;
-    const estado = estadoDesdeApi(it), id = String(it.id);
+    const estado = estadoDesdeApi(it), id = String(it.id), previo = cache[id]?.orden?.estado;
     if (!estado) { enCurso++; continue; }
-    if (cache[id]?.orden?.estado === estado) reusar.push(cache[id]);
-    else abrir.push(id);
+    if (previo === estado && !cache[id].base) reusar.push(cache[id]);
+    else { abrir.push(id); if (previo && previo !== estado) cambios.push({ rappi_id: id, fecha, de: previo, a: estado }); }
   }
-  return { abrir, reusar, enCurso };
+  return { abrir, reusar, enCurso, cambios };
+}
+
+/**
+ * Repaso de un día ya cerrado: solo se abre (y se reenvía) una orden si su estado en el listado cambió respecto al
+ * último registrado, p. ej. Finalizado → Cancelado. Las que no estaban registradas solo quedan como referencia
+ * (`base`), sin reimportarse: así no se mueven cortes pasados.
+ * @returns {{abrir: string[], cambios: object[], base: Record<string, {base: true, orden: {estado: string}}>}}
+ */
+export function planearRepaso(items, fecha, cache = {}) {
+  const abrir = [], cambios = [], base = {};
+  for (const it of items) {
+    if (fechaListado(it) !== fecha) continue;
+    const estado = estadoDesdeApi(it), id = String(it.id), previo = cache[id]?.orden?.estado;
+    if (!estado) continue;
+    if (!previo) base[id] = { base: true, orden: { estado } };
+    else if (previo !== estado) { abrir.push(id); cambios.push({ rappi_id: id, fecha, de: previo, a: estado }); }
+  }
+  return { abrir, cambios, base };
 }
