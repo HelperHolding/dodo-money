@@ -39,3 +39,9 @@ Las conversaciones viven en memoria de la pestaña. Cambiar la sucursal o Nueva 
 6. Comprobar cuotas, errores de clave/modelo, timeout y enlaces de fuentes. Registrar latencia y consumo real antes de ampliar límites.
 
 El chat aún no consulta activos, mantenimiento, órdenes o contraseñas de proveedores. Añadir una fuente exige una herramienta explícita, validación de entradas, pruebas de permisos y actualización de esta documentación.
+
+## Presentación y seguimiento
+
+Las respuestas se muestran en Markdown con tablas GFM, listas, encabezados, citas y código. No se interpreta HTML ni se cargan imágenes; los enlaces navegables se limitan a las fuentes devueltas por el servidor.
+
+Al terminar una respuesta se ofrecen hasta tres preguntas de seguimiento según la consulta y sus fuentes (ventas, cortes, costos, P&L o ayuda). Se generan localmente sin otra llamada al modelo. Pulsar una envía esa pregunta con el contexto de la conversación y la misma sucursal; se aplican los mismos permisos y cuotas. Durante la consulta se ocultan para evitar envíos duplicados. Si falla, la pregunta queda en el compositor para reintentar.
