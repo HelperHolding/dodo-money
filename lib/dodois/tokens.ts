@@ -44,7 +44,7 @@ export async function tokenDeAcceso(almacen: Almacen, pedir: (refresh: string) =
     if (g.error) g = await almacen.guardar(t.refresh_token, t.access_token, expira);
     if (g.error) {
       await almacen.marcarError(`No se pudo guardar el token nuevo de Dodo IS: ${g.error}`, false);
-      throw new ErrorDodo("No se pudo guardar el token nuevo de Dodo IS; si la siguiente sincronización falla, reconecta.");
+      throw new ErrorDodo(`No se pudo guardar el token nuevo de Dodo IS (${g.error}); si la siguiente sincronización falla, reconecta.`);
     }
     return t.access_token;
   }

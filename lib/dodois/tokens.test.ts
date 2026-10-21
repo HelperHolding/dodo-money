@@ -34,7 +34,7 @@ test("si guardar el token nuevo falla una vez, reintenta y lo devuelve", async (
 
 test("si guardar falla dos veces, lo avisa (sin marcar reconectar) y falla", async () => {
   const { a, llamadas } = almacen([vencido], [{ error: "red" }]);
-  await assert.rejects(tokenDeAcceso(a, nuevo, opciones), /No se pudo guardar el token nuevo de Dodo IS/);
+  await assert.rejects(tokenDeAcceso(a, nuevo, opciones), /No se pudo guardar el token nuevo de Dodo IS \(red\)/);
   assert.equal(llamadas.errores.length, 1);
   assert.equal(llamadas.errores[0][1], false);
 });
