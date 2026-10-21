@@ -1,3 +1,4 @@
+import {GraficasReporteVentas} from "@/components/GraficasReporteVentas";
 import { datosReporteVentas } from "@/app/ventas/reporte-datos";
 import { fechaTexto, pesos, porcentaje } from "@/lib/formato";
 import { totalesDias, type RenglonResumen } from "@/lib/ventas/reporte";
@@ -31,6 +32,7 @@ export default async function ReporteVentasPdf({ searchParams }: { searchParams:
         generadoPor={r.generadoPor} />
 
       <VentasPorCanal canales={r.canales} detalle />
+      <GraficasReporteVentas {...r.graficas} totalPeriodo={t.total}/>
       <section className="seccion">
         <h2>Resumen</h2>
         <div className="tabla-contenedor">
