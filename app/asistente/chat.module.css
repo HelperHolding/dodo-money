@@ -59,3 +59,31 @@
 @media(prefers-reduced-motion:reduce) { .puntos i { animation:none; } }
 
 .escribiendo canvas,.autor canvas { flex:none; }
+
+/* Markdown del asistente; el texto del usuario mantiene sus saltos de línea. */
+.asistente .burbuja { min-width:0; width:88%; }
+.markdown { font-size:.92rem; line-height:1.75; overflow-wrap:anywhere; }
+.markdown p { white-space:normal; margin:0 0 .8em; }
+.markdown > :last-child { margin-bottom:0; }
+.markdown h1,.markdown h2,.markdown h3,.markdown h4,.markdown h5,.markdown h6 { font-size:1.08rem; line-height:1.4; margin:1.1em 0 .5em; }
+.markdown > :first-child { margin-top:0; }
+.markdown ul,.markdown ol { padding-left:1.5em; margin:.6em 0 1em; }
+.markdown li { margin:.25em 0; }
+.markdown li p { margin:.25em 0; }
+.markdown blockquote { margin:.8em 0; padding:6px 14px; border-left:3px solid var(--accion); color:var(--tinta-2); background:var(--papel-2); }
+.markdown pre { max-width:100%; overflow:auto; padding:12px; border-radius:8px; background:var(--papel-2); white-space:pre; }
+.markdown code { font-size:.85em; background:var(--papel-2); border-radius:4px; padding:2px 4px; }
+.markdown pre code { padding:0; }
+.markdown a { color:var(--accion-oscuro); text-underline-offset:3px; }
+.markdown hr { border:0; border-top:1px solid var(--linea); margin:1em 0; }
+.tablaMarkdown { max-width:100%; overflow-x:auto; margin:12px 0; }
+.tablaMarkdown table { width:100%; border-collapse:collapse; font-size:.85rem; }
+.tablaMarkdown th,.tablaMarkdown td { padding:9px 12px; border:1px solid var(--linea); text-align:left; vertical-align:top; }
+.tablaMarkdown th { background:var(--papel-2); font-weight:600; }
+.seguimiento { width:88%; margin-top:12px; }
+.seguimiento small { color:var(--tinta-2); font-size:.75rem; }
+.seguimiento > div { display:flex; flex-wrap:wrap; gap:8px; margin-top:7px; }
+.seguimiento button { padding:9px 12px; border:1px solid var(--linea-fuerte); border-radius:12px; background:var(--blanco); color:var(--tinta); text-align:left; font:inherit; font-size:.8rem; line-height:1.45; cursor:pointer; }
+.seguimiento button:hover:not(:disabled) { border-color:var(--accion); background:var(--accion-tinte); }
+.seguimiento button:focus-visible { outline:2px solid var(--accion); outline-offset:3px; }
+@media(max-width:640px) { .asistente .burbuja,.seguimiento { width:100%; max-width:100%; }.seguimiento button { width:100%; } }
