@@ -19,6 +19,8 @@ export const puedeAbrirTurno = (rol: Rol) => rol === "encargado" || rol === "ger
 /** Recorrido de supervisor y cierre de mermas. */
 export const puedeSupervisar = puedeAbrirTurno;
 export const puedeGestionar = (rol: Rol) => rol === "gerente" || rol === "admin";
+/** Cierre diario y corte de Rappi de su propia sucursal. */
+export const puedeCerrarDia = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
 
 /** Reportes de ventas importadas de Dodo IS. Encargado y operación no ven ventas. */
 export const puedeVerVentas = (rol: Rol) => rol === "gerente" || rol === "admin" || rol === "corporativo";
@@ -85,6 +87,7 @@ export function menuLateral(rol: Rol): Menu {
         { href: "/ventas/rappi", texto: "Rappi" },
         { href: "/ventas/conciliacion", texto: "Conciliación" },
         ...(puedeImportarVentas(rol) ? [{ href: "/ventas/importar", texto: "Importar" }] : []),
+        ...(puedeImportarVentas(rol) ? [{ href: "/ventas/dodois", texto: "Dodo IS" }] : []),
         ...(["admin", "corporativo"].includes(rol) ? [{ href: "/ventas/costos", texto: "Costeo" }] : []),
       ],
     });
@@ -108,6 +111,7 @@ export function menuLateral(rol: Rol): Menu {
       titulo: "Finanzas",
       enlaces: [
         { href: "/finanzas", texto: "P&L" },
+        { href: "/banca", texto: "Banca" },
         { href: "/finanzas/nomina", texto: "Nómina" },
         { href: "/finanzas/personal", texto: "Personal" },
         { href: "/finanzas/retenciones", texto: "Retenciones" },

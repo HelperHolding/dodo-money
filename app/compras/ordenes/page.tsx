@@ -1,3 +1,6 @@
+import { Icono } from "@/components/Icono";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { EstadoVacio } from "@/components/EstadoVacio";
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { SelectorVista } from "@/components/SelectorVista";
@@ -52,44 +55,39 @@ export default async function Ordenes({ searchParams }: {
 
   return (
     <>
-      <div className="encabezado compras-listado">
-        <h1>Órdenes de compra</h1>
-        <p>Cada documento empieza como cotización y, al confirmarlo, es la orden de compra que ve la sucursal.</p>
-      </div>
+      <EncabezadoPagina titulo="Órdenes de compra" descripcion="Cada documento empieza como cotización y, al confirmarlo, es la orden de compra que ve la sucursal."
+        acciones={puedeEditarCompras(perfil.rol) && <Link className="boton" href="/compras/ordenes/nueva"><Icono nombre="mas" />Nueva cotización</Link>} />
       <Aviso ok={ok} error={error} />
-      <form className="seccion formulario" role="search">
+      <form className="barra-filtros compras-listado" role="search">
         {vista === "lista" && <input type="hidden" name="vista" value="lista" />}
-        <div className="rejilla">
+        <div className="barra-filtros">
           <div className="campo">
-            <label htmlFor="f-estado">Estado</label>
+            <label htmlFor="f-estado" className="solo-lector">Estado</label>
             <select id="f-estado" name="estado" defaultValue={filtro ?? ""}>
               <option value="">Abiertas</option>
               {ESTADOS_ORDEN.map((e) => <option key={e} value={e}>{NOMBRE_ESTADO_ORDEN[e]}</option>)}
             </select>
           </div>
           <div className="campo">
-            <label htmlFor="f-proveedor">Proveedor</label>
+            <label htmlFor="f-proveedor" className="solo-lector">Proveedor</label>
             <select id="f-proveedor" name="proveedor" defaultValue={proveedor}>
-              <option value="">Todos</option>
+              <option value="">Todos los proveedores</option>
               {(proveedores ?? []).map((p) => <option key={p.id} value={p.id}>{p.nombre_comercial ?? p.razon_social}</option>)}
             </select>
           </div>
           <div className="campo">
-            <label htmlFor="f-sucursal">Para</label>
+            <label htmlFor="f-sucursal" className="solo-lector">Para</label>
             <select id="f-sucursal" name="sucursal" defaultValue={sucursal}>
-              <option value="">Todas</option>
+              <option value="">Para todas las sucursales</option>
               {(sucursales ?? []).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               <option value="oficina">Oficina</option>
             </select>
           </div>
         </div>
-        <div className="acciones">
-          <button className="boton boton-secundario" type="submit">Filtrar</button>
-          {puedeEditarCompras(perfil.rol) && <Link className="boton" href="/compras/ordenes/nueva">Nueva cotización</Link>}
-        </div>
+        <button className="boton boton-secundario boton-compacto" type="submit">Filtrar</button>
       </form>
       <SelectorVista ruta="/compras/ordenes" params={params} vista={vista} />
-      {!visibles.length && <p className="vacio">No hay órdenes con ese filtro.</p>}
+      {!visibles.length && <EstadoVacio icono="carrito" titulo="No hay órdenes con ese filtro" descripcion="Cambia el estado, el proveedor o la sucursal." />}
       {vista === "lista" && visibles.length > 0 && (
         <ul className="lista-filas" style={{ "--columnas": 4 } as React.CSSProperties}>
           <li className="fila fila-encabezado" aria-hidden="true"><span>Orden</span><span>Proveedor</span><span>Para</span><span>Estado</span><span>Total</span></li>

@@ -1,3 +1,5 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import {precioUnitario} from '@/lib/formato';
 import { Fragment } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -29,10 +31,7 @@ export default async function Comparar({ params, searchParams }: { params: Promi
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Comparar cotizaciones</h1>
-        <p>Mismo pedido con distintos proveedores. Al confirmar una, las demás se cancelan solas.</p>
-      </div>
+      <EncabezadoPagina titulo="Comparar cotizaciones" descripcion="Mismo pedido con distintos proveedores. Al confirmar una, las demás se cancelan solas." />
       <Aviso ok={ok} error={error} />
       <div className="tarjetas">
         {(ordenes ?? []).map((o) => (
@@ -47,7 +46,7 @@ export default async function Comparar({ params, searchParams }: { params: Promi
               {cot.find((c) => c.id === o.id)!.renglones.map((r) => (
                 <Fragment key={r.articulo_id}>
                   <dt>{r.descripcion}</dt>
-                  <dd>{r.precio > 0 ? pesos(r.precio) : "Sin precio"}{mejorPorArticulo.get(r.articulo_id) === o.id ? " · mejor precio" : ""}</dd>
+                  <dd>{r.precio > 0 ? precioUnitario(r.precio) : "Sin precio"}{mejorPorArticulo.get(r.articulo_id) === o.id ? " · mejor precio" : ""}</dd>
                 </Fragment>
               ))}
               <dt>Total</dt><dd><strong>{pesos(totales.get(o.id) ?? 0)}</strong></dd>

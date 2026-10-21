@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import Link from "next/link";
 import { obtenerPerfil } from "@/lib/contexto";
 import { pesos,hoyCalendarioMX,fechaTexto } from "@/lib/formato";
@@ -17,7 +18,7 @@ export default async function Reservas({searchParams}:{searchParams:Promise<{ok?
  leerTodo<Reserva>((a,b)=>db.from("reservas_boveda_saldo").select("*").order("id").range(a,b))]);
  const disponibilidades=await Promise.all(sucursales.map(async s=>{const {data,error}=await db.rpc("disponibilidad_boveda",{p_sucursal:s.id});if(error)throw new Error(error.message);return {s,data:data as {saldo:number;fondo:number;reservado:number;salidas:number;disponible:number}};}));
  const edita=puedeEditarCompras(perfil.rol);
- return <><div className="encabezado"><h1>Reservas para pagos de bóveda</h1><p>Separa efectivo adicional al fondo antes de la salida a corporativo. Cada reserva corresponde a una factura y puede pagarse parcialmente.</p></div>
+ return <><EncabezadoPagina titulo="Reservas para pagos de bóveda" descripcion="Separa efectivo adicional al fondo antes de la salida a corporativo. Cada reserva corresponde a una factura y puede pagarse parcialmente." />
  <Aviso {...q}/><div className="tarjetas">{disponibilidades.map(({s,data:d})=><article className="tarjeta" key={s.id}><h2>{s.nombre}</h2><dl className="tarjeta-datos"><dt>Saldo físico esperado</dt><dd>{pesos(d.saldo)}</dd><dt>Fondo protegido</dt><dd>{pesos(d.fondo)}</dd><dt>Reservado para pagos</dt><dd>{pesos(d.reservado)}</dd><dt>Salidas por recoger</dt><dd>{pesos(d.salidas)}</dd><dt>Libre para reservar o enviar</dt><dd>{pesos(d.disponible)}</dd></dl></article>)}</div>
  {edita&&<form action={reservar} className="seccion formulario"><h2>Reservar efectivo</h2>
  <label htmlFor="sucursal">Bóveda de la sucursal</label><select id="sucursal" name="sucursal" required>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>

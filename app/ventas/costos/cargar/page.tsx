@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { hoyMX } from "@/lib/formato";
@@ -9,13 +10,8 @@ export default async function CargarCostos() {
   if (!puedeImportarVentas(perfil.rol)) redirect("/ventas");
   return (
     <>
-      <div className="encabezado">
-        <h1>Cargar costos desde Excel</h1>
-        <p>
-          Sube el Excel del menú. Cada renglón se empareja con su producto de Dodo IS; las variantes Thin toman el costo de su tamaño
-          y la mitad y mitad, el promedio de los sabores. Primero se revisa; nada se guarda hasta que presiones Guardar.
-        </p>
-      </div>
+      <EncabezadoPagina titulo="Cargar costos desde Excel" descripcion="Sube el Excel del menú. Cada renglón se empareja con su producto de Dodo IS; las variantes Thin toman el costo de su tamaño
+          y la mitad y mitad, el promedio de los sabores. Primero se revisa; nada se guarda hasta que presiones Guardar." />
       <FormCargarCostos fechaPorDefecto={`${hoyMX().slice(0, 8)}01`} />
     </>
   );

@@ -1,3 +1,5 @@
+"use client";
+import {useState} from "react";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { CATEGORIAS_COMPRA, FORMAS_PAGO, INICIOS_CUBRE, NOMBRE_CATEGORIA_COMPRA, NOMBRE_FORMA_PAGO, NOMBRE_INICIO_CUBRE, REGIMENES, type DatosProveedor } from "@/lib/compras/proveedores";
 import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
@@ -8,6 +10,11 @@ import { DOCUMENTOS_ALTA, NOMBRE_DOCUMENTO } from "@/lib/compras/documentos";
 import { hoyCalendarioMX } from "@/lib/formato";
 
 export function FormProveedor({ id, inicial, sucursales }: { id?: string; inicial?: DatosProveedor; sucursales: { id: string; nombre: string }[] }) {
+  const [categorias,setCategorias]=useState(inicial?.categorias??[]);
+  const [cuentaPl,setCuentaPl]=useState(inicial?.cuenta_pl??'');
+  const [meses,setMeses]=useState(String(inicial?.cubre_meses??1));
+  const [inicio,setInicio]=useState(inicial?.cubre_inicio??'emision');
+  const muestraPeriodo=categorias.includes('servicio')||['renta','servicios'].includes(cuentaPl);
   const v = (c: keyof DatosProveedor) => (inicial?.[c] ?? "") as string;
   const campo = (nombre: keyof DatosProveedor, etiqueta: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <div className="campo">
@@ -49,6 +56,14 @@ export function FormProveedor({ id, inicial, sucursales }: { id?: string; inicia
         {campo("telefono", "Teléfono", { type: "tel" })}
         {campo("correo", "Correo", { type: "email" })}
       </div>
+      <fieldset className="campo">
+        <legend>Qué surte</legend>
+        <div className="acciones">
+          {CATEGORIAS_COMPRA.map((c) => (
+            <label key={c}><input type="checkbox" name="categorias" value={c} checked={categorias.includes(c)} onChange={e=>setCategorias(actual=>e.target.checked?[...actual,c]:actual.filter(x=>x!==c))} /> {NOMBRE_CATEGORIA_COMPRA[c]}</label>
+          ))}
+        </div>
+      </fieldset>
       <h2>Pago</h2>
       <div className="rejilla">
         {campo("banco", "Banco")}
@@ -63,7 +78,7 @@ export function FormProveedor({ id, inicial, sucursales }: { id?: string; inicia
         </div>
         <div className="campo">
           <label htmlFor="cuenta_pl">Cuenta del P&L</label>
-          <select id="cuenta_pl" name="cuenta_pl" defaultValue={v("cuenta_pl")}>
+          <select id="cuenta_pl" name="cuenta_pl" value={cuentaPl} onChange={e=>setCuentaPl(e.target.value)}>
             <option value="">Sin cuenta</option>
             {[...CUENTAS_GASTO, ...CUENTAS_MEMO].map((c) => <option key={c} value={c}>{NOMBRE_CUENTA[c]}</option>)}
           </select>
@@ -77,26 +92,20 @@ export function FormProveedor({ id, inicial, sucursales }: { id?: string; inicia
           </select>
           <small>Sus facturas se cargan aquí si no se elige otra.</small>
         </div>
-        <div className="campo">
+        {muestraPeriodo&&<><div className="campo">
           <label htmlFor="cubre_meses">Cada recibo cubre (meses)</label>
-          <input id="cubre_meses" name="cubre_meses" type="number" inputMode="numeric" min={1} max={12} step={1} defaultValue={String(inicial?.cubre_meses ?? 1)} />
+          <input id="cubre_meses" name="cubre_meses" type="number" inputMode="numeric" min={1} max={12} step={1} value={meses} onChange={e=>setMeses(e.target.value)} disabled={!muestraPeriodo} />
           <small>Ej. CFE 2, fumigación 3, renta 1. El P&L reparte cada recibo en esos meses.</small>
         </div>
         <div className="campo">
           <label htmlFor="cubre_inicio">Desde qué mes</label>
-          <select id="cubre_inicio" name="cubre_inicio" defaultValue={inicial?.cubre_inicio ?? "emision"}>
+          <select id="cubre_inicio" name="cubre_inicio" value={inicio} onChange={e=>setInicio(e.target.value as typeof inicio)} disabled={!muestraPeriodo}>
             {INICIOS_CUBRE.map((i) => <option key={i} value={i}>{NOMBRE_INICIO_CUBRE[i]}</option>)}
           </select>
-        </div>
+        </div></>}
       </div>
-      <fieldset className="campo">
-        <legend>Qué surte</legend>
-        <div className="acciones">
-          {CATEGORIAS_COMPRA.map((c) => (
-            <label key={c}><input type="checkbox" name="categorias" value={c} defaultChecked={inicial?.categorias.includes(c)} /> {NOMBRE_CATEGORIA_COMPRA[c]}</label>
-          ))}
-        </div>
-      </fieldset>
+      {!muestraPeriodo&&<><input type="hidden" name="cubre_meses" value={inicial?.cubre_meses??1}/><input type="hidden" name="cubre_inicio" value={inicial?.cubre_inicio??'emision'}/></>}
+
       <div className="campo">
         <label htmlFor="notas">Notas</label>
         <textarea id="notas" name="notas" defaultValue={v("notas")} rows={3} />

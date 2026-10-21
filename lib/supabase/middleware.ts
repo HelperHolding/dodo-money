@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { rutaSinSesion } from "@/lib/rutasPublicas";
 
 const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const LLAVE_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -57,11 +58,8 @@ export async function actualizarSesion(request: NextRequest) {
   if (error && error.name !== "AuthSessionMissingError") console.error("Middleware de sesión:", error);
 
   const esLogin = request.nextUrl.pathname.startsWith("/login");
-  // Se autentican con su propio header x-api-key, no con la sesión de cookies.
-  const esReporteAutomatizado = ["/api/reporte-semanal", "/api/reporte-diario", "/api/reporte-mensual", "/api/rappi/importar"].some((ruta) => request.nextUrl.pathname.startsWith(ruta));
-
-  const esInvitacion = request.nextUrl.pathname === "/auth/confirm" || request.nextUrl.pathname === "/invitacion";
-  if (!user && !esLogin && !esReporteAutomatizado && !esInvitacion) {
+  // Sin sesión solo pasan login, invitación, reportes automáticos (x-api-key) y la sincronización de Dodo IS (clave del cron).
+  if (!user && !rutaSinSesion(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

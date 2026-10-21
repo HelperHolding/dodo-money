@@ -210,8 +210,12 @@ const fechaReal = (t: string | undefined): t is string =>
 /** Máximo de días que se pueden pedir de una vez. */
 export const MAX_DIAS = 92;
 
-/** Los 7 días que terminan en el último día con datos. */
-export const periodoPorDefecto = (ultimoConDatos: string): Periodo => ({ desde: sumarDias(ultimoConDatos, -6), hasta: ultimoConDatos });
+/** Última semana de lunes a domingo terminada a la fecha del último dato importado. */
+export function periodoPorDefecto(ultimoConDatos: string): Periodo {
+  const dia = new Date(`${ultimoConDatos}T00:00:00Z`).getUTCDay();
+  const hasta = sumarDias(ultimoConDatos, -dia);
+  return { desde: sumarDias(hasta, -6), hasta };
+}
 
 /** El periodo pedido en la URL si es válido (fechas reales, en orden, hasta MAX_DIAS); si no, el de por defecto. */
 export function periodoElegido(desde: string | undefined, hasta: string | undefined, porDefecto: Periodo): Periodo {

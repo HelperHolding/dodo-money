@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { BorradorNomina } from "@/lib/finanzas/personal";
 import { NominaRealPanel } from "./NominaReal";
 import { Aviso } from "@/components/Aviso";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import { hoyMX, pesos } from "@/lib/formato";
@@ -29,20 +30,31 @@ export default async function PaginaNomina({ searchParams }: { searchParams: Pro
   const reales = (versiones ?? []).filter((v) => !v.anulada_en);
   const lugares = [...(sucursales ?? []).map((s) => ({ id: s.id as string | null, nombre: s.nombre })), { id: null, nombre: "Oficina central" }];
 
+  // Solo para el resumen de arriba: los mismos totales que muestra cada lugar abajo.
+  const totalesLugar = lugares.map((l) => {
+    const base = baseNominaMes(puestos ?? [], reales, l.id, finDeMes);
+    return { real: !!realDelMes(reales, l.id, mes), total: base.cocina + base.gerencia + (ajustes ?? []).filter((a) => a.sucursal_id === l.id).reduce((t, a) => t + Number(a.monto), 0) };
+  });
+  const conReal = totalesLugar.filter((x) => x.real).length;
+
   return (
     <>
-      <div className="encabezado"><h1>Nómina</h1><p>Nómina real mensual o plantilla estimada, más ajustes del mes. Se incluye en el P&L; capturar nómina no registra un pago.</p></div>
+      <EncabezadoPagina titulo="Nómina" descripcion="Nómina real mensual o plantilla estimada, más ajustes del mes. Se incluye en el P&L; capturar nómina no registra un pago."
+        acciones={<Link className="boton boton-secundario" href="/finanzas/personal">Perfiles de personal</Link>} />
       <Aviso ok={q.ok} error={q.error} />
-      <Link className="boton boton-secundario" href="/finanzas/personal">Perfiles de personal</Link>
+      <div className="indicadores-marco"><section className="indicadores" aria-label="Resumen del mes">
+        <div className="indicador"><span className="indicador-etiqueta">Nómina del mes</span><strong className="indicador-valor">{pesos(totalesLugar.reduce((s, x) => s + x.total, 0))}</strong><span className="indicador-detalle">Todos los lugares, con ajustes</span></div>
+        <div className="indicador" data-alerta={conReal < lugares.length ? "aviso" : undefined}><span className="indicador-etiqueta">Con nómina real</span><strong className="indicador-valor">{conReal} de {lugares.length}</strong><span className="indicador-cambio">{conReal < lugares.length ? `${lugares.length - conReal} con plantilla estimada` : "Todos capturados"}</span></div>
+      </section></div>
       {edita && <details className="seccion"><summary>Preparar nómina desde Personal o CONTPAQi</summary><p>Se guarda un borrador para revisar. El P&L cambia solamente al confirmar. Los importes vacíos quedan pendientes.</p>
         <form action={generarNomina} className="formulario"><input type="hidden" name="mes" value={mes}/><div className="campo"><label htmlFor="personal-sucursal">Lugar para generar desde perfiles</label><select id="personal-sucursal" name="sucursal_id">{lugares.map(l=><option key={l.id??"oficina"} value={l.id??"oficina"}>{l.nombre}</option>)}</select></div><BotonEnviar>Generar desde Personal</BotonEnviar></form>
         <form action={importarContpaqi} className="formulario"><input type="hidden" name="mes" value={mes}/><div className="campo"><label htmlFor="contpaqi-sucursal">Lugar del acumulado</label><select id="contpaqi-sucursal" name="sucursal_id">{lugares.map(l=><option key={l.id??"oficina"} value={l.id??"oficina"}>{l.nombre}</option>)}</select></div><div className="campo"><label htmlFor="contpaqi-excel">Lista de Raya tabular del mes completo (.xlsx, hasta 4 MB)</label><input id="contpaqi-excel" type="file" name="excel" accept=".xlsx" required/></div><BotonEnviar>Importar y revisar acumulado</BotonEnviar></form>
       </details>}
       {q.borrador && (!borrador || borrador.mes.slice(0,7)!==mes || borrador.confirmada_id) && <p>El borrador no está disponible para confirmar en este mes. Si ya lo confirmaste, consulta la nómina real.</p>}
-      <form className="acciones" method="get">
-        <label htmlFor="mes" className="etiqueta">Mes</label>
+      <form className="barra-filtros" method="get" aria-label="Mes">
+        <label htmlFor="mes" className="solo-lector">Mes</label>
         <input id="mes" name="mes" type="month" defaultValue={mes} />
-        <button className="boton boton-secundario" type="submit">Ver</button>
+        <button className="boton boton-secundario boton-compacto" type="submit">Ver</button>
       </form>
       {lugares.map((l) => {
         const real = realDelMes(reales, l.id, mes);
@@ -52,7 +64,10 @@ export default async function PaginaNomina({ searchParams }: { searchParams: Pro
         const total = base.cocina + base.gerencia + aj.reduce((t, a) => t + Number(a.monto), 0);
         return (
           <section key={l.id ?? "oficina"} className="seccion">
-            <h2>{l.nombre} · {pesos(total)}</h2>
+            <div className="seccion-cabecera">
+              <h2>{l.nombre}</h2>
+              <span className="nomina-total"><span className="insignia" data-tono={real ? "exito" : "aviso"}>{real ? "Nómina real" : "Estimada"}</span><strong>{pesos(total)}</strong></span>
+            </div>
             {!real && vigentes.length > 0 && <p>Importe estimado según la plantilla. Falta capturar la nómina real de {mes}.</p>}
             <NominaRealPanel real={real} mes={mes} sucursal={l.id} edita={edita} borrador={borrador && !borrador.confirmada_id && borrador.mes.slice(0,7)===mes && borrador.sucursal_id===l.id ? borrador : undefined} />
             {(versiones ?? []).some(v => v.sucursal_id === l.id && v.anulada_en) && <details className="seccion"><summary>Historial de nómina real</summary>{(versiones ?? []).filter(v => v.sucursal_id === l.id && v.anulada_en).map(v => <div key={v.id}><p>{v.creado_en} · {v.fuente} · {v.motivo_anulacion}</p>{v.empleados.map(e => <details key={e.nombre}><summary>{e.nombre} · {e.puesto} · {pesos(totalEmpleado(e))}</summary><dl>{Object.entries(conceptosNomina).map(([k,nombre]) => <div className="fila-datos" key={k}><dt>{nombre}</dt><dd>{pesos(e[k as keyof typeof conceptosNomina] ?? 0)}</dd></div>)}</dl>{e.nota && <p>{e.nota}</p>}</details>)}</div>)}</details>}

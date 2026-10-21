@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
@@ -16,10 +17,7 @@ export default async function Objetivos({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Objetivos del turno</h1>
-        <p>Específico (qué hacer), medible (cuánto o en cuánto tiempo), con fecha límite. Pide al empleado que lo repita para confirmar que quedó claro.</p>
-      </div>
+      <EncabezadoPagina titulo="Objetivos del turno" descripcion="Específico (qué hacer), medible (cuánto o en cuánto tiempo), con fecha límite. Pide al empleado que lo repita para confirmar que quedó claro." />
       <Aviso ok={ok} error={error} />
       {!soloLectura && puedeSupervisar(perfil.rol) && (
         <form action={registrarObjetivo} className="seccion" aria-labelledby="t-nuevo">

@@ -4,12 +4,12 @@ import { useId, useRef, useState, type ReactNode } from "react";
 
 type Pestaña = { id: string; titulo: string; contenido: ReactNode };
 
-export function FichaPestanas({ pestanas }: { pestanas: Pestaña[] }) {
-  const [activa, setActiva] = useState(pestanas[0]?.id);
+export function FichaPestanas({ pestanas, inicial, etiqueta = "Contenido del documento" }: { pestanas: Pestaña[]; inicial?: string; etiqueta?: string }) {
+  const [activa, setActiva] = useState(pestanas.some(p => p.id === inicial) ? inicial : pestanas[0]?.id);
   const base = useId();
   const botones = useRef<(HTMLButtonElement | null)[]>([]);
   return <div className="ficha-cuaderno">
-    <div className="ficha-pestanas" role="tablist" aria-label="Contenido del documento">
+    <div className="ficha-pestanas" role="tablist" aria-label={etiqueta}>
       {pestanas.map((p, i) => <button key={p.id} ref={el => { botones.current[i] = el; }} type="button" role="tab"
         id={`${base}-${p.id}-tab`} aria-controls={`${base}-${p.id}-panel`} aria-selected={activa === p.id}
         tabIndex={activa === p.id ? 0 : -1} onClick={() => setActiva(p.id)} onKeyDown={e => {

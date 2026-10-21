@@ -1,5 +1,8 @@
 const mxn = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 
+const mxnUnitario = new Intl.NumberFormat("es-MX", {style:"currency",currency:"MXN",minimumFractionDigits:4,maximumFractionDigits:4});
+export const precioUnitario = (n:number|string|null|undefined)=>mxnUnitario.format(Number(n??0));
+
 export const pesos = (n: number | string | null | undefined) => mxn.format(Number(n ?? 0));
 
 export const hora = (iso: string) =>

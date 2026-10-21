@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
@@ -21,10 +22,7 @@ export default async function Empresa({ searchParams }: { searchParams: Promise<
   );
   return (
     <>
-      <div className="encabezado">
-        <h1>Datos de la empresa</h1>
-        <p>Configuración de la empresa principal y días de pago recomendados. Cada documento usa los datos de su propia razón social.</p>
-      </div>
+      <EncabezadoPagina titulo="Datos de la empresa" descripcion="Configuración de la empresa principal y días de pago recomendados. Cada documento usa los datos de su propia razón social." />
       <p><Link className="boton boton-secundario" href="/compras/razones-sociales">Ver y agregar razones sociales</Link></p><Aviso error={error} />
       {edita ? (
         <form action={guardarEmpresa} className="seccion formulario">

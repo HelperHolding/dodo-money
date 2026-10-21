@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import {CampoRazonSocial} from "@/components/CampoRazonSocial";
 import {leerRazonesSociales} from "@/lib/compras/razonesSociales";
 import { redirect } from "next/navigation";
@@ -20,7 +21,7 @@ export default async function NuevaOrden({ searchParams }: { searchParams: Promi
   const proveedorInicial = (proveedores ?? []).some(p => p.id === proveedor) ? proveedor : "";
   return (
     <>
-      <div className="encabezado"><h1>Nueva cotización</h1><p>Después agregas los artículos. Al confirmarla se vuelve orden de compra.</p></div>
+      <EncabezadoPagina titulo="Nueva cotización" descripcion="Después agregas los artículos. Al confirmarla se vuelve orden de compra." />
       <Aviso error={error} />
       <form action={crearOrden} className="seccion formulario"><CampoRazonSocial razones={razones}/>
         <div className="rejilla">

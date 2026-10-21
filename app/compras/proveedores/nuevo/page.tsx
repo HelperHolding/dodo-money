@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { obtenerPerfil } from "@/lib/contexto";
@@ -11,7 +12,7 @@ export default async function NuevoProveedor({ searchParams }: { searchParams: P
   const { data: sucursales } = await supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>();
   return (
     <>
-      <div className="encabezado"><h1>Nuevo proveedor</h1><p>El RFC y el régimen fiscal sirven para reconocer sus facturas.</p></div>
+      <EncabezadoPagina titulo="Nuevo proveedor" descripcion="El RFC y el régimen fiscal sirven para reconocer sus facturas." />
       <Aviso error={error} />
       <FormProveedor sucursales={sucursales ?? []} />
     </>

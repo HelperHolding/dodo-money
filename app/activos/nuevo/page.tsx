@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import {opcionesActivo,type OpcionesActivo} from '@/lib/activosDatos';
 import {redirect} from 'next/navigation';
 import {obtenerPerfil} from '@/lib/contexto';
@@ -14,5 +15,5 @@ export default async function Nuevo({searchParams}:{searchParams:Promise<{sucurs
  if(f.origen){const {data:i,error:ei}=await supabase.from('apertura_items').select('*').eq('id',f.origen).maybeSingle<ItemApertura>();if(ei||!i)return <p className="aviso aviso-error">No se pudo consultar el equipo de Aperturas.</p>;
  const {data:p,error:ep}=await supabase.from('apertura_proyectos').select('sucursal_id').eq('id',i.proyecto_id).single();if(ep)return <p className="aviso aviso-error">No se pudo consultar la apertura.</p>;
  Object.assign(a,{apertura_item_id:i.id,sucursal_id:p.sucursal_id,nombre:i.nombre,estado:'recibido',factura_id:i.factura_id,evidencia:i.evidencia});}
- return <><h1>Agregar activo</h1><p>Registra una unidad física. Puedes dar de alta el equipo existente aunque todavía no conozcas su costo.</p><Formulario accion={guardar} texto="Crear activo"><CamposActivo a={a} {...opciones}/></Formulario></>;
+ return <><EncabezadoPagina titulo="Agregar activo" descripcion="Registra una unidad física. Puedes dar de alta el equipo existente aunque todavía no conozcas su costo."/><Formulario accion={guardar} texto="Crear activo"><CamposActivo a={a} {...opciones}/></Formulario></>;
 }

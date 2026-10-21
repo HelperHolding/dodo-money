@@ -1,3 +1,4 @@
+import {precioUnitario} from '@/lib/formato';
 import {FormularioRecepcionOrden} from "../FormularioRecepcionOrden";
 import { HistorialCompra } from "@/components/HistorialCompra";
 import {AdjuntarDocumento,AdjuntosCompra} from "../../adjuntos/Componentes";
@@ -235,7 +236,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
                           <details>
                             <summary className="saldo-nota">Recepciones ({dodo.length + app.length})</summary>
                             <ul className="lista-simple">
-                              {dodo.map((x) => <li key={x.id}>Dodo IS · {fechaTexto(x.fecha)} · {x.cantidad} {x.unidad} · {pesos(x.precio)}{precioDistinto(Number(r.precio), Number(x.precio)) ? ` (orden: ${pesos(r.precio)})` : ""}</li>)}
+                              {dodo.map((x) => <li key={x.id}>Dodo IS · {fechaTexto(x.fecha)} · {x.cantidad} {x.unidad} · {precioUnitario(x.precio)}{precioDistinto(Number(r.precio), Number(x.precio)) ? ` (orden: ${precioUnitario(r.precio)})` : ""}</li>)}
                               {app.map((x) => (
                                 <li key={x.id}>DODO MX · {fechaTexto(x.fecha)} · {x.cantidad}{x.conciliada_en ? " · conciliada con Dodo IS" : ""}{x.nota ? ` · ${x.nota}` : ""}{x.anulada_en ? ` · anulada: ${x.motivo_anulacion}` : ""}
                                   {x.foto_path && urlFoto.get(x.foto_path) ? <> · <a href={urlFoto.get(x.foto_path)} target="_blank" rel="noreferrer">ver foto</a></> : null}</li>
@@ -261,7 +262,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
                               <label className="solo-lector" htmlFor={`c-${r.id}`}>Cantidad</label>
                               <input id={`c-${r.id}`} name="cantidad" inputMode="decimal" defaultValue={r.cantidad} required placeholder="Cantidad" />
                               <label className="solo-lector" htmlFor={`p-${r.id}`}>Precio sin IVA</label>
-                              <input id={`p-${r.id}`} name="precio" inputMode="decimal" defaultValue={r.precio} placeholder="Precio sin IVA" />
+                              <input id={`p-${r.id}`} name="precio" inputMode="decimal" defaultValue={Number(r.precio).toFixed(4)} placeholder="Precio sin IVA" />
                               <label htmlFor={`iva-${r.id}`}>IVA del renglón</label>
                               <select id={`iva-${r.id}`} name="tasa_iva" defaultValue={r.tasa_iva} required><option value="16">IVA 16 %</option><option value="0">IVA 0 %</option><option value="exento">Exento</option></select>
                               <BotonEnviar pendiente="…">Guardar</BotonEnviar>
@@ -276,7 +277,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
                       </span>
                     </td>
                     <td data-label="Cantidad" className="monto">{r.cantidad} {r.articulos?.unidad}</td>
-                    <td data-label="Precio" className="monto">{Number(r.precio) > 0 ? pesos(r.precio) : "Por cotizar"}</td>
+                    <td data-label="Precio" className="monto">{Number(r.precio) > 0 ? precioUnitario(r.precio) : "Por cotizar"}</td>
                     <td data-label="IVA" style={{ whiteSpace: "nowrap" }}>{r.tasa_iva === "exento" ? "Exento" : `${r.tasa_iva} %`}</td>
                     <td data-label="Importe" className="monto">{pesos(Number(r.cantidad) * Number(r.precio))}</td>
                     {conRecepcion && (

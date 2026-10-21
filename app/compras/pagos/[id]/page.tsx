@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import Link from "next/link";
 import { nombreFactura } from "@/lib/compras/facturas";
 import { notFound } from "next/navigation";
@@ -30,10 +31,7 @@ export default async function DetallePago({ params, searchParams }: { params: Pr
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Pago de {pesos(p.monto)} · {p.proveedores?.nombre_comercial ?? p.proveedores?.razon_social}</h1>
-        <p>{fechaTexto(p.fecha)} · {NOMBRE_FORMA_PAGO[p.forma]}{p.anulado_en ? ` · anulado: ${p.motivo_anulacion}` : ""}</p>
-      </div>
+      <EncabezadoPagina titulo={<>Pago de {pesos(p.monto)} · {p.proveedores?.nombre_comercial ?? p.proveedores?.razon_social}</>} descripcion={<>{fechaTexto(p.fecha)} · {NOMBRE_FORMA_PAGO[p.forma]}{p.anulado_en ? ` · anulado: ${p.motivo_anulacion}` : ""}</>} />
       <Aviso ok={ok} error={error} />
       <section className="seccion">
         <dl className="tarjeta-datos">

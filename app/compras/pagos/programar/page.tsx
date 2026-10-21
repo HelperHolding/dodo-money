@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import Link from "next/link";
 import { FORMAS_PAGO,NOMBRE_FORMA_PAGO,type FormaPago } from "@/lib/compras/proveedores";
 import { Aviso } from "@/components/Aviso";
@@ -38,14 +39,9 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Programar pagos</h1>
-        <p>
-          Días de pago recomendados: {dias.map((d) => NOMBRE_DIA[d].toLowerCase()).join(", ")} (se cambian en Facturas → Datos de la empresa). Puedes programar para cualquier día desde hoy.
+      <EncabezadoPagina titulo="Programar pagos" descripcion={<>Días de pago recomendados: {dias.map((d) => NOMBRE_DIA[d].toLowerCase()).join(", ")} (se cambian en Facturas → Datos de la empresa). Puedes programar para cualquier día desde hoy.
           Cada factura sin programar aparece en el último día de pago antes de su vencimiento; si ese día ya pasó, en el próximo, marcada
-          porque se pagaría después de vencer.{edita && " Marca las que se pagan y prográmalas."}
-        </p>
-      </div>
+          porque se pagaría después de vencer.{edita && " Marca las que se pagan y prográmalas."}</>} />
       <Aviso ok={ok} error={error} />
       <form className="acciones" role="search">
         <label htmlFor="proveedor" className="etiqueta">Proveedor</label>

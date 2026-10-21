@@ -1,5 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+
+test('eliminados no cuentan en reposición de caja ni deuda con empleados',()=>{
+ const eliminado={id:'x',origen:'empleado' as const,pagado_por:'persona',repuesto_en:null,monto:200,anulado_en:'2026-10-20'};
+ assert.deepEqual(porReponerAEmpleados([eliminado]),[]);
+ assert.deepEqual(sumaPorOrigen([{...eliminado,origen:'caja_chica'}]),{caja_chica:0,boveda:0,empleado:0});
+});
 import { leerOrigen, NOMBRE_ORIGEN, porReponerAEmpleados, sumaPorOrigen } from "./gastos.ts";
 
 test("leerOrigen acepta los tres orígenes y nada más", () => {

@@ -1,0 +1,41 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {PGlite}=await import(pathToFileURL(process.argv[2]).href);
+const db=new PGlite();
+const s='00000000-0000-0000-0000-000000000001', b='00000000-0000-0000-0000-000000000002', corp='00000000-0000-0000-0000-000000000003', u='00000000-0000-0000-0000-000000000004', cierre='00000000-0000-0000-0000-000000000005';
+try{
+ await db.exec(`create schema auth; create function auth.uid() returns uuid language sql as $$select '${u}'::uuid$$;
+ create function public.mi_rol() returns text language sql as $$select coalesce(nullif(current_setting('test.rol',true),''),'admin')$$;
+ create function public.mi_sucursal() returns uuid language sql as $$select '${s}'::uuid$$;
+ create table cajas(id uuid primary key,sucursal_id uuid,tipo text);
+ insert into cajas values('${b}','${s}','boveda'),('${corp}','${s}','corporativo');
+ create table cierres_dia(id uuid primary key,sucursal_id uuid,fecha date);
+ insert into cierres_dia values('${cierre}','${s}',current_date);
+ create table movimientos(id uuid primary key,recoleccion_id uuid,sucursal_id uuid,tipo text,caja_origen_id uuid,caja_destino_id uuid,monto numeric,folio text,nota text,registrado_por uuid,estado text default 'pendiente');
+ create table recolecciones_corporativo(id uuid primary key,sucursal_id uuid,desde date,hasta date,expediente jsonb,creado_por uuid);
+ create table recoleccion_cierres(recoleccion_id uuid,cierre_id uuid unique);
+ create function vista_recoleccion(uuid,date,date) returns jsonb language plpgsql as $$declare maximo numeric;begin
+ if exists(select 1 from recoleccion_cierres) then raise exception 'Cierre ya asociado';end if;
+ maximo:=greatest(0,26600.28-4500-coalesce(nullif(current_setting('test.reservas',true),''),'0')::numeric-coalesce((select sum(monto) from movimientos where estado='pendiente'),0));
+ return jsonb_build_object('maximo',maximo,'historicos_por_revisar','[]'::jsonb,'cierres',jsonb_build_array(jsonb_build_object('id','${cierre}')));end$$;`);
+ const sql=fs.readFileSync(new URL('./migration.sql',import.meta.url),'utf8');
+ const start=sql.indexOf('CREATE OR REPLACE FUNCTION public.registrar_recoleccion');
+ assert(start>=0); await db.exec(sql.slice(start,sql.lastIndexOf('commit;')));
+ const call=(id,monto,nota='Entrega parcial autorizada')=>db.query('select registrar_recoleccion($1,$2,current_date,current_date,$3,$4,$5,false) id',[id,s,monto,'PARCIAL-TEST',nota]);
+ for(const [i,m] of [0,-1,22100.29,22001.001].entries()) await assert.rejects(call('00000000-0000-0000-0000-'+String(100+i).padStart(12,'0'),m));
+ await db.query("select set_config('test.rol','corporativo',false)");await assert.rejects(call('00000000-0000-0000-0000-000000000110',22001));
+ await db.query("select set_config('test.rol','admin',false)");
+ await db.query("select set_config('test.reservas','100',false)");await assert.rejects(call('00000000-0000-0000-0000-000000000111',22001));
+ await db.query("select set_config('test.reservas','0',false)");
+ const id='00000000-0000-0000-0000-000000000120';
+ await call(id,22001);const exp=(await db.query('select expediente from recolecciones_corporativo')).rows[0].expediente;
+ assert.equal(exp.importe_preparado,22001);assert.equal(exp.remanente_disponible,99.28);assert.equal(exp.maximo,22100.28);
+ await call(id,22001);assert.equal((await db.query('select count(*)::int n from movimientos')).rows[0].n,1);
+ await assert.rejects(call(id,22000));await assert.rejects(call('00000000-0000-0000-0000-000000000121',99.28));
+ assert.equal((await db.query('select estado from movimientos')).rows[0].estado,'pendiente');
+ await db.exec('truncate recoleccion_cierres,recolecciones_corporativo,movimientos');
+ await call('00000000-0000-0000-0000-000000000130',22100.28);
+ assert.equal((await db.query('select expediente from recolecciones_corporativo')).rows[0].expediente.remanente_disponible,0);
+ console.log('SQL real aprobado: parcial 22001/remanente99.28; máximo exacto; cero/negativo/exceso/decimales; rol; reservas; idempotencia; payload distinto; exclusividad; estado pendiente.');
+}finally{await db.close();}

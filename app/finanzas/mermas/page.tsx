@@ -1,3 +1,4 @@
+import {EncabezadoPagina} from "@/components/EncabezadoPagina";
 import Link from "next/link";
 import {obtenerPerfil} from "@/lib/contexto";
 import {hoyCalendarioMX,pesos} from "@/lib/formato";
@@ -26,9 +27,9 @@ export default async function Mermas({searchParams}:{searchParams:Promise<{mes?:
  const valoradas=valorarMermas(filas,datos.costos),nombres=new Map((sucursales??[]).map(s=>[s.id,s.nombre]));
  // Un formulario por producto/sucursal; la vigencia mantiene el costo de los días anteriores.
  const productos=[...new Map(valoradas.filter(r=>r.tipo==="producto").map(r=>[`${r.sucursal_id}|${r.clave}`,r])).values()];
- return <><div className="encabezado"><h1>Mermas Dodo IS</h1><p>Productos terminados e insumos adicionales al BOM descuentan del P&L, separados y sin IVA. Los costos desconocidos quedan pendientes.</p></div><Aviso ok={q.ok} error={q.error}/>
+ return <><EncabezadoPagina titulo="Mermas Dodo IS" descripcion="Productos terminados e insumos adicionales al BOM descuentan del P&L, separados y sin IVA. Los costos desconocidos quedan pendientes." acciones={<Link className="boton boton-secundario" href={`/finanzas?mes=${mes}${sucursal?`&sucursal=${sucursal}`:""}`}>Ver P&L</Link>}/><Aviso ok={q.ok} error={q.error}/>
   {!datos.disponible&&<p className="aviso aviso-error">Falta aplicar 0035_mermas_pl.sql para completar cobertura y registrar costos sin IVA.</p>}
-  <form className="seccion formulario"><div className="rejilla"><div className="campo"><label htmlFor="mes">Mes</label><input id="mes" name="mes" type="month" defaultValue={mes} required/></div><div className="campo"><label htmlFor="sucursal">Sucursal</label><select id="sucursal" name="sucursal" defaultValue={sucursal??""}><option value="">Todas</option>{sucursales?.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></div></div><button className="boton boton-secundario">Consultar</button><Link href={`/finanzas?mes=${mes}${sucursal?`&sucursal=${sucursal}`:""}`}>Ver P&L</Link></form>
+  <form className="barra-filtros" aria-label="Periodo"><label htmlFor="mes" className="solo-lector">Mes</label><input id="mes" name="mes" type="month" defaultValue={mes} required/><label htmlFor="sucursal" className="solo-lector">Sucursal</label><select id="sucursal" name="sucursal" defaultValue={sucursal??""}><option value="">Todas las sucursales</option>{sucursales?.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select><button className="boton boton-secundario boton-compacto">Consultar</button></form>
   <section className="seccion"><h2>Importes incorporados al P&L</h2>
    {(sucursales??[]).filter(s=>!sucursal||s.id===sucursal).map(s=>{
     const r=mermaParaPL(valoradas.filter(r=>r.sucursal_id===s.id),dias.filter(d=>d.sucursal_id===s.id),desde,hasta);

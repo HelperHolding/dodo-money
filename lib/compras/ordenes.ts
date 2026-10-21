@@ -64,8 +64,8 @@ export function leerRenglon(valor: (campo: string) => string): { datos: { articu
   if (!(cantidad > 0)) return { error: "La cantidad debe ser mayor a cero." };
   const texto = valor("precio").trim();
   const precio = texto === "" ? 0 : numeroDe(texto);
-  if (!(precio >= 0)) return { error: "El precio no es válido." };
-  return { datos: { articulo_id, cantidad: Math.round(cantidad * 1000) / 1000, precio: r2(precio) } };
+  if (!Number.isFinite(precio) || !(precio >= 0)) return { error: "El precio no es válido." };
+  return { datos: { articulo_id, cantidad: Math.round(cantidad * 1000) / 1000, precio: Math.round((precio + Number.EPSILON) * 10000) / 10000 } };
 }
 
 export type Cotizacion = { id: string; cancelada?: boolean; renglones: { articulo_id: string; cantidad: number; precio: number; tasa_iva: TasaIva }[] };

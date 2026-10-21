@@ -2,10 +2,12 @@
 import {obtenerPerfil} from '@/lib/contexto';
 import {revalidatePath} from 'next/cache';
 import {redirect} from 'next/navigation';
+import {esSemanaRecoleccion} from '@/lib/recolecciones';
 const texto=(fd:FormData,k:string)=>String(fd.get(k)??'').trim();
 function volver(ruta:string,tipo:string,mensaje:string):never {redirect(`${ruta}${ruta.includes('?')?'&':'?'}${tipo}=${encodeURIComponent(mensaje)}`);}
 function actualizar(){revalidatePath('/','layout');revalidatePath('/efectivo');revalidatePath('/recolecciones','layout');}
 export async function registrarRecoleccion(fd:FormData){
+ if(!esSemanaRecoleccion(texto(fd,'desde'),texto(fd,'hasta')))volver('/recolecciones','error','Selecciona una semana completa de lunes a domingo.');
  const {supabase}=await obtenerPerfil();
  const {data,error}=await supabase.rpc('registrar_recoleccion',{p_id:texto(fd,'solicitud'),p_sucursal:texto(fd,'sucursal'),p_desde:texto(fd,'desde'),p_hasta:texto(fd,'hasta'),p_monto:Number(texto(fd,'monto')),p_folio:texto(fd,'folio'),p_nota:texto(fd,'nota'),p_historicos_revisados:fd.get('historicos_revisados')==='si'});
  if(error)volver(`/recolecciones?sucursal=${texto(fd,'sucursal')}&desde=${texto(fd,'desde')}&hasta=${texto(fd,'hasta')}`,'error',error.message);

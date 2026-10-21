@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { obtenerContexto } from "@/lib/contexto";
@@ -21,10 +22,7 @@ export default async function Turnos({ searchParams }: { searchParams: Promise<{
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Turnos</h1>
-        <p>Qué pasó en cada turno de {fechaTexto(fecha)}: arqueos, movimientos y gastos.</p>
-      </div>
+      <EncabezadoPagina titulo="Turnos" descripcion={<>Qué pasó en cada turno de {fechaTexto(fecha)}: arqueos, movimientos y gastos.</>} />
 
       <form className="acciones" method="get">
         <label htmlFor="fecha" className="etiqueta">Día</label>

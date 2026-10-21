@@ -36,7 +36,7 @@ test("acciones según el estado", () => {
 test("renglón: cantidad > 0, precio vacío = 0, comas de miles y signo de pesos", () => {
   const campos = (o: Record<string, string>) => (c: string) => o[c] ?? "";
   assert.deepEqual(leerRenglon(campos({ articulo_id: "a1", cantidad: "1,500.25", precio: "$ 68.456" })),
-    { datos: { articulo_id: "a1", cantidad: 1500.25, precio: 68.46 } });
+    { datos: { articulo_id: "a1", cantidad: 1500.25, precio: 68.456 } });
   assert.deepEqual(leerRenglon(campos({ articulo_id: "a1", cantidad: "2", precio: "" })), { datos: { articulo_id: "a1", cantidad: 2, precio: 0 } });
   assert.deepEqual(leerRenglon(campos({ cantidad: "2" })), { error: "Elige el artículo." });
   assert.deepEqual(leerRenglon(campos({ articulo_id: "a1", cantidad: "0" })), { error: "La cantidad debe ser mayor a cero." });
@@ -105,4 +105,13 @@ test("impuestosPorTasa: una línea por tasa presente (16, 0, exento), y cuadra c
   const t = totalesOrden(rs);
   assert.equal(impuestosPorTasa(rs).reduce((s, l) => s + l.iva, 0), t.iva);
   assert.deepEqual(impuestosPorTasa([]), []);
+});
+
+test("precio unitario conserva cuatro decimales antes de calcular importe e IVA",()=>{
+ const campos=(o:Record<string,string>)=>(c:string)=>o[c]??"";
+ const r=leerRenglon(campos({articulo_id:'a1',cantidad:'24',precio:'10.7143'}));
+ assert.ok('datos' in r);if(!('datos' in r))return;
+ assert.equal(r.datos.precio,10.7143);
+ assert.deepEqual(totalesOrden([{...r.datos,tasa_iva:'16'}]),{subtotal:257.14,iva:41.14,total:298.28});
+ assert.deepEqual(leerRenglon(campos({articulo_id:'a1',cantidad:'1',precio:'Infinity'})),{error:'El precio no es válido.'});
 });

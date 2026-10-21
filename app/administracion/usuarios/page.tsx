@@ -2,7 +2,8 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { ListaUsuarios, type Usuario, type CambioUsuario } from "./Lista";
-import { Invitaciones,type Invitacion,type EventoInvitacion } from "./Invitar";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { Invitaciones,InvitarUsuario,type Invitacion,type EventoInvitacion } from "./Invitar";
 export default async function Usuarios({searchParams}:{searchParams:Promise<{ok?:string;error?:string}>}) {
   const {supabase,perfil}=await obtenerPerfil(),q=await searchParams;
   if(perfil.rol!=="admin") redirect("/");
@@ -14,10 +15,13 @@ export default async function Usuarios({searchParams}:{searchParams:Promise<{ok?
     supabase.from("usuarios_invitaciones_historial").select("id,invitacion_id,autor_id,evento,creado_en,usuarios_invitaciones(nombre,correo)").order("creado_en",{ascending:false}).limit(100).returns<EventoInvitacion[]>()
   ]);
   if(usuarios.error||sucursales.error) throw new Error(usuarios.error?.message??sucursales.error?.message);
-  return <><div className="encabezado"><h1>Usuarios y sucursales</h1><p>Equipo con acceso general y usuarios de operación organizados por sucursal.</p></div>
+  const invitacionesListas=!(invitaciones.error||eventos.error);
+  return <><EncabezadoPagina titulo="Usuarios y sucursales" descripcion="Quién entra, con qué rol y en qué sucursal. Las cuentas nuevas llegan por invitación."
+      acciones={invitacionesListas&&<InvitarUsuario sucursales={sucursales.data??[]}/>}/>
     <Aviso ok={q.ok} error={q.error}/>
     {cambios.error&&<Aviso error="La administración de cuentas requiere aplicar la migración 0057. Puedes consultar los usuarios mientras tanto."/>}
-    {invitaciones.error||eventos.error?<Aviso error="Las invitaciones requieren aplicar la migración 0058."/>:<Invitaciones sucursales={sucursales.data??[]} invitaciones={invitaciones.data??[]} eventos={eventos.data??[]} autores={usuarios.data??[]}/>}
+    {!invitacionesListas&&<Aviso error="Las invitaciones requieren aplicar la migración 0058."/>}
     <ListaUsuarios usuarios={usuarios.data??[]} sucursales={sucursales.data??[]} cambios={cambios.data??[]} yo={perfil.id} editable={!cambios.error}/>
+    {invitacionesListas&&<Invitaciones sucursales={sucursales.data??[]} invitaciones={invitaciones.data??[]} eventos={eventos.data??[]} autores={usuarios.data??[]}/>}
   </>;
 }

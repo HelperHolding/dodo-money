@@ -4,7 +4,7 @@ import { esCorporativo, puedeEntrar, SOLO_CONSULTA } from "@/lib/roles";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import type { Caja, Perfil, Sucursal, Turno } from "@/lib/tipos";
 
-export { puedeAbrirTurno, puedeGestionar, puedeSupervisar } from "@/lib/roles";
+export { puedeAbrirTurno, puedeGestionar, puedeSupervisar, puedeCerrarDia } from "@/lib/roles";
 
 /** Sucursal que corporativo eligió en la vista general. */
 export const COOKIE_SUCURSAL = "sucursal_vista";

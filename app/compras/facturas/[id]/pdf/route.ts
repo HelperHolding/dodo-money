@@ -1,3 +1,4 @@
+import {precioUnitario} from '@/lib/formato';
 import {PDFDocument,StandardFonts,rgb} from 'pdf-lib';
 import {obtenerPerfil} from '@/lib/contexto';
 import {puedeVerCompras} from '@/lib/roles';
@@ -36,7 +37,7 @@ export async function GET(_request:Request,{params}:{params:Promise<{id:string}>
  texto(`UUID: ${f.uuid??f.uuid_manual??'Sin UUID'}${!f.uuid&&f.uuid_manual?' (manual; XML pendiente)':''}`);
  texto(`Tipo de pago previsto: ${f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:'Por definir'}`);y-=10;
  texto('CONCEPTOS REGISTRADOS',true);
- for(const c of conceptos){texto(c.descripcion,true);texto(`${c.cantidad} ${c.unidad??''} | Precio unitario: ${pesos(c.valor_unitario)} | Importe: ${pesos(c.importe)}`);y-=4;}
+ for(const c of conceptos){texto(c.descripcion,true);texto(`${c.cantidad} ${c.unidad??''} | Precio unitario: ${precioUnitario(c.valor_unitario)} | Importe: ${pesos(c.importe)}`);y-=4;}
  y-=8;texto(`Subtotal: ${pesos(f.subtotal)} | Descuento: ${pesos(f.descuento)}`);texto(`IVA: ${pesos(f.iva)} | Retenciones: ${pesos(f.retenciones)}`);
  texto(`Total del documento: ${pesos(f.total)}`,true,12);texto(`Pagado: ${pesos(f.pagado)} | Saldo pendiente: ${pesos(f.saldo)}`,true,12);
  texto(`Consulta: https://dodo-money-j31t.vercel.app/compras/facturas/${f.id}`);

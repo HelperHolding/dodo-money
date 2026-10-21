@@ -1,0 +1,62 @@
+-- Ensayo reversible. El RAISE final PRUEBAS OK revierte los datos creados.
+do $$
+<<ensayo>>
+declare a uuid;co uuid;g uuid;rfc text;sol uuid:=gen_random_uuid();otro uuid;id uuid;cuenta uuid;rep jsonb;modificado jsonb;m jsonb;
+ base text:='05899999999999999';clabe text;checksum integer:=0;i integer;fuente text:=encode(decode('504b030400','hex'),'base64');
+ huella text;cantidad integer;
+begin
+ select p.id into a from public.perfiles p where p.activo and not p.debe_cambiar_contrasena and p.rol::text='admin' limit 1;
+ select p.id into co from public.perfiles p where p.activo and not p.debe_cambiar_contrasena and p.rol::text='corporativo' limit 1;
+ select p.id into g from public.perfiles p where p.activo and not p.debe_cambiar_contrasena and p.rol::text='gerente' limit 1;
+ select e.rfc into rfc from public.razones_sociales e where e.principal and e.activa;
+ if a is null or co is null or g is null or rfc is null then raise exception 'FALTAN DATOS: admin, corporativo, gerente y razón principal.';end if;
+ if exists(select 1 from public.banca_cuentas b where b.numero='999999999999') then raise exception 'La cuenta de ensayo ya existe; no se modificó nada.';end if;
+ for i in 1..17 loop checksum:=checksum+(substring(base from i for 1)::integer*(array[3,7,1])[((i-1)%3)+1])%10;end loop;
+ clabe:=base||((10-checksum%10)%10)::text;
+ rep:=jsonb_build_object('cuenta','999999999999','clabe',clabe,'rfc',rfc,'titular','CUENTA DE ENSAYO','moneda','MXN','desde','2000-01-01','hasta','2000-01-31','primeraFecha','2000-01-03','ultimaFecha','2000-01-03','saldoInicial',100,'saldoFinal',150,'cargos',50,'abonos',100,'movimientos','[]'::jsonb);
+ for i in 1..2 loop
+  m:=jsonb_build_object('fila',11+i,'fecha','2000-01-03','descripcion',case when i=1 then 'ABONO DE ENSAYO' else 'CARGO DE ENSAYO' end,'referencia','_SPEI','clasificacion','ENSAYO','cargo',case when i=1 then 0 else 50 end,'abono',case when i=1 then 100 else 0 end,'saldo',case when i=1 then 200 else 150 end,'original',jsonb_build_array('03/01/2000','ENSAYO','_SPEI',0,0,0,'ENSAYO'));
+  huella:=encode(sha256(convert_to(concat_ws(chr(31),m->>'fecha',m->>'descripcion',m->>'referencia',to_char((m->>'cargo')::numeric,'FM999999999999990.00'),to_char((m->>'abono')::numeric,'FM999999999999990.00'),to_char((m->>'saldo')::numeric,'FM999999999999990.00')),'UTF8')),'hex');
+  rep:=jsonb_set(rep,'{movimientos}',(rep->'movimientos')||jsonb_build_array(m||jsonb_build_object('huella',huella)));
+ end loop;
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ set local role authenticated;
+ id:=public.importar_banregio(sol,'ensayo.xlsx',fuente,rep);
+ select b.cuenta_id into cuenta from public.banca_importaciones b where b.id=ensayo.id;
+ if id<>sol or (select count(*) from public.banca_movimientos b where b.cuenta_id=cuenta)<>2 or not exists(select 1 from public.banca_importaciones b where b.id=ensayo.id and b.nuevos=2 and b.repetidos=0 and b.saldo_final=150 and b.creado_por=a) then raise exception 'FALLÓ: importación y autor';end if;
+ if (select b.contenido from public.banca_archivos b where b.importacion_id=id) is distinct from decode(fuente,'base64') or (select count(*) from public.banca_importacion_renglones b where b.importacion_id=id)<>2 then raise exception 'FALLÓ: archivo y renglones originales';end if;
+ if public.importar_banregio(sol,'ensayo.xlsx',fuente,rep)<>id or public.importar_banregio(gen_random_uuid(),'renombrado.xlsx',fuente,rep)<>id then raise exception 'FALLÓ: doble envío y archivo repetido';end if;
+ begin perform public.importar_banregio(sol,'otro.xlsx',fuente,rep);raise exception 'FALLÓ: sobrescritura de solicitud';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ otro:=public.importar_banregio(gen_random_uuid(),'copia.xlsx',encode(decode('504b030401','hex'),'base64'),rep);
+ if not exists(select 1 from public.banca_importaciones b where b.id=otro and b.nuevos=0 and b.repetidos=2) or (select count(*) from public.banca_movimientos b where b.cuenta_id=cuenta)<>2 then raise exception 'FALLÓ: solapamiento sin duplicar';end if;
+ fuente:=encode(decode('504b0304ff','hex'),'base64');
+ modificado:=jsonb_set(rep,'{movimientos}',jsonb_build_array(rep->'movimientos'->0));
+ modificado:=modificado||jsonb_build_object('saldoFinal',200,'cargos',0);
+ begin perform public.importar_banregio(gen_random_uuid(),'parcial.xlsx',encode(decode('504b030402','hex'),'base64'),modificado);raise exception 'FALLÓ: día incompleto';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.importar_banregio(gen_random_uuid(),'saldo.xlsx',fuente,jsonb_set(rep,'{movimientos,0,saldo}','999'));raise exception 'FALLÓ: saldo inválido';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.importar_banregio(gen_random_uuid(),'huella.xlsx',fuente,jsonb_set(rep,'{movimientos,0,huella}','"invalida"'));raise exception 'FALLÓ: huella inválida';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.importar_banregio(gen_random_uuid(),'rfc.xlsx',fuente,jsonb_set(rep,'{rfc}','"ZZZ000101ZZ0"'));raise exception 'FALLÓ: razón social';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.importar_banregio(gen_random_uuid(),'moneda.xlsx',fuente,jsonb_set(rep,'{moneda}','"USD"'));raise exception 'FALLÓ: moneda';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.importar_banregio(gen_random_uuid(),'sucursal.xlsx',fuente,rep,gen_random_uuid());raise exception 'FALLÓ: sucursal';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.importar_banregio(gen_random_uuid(),'sin-fuente.xlsx','',rep);raise exception 'FALLÓ: sin original';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ if (select count(*) from public.banca_importaciones b where b.cuenta_id=cuenta)<>2 then raise exception 'FALLÓ: correcciones no atómicas';end if;
+ begin update public.banca_movimientos set saldo=0 where cuenta_id=cuenta;raise exception 'FALLÓ: escritura directa';exception when insufficient_privilege then null;end;
+ begin delete from public.banca_archivos where importacion_id=id;raise exception 'FALLÓ: borrado directo';exception when insufficient_privilege then null;end;
+ m:=(rep->'movimientos'->0)||jsonb_build_object('fecha','2000-01-04','descripcion','ABONO POSTERIOR','abono',25,'saldo',175,'original',jsonb_build_array('04/01/2000','ABONO POSTERIOR','_SPEI','',25,175,'ENSAYO'));
+ huella:=encode(sha256(convert_to(concat_ws(chr(31),m->>'fecha',m->>'descripcion',m->>'referencia','0.00','25.00','175.00'),'UTF8')),'hex');
+ modificado:=rep||jsonb_build_object('desde','2000-01-04','primeraFecha','2000-01-04','ultimaFecha','2000-01-04','saldoInicial',150,'saldoFinal',175,'cargos',0,'abonos',25,'movimientos',jsonb_build_array(m||jsonb_build_object('huella',huella)));
+ otro:=public.importar_banregio(gen_random_uuid(),'posterior.xlsx',encode(decode('504b030403','hex'),'base64'),modificado);
+ if (select count(*) from public.banca_movimientos b where b.cuenta_id=cuenta)<>3 or not exists(select 1 from public.banca_importaciones b where b.id=otro and b.nuevos=1 and b.repetidos=0) then raise exception 'FALLÓ: nuevo día y continuidad';end if;
+ m:=m||jsonb_build_object('saldo',174,'huella',encode(sha256(convert_to(concat_ws(chr(31),m->>'fecha',m->>'descripcion',m->>'referencia','0.00','25.00','174.00'),'UTF8')),'hex'));
+ modificado:=modificado||jsonb_build_object('saldoInicial',149,'saldoFinal',174,'movimientos',jsonb_build_array(m));
+ begin perform public.importar_banregio(gen_random_uuid(),'frontera.xlsx',fuente,modificado);raise exception 'FALLÓ: continuidad';exception when others then if sqlerrm not like '%no enlaza%' then raise;end if;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',co,'role','authenticated')::text,true);
+ if not exists(select 1 from public.banca_saldos b where b.id=cuenta and b.saldo_final=175) or not exists(select 1 from public.banca_archivos b where b.importacion_id=id) then raise exception 'FALLÓ: corporativo consulta';end if;
+ begin perform public.importar_banregio(gen_random_uuid(),'corporativo.xlsx',fuente,rep);raise exception 'FALLÓ: corporativo importa';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',g,'role','authenticated')::text,true);
+ if exists(select 1 from public.banca_movimientos) or exists(select 1 from public.banca_saldos) or exists(select 1 from public.banca_archivos) then raise exception 'FALLÓ: gerente consulta';end if;
+ begin perform public.importar_banregio(gen_random_uuid(),'gerente.xlsx',fuente,rep);raise exception 'FALLÓ: gerente importa';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ reset role;
+ if has_function_privilege('anon','public.importar_banregio(uuid,text,text,jsonb,uuid)','execute') or has_table_privilege('anon','public.banca_archivos','select') then raise exception 'FALLÓ: anónimo';end if;
+ raise exception 'PRUEBAS OK — Banregio · cuenta y razón social · saldo por movimiento · fuente original privada · periodo y fechas reales · doble envío · sin duplicados · solapamiento protegido · sin sobrescritura · corrección atómica · moneda y sucursal · corporativo consulta · gerente sin acceso · sin escritura directa · anónimo sin ejecución · ensayo reversible';
+end $$;

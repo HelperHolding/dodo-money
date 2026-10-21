@@ -2,6 +2,7 @@ import ListaCosteo from "./ListaCosteo";
 import {BusquedaUrl} from "@/components/BusquedaUrl";
 import {catalogoCosteo} from "./catalogo";
 import {ultimosPreciosCosteo} from "./precios";
+import {comisionRappiVigente} from "./comision";
 import type {FiltroCosteo,FilaCosteo} from "@/lib/costeo/lista";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -32,7 +33,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
   const esLista = vista !== "tarjetas";
 
   // Todas las páginas: con cada recarga de costos la tabla crece y Supabase corta en 1000 sin avisar.
-  const [productos, costos, correcciones,preciosRappi] = await Promise.all([
+  const [productos, costos, correcciones,preciosRappi,comisionRappi] = await Promise.all([
     leerTodo<Producto>((desde, hasta) => supabase.from("productos_venta").select("dodo_id, nombre, categoria, tamano")
       .order("nombre").order("dodo_id").range(desde, hasta).returns<Producto[]>()),
     leerTodo<Costo>((desde, hasta) => supabase.from("costos_producto").select("id, dodo_id, costo, vigente_desde, fuente, nota")
@@ -40,6 +41,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
     leerTodo<Correccion>((desde, hasta) => supabase.from("correcciones_costo").select("costo_id, costo_anterior, corregido_en")
       .order("corregido_en").order("id").range(desde, hasta).returns<Correccion[]>()),
     ultimosPreciosCosteo(supabase,hoy),
+    comisionRappiVigente(supabase,hoy),
   ]);
   const correccionesDe = new Map<string, Correccion[]>();
   for (const k of correcciones) correccionesDe.set(k.costo_id, [...(correccionesDe.get(k.costo_id) ?? []), k]);
@@ -65,8 +67,8 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
         </p>
       </div>
       <Aviso ok={ok} error={error} />
-      <div className="acciones orden-acciones-encabezado"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link><Link className="boton boton-secundario" href="/ventas/costos/calculadora">Calculadora de promociones</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>
-      {esLista?<ListaCosteo filas={filas} inicial={{...params,ver:undefined,vista:undefined,ok:undefined,error:undefined,rapido:params.rapido??filtro} as FiltroCosteo}/>:<>      <nav className="acciones" aria-label="Filtros">
+      <div className="acciones orden-acciones-encabezado"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link><Link className="boton boton-secundario" href="/ventas/costos/calculadora">Calculadoras</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>
+      {esLista?<ListaCosteo filas={filas} comisionRappi={comisionRappi} inicial={{...params,ver:undefined,vista:undefined,ok:undefined,error:undefined,rapido:params.rapido??filtro} as FiltroCosteo}/>:<>      <nav className="acciones" aria-label="Filtros">
         <Link className="boton boton-secundario" href={`/ventas/costos?vista=${esLista?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={!filtro ? "page" : undefined}>Todos</Link>
         {(Object.keys(FILTROS) as Filtro[]).map((f) => (
           <Link key={f} className="boton boton-secundario" href={`/ventas/costos?ver=${f}&vista=${esLista?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={filtro === f ? "page" : undefined}>

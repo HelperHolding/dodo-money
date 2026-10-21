@@ -3,6 +3,9 @@ import {TablaFacturasPago} from './TablaFacturasPago';
 import {validarFiltroCorrida} from '@/lib/compras/corridaPagos';
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { EstadoVacio } from "@/components/EstadoVacio";
+import { Icono } from "@/components/Icono";
 import { Plegable } from "@/components/Plegable";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
@@ -107,17 +110,23 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const Tarjetas = ({ lista }: { lista: Factura[] }) => (
     <div className="tarjetas">
       {lista.map((f) => (
-        <article key={f.id} className="tarjeta" data-alerta={vencida(f, hoy) ? "si" : undefined}>
+        <article key={f.id} className="tarjeta factura-tarjeta" data-alerta={vencida(f, hoy) ? "si" : undefined}>
           <div className="tarjeta-encabezado">
             <div>
-              <h3><Link href={`/compras/facturas/${f.id}`}>{nombre(f)}</Link> · {proveedorDe(f)}</h3>
-              <p className="tarjeta-estado">{pesos(f.saldo)}{f.estado === "parcial" ? " · abonada" : ""}</p>
+              <h3>{proveedorDe(f)}</h3>
+              <p className="factura-tarjeta-folio"><Link href={`/compras/facturas/${f.id}`}>{nombre(f)}</Link></p>
             </div>
+            <strong className="factura-tarjeta-monto">{pesos(f.saldo)}</strong>
           </div>
+          <p className="factura-tarjeta-estados">
+            {vencida(f, hoy) && <span className="insignia" data-tono="peligro">Vencida</span>}
+            {f.estado === "parcial" && <span className="insignia" data-tono="info">Abonada</span>}
+            {f.pago_programado_el && <span className="insignia" data-tono="exito">Programada</span>}
+            {f.falta_complemento && <span className="insignia" data-tono="aviso">Falta complemento</span>}
+          </p>
           <dl className="tarjeta-datos">
             <dt>Vence</dt><dd>{fechaTexto(f.vence_el)}{vencida(f, hoy) ? " · vencida" : ""}</dd>
             {f.pago_programado_el && <><dt>Programada</dt><dd>{fechaTexto(f.pago_programado_el)} · {f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:"Forma por definir"}</dd></>}
-            {f.falta_complemento && <><dt>Aviso</dt><dd>Falta complemento de pago</dd></>}
           </dl>
           {edita && Number(f.saldo) > 0 && <Link className="boton boton-secundario" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}
         </article>
@@ -127,49 +136,59 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Pagos</h1><p><Link href="/compras/documentos?etapa=factura&articulo=si&ultima=si">Buscar la última factura por artículo</Link></p>
-        <p>Lo que hay que pagar a proveedores, por fecha. <Link href="/compras/pagos/programar">Programar pagos</Link>{edita && <> · <Link href="/compras/pagos/nuevo">Registrar un pago</Link></>}</p>
-      </div>
+      <EncabezadoPagina titulo="Pagos" descripcion={<>Lo que hay que pagar a proveedores, por fecha. <Link href="/compras/documentos?etapa=factura&articulo=si&ultima=si">Buscar la última factura por artículo</Link></>}
+        acciones={<>
+          <Link className="boton boton-secundario" href="/compras/pagos/programar"><Icono nombre="calendario" />Programar pagos</Link>
+          {edita && <Link className="boton" href="/compras/pagos/nuevo"><Icono nombre="mas" />Registrar un pago</Link>}
+        </>} />
+      <div className="indicadores-marco"><section className="indicadores" aria-label="Resumen de pagos">
+        <a className="indicador indicador-enlazado" href="#t-vencidas" data-alerta={r.vencido > 0 ? "peligro" : undefined}>
+          <span className="indicador-etiqueta">Vencido</span><strong className="indicador-valor">{pesos(r.vencido)}</strong>
+          <span className="indicador-detalle">{grupos.vencidas.length} {grupos.vencidas.length === 1 ? "factura" : "facturas"}</span>
+        </a>
+        <a className="indicador indicador-enlazado" href="#t-semana">
+          <span className="indicador-etiqueta">Esta semana</span><strong className="indicador-valor">{pesos(r.semana)}</strong>
+          <span className="indicador-detalle">hasta el domingo</span>
+        </a>
+        <a className="indicador indicador-enlazado" href="#t-despues">
+          <span className="indicador-etiqueta">Próximos 30 días</span><strong className="indicador-valor">{pesos(r.treinta)}</strong>
+          <span className="indicador-detalle">sin contar lo vencido</span>
+        </a>
+        <a className="indicador indicador-enlazado" href="#t-pagos">
+          <span className="indicador-etiqueta">Pagado este mes</span><strong className="indicador-valor">{pesos(pagado.monto)}</strong>
+          <span className="indicador-detalle">{pagado.pagos} {pagado.pagos === 1 ? "pago" : "pagos"}</span>
+        </a>
+      </section></div>
       <Aviso ok={ok} error={error??((desde||hasta)&&!rangoValido?'El rango de fechas no es válido. Se muestran los pagos de hoy.':undefined)} />
       <section className="seccion pagos-hoy" aria-labelledby="pagos-hoy-titulo"><div className="pagos-hoy-resumen"><div><h2 id="pagos-hoy-titulo">Por pagar hoy</h2><p>{fechaTexto(hoy)} · {deHoy.length} {deHoy.length===1?'factura':'facturas'} · con los filtros de proveedor y sucursal</p></div><strong className="pagos-hoy-monto">{pesos(suma(deHoy))}</strong></div><p className="saldo-nota">Saldo pendiente de las facturas programadas o sugeridas para hoy. Los abonos ya están descontados. Tipo de pago indica la forma prevista, no un pago realizado.</p>
       {deHoy.length?<TablaFacturasPago filas={datosTabla(deHoy)} edita={edita}/>:<p className="vacio">No hay facturas pendientes programadas o sugeridas para hoy con estos filtros.</p>}</section>
       {rango&&<section className="seccion" aria-labelledby="pagos-rango-titulo"><h2 id="pagos-rango-titulo">Rango de Tesorería: {fechaTexto(rango.desde)} al {fechaTexto(rango.hasta)}</h2><p><strong>{pesos(suma(delRango))}</strong> · {delRango.length} facturas pendientes actualmente. Los saldos pueden haber cambiado desde que se exportó el Excel.</p>{delRango.length?<TablaFacturasPago filas={datosTabla(delRango)} edita={edita}/>:<p>Sin saldo pendiente para este rango.</p>}</section>}
 
 
-      <section className="seccion">
-        <div className="rejilla">
-          <div className="saldo" data-alerta={r.vencido > 0 ? "si" : undefined}>
-            <span>Vencido</span><span className="saldo-monto">{pesos(r.vencido)}</span><span className="saldo-nota">{grupos.vencidas.length} facturas</span>
-          </div>
-          <div className="saldo"><span>Esta semana</span><span className="saldo-monto">{pesos(r.semana)}</span><span className="saldo-nota">hasta el domingo</span></div>
-          <div className="saldo"><span>Próximos 30 días</span><span className="saldo-monto">{pesos(r.treinta)}</span><span className="saldo-nota">sin contar lo vencido</span></div>
-          <div className="saldo"><span>Pagado este mes</span><span className="saldo-monto">{pesos(pagado.monto)}</span><span className="saldo-nota">{pagado.pagos} {pagado.pagos === 1 ? "pago" : "pagos"}</span></div>
-        </div>
-      </section>
 
-      <form className="seccion formulario" role="search">
+
+      <form className="barra-filtros pagos-filtros" role="search">
         {rango&&<><input type="hidden" name="desde" value={rango.desde}/><input type="hidden" name="hasta" value={rango.hasta}/></>}
 
-        <div className="rejilla">
+        <div className="barra-filtros">
           <div className="campo">
-            <label htmlFor="proveedor">Proveedor</label>
+            <label htmlFor="proveedor" className="solo-lector">Proveedor</label>
             <select id="proveedor" name="proveedor" defaultValue={proveedor}>
-              <option value="">Todos</option>
+              <option value="">Todos los proveedores</option>
               {(proveedores ?? []).map((p) => <option key={p.id} value={p.id}>{p.nombre_comercial ?? p.razon_social}</option>)}
             </select>
           </div>
           <div className="campo">
-            <label htmlFor="sucursal">Sucursal</label>
+            <label htmlFor="sucursal" className="solo-lector">Sucursal</label>
             <select id="sucursal" name="sucursal" defaultValue={sucursal}>
-              <option value="">Todas</option>
+              <option value="">Todas las sucursales</option>
               {(sucursales ?? []).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               <option value="oficina">Oficina</option>
             </select>
           </div>
-          <label className="campo"><span><input type="checkbox" name="complemento" value="si" defaultChecked={complemento === "si"} /> Solo con complemento pendiente ({conComplemento?.length ?? 0})</span></label>
+          <label className="casilla pagos-casilla"><input type="checkbox" name="complemento" value="si" defaultChecked={complemento === "si"} /> Solo con complemento pendiente ({conComplemento?.length ?? 0})</label>
         </div>
-        <button className="boton boton-secundario" type="submit">Filtrar</button>
+        <button className="boton boton-secundario boton-compacto" type="submit">Filtrar</button>
       </form>
 
       <CalendarioPagos key={`${desde??''}:${hasta??''}:${proveedor}:${sucursal}:${complemento??''}`} hoy={hoy} porDia={porDia} filtros={{proveedor,sucursal,complemento}} rangoInicial={rango} />
@@ -180,7 +199,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
           <Tarjetas lista={sinComplemento} />
         </Plegable>
       )}
-      {!visibles.length && !(complemento === "si" && sinComplemento.length) && <p className="vacio">No hay nada por pagar con ese filtro.</p>}
+      {!visibles.length && !(complemento === "si" && sinComplemento.length) && <EstadoVacio icono="ok" titulo="Nada por pagar" descripcion="No hay facturas pendientes con estos filtros." />}
       {grupos.vencidas.length > 0 && <Plegable id="t-vencidas" titulo="Vencidas" resumen={pesos(r.vencido)} alerta><Tarjetas lista={grupos.vencidas} /></Plegable>}
       {grupos.semana.length > 0 && <Plegable id="t-semana" titulo="Esta semana" resumen={pesos(r.semana)}><Tarjetas lista={grupos.semana} /></Plegable>}
       {grupos.despues.length > 0 && <Plegable id="t-despues" titulo="Después" resumen={`${grupos.despues.length} facturas`}><Tarjetas lista={grupos.despues} /></Plegable>}
@@ -192,7 +211,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
             <article key={p.id} className="tarjeta" data-alerta={p.anulado_en ? "si" : undefined}>
               <div className="tarjeta-encabezado"><div>
                 <h3><Link href={`/compras/pagos/${p.id}`}>{pesos(p.monto)}</Link> · {proveedorDe(p)}</h3>
-                <p className="tarjeta-estado">{fechaTexto(p.fecha)} · {NOMBRE_FORMA_PAGO[p.forma]}{p.anulado_en ? " · anulado" : ""}</p>
+                <p className="tarjeta-estado">{fechaTexto(p.fecha)} <span className="insignia">{NOMBRE_FORMA_PAGO[p.forma]}</span>{p.anulado_en && <span className="insignia" data-tono="peligro">Anulado</span>}</p>
               </div></div>
               {p.referencia && <dl className="tarjeta-datos"><dt>Referencia</dt><dd>{p.referencia}</dd></dl>}
             </article>

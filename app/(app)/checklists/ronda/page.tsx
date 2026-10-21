@@ -1,5 +1,6 @@
 import { Aviso } from "@/components/Aviso";
 import { obtenerContexto, puedeSupervisar } from "@/lib/contexto";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { claveFranjas, diaOperativoMX, etiquetaHora, franjasAbiertas, siguienteFranja } from "@/lib/franjas";
 import { hora } from "@/lib/formato";
 import type { Checklist, PuntoChecklist, RegistroChecklist } from "@/lib/tipos";
@@ -38,10 +39,7 @@ export default async function Ronda({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Ronda de la hora</h1>
-        <p>Limpieza, zona caliente, caja y sala, y baño. Cada hora se puede registrar hasta 10 minutos después de que termina.</p>
-      </div>
+      <EncabezadoPagina titulo="Ronda de la hora" descripcion="Limpieza, zona caliente, caja y sala, y baño. Cada hora se puede registrar hasta 10 minutos después de que termina." />
       <Aviso ok={ok} error={error} />
 
       <section className="seccion" aria-labelledby="t-ronda">

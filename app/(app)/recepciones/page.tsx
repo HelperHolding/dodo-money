@@ -1,3 +1,4 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import {leerTodo} from "@/lib/ventas/paginar";
 import {Plegable} from "@/components/Plegable";
 import { redirect } from "next/navigation";
@@ -30,10 +31,7 @@ export default async function RecepcionesSucursal({ searchParams }: { searchPara
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Recepciones</h1>
-        <p>Equipo, servicios y otros pedidos por oficina. Los insumos (consumibles) se siguen recibiendo en Dodo IS.</p>
-      </div>
+      <EncabezadoPagina titulo="Recepciones" descripcion="Equipo, servicios y otros pedidos por oficina. Los insumos (consumibles) se siguen recibiendo en Dodo IS." />
       {puedeVerCompras(perfil.rol) && <PestanasRecepciones actual="tienda" />}
       <Aviso ok={ok} error={error} />
       <Plegable id="ya-recibidas" titulo="Ya recibidas" resumen={`${recibidas.length} renglones completos`}><div className="tabla-contenedor"><table className="tabla"><thead><tr><th>Orden / proveedor</th><th>Artículo</th><th>Recibido</th><th>Estado</th></tr></thead><tbody>{recibidas.map(r=><tr key={r.renglon_id}><td>{r.folio} · {r.proveedor}</td><td>{r.descripcion}</td><td>{r.recibido} / {r.cantidad} {r.unidad}</td><td><span className="compra-estado" data-tono="verde">Ya recibido</span></td></tr>)}</tbody></table></div>{!recibidas.length&&<p className="vacio">Sin renglones recibidos completos.</p>}</Plegable>

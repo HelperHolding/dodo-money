@@ -1,3 +1,5 @@
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import {precioUnitario} from '@/lib/formato';
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
@@ -56,11 +58,8 @@ export default async function FichaProveedor({ params, searchParams }: { params:
 
   return (
     <>
-      <div className="encabezado">
-        <h1>{p.nombre_comercial ?? p.razon_social}</h1>
-        <p>{p.rfc}{p.activo ? "" : " · inactivo"}</p>
-        {edita && p.activo && <div className="acciones"><Link className="boton" href={`/compras/ordenes/nueva?proveedor=${encodeURIComponent(id)}`}>Crear cotización</Link></div>}
-      </div>
+      <EncabezadoPagina titulo={p.nombre_comercial ?? p.razon_social} descripcion={<>{p.rfc}{p.activo ? "" : " · inactivo"}</>}
+        acciones={edita && p.activo && <Link className="boton" href={`/compras/ordenes/nueva?proveedor=${encodeURIComponent(id)}`}>Crear cotización</Link>} />
       <Aviso ok={ok} error={error} />
       <ComprasProveedor id={id}/>
       {edita && <PortalProveedor id={id} portal={acceso?.data ?? null} disponible={!acceso?.error} />}
@@ -154,7 +153,7 @@ export default async function FichaProveedor({ params, searchParams }: { params:
                     <small>{s.articulos?.unidad}{s.articulos?.activo === false ? " · inactivo" : ""}</small>
                   </div>
                   <div className="fila-datos">
-                    <span>{pr ? `${pesos(pr.precio)} (${fechaTexto(pr.fecha)})` : "Sin compras"}</span>
+                    <span>{pr ? `${precioUnitario(pr.precio)} (${fechaTexto(pr.fecha)})` : "Sin compras"}</span>
                     <span>{s.principal ? "Proveedor principal" : "Alterno"}</span>
                   </div>
                 </li>

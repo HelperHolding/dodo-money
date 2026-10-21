@@ -1,4 +1,7 @@
 "use client";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { EstadoVacio } from "@/components/EstadoVacio";
+import { Icono } from "@/components/Icono";
 import {useState} from "react";
 import {buscarProveedores} from "@/lib/compras/busquedaProveedores";
 import Link from "next/link";
@@ -33,34 +36,31 @@ export function ListaProveedores({filas,documentos,params,edita}:{filas:Fila[];d
 
   return (
     <>
-      <div className="encabezado">
-        <h1>Proveedores</h1>
-        <p>La cartera de proveedores de todas las sucursales.</p>
-      </div>
+      <EncabezadoPagina titulo="Proveedores" descripcion="La cartera de proveedores de todas las sucursales."
+        acciones={edita && <Link className="boton" href="/compras/proveedores/nuevo"><Icono nombre="mas" />Nuevo proveedor</Link>} />
       <Aviso ok={ok} error={error} />
-      <form className="seccion formulario" role="search" onSubmit={e=>e.preventDefault()}>
+      <form className="barra-filtros proveedores-filtros" role="search" onSubmit={e=>e.preventDefault()}>
         {vista === "lista" && <input type="hidden" name="vista" value="lista" />}
-        <div className="rejilla">
-          <div className="campo"><label htmlFor="q">Buscar</label><input id="q" name="q" value={q} onChange={e=>setQ(e.target.value)} type="search" maxLength={200} aria-describedby="ayuda-buscar-proveedores" placeholder="Escribe razón social, nombre o RFC…" /><small id="ayuda-buscar-proveedores">Se actualiza al escribir. También encuentra nombres parecidos con pequeños errores.</small></div>
+        <div className="barra-filtros">
+          <div className="campo"><label htmlFor="q" className="solo-lector">Buscar</label><input id="q" name="q" value={q} onChange={e=>setQ(e.target.value)} type="search" maxLength={200} aria-describedby="ayuda-buscar-proveedores" placeholder="Escribe razón social, nombre o RFC…" /><small id="ayuda-buscar-proveedores" className="solo-lector">Se actualiza al escribir. También encuentra nombres parecidos con pequeños errores.</small></div>
           <div className="campo">
-            <label htmlFor="categoria">Qué surte</label>
+            <label htmlFor="categoria" className="solo-lector">Qué surte</label>
             <select id="categoria" name="categoria" value={filtro ?? ""} onChange={e=>setCategoria(e.target.value)}>
-              <option value="">Todas</option>
+              <option value="">Todas las categorías</option>
               {CATEGORIAS_COMPRA.map((c) => <option key={c} value={c}>{NOMBRE_CATEGORIA_COMPRA[c]}</option>)}
             </select>
           </div>
-          <label className="campo"><span><input type="checkbox" name="inactivos" value="si" checked={inactivos === "si"} onChange={e=>setInactivos(e.target.checked?"si":"")} /> Incluir inactivos</span></label>
-          <label className="campo"><span><input type="checkbox" name="docs" value="pendientes" checked={docs === "pendientes"} onChange={e=>setDocs(e.target.checked?"pendientes":"")} /> Solo con documentos pendientes</span></label>
+          <label className="casilla pagos-casilla"><input type="checkbox" name="inactivos" value="si" checked={inactivos === "si"} onChange={e=>setInactivos(e.target.checked?"si":"")} /> Incluir inactivos</label>
+          <label className="casilla pagos-casilla"><input type="checkbox" name="docs" value="pendientes" checked={docs === "pendientes"} onChange={e=>setDocs(e.target.checked?"pendientes":"")} /> Solo con documentos pendientes</label>
         </div>
         <div className="acciones">
-          <span role="status" aria-live="polite">{visibles.length} de {filas.length} proveedores</span>
-          {(q||categoria||inactivos||docs)&&<button type="button" className="boton boton-secundario" onClick={()=>{setQ('');setCategoria('');setInactivos('');setDocs('');}}>Limpiar filtros</button>}
-          {edita && <Link className="boton" href="/compras/proveedores/nuevo">Nuevo proveedor</Link>}
+          <span role="status" aria-live="polite" className="saldo-nota">{visibles.length} de {filas.length} proveedores</span>
+          {(q||categoria||inactivos||docs)&&<button type="button" className="boton boton-fantasma boton-compacto" onClick={()=>{setQ('');setCategoria('');setInactivos('');setDocs('');}}>Limpiar filtros</button>}
         </div>
       </form>
 
       <SelectorVista ruta="/compras" params={{...params,q,categoria,inactivos,docs}} vista={vista} />
-      {!visibles.length && <p className="vacio">{filas.length ? "Ningún proveedor coincide." : "Aún no hay proveedores. Da de alta el primero o cárgalos desde Excel."}</p>}
+      {!visibles.length && <EstadoVacio icono="buscar" titulo={filas.length ? "Ningún proveedor coincide" : "Aún no hay proveedores"} descripcion={filas.length ? "Prueba con otra búsqueda o quita filtros." : "Da de alta el primero o cárgalos desde Excel."} />}
       {vista === "lista" && visibles.length > 0 && (
         <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
           <li className="fila fila-encabezado" aria-hidden="true"><span>Proveedor</span><span>RFC</span><span>Crédito</span><span>Surte</span></li>

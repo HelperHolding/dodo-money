@@ -8,6 +8,7 @@ export type Miga = { texto: string; href: string | null };
 
 /** Pantallas que no están en el menú. ":id" es un registro. `sinRegresar`: la página trae su propio regreso. */
 const PAGINAS: readonly { patron: string; texto: string; sinRegresar?: boolean }[] = [
+  { patron: "/banca/importar", texto: "Importar Banregio" },
   { patron: "/finanzas/personal/:id", texto: "Perfil de personal" },
   { patron: "/conocimiento/manuales/nuevo", texto: "Crear manual" },
   { patron: "/conocimiento/manuales/:id", texto: "Manual" },
@@ -30,7 +31,7 @@ const PAGINAS: readonly { patron: string; texto: string; sinRegresar?: boolean }
   { patron: "/compras/pagos/nuevo", texto: "Nuevo pago" },
   { patron: "/compras/pagos/programar", texto: "Programar pagos" },
   { patron: "/compras/pagos/:id", texto: "Pago" },
-  { patron: "/ventas/costos/calculadora", texto: "Calculadora de promociones" },
+  { patron: "/ventas/costos/calculadora", texto: "Calculadoras" },
   { patron: "/ventas/costos/cargar", texto: "Cargar costos" },
   { patron: "/ventas/costos/materiales", texto: "Insumos y BOM" },
   { patron: "/turnos/:id", texto: "Turno", sinRegresar: true },

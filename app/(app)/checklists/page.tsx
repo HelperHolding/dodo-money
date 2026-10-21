@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Avance } from "@/components/Avance";
 import { Franjas } from "@/components/Franjas";
 import { obtenerContexto } from "@/lib/contexto";
 import { diaOperativoMX, estadoCasilla } from "@/lib/franjas";
@@ -9,7 +8,9 @@ import { fueraDeRango } from "@/lib/amasado";
 import { areaDelDia, diaSemanaISO } from "@/lib/limpiezaProfunda";
 import type { AreaLimpieza, Checklist, CierreMerma, LecturaMasa, Momento, NormaMasa } from "@/lib/tipos";
 import { contarListas, filasListas } from "@/lib/zonas";
-import { Plegable } from "@/components/Plegable";
+import { AnilloAvance } from "@/components/AnilloAvance";
+import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { TareaDia } from "./TareaDia";
 import { TarjetasListas } from "./TarjetasListas";
 
 type LecturaResumen = Pick<LecturaMasa, "hora" | "temp_area" | "bolas" | "en_norma">;
@@ -89,81 +90,97 @@ export default async function Checklists({ searchParams }: { searchParams: Promi
   const hechasDia = hechasRonda + conteoListas.hechas + (lecturas ?? []).length + (recorridos ?? []).length;
   const totalDia = totalRonda + conteoListas.total + (normas ?? []).length + totalRecorrido;
 
-  return (
-    <>
-      <div className="encabezado">
-        <h1>Checklists</h1>
-        <p>Rondas y listas de las zonas, temperatura de masa, recorrido, amasado, limpieza profunda y mermas del día. Cada hora se puede registrar hasta 10 minutos después de que termina.</p>
-      </div>
+  const ayer = new Date(Date.parse(`${hoy}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+  const registrar = (href: string, texto: string) => (esHoy && !soloLectura ? { href, texto } : null);
+  const alertasDia = fallasRonda + masaFuera + lotesFuera;
 
-      <form className="acciones" method="get">
-        <label htmlFor="fecha" className="etiqueta">Día</label>
-        <input id="fecha" name="fecha" type="date" defaultValue={fecha} max={hoy} />
-        <button className="boton boton-secundario" type="submit">Ver</button>
-        {!esHoy && <Link href="/checklists">Volver a hoy</Link>}
-      </form>
-      <p className="saldo-nota">Listo: registrado y en norma · Revisar: fuera de norma o con puntos que no cumplen · Ahora: se puede registrar · Falta: no se registró a tiempo.</p>
+  return (
+    <div className="panel-admin checklists-dia">
+      <EncabezadoPagina
+        titulo="Checklists"
+        descripcion={esHoy ? "Hoy · cada hora se puede registrar hasta 10 minutos después de que termina." : `Día ${fecha}`}
+        acciones={
+          <form className="barra-filtros" method="get" aria-label="Día">
+            <nav className="segmentos" aria-label="Atajos de día">
+              <Link href="/checklists" aria-current={esHoy ? "page" : undefined}>Hoy</Link>
+              <Link href={`/checklists?fecha=${ayer}`} aria-current={fecha === ayer ? "page" : undefined}>Ayer</Link>
+            </nav>
+            <label htmlFor="fecha" className="solo-lector">Día</label>
+            <input id="fecha" name="fecha" type="date" defaultValue={fecha} max={hoy} />
+            <button className="boton boton-secundario boton-compacto" type="submit">Ver</button>
+          </form>
+        }
+      />
 
       {totalDia > 0 && (
-        <section className="seccion" aria-label="Avance del día">
-          <Avance etiqueta={esHoy ? "Avance de hoy" : `Avance del ${fecha}`} hechas={hechasDia} total={totalDia}
-            alerta={fallasRonda + masaFuera + lotesFuera > 0} />
+        <section className="dia-avance" aria-label="Avance del día" data-alerta={alertasDia > 0 ? "si" : undefined}>
+          <AnilloAvance hechas={hechasDia} total={totalDia} tamano={88} alerta={alertasDia > 0} etiqueta={esHoy ? "Avance de hoy" : `Avance del ${fecha}`} />
+          <div>
+            <p className="dia-avance-cifra"><strong>{hechasDia}</strong> de {totalDia} registros</p>
+            <p>{alertasDia > 0 ? <span className="texto-alerta">{alertasDia} {alertasDia === 1 ? "registro fuera de norma" : "registros fuera de norma"} por revisar</span> : "Todo lo registrado está en norma."}</p>
+            {porRevisar > 0 && <p className="saldo-nota">{porRevisar} {porRevisar === 1 ? "registro espera" : "registros esperan"} "Revisado" del encargado.</p>}
+          </div>
         </section>
       )}
 
-      {porRevisar > 0 && <p className="aviso aviso-info">{porRevisar} {porRevisar === 1 ? "registro espera" : "registros esperan"} "Revisado" del encargado.</p>}
+      <details className="nota-plegable">
+        <summary>Qué significa cada casilla</summary>
+        <p>Listo: registrado y en norma · Revisar: fuera de norma o con puntos que no cumplen · Ahora: se puede registrar · Falta: no se registró a tiempo.</p>
+      </details>
 
-      <Plegable id="t-ronda" titulo="Ronda de la hora" alerta={fallasRonda > 0} avance={{ hechas: hechasRonda, total: totalRonda }}
-        resumen={`${hechasRonda} de ${totalRonda} horas${fallasRonda ? ` · ${fallasRonda} con fallas` : ""}`}>
-        {esHoy && !soloLectura && <Link className="boton" href="/checklists/ronda">Registrar ronda</Link>}
-        {zonasRonda.map((c) => (
-          <div key={c.id} className="formulario">
-            <h3>{c.nombre}</h3>
-            <Franjas titulo={c.nombre} casillas={casillasRonda(c)} />
-          </div>
-        ))}
-      </Plegable>
+      <div className="tareas">
+        <TareaDia id="t-ronda" titulo="Ronda de la hora" icono="reloj" alerta={fallasRonda > 0} avance={{ hechas: hechasRonda, total: totalRonda }}
+          resumen={`${hechasRonda} de ${totalRonda} horas${fallasRonda ? ` · ${fallasRonda} con fallas` : ""}`}
+          accion={registrar("/checklists/ronda", "Registrar ronda")}>
+          {zonasRonda.map((c) => (
+            <div key={c.id} className="formulario">
+              <h3>{c.nombre}</h3>
+              <Franjas titulo={c.nombre} casillas={casillasRonda(c)} />
+            </div>
+          ))}
+        </TareaDia>
 
-      <Plegable id="t-turno" titulo="Listas del turno" avance={{ hechas: conteoListas.hechas, total: conteoListas.total }} resumen={`${conteoListas.hechas} de ${conteoListas.total} hechas`}>
-        {esHoy && !soloLectura && <Link className="boton" href="/checklists/turno">Abrir listas</Link>}
-        <TarjetasListas filas={filas} enlace={esHoy} />
-      </Plegable>
+        <TareaDia id="t-turno" titulo="Listas del turno" icono="lista" avance={{ hechas: conteoListas.hechas, total: conteoListas.total }}
+          resumen={`${conteoListas.hechas} de ${conteoListas.total} hechas`} accion={registrar("/checklists/turno", "Abrir listas")}>
+          <TarjetasListas filas={filas} enlace={esHoy} />
+        </TareaDia>
 
-      <Plegable id="t-otros" titulo="Amasado y limpieza profunda" alerta={lotesFuera > 0}
-        resumen={`${(lotes ?? []).length} ${(lotes ?? []).length === 1 ? "lote" : "lotes"}${lotesFuera ? ` · ${lotesFuera} fuera de rango` : ""} · limpieza ${limpieza ? "hecha" : "pendiente"}`}>
-        <p>
-          {(lotes ?? []).length} {(lotes ?? []).length === 1 ? "lote de amasado" : "lotes de amasado"}
-          {lotesFuera ? <>, <span className="alerta-texto">{lotesFuera} fuera de rango</span></> : ""}.
-        </p>
-        <p>
-          Limpieza profunda ({areaDelDia(areas ?? [], fecha) ?? "sin área"}):{" "}
-          {limpieza ? `hecha por ${limpieza.empleado}${limpieza.revisado_por ? " y revisada" : ", falta revisar"}.` : "pendiente."}
-        </p>
-      </Plegable>
+        <TareaDia id="t-masa" titulo="Temperatura de masa" icono="termometro" alerta={masaFuera > 0} avance={{ hechas: (lecturas ?? []).length, total: (normas ?? []).length }}
+          resumen={`${(lecturas ?? []).length} de ${(normas ?? []).length} horas${masaFuera ? ` · ${masaFuera} por revisar` : ""}`}
+          accion={registrar("/checklists/masa", "Registrar masa")}>
+          <Franjas titulo="Horas de temperatura de masa" casillas={casillasMasa} />
+        </TareaDia>
 
-      <Plegable id="t-masa" titulo="Temperatura de masa" alerta={masaFuera > 0} avance={{ hechas: (lecturas ?? []).length, total: (normas ?? []).length }}
-        resumen={`${(lecturas ?? []).length} de ${(normas ?? []).length} horas${masaFuera ? ` · ${masaFuera} por revisar` : ""}`}>
-        {esHoy && !soloLectura && <Link className="boton" href="/checklists/masa">Registrar masa</Link>}
-        <Franjas titulo="Horas de temperatura de masa" casillas={casillasMasa} />
-      </Plegable>
+        <TareaDia id="t-recorrido" titulo="Recorrido de supervisor" icono="ubicacion" avance={{ hechas: (recorridos ?? []).length, total: totalRecorrido }}
+          resumen={`${(recorridos ?? []).length} de ${totalRecorrido} horas`} accion={registrar("/checklists/recorrido", "Registrar recorrido")}>
+          {listas.map((c) => (
+            <div key={c.id} className="formulario">
+              <h3>{c.nombre}</h3>
+              <Franjas titulo={c.nombre} casillas={casillasRecorrido(c)} />
+            </div>
+          ))}
+        </TareaDia>
 
-      <Plegable id="t-recorrido" titulo="Recorrido de supervisor" avance={{ hechas: (recorridos ?? []).length, total: totalRecorrido }} resumen={`${(recorridos ?? []).length} de ${totalRecorrido} horas`}>
-        {esHoy && !soloLectura && <Link className="boton" href="/checklists/recorrido">Registrar recorrido</Link>}
-        {listas.map((c) => (
-          <div key={c.id} className="formulario">
-            <h3>{c.nombre}</h3>
-            <Franjas titulo={c.nombre} casillas={casillasRecorrido(c)} />
-          </div>
-        ))}
-      </Plegable>
+        <TareaDia id="t-otros" titulo="Amasado y limpieza profunda" icono="brillo" alerta={lotesFuera > 0}
+          resumen={`${(lotes ?? []).length} ${(lotes ?? []).length === 1 ? "lote" : "lotes"}${lotesFuera ? ` · ${lotesFuera} fuera de rango` : ""} · limpieza ${limpieza ? "hecha" : "pendiente"}`}>
+          <p>
+            {(lotes ?? []).length} {(lotes ?? []).length === 1 ? "lote de amasado" : "lotes de amasado"}
+            {lotesFuera ? <>, <span className="alerta-texto">{lotesFuera} fuera de rango</span></> : ""}.
+          </p>
+          <p>
+            Limpieza profunda ({areaDelDia(areas ?? [], fecha) ?? "sin área"}):{" "}
+            {limpieza ? `hecha por ${limpieza.empleado}${limpieza.revisado_por ? " y revisada" : ", falta revisar"}.` : "pendiente."}
+          </p>
+        </TareaDia>
 
-      <Plegable id="t-mermas" titulo="Mermas" resumen={`${totalMermas} · ${cierre ? "cerradas" : "sin cerrar"}`}>
-        {esHoy && !soloLectura && <Link className="boton" href="/checklists/mermas">Registrar mermas</Link>}
-        <p>
-          {totalMermas} {totalMermas === 1 ? "merma registrada" : "mermas registradas"}.{" "}
-          {cierre ? `Cerradas a las ${hora(cierre.cerrado_en)} y capturadas en Dodo IS.` : "Falta cerrarlas."}
-        </p>
-      </Plegable>
-    </>
+        <TareaDia id="t-mermas" titulo="Mermas" icono="basura" resumen={`${totalMermas} ${totalMermas === 1 ? "registrada" : "registradas"} · ${cierre ? "cerradas" : "sin cerrar"}`}
+          accion={registrar("/checklists/mermas", "Registrar mermas")}>
+          <p>
+            {totalMermas} {totalMermas === 1 ? "merma registrada" : "mermas registradas"}.{" "}
+            {cierre ? `Cerradas a las ${hora(cierre.cerrado_en)} y capturadas en Dodo IS.` : "Falta cerrarlas."}
+          </p>
+        </TareaDia>
+      </div>
+    </div>
   );
 }

@@ -1,4 +1,6 @@
+import {precioUnitario} from '@/lib/formato';
 import {RecepcionDirecta} from "../RecepcionDirecta";
+import { RecepcionesDodo } from "../RecepcionesDodo";
 import {randomUUID} from 'node:crypto';
 import {guardarUuidManualFactura} from '../acciones';
 import {ConvertirPrefactura} from "../ConvertirPrefactura";
@@ -238,7 +240,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
             <ul className="lista-filas" style={{ "--columnas": 2 } as React.CSSProperties}>
               {(conceptos ?? []).map((c) => (
                 <li key={c.id} className="fila">
-                  <div className="fila-nombre"><strong>{c.descripcion}</strong><small>{c.cantidad} {c.unidad} · {pesos(c.valor_unitario)}</small></div>
+                  <div className="fila-nombre"><strong>{c.descripcion}</strong><small>{c.cantidad} {c.unidad} · {precioUnitario(c.valor_unitario)}</small></div>
                   <div className="fila-datos">
                     <span>{pesos(c.importe)}</span>
                     <span>
@@ -263,7 +265,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           <>
             <h3>Renglones de las órdenes</h3>
             <dl className="tarjeta-datos">
-              {rs.map((r, i) => <Fragment key={i}><dt>{r.cantidad} pedidos · {r.recibido} recibidos</dt><dd>{r.descripcion} · {pesos(r.precio)}</dd></Fragment>)}
+              {rs.map((r, i) => <Fragment key={i}><dt>{r.cantidad} pedidos · {r.recibido} recibidos</dt><dd>{r.descripcion} · {precioUnitario(r.precio)}</dd></Fragment>)}
             </dl>
           </>
         )}
@@ -325,7 +327,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           <div className="acciones"><Link className="boton" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link></div>
         )}
 </section>},
-        {id:"recepcion", titulo:"Órdenes y recepción", contenido:<>      {f.tipo === "ingreso" && (
+        {id:"recepcion", titulo:"Órdenes y recepción", contenido:<>{f.tipo === "ingreso" && <RecepcionesDodo supabase={supabase} facturaId={f.id} subtotal={Number(f.subtotal) - Number(f.descuento)} />}      {f.tipo === "ingreso" && (
         <section className="seccion" aria-labelledby="t-cotejo">
           <h2 id="t-cotejo">Órdenes y recepción</h2>
           <p className="saldo-nota">Puedes recibir una orden confirmada aunque la factura esté por pagar. La recepción registra cantidades recibidas; el pago se registra por separado.</p>

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {filtrarCosteo,agruparCosteo,margenFila,type FilaCosteo} from './lista.ts';
+// @ts-expect-error Extensión explícita para las pruebas con Node strip-types.
+import {margenConComision} from './margenes.ts';
 const base:FilaCosteo={id:1,nombre:'Pizza Álamo',categoria:'Pizzas',tamano:'Grande',costo:40,desde:'2026-10-01',fuente:null,nota:null,pos:116,rappi:232,rappiFecha:'2026-10-08',bom:true,costoBOM:40,insumos:['Queso mozzarella']};
 
 test('costeo: aproximación en producto e insumo, códigos literales y orden por columna',()=>{
@@ -31,4 +33,16 @@ test('costeo lista: cero es costo válido; sin datos no equivale a cero',()=>{
  assert.equal(filtrarCosteo(filas,{rapido:'diferencia'}).length,1);
  assert.equal(agruparCosteo(filas,'costo').length,2);
  assert.equal(agruparCosteo([base,{...base,id:2,bom:false}],'bom').length,2);
+});
+test('costeo lista: margen con comisión Rappi sobre el precio con IVA, filtro y orden',()=>{
+ // Rappi 232 con IVA → venta 200; costo 40; comisión 18 % de 232 = 41.76 → 118.24 / 200 = 59.12 %
+ const m=margenConComision(232,40,18)!;assert.ok(Math.abs(m.comision-41.76)<1e-9);assert.ok(Math.abs(m.margenPct-59.12)<1e-9);
+ assert.equal(margenConComision(232,40,0)?.margenPct,80);assert.equal(margenConComision(null,40,18),null);assert.equal(margenConComision(232,null,18),null);assert.equal(margenConComision(232,40,100),null);
+ assert.equal(margenFila(base,'rappi-comision',null),null);
+ assert.ok(Math.abs(margenFila(base,'rappi-comision',18)!-59.12)<1e-9);
+ assert.equal(filtrarCosteo([base],{rapido:'margen-bajo',umbral:'60',canal:'rappi-comision'},18).length,1);
+ assert.equal(filtrarCosteo([base],{rapido:'margen-bajo',umbral:'60',canal:'rappi-comision'},0).length,0);
+ const otro={...base,id:2,rappi:300};
+ assert.equal(filtrarCosteo([otro,base],{orden:'margenRappi'},18)[0].id,1);
+ assert.equal(filtrarCosteo([base,{...base,id:3,rappi:null}],{orden:'margenRappi',direccion:'desc'},18).at(-1)?.id,3);
 });

@@ -65,7 +65,7 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
           {s.nota_recepcion && <><dt>{s.recepcion === "rechazada" ? "Motivo" : "Nota"}</dt><dd>{s.nota_recepcion}</dd></>}
           {s.nota && <><dt>Nota de sucursal</dt><dd>{s.nota}</dd></>}
         </dl>
-        {s.recoleccion_id?<Link className="boton boton-secundario" href={`/recolecciones/${s.id}`}>Ver cierres y recibir desde expediente</Link>:acciones}
+        {s.recoleccion_id?<Link className="boton boton-secundario" href={`/recolecciones/${s.recoleccion_id}`}>Ver cierres y recibir desde expediente</Link>:acciones}
       </article>
     );
   };
@@ -73,8 +73,8 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
   return (
     <>
       <EncabezadoPagina titulo="Salidas a corporativo"
-        descripcion="La sucursal registra la salida, un admin la recoge y corporativo cuenta el efectivo y confirma que llegó."
-        acciones={<Link className="boton boton-secundario" href="/recolecciones">Recolecciones por rango de cierres</Link>} />
+        descripcion="Registra una salida eligiendo sucursal y rango de cierres en Recolecciones. Después, otro admin recoge el efectivo y corporativo confirma lo recibido."
+        acciones={<Link className={esAdmin ? "boton" : "boton boton-secundario"} href="/recolecciones">{esAdmin ? "Registrar salida a corporativo" : "Ver recolecciones por rango de cierres"}</Link>} />
       <Aviso ok={ok} error={error} />
 
       <div className="rejilla">

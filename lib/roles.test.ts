@@ -1,5 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { puedeCerrarDia } from './roles.ts';
+
+test('corte diario: encargado de sucursal puede cerrar sin ampliar otros permisos',()=>{
+ for(const rol of ['encargado','gerente','admin'] as const)assert.equal(puedeCerrarDia(rol),true);
+ for(const rol of ['operacion','corporativo'] as const)assert.equal(puedeCerrarDia(rol),false);
+ assert.equal(puedeGestionar('encargado'),false);
+ assert.equal(puedeImportarVentas('encargado'),false);
+ assert.equal(puedeEditarCompras('encargado'),false);
+});
 import {
   accesosRapidos, enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
@@ -90,7 +99,7 @@ test("menú lateral: grupo Sucursal por puesto (Recepciones solo para quien reci
 });
 
 test("menú lateral: Ventas y Compras por puesto", () => {
-  assert.deepEqual(grupo("admin", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/importar", "/ventas/costos"]);
+  assert.deepEqual(grupo("admin", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/importar", "/ventas/dodois", "/ventas/costos"]);
   assert.deepEqual(grupo("gerente", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion"]);
   assert.deepEqual(grupo("corporativo", "Ventas"), ["/ventas", "/ventas/rappi", "/ventas/conciliacion", "/ventas/costos"]);
   assert.deepEqual(grupo("admin", "Compras"),
@@ -153,7 +162,7 @@ test("finanzas: admin y corporativo ven; solo admin edita; grupo Finanzas", () =
   for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerFinanzas(rol), false);
   assert.equal(puedeEditarFinanzas("admin"), true);
   assert.equal(puedeEditarFinanzas("corporativo"), false);
-  assert.deepEqual(grupo("admin", "Finanzas"), ["/finanzas", "/finanzas/nomina", "/finanzas/personal", "/finanzas/retenciones", "/finanzas/mermas", "/finanzas/parametros"]);
+  assert.deepEqual(grupo("admin", "Finanzas"), ["/finanzas", "/banca", "/finanzas/nomina", "/finanzas/personal", "/finanzas/retenciones", "/finanzas/mermas", "/finanzas/parametros"]);
   assert.deepEqual(grupo("corporativo", "Finanzas"), grupo("admin", "Finanzas"));
   assert.equal(grupo("gerente", "Finanzas"), undefined);
 });
