@@ -1,3 +1,9 @@
+import type {MesVenta,HoraVenta} from "./graficasReporte";
+export function participacionCanales(totales:readonly number[]):(number|null)[]{
+ const suma=totales.reduce((n,v)=>n+Math.round(v*100),0);
+ return totales.map(v=>suma>0?Math.round(v*100)/suma:null);
+}
+
 /** Reporte de ventas para imprimir o bajar a Excel: resumen contra el periodo anterior y venta por día. */
 import type { Celda, HojaXlsx } from "../xlsx-escribir";
 import type { Periodo, VentaDia } from "./calculos";
@@ -73,9 +79,10 @@ const valor = (n: number | null, formato: RenglonResumen["formato"]): Celda =>
   n === null ? null : formato === "numero" ? n : { valor: n, formato };
 
 /** Las dos hojas del Excel: Resumen y Por día (con renglón de totales). */
-export function hojasVentas(r: { titulo: string; periodo: Periodo; generado: string; resumen: RenglonResumen[]; dias: FilaDia[];canales?:CanalReporte[] }): HojaXlsx[] {
+export function hojasVentas(r: { titulo: string; periodo: Periodo; generado: string; resumen: RenglonResumen[]; dias: FilaDia[];canales?:CanalReporte[];graficas?:{mensuales:MesVenta[];horas:HoraVenta[];desde:string;hasta:string;sinHora:number} }): HojaXlsx[] {
   const pesos = (n: number | null): Celda => (n === null ? null : { valor: n, formato: "pesos" });
   const t = totalesDias(r.dias);
+  const participaciones=participacionCanales((r.canales??[]).map(c=>c.actual.total));
   const porDia: Celda[][] = [
     ["Fecha", "Pedidos", "Venta total", "Efectivo", "Tarjeta", "En línea", "IVA", "Ticket promedio"],
     ...r.dias.map((d): Celda[] => [{ fecha: d.fecha }, d.pedidos, pesos(d.total), pesos(d.efectivo), pesos(d.tarjeta), pesos(d.en_linea), pesos(d.iva), pesos(d.ticket)]),
@@ -100,6 +107,11 @@ export function hojasVentas(r: { titulo: string; periodo: Periodo; generado: str
       anchos: [28, 18, 18, 12],
     },
     { nombre: "Por día", filas: porDia, negritas: [0, porDia.length - 1], anchos: [12, 10, 16, 16, 16, 16, 14, 16] },
+    ...(r.graficas?[
+      {nombre:"Participación por canal",filas:[["Canal","Venta con IVA","% venta del periodo"],...(r.canales??[]).map((c,i):Celda[]=>[c.nombre,pesos(c.actual.total),participaciones[i]===null?null:{valor:participaciones[i]!,formato:"porcentaje"}])],negritas:[0],anchos:[28,20,25]},
+      {nombre:"Ventas mensuales",filas:[["Histórico desde",{fecha:r.graficas.desde},"Hasta",{fecha:r.graficas.hasta}],["Mes y año","Venta con IVA","Días con datos"],...r.graficas.mensuales.map((m):Celda[]=>[m.mes,pesos(m.total),m.dias])],negritas:[1],anchos:[20,20,20]},
+      {nombre:"Ventas por hora",filas:[["Solo pedidos con hora; no representa cobertura completa"],["Fecha","Hora local MX","Venta con IVA","Pedidos"],...r.graficas.horas.map((h):Celda[]=>[{fecha:h.fecha},`${String(h.hora).padStart(2,'0')}:00`,pesos(h.total),h.pedidos])],negritas:[1],anchos:[15,18,20,12]},
+    ] as HojaXlsx[]:[]),
     ...(r.canales??[]).flatMap(c=>hojasVentas({
       titulo:`${r.titulo} · ${c.nombre}`,periodo:r.periodo,generado:r.generado,
       resumen:renglonesResumen(c.actual,c.anterior),dias:c.dias,
