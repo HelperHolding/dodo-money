@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { ResumenEjecutivoVentas } from "@/components/ResumenEjecutivoVentas";
+import { GraficasReporteVentas } from "@/components/GraficasReporteVentas";
+import { ventasMensuales, ventasHorarias } from "@/lib/ventas/graficasReporte";
+import { cuentaComoVenta } from "@/lib/ventas/pedidos";
 import { AvisoSinCosto } from "@/components/AvisoSinCosto";
 import { BarrasVerticales } from "@/components/BarrasVerticales";
 import { CalendarioVentas } from "@/components/CalendarioVentas";
@@ -85,6 +89,17 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const conDiferencia = cierre.comparados.filter((c) => c.alerta);
   const m2 = sucursal ? d.dias.filter((x) => x.venta_m2 !== null) : [];
   const mayorCosto = productos.filter((p) => p.costoPct !== null).sort((a, b) => (b.costoPct ?? 0) - (a.costoPct ?? 0)).slice(0, 5);
+  const semanas = new Map<string, number>();
+  for (const [fecha,total] of Object.entries(ventaDiaria)) {
+    if (fecha > periodo.hasta) continue;
+    const dia = new Date(`${fecha}T12:00:00Z`);
+    dia.setUTCDate(dia.getUTCDate() - (dia.getUTCDay()+6)%7);
+    const lunes = dia.toISOString().slice(0,10);
+    semanas.set(lunes,(semanas.get(lunes)??0)+total);
+  }
+  const diasSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map((nombre,i)=>({
+    clave:String(i),etiqueta:nombre,valor:porDia.filter(d=>(new Date(`${d.fecha}T12:00:00Z`).getUTCDay()+6)%7===i).reduce((n,d)=>n+d.total,0),
+  }));
   const titulo = sucursal ? nombreDe.get(sucursal) : "Todas las sucursales";
   const filtroReporte = new URLSearchParams({ desde: periodo.desde, hasta: periodo.hasta, ...(sucursal ? { sucursal } : {}) }).toString();
   // Días importados con el formato anterior: tienen venta pero no pedidos.
@@ -111,6 +126,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         costo: `${pesosRedondos(costos.total.costo)} sobre venta con costo`,
       }} />
 
+      <ResumenEjecutivoVentas desde={periodo.desde} hasta={periodo.hasta} total={resumen.total} piezas={costos.total.piezas} pedidos={resumen.pedidos} global={!sucursal} />
       {conDiferencia.length > 0 && (
         <a className="atencion-tarjeta" data-tono="peligro" href="#cierre">
           <span className="atencion-icono"><Icono nombre="alerta" tamano={20} /></span>
@@ -139,8 +155,14 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         </section>
       </div>
 
+      <div className="tablero-fila">
+        <section className="seccion"><h2>Venta por día de la semana</h2><Grafica titulo="Venta acumulada por día de la semana" barras={diasSemana.map(d=>({...d,texto:pesos(d.valor)}))}/></section>
+        <section className="seccion"><h2>Ventas por semana</h2><BarrasVerticales titulo="Histórico semanal" dias={[...semanas].sort(([a],[b])=>a.localeCompare(b)).slice(-13).map(([lunes,total])=>({clave:lunes,rotulo:diaYNumero(lunes),valor:total,detalle:`Semana del ${fechaTexto(lunes)} · ${pesos(total)}`}))}/><p className="saldo-nota">Lunes a domingo. Semanas inicial y final pueden tener cobertura parcial.</p></section>
+      </div>
       <VentasPorCanal canales={reporteCanales(d.canales,d.anterior.canales)} />
 
+      <GraficasReporteVentas mensuales={ventasMensuales(ventaDiaria, `${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`, periodo.hasta)}
+        {...ventasHorarias(detalle.pedidos.filter(cuentaComoVenta))} desde={`${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`} hasta={periodo.hasta} totalPeriodo={resumen.total} />
       <div className="tablero-fila">
         <Plegable id="productos" titulo="Los 10 que más vendieron" resumen={`${productos.length} productos`}>
           <RankingProductos titulo="Productos que más vendieron" filas={top.map((p) => ({
