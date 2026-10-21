@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parsearDetalle, leerListado, monto } from "./parsear.mjs";
+import { parsearDetalle, leerListado, monto, montosExactos } from "./parsear.mjs";
 
 // Texto real del portal (18/10/2026) con nombres de cliente y repartidor reemplazados.
 const detalle = (cuerpo) => `Dodo Pizza\nHistorial de órdenes\n${cuerpo}\nCLIENTE REPARTIDOR\nRepartidor asignado`;
@@ -11,20 +11,20 @@ const redondeo = detalle("Orden #2481513849\nOrden #2481513849\n\nCliente\n\nFin
 test("detalle Rappi: orden con extras, opciones y pago", () => {
   const r = parsearDetalle(conExtras, "MX1930486109");
   assert.deepEqual(r.orden, { rappi_id: "2481664517", tienda_id: "MX1930486109", fecha: "2026-10-18", hora: "22:22", estado: "Finalizado", pago: "Tarjeta de Crédito/Débito - visa", bruto: 230, descuento_restaurante: 40, subtotal_restaurante: 190, descuento_rappi: 26, facturar: 164 });
-  assert.deepEqual(r.productos, [{ rappi_id: "2481664517", linea: 1, nombre: "Pepperoni", opciones: "Papas francesas, 30 cm, 120 g", cantidad: 1, importe: 230 }]);
-  assert.equal(r.avisos.length, 0);
+  assert.deepEqual(r.productos, [{ rappi_id: "2481664517", linea: 1, nombre: "Pepperoni", opciones: "Papas francesas · 30 cm · 120 g", cantidad: 1, importe: 230 }]);
+  assert.match(r.avisos[0], /sin montos exactos/);
   assert.doesNotMatch(JSON.stringify(r), /CLIENTE|Cliente/);
 });
 test("detalle Rappi: combo sin descuento restaurante", () => {
   const r = parsearDetalle(sinDescuento, "MX1930486109");
   assert.equal(r.orden.descuento_restaurante, 0); assert.equal(r.orden.descuento_rappi, 108);
-  assert.equal(r.productos[0].opciones, "Jamon y Champiñones, Coca Cola 600ml.");
+  assert.equal(r.productos[0].opciones, "Jamon y Champiñones · Coca Cola 600ml.");
 });
 test("detalle Rappi: dos productos y ajuste por redondeo del portal", () => {
   const r = parsearDetalle(redondeo, "MX1930486109");
-  assert.equal(r.productos.length, 2); assert.equal(r.productos[1].linea, 2); assert.equal(r.productos[1].opciones, "30 cm, Delgada");
+  assert.equal(r.productos.length, 2); assert.equal(r.productos[1].linea, 2); assert.equal(r.productos[1].opciones, "30 cm · Delgada");
   assert.equal(r.orden.bruto, 364); assert.equal(r.orden.descuento_rappi, 59); assert.equal(r.orden.facturar, 218);
-  assert.match(r.avisos[0], /58 → 59/);
+  assert.ok(r.avisos.some((a) => /58 → 59/.test(a)));
 });
 test("detalle Rappi: cantidad mayor a 1 con precio unitario", () => {
   const t = conExtras.replace("1x\nPepperoni\n$230", "2x\nPepperoni\n$115");
@@ -60,7 +60,7 @@ Método de pago:
 Efectivo`), "MX1930486109");
   assert.equal(r.orden.estado, "Cancelado"); assert.equal(r.orden.hora, "13:30");
   assert.deepEqual([r.orden.bruto, r.orden.descuento_restaurante, r.orden.subtotal_restaurante, r.orden.descuento_rappi, r.orden.facturar], [199, 0, 199, 0, 199]);
-  assert.equal(r.productos[0].opciones, "30 cm, Tradicional"); assert.equal(r.avisos.length, 0);
+  assert.equal(r.productos[0].opciones, "30 cm · Tradicional");
 });
 test("detalle Rappi: rechaza estados en progreso y montos ilegibles", () => {
   assert.throws(() => parsearDetalle(conExtras.replace("Finalizado", "En camino"), "MX1"), /estado/);
@@ -69,4 +69,20 @@ test("detalle Rappi: rechaza estados en progreso y montos ilegibles", () => {
 });
 test("listado Rappi: IDs y fechas de la tabla", () => {
   assert.deepEqual(leerListado("Orden ID\tFecha\n#2481664517\t18/10/2026\tDodo Pizza\t$230\n#2481435584\t17/10/2026\tDodo Pizza"), [{ id: "2481664517", fecha: "2026-10-18" }, { id: "2481435584", fecha: "2026-10-17" }]);
+});
+
+// order_totals tal como lo manda el portal (orden 2482139638 del 20/10/2026).
+const totales = (sub, rest, subRest, rappi, total) => ({ order_totals: { total: { id: "suggested_total", value: total }, details: [{ id: "subtotal", value: sub }, { id: "discounts_partner_store", value: -rest }, { id: "subtotal_rest", value: subRest }, { id: "discounts_rappi", value: -rappi }] } });
+test("detalle Rappi: con JSON usa los centavos exactos y no ajusta", () => {
+  const r = parsearDetalle(redondeo, "MX1930486109", totales(364, 87.35, 276.65, 58.25, 218.4));
+  assert.deepEqual([r.orden.bruto, r.orden.descuento_restaurante, r.orden.subtotal_restaurante, r.orden.descuento_rappi, r.orden.facturar], [364, 87.35, 276.65, 58.25, 218.4]);
+  assert.equal(r.avisos.length, 0);
+});
+test("detalle Rappi: JSON que no cuadra con los renglones se rechaza", () => {
+  assert.throws(() => parsearDetalle(redondeo, "MX1", totales(365, 87.35, 277.65, 58.25, 219.4)), /renglones suman 364/);
+  assert.throws(() => parsearDetalle(redondeo, "MX1", totales(364, 87.35, 276.65, 58.25, 218)), /no cuadran/);
+});
+test("montos exactos: sin descuentos y JSON ajeno", () => {
+  assert.deepEqual(montosExactos({ order_totals: { total: { value: 199 }, details: [{ id: "subtotal", value: 199 }] } }), { bruto: 199, descuento_restaurante: 0, subtotal_restaurante: 199, descuento_rappi: 0, facturar: 199 });
+  assert.equal(montosExactos(null), null); assert.equal(montosExactos({ order_totals: { details: [] } }), null);
 });

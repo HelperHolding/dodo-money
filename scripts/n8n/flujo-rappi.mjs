@@ -1,0 +1,100 @@
+// Genera el flujo "Rappi_Ventas_Diarias" de n8n y lo sube (crea o actualiza).
+//   node --env-file=scripts/n8n/.env scripts/n8n/flujo-rappi.mjs            # sube a N8N_URL
+//   node scripts/n8n/flujo-rappi.mjs --archivo flujo.json                   # solo escribe el JSON
+// El flujo pide las órdenes al contenedor rappi-extractor (scripts/rappi/servidor.mjs), que mantiene la sesión
+// del portal en un navegador, y las manda a la app. Se crea inactivo: en n8n hay que elegir las credenciales
+// Header Auth (x-api-key) de "Leer Rappi" (RAPPI_EXTRACTOR_KEY), "Enviar a Dodo" y "Probar" (RAPPI_API_KEY) y activarlo.
+import { writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+
+const NOMBRE = "Rappi_Ventas_Diarias";
+const APP = "https://dodo-money-j31t.vercel.app";
+const EXTRACTOR = "http://rappi-extractor:3100/sincronizar";
+const SMTP = { id: "77HAkO1eZAVBGkN4", name: "SMTP Notifications" }; // la misma de los reportes
+const AVISAR_A = "cvalencia@mx.thecoffee.jp";
+
+const resumen = `const leido = $('Leer Rappi').first().json;
+const envio = $('Enviar a Dodo').isExecuted ? $('Enviar a Dodo').first().json : null;
+let estado = leido.estado ?? 'error', mensaje = leido.mensaje ?? ('El extractor respondió: ' + JSON.stringify(leido).slice(0, 300));
+if (envio) {
+  const ok = envio.statusCode >= 200 && envio.statusCode < 300;
+  if (!ok) { estado = 'error'; mensaje += ' La app respondió ' + envio.statusCode + ': ' + (envio.body?.error ?? JSON.stringify(envio.body)).slice(0, 300); }
+  else mensaje += leido.revisar ? ' Validadas por la app sin guardar.' : ' Guardadas en la app (' + (envio.body?.actualizadas ?? 0) + ' actualizadas).';
+}
+return [{ json: { fecha: leido.fecha, tienda: leido.tienda, estado, mensaje, ordenes: leido.ordenes ?? 0, renglones: leido.renglones ?? 0, omitidas: leido.omitidas ?? [], app: envio ? { status: envio.statusCode, ...envio.body } : null } }];`;
+
+const id = () => randomUUID();
+const nodo = (name, type, typeVersion, position, parameters, extra = {}) => ({ id: id(), name, type, typeVersion, position, parameters, ...extra });
+const headerAuth = { authentication: "genericCredentialType", genericAuthType: "httpHeaderAuth" };
+const nodes = [
+  nodo("Cada dia 7am", "n8n-nodes-base.scheduleTrigger", 1.2, [0, 0], { rule: { interval: [{ triggerAtHour: 7 }] } }),
+  nodo("Probar (webhook)", "n8n-nodes-base.webhook", 2, [0, 200], { httpMethod: "POST", path: "rappi-ventas", authentication: "headerAuth", responseMode: "lastNode", options: {} }, { webhookId: id() }),
+  // Desde el horario no hay body: el extractor toma "ayer" en hora de México. Desde el webhook: {fecha?, revisar?}.
+  nodo("Leer Rappi", "n8n-nodes-base.httpRequest", 4.2, [240, 100], {
+    method: "POST", url: EXTRACTOR, ...headerAuth,
+    sendBody: true, specifyBody: "json", jsonBody: "={{ JSON.stringify({ fecha: $json.body?.fecha, revisar: $json.body?.revisar === true }) }}",
+    options: { timeout: 600000 },
+  }, { notes: "Credencial: Header Auth x-api-key = RAPPI_EXTRACTOR_KEY del servidor." }),
+  nodo("¿Hay órdenes?", "n8n-nodes-base.if", 2.2, [460, 100], {
+    conditions: { options: { caseSensitive: true, leftValue: "", typeValidation: "loose", version: 2 }, combinator: "and",
+      conditions: [{ id: id(), leftValue: "={{ $json.ordenes }}", rightValue: 0, operator: { type: "number", operation: "gt" } }] },
+    looseTypeValidation: true, options: {},
+  }),
+  nodo("Enviar a Dodo", "n8n-nodes-base.httpRequest", 4.2, [680, 0], {
+    method: "POST", url: `=${APP}/api/rappi/importar{{ $json.revisar ? '?revisar=1' : '' }}`, ...headerAuth,
+    sendBody: true, specifyBody: "json", jsonBody: "={{ JSON.stringify($json.cuerpo) }}",
+    options: { response: { response: { fullResponse: true, neverError: true } }, timeout: 60000 },
+  }, { notes: "Credencial: Header Auth x-api-key = RAPPI_API_KEY de Vercel." }),
+  nodo("Resumen", "n8n-nodes-base.code", 2, [900, 100], { jsCode: resumen }),
+  nodo("¿Falló?", "n8n-nodes-base.if", 2.2, [1120, 100], {
+    conditions: { options: { caseSensitive: true, leftValue: "", typeValidation: "strict", version: 2 }, combinator: "or",
+      conditions: [
+        { id: id(), leftValue: "={{ $json.estado }}", rightValue: "error", operator: { type: "string", operation: "equals" } },
+        { id: id(), leftValue: "={{ $json.estado }}", rightValue: "sesion_expirada", operator: { type: "string", operation: "equals" } },
+      ] },
+    options: {},
+  }),
+  nodo("Avisar por correo", "n8n-nodes-base.emailSend", 2.1, [1340, 0], {
+    fromEmail: "Dodo MX <scervera@dodopizz.mx>", toEmail: AVISAR_A,
+    subject: "=Rappi {{ $json.fecha }}: {{ $json.estado === 'sesion_expirada' ? 'renovar sesión' : 'revisar importación' }}",
+    emailFormat: "text",
+    text: "={{ $json.mensaje }}\n\nOmitidas: {{ ($json.omitidas || []).join('\\n') || 'ninguna' }}\n\nSi la sesión expiró: npm run rappi:login -- --exportar rappi-sesion.json y copiarla al volumen del extractor.\nPara reponer el día: POST al webhook \"Probar\" con {\"fecha\":\"{{ $json.fecha }}\"}.",
+    options: {},
+  }, { credentials: { smtp: SMTP } }),
+];
+const conecta = (de, ...a) => ({ [de]: { main: a.map((rama) => (Array.isArray(rama) ? rama : [rama]).map((node) => ({ node, type: "main", index: 0 }))) } });
+const connections = {
+  ...conecta("Cada dia 7am", "Leer Rappi"),
+  ...conecta("Probar (webhook)", "Leer Rappi"),
+  ...conecta("Leer Rappi", "¿Hay órdenes?"),
+  ...conecta("¿Hay órdenes?", "Enviar a Dodo", "Resumen"),
+  ...conecta("Enviar a Dodo", "Resumen"),
+  ...conecta("Resumen", "¿Falló?"),
+  ...conecta("¿Falló?", "Avisar por correo", []),
+};
+const flujo = { name: NOMBRE, nodes, connections, settings: { executionOrder: "v1", timezone: "America/Mexico_City" } };
+
+const archivo = process.argv.includes("--archivo") ? process.argv[process.argv.indexOf("--archivo") + 1] : null;
+if (archivo) { writeFileSync(archivo, JSON.stringify(flujo, null, 2)); console.log(`Escrito ${archivo}`); process.exit(0); }
+
+const url = (process.env.N8N_URL ?? "").replace(/\/+$/, ""), key = process.env.N8N_API_KEY;
+if (!url || !key) { console.error("Configura N8N_URL y N8N_API_KEY en scripts/n8n/.env"); process.exit(1); }
+const n8n = async (metodo, ruta, cuerpo) => {
+  const r = await fetch(url + "/api/v1" + ruta, { method: metodo, headers: { "X-N8N-API-KEY": key, "content-type": "application/json" }, body: cuerpo && JSON.stringify(cuerpo) });
+  const t = await r.text(); if (!r.ok) throw Error(`${metodo} ${ruta}: ${r.status} ${t.slice(0, 400)}`); return t ? JSON.parse(t) : null;
+};
+const existente = (await n8n("GET", "/workflows?limit=250")).data.find((w) => w.name === NOMBRE);
+if (existente) {
+  // Conserva las credenciales elegidas en la UI (por nombre de nodo y tipo) y la URL del webhook.
+  const actual = await n8n("GET", `/workflows/${existente.id}`);
+  for (const n of flujo.nodes) {
+    const previo = actual.nodes.find((x) => x.name === n.name && x.type === n.type);
+    if (previo?.credentials && !n.credentials) n.credentials = previo.credentials;
+    if (previo?.webhookId) n.webhookId = previo.webhookId;
+  }
+  await n8n("PUT", `/workflows/${existente.id}`, flujo);
+  console.log(`Actualizado ${NOMBRE} (${existente.id}).`);
+} else {
+  const w = await n8n("POST", "/workflows", flujo);
+  console.log(`Creado ${NOMBRE} (${w.id}), inactivo.`);
+}

@@ -32,4 +32,15 @@ Extractor local (`scripts/rappi/sincronizar.mjs`, Playwright con Edge instalado,
 
 La sesión del portal vive en el perfil de Edge de esta PC, así que el extractor corre aquí y n8n solo recibe avisos; el login no se automatiza.
 
-El portal muestra pesos redondeados: los descuentos se recalculan como `productos − subtotal` y `subtotal − total sugerido` para que cuadren con lo que muestra Rappi, y cada ajuste sale como aviso. Las órdenes que no se pueden leer se omiten, se reportan y el script termina con código 1. No guarda nombres de cliente ni repartidor. Automatizar el portal puede ir contra los términos de Rappi; si Rappi da acceso a su API de integraciones, conviene cambiar el extractor por esa API y mantener el endpoint.
+Montos: la pantalla redondea a pesos, pero el detalle carga un JSON (`orders/partner/status/v2/store/{tienda}/orders/{id}`) con centavos; el extractor usa ese JSON (`order_totals`) y solo si falta recalcula con lo visible, con aviso. Opciones separadas con ` · ` como en las importaciones previas: la clave del producto depende de ese texto.
+
+## Extractor en el servidor de n8n
+
+Rappi no deja renovar la sesión fuera de su portal (su refresh responde 500 y Auth0 `access_denied`: el cliente es confidencial), así que n8n no puede sostenerla solo. La sesión se mantiene en un navegador dentro de un contenedor junto a n8n:
+
+- `scripts/rappi/servidor.mjs` + `scripts/rappi/docker/`: servicio `rappi-extractor` (Playwright/Chromium) en la red de n8n, sin puertos publicados. `POST /sincronizar {fecha?, revisar?}` con `x-api-key: RAPPI_EXTRACTOR_KEY` abre el portal con la sesión del volumen (`/datos/sesion.json`), escucha el listado y el detalle que el propio portal pide, convierte con `scripts/rappi/api.mjs` y devuelve `{fecha, estado, mensaje, ordenes, renglones, omitidas, cuerpo}`. Tras cada corrida reescribe la sesión renovada. `GET /salud` indica si hay sesión.
+- Sesión inicial: `npm run rappi:login -- --exportar rappi-sesion.json` en una PC (marcar “Recordarme”) y copiarla al volumen; repetir cuando el servicio responda `sesion_expirada`. El archivo equivale a una sesión iniciada: se comparte solo por privado.
+- `scripts/n8n/flujo-rappi.mjs` genera y sube el flujo `Rappi_Ventas_Diarias` (7:00, webhook “Probar”, envío a `/api/rappi/importar`, correo si falla) con `scripts/n8n/.env` (`N8N_URL`, `N8N_API_KEY`).
+- Estados del portal: Finalizado = `finished`, `finished_order`, `close_order`, `pending_review`, `on_the_route`, `arrive`; Cancelado = `canceled*`; el resto sigue en curso y no se importa.
+
+El portal muestra pesos redondeados: si no llega el JSON, los descuentos se recalculan como `productos − subtotal` y `subtotal − total sugerido` para que cuadren con lo que muestra Rappi, y cada ajuste sale como aviso. Las órdenes que no se pueden leer se omiten, se reportan y el script termina con código 1. No guarda nombres de cliente ni repartidor. Automatizar el portal puede ir contra los términos de Rappi; si Rappi da acceso a su API de integraciones, conviene cambiar el extractor por esa API y mantener el endpoint.

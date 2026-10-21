@@ -1,0 +1,17 @@
+# Agregar este servicio al docker-compose donde corre n8n (misma red, igual que gotenberg).
+# n8n lo llama en http://rappi-extractor:3100/sincronizar; no se publica ningún puerto hacia afuera.
+# En el .env del compose: RAPPI_EXTRACTOR_KEY=<clave larga aleatoria>
+services:
+  rappi-extractor:
+    build:
+      context: ./rappi-extractor
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    environment:
+      EXTRACTOR_KEY: ${RAPPI_EXTRACTOR_KEY}
+      RAPPI_TIENDA: MX1930486109
+    volumes:
+      - rappi_sesion:/datos
+    shm_size: "1gb"
+volumes:
+  rappi_sesion:
