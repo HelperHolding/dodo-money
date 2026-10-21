@@ -6,17 +6,15 @@ import {useState} from "react";
 import {buscarProveedores} from "@/lib/compras/busquedaProveedores";
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
-import { SelectorVista } from "@/components/SelectorVista";
 import { estadoDocumentos, NOMBRE_DOCUMENTO, type Documento } from "@/lib/compras/documentos";
 import { CATEGORIAS_COMPRA, NOMBRE_CATEGORIA_COMPRA, type CategoriaCompra } from "@/lib/compras/proveedores";
-import { leerVista } from "@/lib/vista";
 
 export type Fila = { id: string; razon_social: string; nombre_comercial: string | null; numero_cliente: string | null; dias_entrega: number | null; rfc: string; dias_credito: number; categorias: CategoriaCompra[]; activo: boolean };
 
 type Params={q?:string;categoria?:string;inactivos?:string;docs?:string;vista?:string;ok?:string;error?:string};
 export function ListaProveedores({filas,documentos,params,edita}:{filas:Fila[];documentos:(Documento & {proveedor_id:string})[];params:Params;edita:boolean}) {
  const [q,setQ]=useState(params.q??""),[categoria,setCategoria]=useState(params.categoria??""),[inactivos,setInactivos]=useState(params.inactivos??""),[docs,setDocs]=useState(params.docs??"");
- const vista=leerVista(params.vista),{ok,error}=params;
+ const {ok,error}=params;
   const docsDe = new Map<string, Documento[]>();
   for (const d of documentos) docsDe.set(d.proveedor_id, [...(docsDe.get(d.proveedor_id) ?? []), d]);
   const estadoDe = (id: string) => estadoDocumentos(docsDe.get(id) ?? []);
@@ -39,8 +37,7 @@ export function ListaProveedores({filas,documentos,params,edita}:{filas:Fila[];d
       <EncabezadoPagina titulo="Proveedores" descripcion="La cartera de proveedores de todas las sucursales."
         acciones={edita && <Link className="boton" href="/compras/proveedores/nuevo"><Icono nombre="mas" />Nuevo proveedor</Link>} />
       <Aviso ok={ok} error={error} />
-      <form className="barra-filtros proveedores-filtros" role="search" onSubmit={e=>e.preventDefault()}>
-        {vista === "lista" && <input type="hidden" name="vista" value="lista" />}
+      <form className="barra-filtros proveedores-filtros compras-listado" role="search" onSubmit={e=>e.preventDefault()}>
         <div className="barra-filtros">
           <div className="campo"><label htmlFor="q" className="solo-lector">Buscar</label><input id="q" name="q" value={q} onChange={e=>setQ(e.target.value)} type="search" maxLength={200} aria-describedby="ayuda-buscar-proveedores" placeholder="Escribe razón social, nombre o RFC…" /><small id="ayuda-buscar-proveedores" className="solo-lector">Se actualiza al escribir. También encuentra nombres parecidos con pequeños errores.</small></div>
           <div className="campo">
@@ -59,9 +56,8 @@ export function ListaProveedores({filas,documentos,params,edita}:{filas:Fila[];d
         </div>
       </form>
 
-      <SelectorVista ruta="/compras" params={{...params,q,categoria,inactivos,docs}} vista={vista} />
       {!visibles.length && <EstadoVacio icono="buscar" titulo={filas.length ? "Ningún proveedor coincide" : "Aún no hay proveedores"} descripcion={filas.length ? "Prueba con otra búsqueda o quita filtros." : "Da de alta el primero o cárgalos desde Excel."} />}
-      {vista === "lista" && visibles.length > 0 && (
+      {visibles.length > 0 && (
         <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
           <li className="fila fila-encabezado" aria-hidden="true"><span>Proveedor</span><span>RFC</span><span>Crédito</span><span>Surte</span></li>
           {visibles.map((p) => (
@@ -80,26 +76,7 @@ export function ListaProveedores({filas,documentos,params,edita}:{filas:Fila[];d
           ))}
         </ul>
       )}
-      {vista === "tarjetas" && <div className="tarjetas">
-        {visibles.map((p) => (
-          <article key={p.id} className="tarjeta" data-alerta={p.activo ? undefined : "si"}>
-            <div className="tarjeta-encabezado">
-              <div>
-                <h3><Link href={`/compras/proveedores/${p.id}`}>{p.nombre_comercial ?? p.razon_social}</Link></h3>
-                <p className="tarjeta-estado">{p.activo ? p.rfc : `${p.rfc} · inactivo`}</p>
-              </div>
-            </div>
-            <dl className="tarjeta-datos">
-              {p.nombre_comercial && <><dt>Razón social</dt><dd>{p.razon_social}</dd></>}
-              {p.numero_cliente && <><dt>N.º de cliente</dt><dd>{p.numero_cliente}</dd></>}
-              <dt>Crédito</dt><dd>{p.dias_credito ? `${p.dias_credito} días` : "Contado"}</dd>
-              {p.dias_entrega !== null && <><dt>Entrega</dt><dd>{p.dias_entrega === 0 ? "El mismo día" : `${p.dias_entrega} ${p.dias_entrega === 1 ? "día" : "días"}`}</dd></>}
-              <dt>Documentos</dt><dd className={avisoDocs(p.id) ? "celda-alerta" : undefined}>{avisoDocs(p.id) ?? "Al día"}</dd>
-              <dt>Surte</dt><dd>{p.categorias.length ? p.categorias.map((c) => NOMBRE_CATEGORIA_COMPRA[c]).join(", ") : "Sin categoría"}</dd>
-            </dl>
-          </article>
-        ))}
-      </div>}
+
     </>
   );
 }
