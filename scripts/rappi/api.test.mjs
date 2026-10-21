@@ -41,3 +41,20 @@ test("API Rappi: montos sin descuentos y fecha del listado", () => {
   assert.deepEqual(montosApi({ order_totals: { total: { value: 199 }, details: [{ id: "subtotal", value: 199 }] } }), { bruto: 199, descuento_restaurante: 0, subtotal_restaurante: 199, descuento_rappi: 0, facturar: 199 });
   assert.equal(fechaListado({ created_at: "2026-10-20 22:52:32" }), "2026-10-20");
 });
+
+import { planearVuelta } from "./api.mjs";
+test("vuelta en vivo: salta en curso, reutiliza terminadas en caché y abre el resto", () => {
+  const it = (id, state, created_at = "2026-10-21 13:00:00", extra = {}) => ({ id, state, created_at, ...extra });
+  const cache = { 1: { orden: { estado: "Finalizado" }, productos: [] }, 2: { orden: { estado: "Finalizado" }, productos: [] } };
+  const r = planearVuelta([
+    it(1, "pending_review"),                       // en caché igual → reutiliza
+    it(2, "canceled_by_early_regret"),             // cambió de estado → abre
+    it(3, "in_store"),                             // en curso → salta
+    it(4, "finished"),                             // nueva → abre
+    it(5, "finished", "2026-10-20 23:59:00"),      // otro día → ignora
+    it(6, "finished", "2026-10-21 14:00:00", { has_claims: true }),
+  ], "2026-10-21", cache);
+  assert.deepEqual(r.abrir, ["2", "4", "6"]);
+  assert.equal(r.reusar.length, 1); assert.equal(r.enCurso, 1);
+  assert.deepEqual(planearVuelta([it(1, "finished")], "2026-10-21").abrir, ["1"]);
+});
