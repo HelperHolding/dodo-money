@@ -30,3 +30,14 @@ test('panel Rappi: días ordenados, variantes separadas y periodo vacío',()=>{
  const r=resumenPanelRappi([a,b]);assert.deepEqual(r.dias.map(d=>d.fecha),['2026-10-04','2026-10-05']);assert.equal(r.productos.length,2);assert.equal(r.productos[0].cantidad,2);
  const vacio=resumenPanelRappi([]);assert.equal(vacio.ticket,null);assert.equal(vacio.total,0);assert.equal(vacio.productos.length,0);
 });
+
+import {leerJsonRappi} from './rappi.ts';
+test('Rappi JSON: misma validación que el Excel',()=>{
+ const o={rappi_id:'2478186591',tienda_id:'MX1930486109',fecha:'2026-10-05',hora:'17:11',estado:'Finalizado',pago:'PayPal',bruto:159,descuento_restaurante:60,subtotal_restaurante:99,descuento_rappi:70,facturar:29};
+ const p={rappi_id:'2478186591',linea:1,nombre:'Pepperoni',opciones:'30 cm',cantidad:1,importe:159};
+ const r=leerJsonRappi({ordenes:[o],productos:[p]},'2026-10-06');assert.equal(r.ordenes[0].subtotal_restaurante,99);assert.equal(r.productos[0].clave,leer().productos[0].clave);
+ assert.throws(()=>leerJsonRappi({ordenes:[{...o,facturar:30}],productos:[p]},'2026-10-06'));
+ assert.throws(()=>leerJsonRappi({ordenes:[o],productos:[{...p,importe:158}]},'2026-10-06'));
+ assert.throws(()=>leerJsonRappi({ordenes:'x',productos:[p]},'2026-10-06'));
+ assert.throws(()=>leerJsonRappi({ordenes:[o]},'2026-10-06'));
+});

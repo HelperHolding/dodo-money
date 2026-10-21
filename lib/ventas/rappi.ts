@@ -48,6 +48,19 @@ export function leerHistorialRappi(hojas:readonly Hoja[],hoy:string) {
   for(const o of ordenes){const filas=productos.filter(p=>p.rappi_id===o.rappi_id);if(!filas.length||filas.length>200||centavos(filas.reduce((n,p)=>n+p.importe,0))!==o.bruto)throw Error(`Los productos no cuadran con la orden ${o.rappi_id}, o exceden 200 renglones.`);}
   return {ordenes,productos};
 }
+const CAMPOS_ORDEN=[["ID orden","rappi_id"],["ID tienda","tienda_id"],["Fecha","fecha"],["Hora","hora"],["Estado","estado"],["Pago","pago"],["Importe productos","bruto"],["Descuento restaurante","descuento_restaurante"],["Subtotal restaurante","subtotal_restaurante"],["Descuento Rappi","descuento_rappi"],["Total a facturar","facturar"]] as const;
+const CAMPOS_PRODUCTO=[["ID orden","rappi_id"],["Renglon","linea"],["Producto","nombre"],["Opciones","opciones"],["Cantidad","cantidad"],["Importe renglon","importe"]] as const;
+function hojaDesde(nombre:string,campos:readonly (readonly [string,string])[],filas:unknown):Hoja{
+  if(!Array.isArray(filas)||filas.length>50000)throw Error(`${nombre} debe ser una lista.`);
+  const celdas=new Map<string,string|number>();
+  campos.forEach(([titulo],j)=>celdas.set(`${String.fromCharCode(65+j)}1`,titulo));
+  filas.forEach((f,i)=>{if(!f||typeof f!=="object")throw Error(`${nombre}: renglón ${i+1} inválido.`);campos.forEach(([,clave],j)=>{const v=(f as Record<string,unknown>)[clave];if(typeof v==="string"||typeof v==="number")celdas.set(`${String.fromCharCode(65+j)}${i+2}`,v);});});
+  return {nombre,celdas};
+}
+/** Misma validación que el Excel, para órdenes enviadas como JSON por el extractor del portal. */
+export function leerJsonRappi(datos:{ordenes?:unknown;productos?:unknown},hoy:string){
+  return leerHistorialRappi([hojaDesde("Ordenes",CAMPOS_ORDEN,datos.ordenes),hojaDesde("Productos",CAMPOS_PRODUCTO,datos.productos)],hoy);
+}
 /** Subtotal restaurante es la base seleccionada; el descuento financiado por Rappi se conserva por separado. */
 export function ventasRappi(ordenes:readonly RappiGuardada[],catalogo:readonly CatalogoRappi[]) {
   const dias=new Map<string,VentaDia>(),productos:VentaProducto[]=[],pedidos:(Pedido & {sucursal_id:string})[]=[],lineas:LineaPedido[]=[];
