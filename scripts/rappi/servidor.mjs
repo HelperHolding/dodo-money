@@ -1,5 +1,5 @@
 // Servicio del extractor Rappi para el servidor de n8n (contenedor Docker).
-// n8n lo llama con POST /sincronizar {fecha?, revisar?, cache?} y recibe el mismo resultado que armaba el nodo "Leer Rappi":
+// n8n lo llama con POST /sincronizar {fecha?, revisar?, cache?, repasar?} y recibe el mismo resultado que armaba el nodo "Leer Rappi":
 // {fecha, tienda, estado, mensaje, ordenes, renglones, omitidas, revisar, cuerpo}. El envío a la app lo hace n8n.
 //
 // La sesión vive en ESTADO (storageState de Playwright: cookies + localStorage). Se sube una vez desde la PC
@@ -7,13 +7,16 @@
 //
 // fecha: AAAA-MM-DD, "hoy" o vacío (= ayer, hora de México). Con cache: true (vueltas en vivo cada 15 min) las órdenes ya
 // terminadas en una vuelta anterior del mismo día no se vuelven a abrir; el cierre del día siguiente va sin caché.
+// repasar: N (cierre de las 6:30) revisa además los N días anteriores a fecha y reenvía solo las órdenes cuyo estado cambió
+// (p. ej. Finalizado → Cancelado); las que no estaban registradas quedan como referencia sin reimportarse.
+// La respuesta incluye cambios: [{rappi_id, fecha, de, a}].
 //
 // Variables: EXTRACTOR_KEY (header x-api-key), RAPPI_TIENDA, ESTADO (default /datos/sesion.json), PUERTO (3100).
 import { createServer } from "node:http";
 import { existsSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium } from "playwright-core";
-import { ordenDesdeApi, fechaListado, planearVuelta } from "./api.mjs";
+import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso } from "./api.mjs";
 
 const PORTAL = "https://restaurantes.rappi.com";
 const { EXTRACTOR_KEY, RAPPI_TIENDA = "MX1930486109", ESTADO = "/datos/sesion.json", PUERTO = "3100", CHROMIUM } = process.env;
@@ -21,10 +24,9 @@ if (!EXTRACTOR_KEY) { console.error("Falta EXTRACTOR_KEY"); process.exit(1); }
 const NUM = RAPPI_TIENDA.slice(2);
 
 const hoyMX = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date());
-function ayerMX() {
-  const d = new Date(`${hoyMX()}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
+const restarDias = (fecha, n) => { const d = new Date(`${fecha}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
+const ayerMX = () => restarDias(hoyMX(), 1);
+const DIAS_CACHE = 10; // cubre el repaso de 7 días con margen
 
 // Caché por día de órdenes terminadas (sin datos personales: es el mismo cuerpo que se manda a la app).
 const DATOS = dirname(ESTADO);
@@ -33,14 +35,13 @@ const leerCache = (fecha) => { try { return JSON.parse(readFileSync(archivoCache
 function guardarCache(fecha, cache) {
   const tmp = archivoCache(fecha) + ".tmp";
   writeFileSync(tmp, JSON.stringify(cache)); renameSync(tmp, archivoCache(fecha));
-  // Solo se conservan ayer y hoy.
-  for (const f of readdirSync(DATOS)) { const m = /^cache-(\d{4}-\d{2}-\d{2})\.json$/.exec(f); if (m && m[1] < ayerMX()) unlinkSync(join(DATOS, f)); }
+  for (const f of readdirSync(DATOS)) { const m = /^cache-(\d{4}-\d{2}-\d{2})\.json$/.exec(f); if (m && m[1] < restarDias(hoyMX(), DIAS_CACHE)) unlinkSync(join(DATOS, f)); }
 }
 
 // Una corrida a la vez: dos navegadores sobre la misma sesión se pisarían el storageState.
 let enCurso = null;
 
-async function sincronizar({ fecha, revisar, usarCache }) {
+async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
   const base = { fecha, tienda: RAPPI_TIENDA, revisar, ordenes: 0, renglones: 0, omitidas: [], cuerpo: null };
   if (!existsSync(ESTADO)) return { ...base, estado: "sesion_expirada", mensaje: `No hay sesión guardada en ${ESTADO}: sube una con rappi:login --exportar.` };
   const navegador = await chromium.launch({ headless: true, ...(CHROMIUM ? { executablePath: CHROMIUM } : {}) });
@@ -67,10 +68,12 @@ async function sincronizar({ fecha, revisar, usarCache }) {
     const vencida = { ...base, estado: "sesion_expirada", mensaje: "Rappi cerró la sesión: corre rappi:login --exportar en la PC y sube el archivo al servidor." };
 
     if (!(await abrir(`${PORTAL}/orders/history?storeIds=${RAPPI_TIENDA}&tab=orders`, /Mostrando/))) return vencida;
-    // Avanza páginas del historial (más reciente primero) hasta pasar la fecha.
+    // Avanza páginas del historial (más reciente primero) hasta pasar la fecha más antigua a revisar.
+    const diasRepaso = Array.from({ length: repasar }, (_, i) => restarDias(fecha, i + 1));
+    const masAntigua = diasRepaso.at(-1) ?? fecha;
     for (let hoja = 1; hoja <= 60; hoja++) {
       const fechas = [...listado.values()].map(fechaListado);
-      if (fechas.length && fechas.some((f) => f < fecha)) break;
+      if (fechas.length && fechas.some((f) => f < masAntigua)) break;
       const siguiente = pagina.locator(":has(> :text('Mostrando'))").first().locator("button").last();
       if (!(await siguiente.count()) || await siguiente.isDisabled()) break;
       const antes = listado.size;
@@ -79,28 +82,46 @@ async function sincronizar({ fecha, revisar, usarCache }) {
       await pagina.waitForTimeout(500);
       if (listado.size === antes) break;
     }
-    // En curso: se saltan. Terminadas en caché (vueltas en vivo): se reutilizan. El resto se abre.
-    const cache = usarCache ? leerCache(fecha) : {};
-    const plan = planearVuelta([...listado.values()], fecha, cache);
-
-    const ordenes = [], productos = [], omitidas = [];
-    for (const r of plan.reusar) { ordenes.push(r.orden); productos.push(...r.productos); }
-    for (const id of plan.abrir) {
+    const items = [...listado.values()];
+    const ordenes = [], productos = [], omitidas = [], cambios = [];
+    // Abre el detalle de una orden, la agrega al envío, anota si cambió de estado y actualiza la caché del día.
+    const abrirOrden = async (id, dia, cache) => {
       try {
         const json = pagina.waitForResponse((r) => r.url().includes(`/orders/partner/status/v2/store/${NUM}/orders/${id}`) && r.ok(), { timeout: 60_000 }).then((r) => r.json());
-        if (!(await abrir(`${PORTAL}/orders/history/${NUM}/${id}?storeIds=${RAPPI_TIENDA}`, "Total sugerido a facturar"))) return vencida;
+        if (!(await abrir(`${PORTAL}/orders/history/${NUM}/${id}?storeIds=${RAPPI_TIENDA}`, "Total sugerido a facturar"))) return false;
         const r = ordenDesdeApi(await json, RAPPI_TIENDA);
-        if (!r) continue; // sigue en curso
-        if (r.orden.fecha !== fecha) throw Error(`Orden ${id}: es del ${r.orden.fecha}.`);
+        if (!r) return true; // sigue en curso
+        if (r.orden.fecha !== dia) throw Error(`Orden ${id}: es del ${r.orden.fecha}.`);
+        const previo = cache[id]?.orden?.estado;
+        if (previo && previo !== r.orden.estado) cambios.push({ rappi_id: id, fecha: dia, de: previo, a: r.orden.estado });
         ordenes.push(r.orden); productos.push(...r.productos);
         cache[id] = r;
       } catch (e) { omitidas.push(String(e?.message ?? e).slice(0, 200)); }
+      return true;
+    };
+
+    // Día principal. En curso: se saltan. Terminadas en caché (vueltas en vivo): se reutilizan. El resto se abre.
+    // Sin caché (cierre) se abre todo, pero la caché se lee igual para detectar cambios de estado.
+    const cache = leerCache(fecha);
+    const plan = planearVuelta(items, fecha, usarCache ? cache : {});
+    for (const r of plan.reusar) { ordenes.push(r.orden); productos.push(...r.productos); }
+    for (const id of plan.abrir) if (!(await abrirOrden(id, fecha, cache))) return vencida;
+
+    // Repaso de días anteriores: solo órdenes cuyo estado cambió.
+    const caches = new Map([[fecha, cache]]);
+    for (const dia of diasRepaso) {
+      const c = leerCache(dia); caches.set(dia, c);
+      const p = planearRepaso(items, dia, c);
+      Object.assign(c, p.base);
+      for (const id of p.abrir) if (!(await abrirOrden(id, dia, c))) return vencida;
     }
-    // Guarda la sesión renovada (escritura atómica para no dejar un archivo a medias).
+
+    // Guarda la sesión renovada (escritura atómica para no dejar un archivo a medias) y las cachés.
     writeFileSync(`${ESTADO}.tmp`, JSON.stringify(await contexto.storageState())); renameSync(`${ESTADO}.tmp`, ESTADO);
-    if (usarCache && !revisar) guardarCache(fecha, cache);
+    if (!revisar) for (const [dia, c] of caches) guardarCache(dia, c);
     const estado = omitidas.length ? "error" : ordenes.length ? "ok" : "sin_ordenes";
-    return { ...base, estado, enCurso: plan.enCurso, mensaje: `Leídas ${ordenes.length} órdenes (${plan.abrir.length} abiertas, ${plan.reusar.length} de caché), ${productos.length} renglones; en curso ${plan.enCurso}; omitidas ${omitidas.length}.`, ordenes: ordenes.length, renglones: productos.length, omitidas, cuerpo: ordenes.length ? { ordenes, productos } : null };
+    const textoCambios = cambios.length ? ` Cambios de estado: ${cambios.map((c) => `#${c.rappi_id} (${c.fecha}) ${c.de} → ${c.a}`).join(", ")}.` : "";
+    return { ...base, estado, enCurso: plan.enCurso, cambios, mensaje: `Leídas ${ordenes.length} órdenes (${plan.abrir.length} abiertas, ${plan.reusar.length} de caché), ${productos.length} renglones; en curso ${plan.enCurso}; omitidas ${omitidas.length}.${diasRepaso.length ? ` Repaso de ${diasRepaso.length} días.` : ""}${textoCambios}`, ordenes: ordenes.length, renglones: productos.length, omitidas, cuerpo: ordenes.length ? { ordenes, productos } : null };
   } finally {
     await navegador.close();
   }
@@ -116,7 +137,8 @@ createServer(async (req, res) => {
   const fecha = datos.fecha === "hoy" ? hoyMX() : /^\d{4}-\d{2}-\d{2}$/.test(String(datos.fecha ?? "")) ? datos.fecha : ayerMX();
   // Si una vuelta anterior sigue corriendo, esta se salta sin error: la siguiente la cubre.
   if (enCurso) return responder(res, 200, { fecha, tienda: RAPPI_TIENDA, estado: "ocupado", mensaje: "Ya había una corrida en curso; esta vuelta se saltó.", ordenes: 0, renglones: 0, omitidas: [], cuerpo: null });
-  enCurso = sincronizar({ fecha, revisar: datos.revisar === true, usarCache: datos.cache === true });
+  const repasar = Number.isInteger(datos.repasar) ? Math.min(Math.max(datos.repasar, 0), 7) : 0;
+  enCurso = sincronizar({ fecha, revisar: datos.revisar === true, usarCache: datos.cache === true, repasar });
   try { responder(res, 200, await enCurso); }
   catch (e) { responder(res, 200, { fecha, tienda: RAPPI_TIENDA, estado: "error", mensaje: `Falla del extractor: ${String(e?.message ?? e).slice(0, 300)}`, ordenes: 0, renglones: 0, omitidas: [], cuerpo: null }); }
   finally { enCurso = null; }
