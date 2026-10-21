@@ -13,8 +13,9 @@ export const dynamic = "force-dynamic";
  * La sucursal se toma de la tienda ya ligada; solo hace falta mandarla la primera vez. Con ?revisar=1 valida sin guardar.
  */
 export async function POST(req: NextRequest) {
-  const apiKey = req.headers.get("x-api-key");
-  if (!apiKey || !process.env.RAPPI_API_KEY || apiKey !== process.env.RAPPI_API_KEY) {
+  // Se ignoran espacios o saltos de línea que se cuelan al pegar la clave en Vercel.
+  const apiKey = req.headers.get("x-api-key")?.trim(), esperada = process.env.RAPPI_API_KEY?.trim();
+  if (!apiKey || !esperada || apiKey !== esperada) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const texto = await req.text();
@@ -28,8 +29,9 @@ export async function POST(req: NextRequest) {
   catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "Datos inválidos." }, { status: 422 }); }
 
   // El RPC exige un admin (edita_finanzas), así que esta cuenta de automatización debe tener rol admin.
-  const email = process.env.RAPPI_CUENTA_EMAIL, password = process.env.RAPPI_CUENTA_PASSWORD;
-  if (!email || !password) return NextResponse.json({ error: "Falta configurar la cuenta de automatización (RAPPI_CUENTA_EMAIL/PASSWORD)" }, { status: 500 });
+  // Sin cuenta propia de Rappi se usa la misma de los reportes.
+  const email = process.env.RAPPI_CUENTA_EMAIL || process.env.REPORTE_CUENTA_EMAIL, password = process.env.RAPPI_CUENTA_PASSWORD || process.env.REPORTE_CUENTA_PASSWORD;
+  if (!email || !password) return NextResponse.json({ error: "Falta configurar la cuenta de automatización (RAPPI_CUENTA_EMAIL/PASSWORD o REPORTE_CUENTA_EMAIL/PASSWORD)" }, { status: 500 });
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(), process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim());
   const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
   if (authError) return NextResponse.json({ error: `No se pudo autenticar la cuenta de automatización: ${authError.message}` }, { status: 500 });
