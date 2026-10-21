@@ -64,3 +64,23 @@ export function ordenDesdeApi(detalle, tienda) {
 
 /** Fecha local (AAAA-MM-DD) de un renglón del listado de historial. */
 export const fechaListado = (item) => String(item?.created_at ?? "").slice(0, 10);
+
+/**
+ * Qué hacer con cada orden del listado en una vuelta: las que siguen en curso se saltan (entran en otra vuelta),
+ * las que ya terminaron y están en caché con el mismo estado se reutilizan, y el resto se abre.
+ * @param {object[]} items renglones del listado de historial
+ * @param {string} fecha AAAA-MM-DD
+ * @param {Record<string, {orden: object, productos: object[]}>} cache órdenes terminadas de vueltas anteriores
+ */
+export function planearVuelta(items, fecha, cache = {}) {
+  const abrir = [], reusar = [];
+  let enCurso = 0;
+  for (const it of items) {
+    if (fechaListado(it) !== fecha) continue;
+    const estado = estadoDesdeApi(it), id = String(it.id);
+    if (!estado) { enCurso++; continue; }
+    if (cache[id]?.orden?.estado === estado) reusar.push(cache[id]);
+    else abrir.push(id);
+  }
+  return { abrir, reusar, enCurso };
+}

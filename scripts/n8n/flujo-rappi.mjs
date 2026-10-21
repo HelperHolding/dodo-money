@@ -1,7 +1,9 @@
 // Genera el flujo "Rappi_Ventas_Diarias" de n8n y lo sube (crea o actualiza).
 //   node --env-file=scripts/n8n/.env scripts/n8n/flujo-rappi.mjs            # sube a N8N_URL
 //   node scripts/n8n/flujo-rappi.mjs --archivo flujo.json                   # solo escribe el JSON
-// Corre a las 6:30, antes del Reporte_Diario de las 7:00 (que así ya incluye Rappi y no compite por memoria con gotenberg).
+// En vivo: cada 15 min de 10:00 a 23:45 importa las órdenes de hoy (con caché en el extractor: solo abre las nuevas).
+// Cierre: a las 6:30 vuelve a leer todo ayer sin caché, antes del Reporte_Diario de las 7:00 (que así ya incluye Rappi
+// y no compite por memoria con gotenberg). Los avisos por correo se limitan: uno al aparecer el problema y otro cada 6 h si sigue.
 // El flujo pide las órdenes al contenedor rappi-extractor (scripts/rappi/servidor.mjs), que mantiene la sesión
 // del portal en un navegador, y las manda a la app. Se crea inactivo: en n8n hay que elegir las credenciales
 // Header Auth (x-api-key) de "Leer Rappi" (RAPPI_EXTRACTOR_KEY), "Enviar a Dodo" y "Probar" (RAPPI_API_KEY) y activarlo.
@@ -22,18 +24,32 @@ if (envio) {
   if (!ok) { estado = 'error'; mensaje += ' La app respondió ' + envio.statusCode + ': ' + (envio.body?.error ?? JSON.stringify(envio.body)).slice(0, 300); }
   else mensaje += leido.revisar ? ' Validadas por la app sin guardar.' : ' Guardadas en la app (' + (envio.body?.actualizadas ?? 0) + ' actualizadas).';
 }
-return [{ json: { fecha: leido.fecha, tienda: leido.tienda, estado, mensaje, ordenes: leido.ordenes ?? 0, renglones: leido.renglones ?? 0, omitidas: leido.omitidas ?? [], app: envio ? { status: envio.statusCode, ...envio.body } : null } }];`;
+// Un correo cuando aparece el problema (o cambia) y otro cada 6 h si sigue; nada en vueltas sanas u "ocupado".
+const st = $getWorkflowStaticData('global');
+let avisar = false;
+if (estado === 'error' || estado === 'sesion_expirada') {
+  const previo = st.ultimoAviso;
+  if (!previo || previo.estado !== estado || Date.now() - previo.t > 6 * 3600 * 1000) { avisar = true; st.ultimoAviso = { estado, t: Date.now() }; }
+} else if (estado === 'ok' || estado === 'sin_ordenes') st.ultimoAviso = null;
+return [{ json: { avisar, fecha: leido.fecha, tienda: leido.tienda, estado, mensaje, ordenes: leido.ordenes ?? 0, renglones: leido.renglones ?? 0, omitidas: leido.omitidas ?? [], app: envio ? { status: envio.statusCode, ...envio.body } : null } }];`;
 
 const id = () => randomUUID();
 const nodo = (name, type, typeVersion, position, parameters, extra = {}) => ({ id: id(), name, type, typeVersion, position, parameters, ...extra });
 const headerAuth = { authentication: "genericCredentialType", genericAuthType: "httpHeaderAuth" };
 const nodes = [
-  nodo("Cada dia 6:30am", "n8n-nodes-base.scheduleTrigger", 1.2, [0, 0], { rule: { interval: [{ triggerAtHour: 6, triggerAtMinute: 30 }] } }),
+  nodo("Cada 15 min (hoy)", "n8n-nodes-base.scheduleTrigger", 1.2, [0, -100], { rule: { interval: [{ field: "cronExpression", expression: "*/15 10-23 * * *" }] } }),
+  nodo("Hoy en vivo", "n8n-nodes-base.set", 3.4, [200, -100], { assignments: { assignments: [
+    { id: id(), name: "fecha", value: "hoy", type: "string" }, { id: id(), name: "cache", value: true, type: "boolean" },
+  ] }, options: {} }),
+  nodo("Cierre 6:30am (ayer)", "n8n-nodes-base.scheduleTrigger", 1.2, [0, 50], { rule: { interval: [{ triggerAtHour: 6, triggerAtMinute: 30 }] } }),
+  nodo("Ayer completo", "n8n-nodes-base.set", 3.4, [200, 50], { assignments: { assignments: [
+    { id: id(), name: "fecha", value: "", type: "string" }, { id: id(), name: "cache", value: false, type: "boolean" },
+  ] }, options: {} }),
   nodo("Probar (webhook)", "n8n-nodes-base.webhook", 2, [0, 200], { httpMethod: "POST", path: "rappi-ventas", authentication: "headerAuth", responseMode: "lastNode", options: {} }, { webhookId: id() }),
-  // Desde el horario no hay body: el extractor toma "ayer" en hora de México. Desde el webhook: {fecha?, revisar?}.
+  // En vivo manda fecha "hoy" con caché; el cierre manda fecha vacía (= ayer) sin caché; el webhook manda su {fecha?, revisar?}.
   nodo("Leer Rappi", "n8n-nodes-base.httpRequest", 4.2, [240, 100], {
     method: "POST", url: EXTRACTOR, ...headerAuth,
-    sendBody: true, specifyBody: "json", jsonBody: "={{ JSON.stringify({ fecha: $json.body?.fecha, revisar: $json.body?.revisar === true }) }}",
+    sendBody: true, specifyBody: "json", jsonBody: "={{ JSON.stringify({ fecha: $json.body?.fecha ?? $json.fecha, revisar: $json.body?.revisar === true, cache: $json.cache === true }) }}",
     options: { timeout: 600000 },
   }, { notes: "Credencial: Header Auth x-api-key = RAPPI_EXTRACTOR_KEY del servidor." }),
   nodo("¿Hay órdenes?", "n8n-nodes-base.if", 2.2, [460, 100], {
@@ -47,12 +63,9 @@ const nodes = [
     options: { response: { response: { fullResponse: true, neverError: true } }, timeout: 60000 },
   }, { notes: "Credencial: Header Auth x-api-key = RAPPI_API_KEY de Vercel." }),
   nodo("Resumen", "n8n-nodes-base.code", 2, [900, 100], { jsCode: resumen }),
-  nodo("¿Falló?", "n8n-nodes-base.if", 2.2, [1120, 100], {
-    conditions: { options: { caseSensitive: true, leftValue: "", typeValidation: "strict", version: 2 }, combinator: "or",
-      conditions: [
-        { id: id(), leftValue: "={{ $json.estado }}", rightValue: "error", operator: { type: "string", operation: "equals" } },
-        { id: id(), leftValue: "={{ $json.estado }}", rightValue: "sesion_expirada", operator: { type: "string", operation: "equals" } },
-      ] },
+  nodo("¿Avisar?", "n8n-nodes-base.if", 2.2, [1120, 100], {
+    conditions: { options: { caseSensitive: true, leftValue: "", typeValidation: "strict", version: 2 }, combinator: "and",
+      conditions: [{ id: id(), leftValue: "={{ $json.avisar }}", rightValue: "", operator: { type: "boolean", operation: "true", singleValue: true } }] },
     options: {},
   }),
   nodo("Avisar por correo", "n8n-nodes-base.emailSend", 2.1, [1340, 0], {
@@ -67,13 +80,16 @@ const nodes = [
 ];
 const conecta = (de, ...a) => ({ [de]: { main: a.map((rama) => (Array.isArray(rama) ? rama : [rama]).map((node) => ({ node, type: "main", index: 0 }))) } });
 const connections = {
-  ...conecta("Cada dia 6:30am", "Leer Rappi"),
+  ...conecta("Cada 15 min (hoy)", "Hoy en vivo"),
+  ...conecta("Hoy en vivo", "Leer Rappi"),
+  ...conecta("Cierre 6:30am (ayer)", "Ayer completo"),
+  ...conecta("Ayer completo", "Leer Rappi"),
   ...conecta("Probar (webhook)", "Leer Rappi"),
   ...conecta("Leer Rappi", "¿Hay órdenes?"),
   ...conecta("¿Hay órdenes?", "Enviar a Dodo", "Resumen"),
   ...conecta("Enviar a Dodo", "Resumen"),
-  ...conecta("Resumen", "¿Falló?"),
-  ...conecta("¿Falló?", "Avisar por correo", "Listo"),
+  ...conecta("Resumen", "¿Avisar?"),
+  ...conecta("¿Avisar?", "Avisar por correo", "Listo"),
 };
 const flujo = { name: NOMBRE, nodes, connections, settings: { executionOrder: "v1", timezone: "America/Mexico_City" } };
 
