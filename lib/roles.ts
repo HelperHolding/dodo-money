@@ -111,6 +111,7 @@ export function menuLateral(rol: Rol): Menu {
       titulo: "Finanzas",
       enlaces: [
         { href: "/finanzas", texto: "P&L" },
+        { href: "/banca", texto: "Banca" },
         { href: "/finanzas/nomina", texto: "Nómina" },
         { href: "/finanzas/personal", texto: "Personal" },
         { href: "/finanzas/retenciones", texto: "Retenciones" },
