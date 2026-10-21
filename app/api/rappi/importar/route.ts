@@ -13,8 +13,9 @@ export const dynamic = "force-dynamic";
  * La sucursal se toma de la tienda ya ligada; solo hace falta mandarla la primera vez. Con ?revisar=1 valida sin guardar.
  */
 export async function POST(req: NextRequest) {
-  const apiKey = req.headers.get("x-api-key");
-  if (!apiKey || !process.env.RAPPI_API_KEY || apiKey !== process.env.RAPPI_API_KEY) {
+  // Se ignoran espacios o saltos de línea que se cuelan al pegar la clave en Vercel.
+  const apiKey = req.headers.get("x-api-key")?.trim(), esperada = process.env.RAPPI_API_KEY?.trim();
+  if (!apiKey || !esperada || apiKey !== esperada) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const texto = await req.text();
