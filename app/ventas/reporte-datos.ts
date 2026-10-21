@@ -1,3 +1,4 @@
+import {datosGraficasReporte} from "./graficas-reporte-datos";
 import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { puedeVerVentas, veVentasDeTodas } from "@/lib/roles";
@@ -8,6 +9,7 @@ import { datosVentas, sucursalElegida, ultimoDiaConDatos,type CanalesVentas } fr
 export type ReporteVentas = {
   titulo: string; periodo: Periodo; generadoPor: string; resumen: RenglonResumen[]; dias: FilaDia[];
   canales:CanalReporte[];
+  graficas:Awaited<ReturnType<typeof datosGraficasReporte>>;
 };
 export function reporteCanales(actual:CanalesVentas,anterior:CanalesVentas):CanalReporte[]{
   const resumen=(c:CanalesVentas["pos"])=>{const s=resumenVentas(c.dias);return{total:s.total,neta:s.neta,iva:s.iva,pedidos:s.pedidos,ticket:s.ticket,costoPct:costeo(c.renglones).total.costoPct};};
@@ -29,11 +31,12 @@ export async function datosReporteVentas(q: { desde?: string; hasta?: string; su
   const ultimo = await ultimoDiaConDatos(supabase, sucursal);
   if (!ultimo) return null;
   const periodo = periodoElegido(q.desde, q.hasta, periodoPorDefecto(ultimo));
-  const d = await datosVentas(supabase, sucursal, periodo, periodoAnterior(periodo));
+  const [d,graficas] = await Promise.all([datosVentas(supabase, sucursal, periodo, periodoAnterior(periodo)),datosGraficasReporte(supabase,sucursal,periodo)]);
 
   const resumen = resumenVentas(d.dias);
   const previo = resumenVentas(d.anterior.dias);
   return {
+    graficas,
     canales:reporteCanales(d.canales,d.anterior.canales),
     titulo: sucursal ? nombreDe.get(sucursal) ?? "Sucursal" : "Todas las sucursales",
     periodo,

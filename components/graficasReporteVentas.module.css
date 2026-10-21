@@ -1,0 +1,1 @@
+.histograma{display:block;width:100%;height:auto;min-height:140px;margin:16px 0}.dia{border-top:1px solid var(--linea);padding:14px 0}.dia summary{cursor:pointer;line-height:1.6}.contenido{min-width:0}@media print{.dia{break-inside:avoid}.dia>.contenido{display:block!important}.histograma{min-height:0}.dia summary{list-style:none}}
