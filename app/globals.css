@@ -918,6 +918,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 @media(max-width:700px) { .orden-acciones-encabezado { gap:8px; } .orden-acciones-encabezado .boton, .orden-acciones-encabezado details > summary { font-size:.85rem; } }
 /* Indicadores y roadmap de aperturas. */
 .ap-indicadores { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+@media(min-width:1101px) { .rappi-indicadores { grid-template-columns:repeat(5,minmax(0,1fr)); } }
 .ap-indicador { display:flex; flex-direction:column; gap:10px; padding:20px; border:1px solid var(--linea); border-top:3px solid var(--dato-azul); border-radius: var(--r-md); color:var(--tinta); text-decoration:none; background:var(--blanco); min-width:0; }
 .ap-indicador:hover { border-color:var(--dato-azul); box-shadow:var(--sombra-1); }
 .ap-indicador > span { color:var(--tinta-2); font-size:.9rem; font-weight:600; }

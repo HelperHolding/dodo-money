@@ -4,10 +4,11 @@ export function PanelRappi({ordenes}:{ordenes:RappiGuardada[]}) {
  const r=resumenPanelRappi(ordenes),maximo=Math.max(1,...r.dias.map(d=>d.total)),maxProductos=Math.max(1,...r.productos.map(p=>p.cantidad));
  let offset=0;const colores=['var(--cuadra)','var(--alerta)','var(--ambar)'];
  return <>
- <div className="ap-indicadores">
+ <div className="ap-indicadores rappi-indicadores">
   <div className="ap-indicador"><span>Venta bruta sin descuentos</span><strong>{pesos(r.bruto)}</strong><small>Importe de productos antes de cualquier descuento · con IVA</small></div>
   <div className="ap-indicador"><span>Descuentos restaurante</span><strong>{pesos(r.descuentoRestaurante)}</strong><small>Se restan de la venta bruta para obtener el subtotal restaurante.</small></div>
-  <div className="ap-indicador"><span>Subtotal restaurante</span><strong>{pesos(r.total)}</strong><small>Después del descuento restaurante · con IVA. Descuentos financiados por Rappi: {pesos(r.descuentoRappi)}, separados.</small></div>
+  <div className="ap-indicador"><span>Descuentos DAR (Rappi)</span><strong>{pesos(r.descuentoRappi)}</strong><small>Financiados por Rappi. Se muestran separados del descuento del restaurante.</small></div>
+  <div className="ap-indicador"><span>Subtotal restaurante</span><strong>{pesos(r.total)}</strong><small>Después del descuento restaurante · con IVA.</small></div>
   <div className="ap-indicador"><span>Órdenes sumadas</span><strong>{r.cantidad}</strong><small>Ticket promedio después del descuento restaurante: {r.ticket===null?'—':pesos(r.ticket)}. {r.enDodo} finalizadas incluidas en Dodo IS, excluidas de estos importes.</small></div>
  </div>
  <p className="ap-nota">Los importes corresponden a órdenes finalizadas marcadas para sumar desde Rappi, dentro del periodo y sucursal seleccionados. La venta bruta incluye IVA y no representa el depósito recibido.</p>
