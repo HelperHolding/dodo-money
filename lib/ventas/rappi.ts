@@ -11,12 +11,13 @@ const centavos=(n:number)=>Math.round(n*100)/100;
 export function resumenPanelRappi(ordenes:readonly RappiGuardada[]) {
  const sumadas=ordenes.filter(o=>o.estado==='Finalizado'&&o.sumar);
  const total=centavos(sumadas.reduce((s,o)=>s+Number(o.subtotal_restaurante),0));
+ const bruto=centavos(sumadas.reduce((s,o)=>s+Number(o.bruto),0));
  const dias=new Map<string,{fecha:string;total:number;ordenes:number}>();
  const productos=new Map<string,{nombre:string;cantidad:number;importe:number}>();
  for(const o of sumadas){const d=dias.get(o.fecha)??{fecha:o.fecha,total:0,ordenes:0};d.total=centavos(d.total+Number(o.subtotal_restaurante));d.ordenes++;dias.set(o.fecha,d);
   for(const p of o.rappi_lineas){const key=JSON.stringify([p.nombre,p.opciones]),r=productos.get(key)??{nombre:p.nombre+(p.opciones?` · ${p.opciones}`:''),cantidad:0,importe:0};r.cantidad+=Number(p.cantidad);r.importe=centavos(r.importe+Number(p.importe));productos.set(key,r);}
  }
- return {cantidad:sumadas.length,total,ticket:sumadas.length?centavos(total/sumadas.length):null,descuentoRestaurante:centavos(sumadas.reduce((s,o)=>s+Number(o.descuento_restaurante),0)),descuentoRappi:centavos(sumadas.reduce((s,o)=>s+Number(o.descuento_rappi),0)),dias:[...dias.values()].sort((a,b)=>a.fecha.localeCompare(b.fecha)),productos:[...productos.values()].sort((a,b)=>b.cantidad-a.cantidad||a.nombre.localeCompare(b.nombre)).slice(0,5),estados:(['Finalizado','Cancelado','Con reclamo'] as const).map(estado=>({estado,cantidad:ordenes.filter(o=>o.estado===estado).length})),enDodo:ordenes.filter(o=>o.estado==='Finalizado'&&!o.sumar).length};
+ return {cantidad:sumadas.length,bruto,total,ticket:sumadas.length?centavos(total/sumadas.length):null,descuentoRestaurante:centavos(sumadas.reduce((s,o)=>s+Number(o.descuento_restaurante),0)),descuentoRappi:centavos(sumadas.reduce((s,o)=>s+Number(o.descuento_rappi),0)),dias:[...dias.values()].sort((a,b)=>a.fecha.localeCompare(b.fecha)),productos:[...productos.values()].sort((a,b)=>b.cantidad-a.cantidad||a.nombre.localeCompare(b.nombre)).slice(0,5),estados:(['Finalizado','Cancelado','Con reclamo'] as const).map(estado=>({estado,cantidad:ordenes.filter(o=>o.estado===estado).length})),enDodo:ordenes.filter(o=>o.estado==='Finalizado'&&!o.sumar).length};
 }
 const normal=(s:string)=>s.trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ");
 function tabla(hojas:readonly Hoja[],nombre:string,campos:readonly string[]) {
