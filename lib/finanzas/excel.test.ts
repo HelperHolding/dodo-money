@@ -18,7 +18,7 @@ test("hojaPL: secciones con color, barras de total, montos contables y memo al f
   assert.equal(h.nombre, "Contra meta");
   assert.equal(h.filas[1][0], "Semana 41 · 5 al 11 oct 2026 · venta neta sin IVA, después de descuentos; criterio devengado · merma de productos terminados e insumos adicionales al BOM");
   assert.deepEqual(h.filas[4], ["Renglón", "Real", "% de venta", "Meta", "Meta %", "Diferencia", "Semana anterior %", "Acumulado del mes %"]);
-  assert.deepEqual(h.estilos![fila("VENTA")], { fondo: "BDD7EE", negrita: true });
+  assert.deepEqual(h.estilos![fila("VENTA E INGRESOS")], { fondo: "BDD7EE", negrita: true });
   assert.deepEqual(h.estilos![fila("GASTOS DE OPERACIÓN")], { fondo: "FCE4D6", negrita: true });
   assert.deepEqual(h.estilos![fila("Margen bruto")], BARRA);
   assert.deepEqual(h.estilos![fila("EBITDA")], BARRA);
