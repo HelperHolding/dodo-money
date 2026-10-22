@@ -35,6 +35,13 @@ const E: EntradaPL = {
 };
 const CTX = { ventaNeta: 100000, ventaRappi: 20000, plantilla: { cocina: 19000, gerencia: 8000 } };
 
+test('P&L financiero Rappi: ingresos separados no inflan ventas ni se duplican en EBITDA',()=>{
+ const e={...entradaVacia(),ventaNeta:1000,rappiFueraBase:60,rappiExcedente:40,rappiAjustes:30,agregadores:50};
+ const filas=calcularPL(e,[],CTX),m=(k:string)=>filas.find(f=>f.clave===k)!.monto;
+ assert.equal(m('venta_neta'),1000);assert.equal(m('margen_bruto'),1000);assert.equal(m('ebitda_tienda'),1020);assert.equal(m('ebitda'),1020);
+ const s=sumarEntradas([e,e]);assert.equal(s.rappiExcedente,80);assert.equal(s.rappiFueraBase,120);assert.equal(s.rappiAjustes,60);
+});
+
 test("calcularPL: otros suma comisiones de cobro, faltantes y gastos sin cuenta; EBITDA de tienda y EBITDA", () => {
   const filas = calcularPL(E, [], CTX);
   const f = (c: string) => filas.find((x) => x.clave === c)!;
