@@ -41,3 +41,12 @@ test('Rappi JSON: misma validación que el Excel',()=>{
  assert.throws(()=>leerJsonRappi({ordenes:'x',productos:[p]},'2026-10-06'));
  assert.throws(()=>leerJsonRappi({ordenes:[o]},'2026-10-06'));
 });
+
+test('panel Rappi: bruto antes de descuentos conserva centavos y la base de ventas',()=>{
+ const a={...guardada(),bruto:195,descuento_restaurante:39.6,subtotal_restaurante:155.4,descuento_rappi:26.4,facturar:129};
+ const b={...a,bruto:239,descuento_restaurante:47.75,subtotal_restaurante:191.25};
+ const r=resumenPanelRappi([a,b,{...a,sumar:false},{...a,estado:'Cancelado'},{...a,estado:'Con reclamo'}]);
+ assert.equal(r.bruto,434);assert.equal(r.descuentoRestaurante,87.35);assert.equal(r.total,346.65);
+ assert.equal(Math.round((r.bruto-r.descuentoRestaurante)*100),Math.round(r.total*100));
+ assert.equal(r.cantidad,2);assert.equal(r.descuentoRappi,52.8);assert.equal(resumenPanelRappi([]).bruto,0);
+});
