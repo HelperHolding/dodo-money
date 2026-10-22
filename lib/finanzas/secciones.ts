@@ -5,11 +5,11 @@ export type ClaveSeccion = "venta" | "costo" | "operacion" | "oficina";
 export type Seccion = { clave: ClaveSeccion; nombre: string; fondo: string; renglones: readonly ClaveRenglon[]; total: ClaveRenglon | null };
 
 export const SECCIONES: readonly Seccion[] = [
-  { clave: "venta", nombre: "Venta", fondo: "BDD7EE", renglones: ["venta_neta", "venta_neta_dodo", "venta_neta_rappi"], total: null },
+  { clave: "venta", nombre: "Venta e ingresos", fondo: "BDD7EE", renglones: ["venta_neta", "venta_neta_dodo", "venta_neta_rappi", "rappi_fuera_base", "rappi_excedente"], total: null },
   { clave: "costo", nombre: "Costo de venta", fondo: "D9EAD3", renglones: ["alimento", "alimento_dodo", "alimento_rappi", "merma", "merma_productos", "merma_insumos"], total: "margen_bruto" },
   {
     clave: "operacion", nombre: "Gastos de operación", fondo: "FCE4D6",
-    renglones: ["nomina_cocina", "nomina_gerencia", "repartidores", "agregadores", "marketing_agregadores", "marketing", "renta", "servicios", "mantenimiento", "consumibles_equipo", "regalias", "otros"],
+    renglones: ["nomina_cocina", "nomina_gerencia", "repartidores", "agregadores", "rappi_ajustes", "marketing_agregadores", "marketing", "renta", "servicios", "mantenimiento", "consumibles_equipo", "regalias", "otros"],
     total: "ebitda_tienda",
   },
   { clave: "oficina", nombre: "Oficina central", fondo: "EAD1DC", renglones: ["oficina"], total: "ebitda" },

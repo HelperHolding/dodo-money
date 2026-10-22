@@ -21,6 +21,8 @@ import { fechaMX, hoyMX, pesos } from "@/lib/formato";
 import { capturasTardias, esMesDeEmision, fraccionCubre, textoCubre } from "@/lib/finanzas/cubre";
 import {cargarRappi} from "@/app/ventas/rappi/datos";
 import {ventasRappi} from "@/lib/ventas/rappi";
+import {leerFinancierosRappi} from '@/app/banca/rappi/datos';
+import {efectoPLRappi} from '@/lib/banca/rappi';
 
 type Fila = { sucursal_id: string | null };
 type Detalle = { texto: string; monto: number; href?: string; nota?: string }[];
@@ -71,12 +73,12 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const metas = res[5].data ?? [];
 
   type FacturaPL = Fila & { id: string;
-    tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
+    uuid:string|null;rfc_receptor:string;total:number;tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
     nombre_emisor: string; fecha_emision: string; cubre_desde: string; cubre_hasta: string; creado_en: string; origen: "cfdi" | "manual"; factura_conceptos: { descripcion: string; importe: number; cuenta_pl: string | null }[];
   };
   const [facturasLeidas, cajaChica, cierres, arqueos, dias, desglose, ventas, catalogo, costos, datosRappi] = await Promise.all([
     desde > hasta ? Promise.resolve([] as FacturaPL[]) : leerTodo<FacturaPL>((d, h) => supabase.from("facturas")
-      .select("id, sucursal_id, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(descripcion, importe, cuenta_pl)")
+      .select("id, sucursal_id, uuid, rfc_receptor, total, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(descripcion, importe, cuenta_pl)")
       .lte("cubre_desde", hasta).gte("cubre_hasta", desde).order("id").range(d, h).returns<FacturaPL[]>()),
     leerTodo<Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null; informativo: boolean }>((d, h) => supabase.from("gastos_caja_chica")
       .select("sucursal_id, fecha, concepto, monto, cuenta_pl, informativo").is("anulado_en",null).gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h)
@@ -100,13 +102,24 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       .order("dodo_id").order("vigente_desde").range(d, h).returns<(Costo & { dodo_id: number })[]>()),
     cargarRappi(supabase,null,desde,hasta),
   ]);
-  const [conciliaciones,datosMerma] = await Promise.all([leerConciliaciones(supabase,desde,hasta),datosMermas(supabase,desde,hasta)]);
+  const [conciliaciones,datosMerma,financieros] = await Promise.all([leerConciliaciones(supabase,desde,hasta),datosMermas(supabase,desde,hasta),leerFinancierosRappi(supabase)]);
   const mermasValoradas = valorarMermas(datosMerma.filas,datosMerma.costos);
   const diasConciliados = aplicarConciliaciones(dias,conciliaciones.filas);
   const rappi=ventasRappi(datosRappi.ordenes,datosRappi.catalogo);
+  const avisosFin=new Map<string,string[]>();
+  const finAplicables=financieros.filter(f=>{
+    const cubre=(fecha:string)=>fecha>=f.desde&&fecha<=f.hasta&&fecha>=desde&&fecha<=hasta;
+    const conflicto=diasConciliados.some(d=>d.sucursal_id===f.sucursal_id&&cubre(d.fecha)&&Number(desglose.find(x=>x.ventas_dia_id===d.id)?.total??0)>0)||datosRappi.ordenes.some(o=>o.sucursal_id===f.sucursal_id&&cubre(o.fecha)&&!o.sumar&&o.estado==='Finalizado');
+    const cfdiInvalido= facturasLeidas.some(x=>f.reporte.facturasComision?.some(c=>c.uuid===x.uuid?.toLowerCase()&&(x.rfc_receptor!==f.rfc||x.sucursal_id!==f.sucursal_id||x.tipo!=='ingreso'||x.estado==='cancelada'||Math.abs(Number(x.total)-c.total)>.01)));
+    const cfdiSinVinculo=facturasLeidas.some(x=>x.sucursal_id===f.sucursal_id&&x.rfc_receptor===f.rfc&&x.estado!=='cancelada'&&/rappi/i.test(x.nombre_emisor??'')&&x.cubre_desde<=f.hasta&&x.cubre_hasta>=f.desde&&!f.reporte.uuidsComision.includes(x.uuid?.toLowerCase()??''));
+    if(conflicto||cfdiInvalido||cfdiSinVinculo){avisosFin.set(f.sucursal_id,[...(avisosFin.get(f.sucursal_id)??[]),`Reporte financiero ${f.archivo} pendiente: ${conflicto?'hay ventas Rappi incluidas en Dodo IS; concilia la fuente antes de aplicarlo':cfdiSinVinculo?'hay un documento de Rappi en Compras sin UUID vinculado en este reporte; revisa su relación para no duplicar gastos':'el CFDI de comisión no coincide en empresa, sucursal, estado o importe'}. Se conserva el cálculo anterior para ese reporte.`]);return false;}
+    return true;
+  });
+  const cfdisFin=new Set(finAplicables.flatMap(f=>f.reporte.uuidsComision));
 
   // Cada factura entra por los días de su periodo que caen en el rango, repartida entre sus conceptos (con su cuenta, o la de la factura).
   const facturas = facturasLeidas
+    .filter(x=>!x.uuid||!cfdisFin.has(x.uuid.toLowerCase()))
     .map((x) => ({ ...x, conceptos: x.factura_conceptos, parte: fraccionCubre({ desde: x.cubre_desde, hasta: x.cubre_hasta }, rango) }))
     .filter((x) => x.parte.dias > 0);
   const fraccionDe = (x: (typeof facturas)[number]) => x.parte.fraccion;
@@ -136,7 +149,9 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
         agregador: { total: Number(ag?.total ?? 0), tarjeta: Number(ag?.tarjeta ?? 0), en_linea: Number(ag?.en_linea ?? 0) },
       };
     }),...rappi.dias.filter(d=>d.sucursal_id===s.id).map(d=>({...d,agregador:{total:d.total,tarjeta:0,en_linea:d.total}}))];
-    const ventaNeta = centavos(diasVenta.reduce((t, d) => t + d.total - d.iva, 0));
+    const fin=finAplicables.filter(f=>f.sucursal_id===s.id),efecto=efectoPLRappi(fin.map(f=>f.reporte),desde,hasta);
+    const historicoCubierto=rappi.dias.filter(d=>d.sucursal_id===s.id&&fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta));
+    const ventaNeta = centavos(diasVenta.reduce((t, d) => t + d.total - d.iva, 0)-historicoCubierto.reduce((t,d)=>t+d.total-d.iva,0)+efecto.ventaNeta);
     const ventaRappi = centavos(diasVenta.reduce((t, d) => t + d.agregador.total, 0));
 
     const productosDodo = ventas.filter(v => v.sucursal_id === s.id);
@@ -148,13 +163,15 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       dodo: resumenCanalPL(diasSuc, productosDodo, costeo(renglonesDodo).total.costo),
       rappi: resumenCanalPL(diasRappi, productosRappi, costeo(renglonesRappi).total.costo),
     };
+    canales.rappi.neta=centavos(canales.rappi.neta-historicoCubierto.reduce((t,d)=>t+d.total-d.iva,0)+efecto.ventaNeta);
+    if(fin.length){const diasFuera=datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&!fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta));canales.rappi.bruta=centavos(diasFuera.reduce((t,o)=>t+Number(o.bruto),0)+fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta).reduce((t,m)=>t+m.bruta,0));}
     const renglones = [...renglonesDodo, ...renglonesRappi];
     const c = costeo(renglones);
     anotar(s.id, "alimento", `Costo teórico de ${renglones.reduce((t, r) => t + r.cantidad, 0)} piezas vendidas (receta + periférico)`, c.total.costo);
 
     for (const [canal, nombre] of [["dodo", "Dodo IS / POS"], ["rappi", "Rappi"]] as const) {
       const c = canales[canal];
-      anotar(s.id, `venta_neta_${canal}`, `${nombre} · después de descuentos, sin IVA`, c.neta);
+      anotar(s.id, `venta_neta_${canal}`, canal==='rappi'&&fin.length?`${nombre} · base del reporte financiero + días sin reporte, sin IVA`:`${nombre} · después de descuentos, sin IVA`, c.neta,canal==='rappi'&&fin.length?{href:'/banca?vista=rappi'}:{});
       anotar(s.id, `alimento_${canal}`, `${nombre} · costo teórico de las piezas vendidas`, c.alimento);
     }
     const merma = mermaParaPL(mermasValoradas.filter(r=>r.sucursal_id===s.id),datosMerma.dias.filter(d=>d.sucursal_id===s.id),desde,hasta);
@@ -204,9 +221,13 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       }
     }
 
-    const agregadores = comisionRappi(diasVenta, vigente);
-    anotar(s.id, "agregadores", `Venta Rappi con IVA ${pesos(ventaRappi)} × tasa vigente de cada día`, agregadores);
-    const regaliasPeriodo = regalias(diasVenta, vigente);
+    const agregadores = centavos(comisionRappi(diasVenta.filter(d=>!fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta)), vigente)+efecto.comision);
+    anotar(s.id, "agregadores", 'Comisión Rappi: reportes financieros por lote + estimación de días sin reporte', agregadores);
+    anotar(s.id,'rappi_fuera_base','Reporte Rappi: ingresos fuera de base de retención',efecto.fueraBase);
+    anotar(s.id,'rappi_excedente','Excedente DAR del lote completo, sin IVA',efecto.excedente);
+    anotar(s.id,'rappi_ajustes','Compensaciones y costo de canceladas del reporte',efecto.ajustes);
+    const basesFin=new Map<string,number>();for(const m of fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta))basesFin.set(m.fecha,(basesFin.get(m.fecha)??0)-m.retencionIva/.08);
+    const regaliasPeriodo = regalias([...diasVenta.filter((d,i)=>i<diasSuc.length||!fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta)),...[...basesFin].map(([fecha,base])=>({fecha,total:base,iva:0,tarjeta:0,en_linea:0,agregador:{total:0,tarjeta:0,en_linea:0}}))], vigente);
     anotar(s.id, "regalias", `Venta neta ${pesos(ventaNeta)} × regalías vigentes`, regaliasPeriodo);
     const cobro = comisionesCobro(diasVenta, vigente);
     anotar(s.id, "otros", "Comisión dLocal (pagos en la app, sin Rappi)", cobro.dlocal);
@@ -217,10 +238,15 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       ...de(cierres, s.id).map((x) => Number(x.boveda_diferencia ?? 0)),
     ]);
     anotar(s.id, "otros", "Faltantes de efectivo, neto (arqueos de cierre y bóveda)", faltantes);
+    const presentes=new Set(datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.estado==='Finalizado').map(o=>o.rappi_id));
+    const sinDetalleFin=fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta&&m.tipo==='ORDEN'&&!['canceled','canceled_with_charge'].includes(m.estado)&&!presentes.has(m.orden)).length;
+    const historicoSinFin=rappi.dias.some(d=>d.sucursal_id===s.id&&!fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta));
 
     const entrada: EntradaPL = {
       ...entradaVacia(), canales,
-      ventaNeta, descuentos: centavos(renglones.reduce((t, r) => t + r.importe_sin_descuento - r.importe, 0)),
+      rappiFueraBase:efecto.fueraBase,rappiExcedente:efecto.excedente,rappiAjustes:efecto.ajustes,
+      rappiPendiente:efecto.provisional||sinDetalleFin>0||historicoSinFin||avisosFin.has(s.id),
+      ventaNeta, descuentos: centavos(renglones.reduce((t, r) => t + r.importe_sin_descuento - r.importe, 0)-datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta)).reduce((t,o)=>t+Number(o.bruto)-Number(o.subtotal_restaurante),0)-fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta).reduce((t,m)=>t+m.aliado+m.dar,0)),
       alimento: c.total.costo, merma: merma.monto===null&&merma.insumosMonto===null?null:centavos((merma.monto??0)+(merma.insumosMonto??0)), mermaPendiente: merma.parcial||merma.insumosParcial,
       mermaProductos:merma.monto,mermaInsumos:merma.insumosMonto,mermaProductosPendiente:merma.parcial,mermaInsumosPendiente:merma.insumosParcial,
       nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia },
@@ -229,6 +255,8 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     };
 
     const avisos: string[] = [];
+    avisos.push(...avisosFin.get(s.id)??[]);
+    if(fin.length){avisos.push('Rappi: reporte financiero aplicado. La venta usa la base de retención; fuera de base, excedente DAR y ajustes se muestran separados. Retenciones e IVA de comisiones no son gasto. La comisión del lote se reparte por la comisión bruta de cada día; los UUID de comisión identificados se excluyen del gasto general para no duplicarlos.');if(efecto.provisional)avisos.push('Rappi: hay movimientos sin paidlot; comisión y excedente son provisionales hasta su asignación.');if(sinDetalleFin)avisos.push(`Rappi: ${sinDetalleFin} órdenes financieras sin productos en el historial; su costo queda pendiente y el resultado es provisional.`);}
     for (const m of meses) if (!realDelMes(reales, s.id, m.mes) && plantillaVigente(puestos, s.id, m.fin).length) avisos.push(`Nómina ${m.mes}: se usa plantilla estimada; falta capturar el desglose real del mes.`);
     if(merma.sinImportar)avisos.push(`Mermas: faltan ${merma.sinImportar} días por importar; el resultado es provisional.`);
     if(merma.sinCobertura)avisos.push(`Mermas: ${merma.sinCobertura} días sin cobertura confirmada de productos terminados. Reimporta el reporte completo; el resultado es provisional.`);
@@ -237,7 +265,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     for (const c of conciliaciones.filas.filter(c=>c.sucursal_id===s.id)) {
       avisos.push(`Conciliación manual ${c.fecha}: ${c.motivo}${c.conciliar_productos?" · diferencia de productos justificada":""}.`);
     }
-    if(rappi.dias.some(d=>d.sucursal_id===s.id))avisos.push("Incluye ventas del historial Rappi por subtotal restaurante, antes del descuento de Rappi. Revisa la liquidación por separado.");
+    if(historicoSinFin)avisos.push("Días Rappi sin reporte financiero: se conserva el subtotal restaurante y la comisión estimada; resultado provisional.");
     if(diasVenta.some(d=>d.agregador.total>0)&&rappi.dias.some(r=>r.sucursal_id===s.id&&diasSuc.some(d=>d.fecha===r.fecha&&Number(agregadorDe.get(d.id)?.total??0)>0)))avisos.push("Hay ventas de agregador en Dodo IS y órdenes Rappi importadas para los mismos días. Revisa su fuente en Ventas → Rappi para evitar duplicados.");
     if (diasSuc.length < diasRango) avisos.push(`Faltan ${diasRango - diasSuc.length} días de ventas por importar; los % son sobre lo importado.`);
     if (c.sinCosto.length) avisos.push(`${c.sinCosto.length} productos vendidos sin costo quedan fuera del alimento.`);
