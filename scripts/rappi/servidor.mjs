@@ -11,15 +11,19 @@
 // (p. ej. Finalizado → Cancelado); las que no estaban registradas quedan como referencia sin reimportarse.
 // La respuesta incluye cambios: [{rappi_id, fecha, de, a}].
 //
-// Variables: EXTRACTOR_KEY (header x-api-key), RAPPI_TIENDA, ESTADO (default /datos/sesion.json), PUERTO (3100).
+// La sesión del login clásico dura 24 h: con RAPPI_USUARIO / RAPPI_PASSWORD el servicio vuelve a entrar solo (login.mjs).
+//
+// Variables: EXTRACTOR_KEY (header x-api-key), RAPPI_TIENDA, ESTADO (default /datos/sesion.json), PUERTO (3100),
+// RAPPI_USUARIO, RAPPI_PASSWORD, RAPPI_PAIS (default México).
 import { createServer } from "node:http";
 import { existsSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium } from "playwright-core";
 import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso } from "./api.mjs";
+import { iniciarSesion } from "./login.mjs";
 
 const PORTAL = "https://restaurantes.rappi.com";
-const { EXTRACTOR_KEY, RAPPI_TIENDA = "MX1930486109", ESTADO = "/datos/sesion.json", PUERTO = "3100", CHROMIUM } = process.env;
+const { EXTRACTOR_KEY, RAPPI_TIENDA = "MX1930486109", ESTADO = "/datos/sesion.json", PUERTO = "3100", CHROMIUM, RAPPI_USUARIO, RAPPI_PASSWORD, RAPPI_PAIS } = process.env;
 if (!EXTRACTOR_KEY) { console.error("Falta EXTRACTOR_KEY"); process.exit(1); }
 const NUM = RAPPI_TIENDA.slice(2);
 
@@ -43,10 +47,10 @@ let enCurso = null;
 
 async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
   const base = { fecha, tienda: RAPPI_TIENDA, revisar, ordenes: 0, renglones: 0, omitidas: [], cuerpo: null };
-  if (!existsSync(ESTADO)) return { ...base, estado: "sesion_expirada", mensaje: `No hay sesión guardada en ${ESTADO}: sube una con rappi:login --exportar.` };
   const navegador = await chromium.launch({ headless: true, ...(CHROMIUM ? { executablePath: CHROMIUM } : {}) });
   try {
-    const contexto = await navegador.newContext({ storageState: ESTADO, viewport: { width: 1366, height: 900 }, locale: "es-MX", timezoneId: "America/Mexico_City" });
+    // Sin sesión guardada se arranca vacío y se entra con el login automático.
+    const contexto = await navegador.newContext({ ...(existsSync(ESTADO) ? { storageState: ESTADO } : {}), viewport: { width: 1366, height: 900 }, locale: "es-MX", timezoneId: "America/Mexico_City" });
     const pagina = await contexto.newPage();
     // Se escuchan las respuestas que el propio portal pide: listado del historial y detalle de cada orden.
     const listado = new Map();
@@ -65,9 +69,19 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
       await contenido.waitFor({ timeout: 30_000 });
       return true;
     };
-    const vencida = { ...base, estado: "sesion_expirada", mensaje: "Rappi cerró la sesión: corre rappi:login --exportar en la PC y sube el archivo al servidor." };
+    let vencida = { ...base, estado: "sesion_expirada", mensaje: "Rappi cerró la sesión: corre rappi:login --exportar en la PC y sube el archivo al servidor." };
 
-    if (!(await abrir(`${PORTAL}/orders/history?storeIds=${RAPPI_TIENDA}&tab=orders`, /Mostrando/))) return vencida;
+    // Si la sesión venció (o no hay), se vuelve a entrar con el login automático antes de darla por perdida.
+    const historial = `${PORTAL}/orders/history?storeIds=${RAPPI_TIENDA}&tab=orders`;
+    let relogin = false;
+    if (!(await abrir(historial, /Mostrando/))) {
+      const l = await iniciarSesion(pagina, { portal: PORTAL, datos: DATOS, usuario: RAPPI_USUARIO, password: RAPPI_PASSWORD, pais: RAPPI_PAIS });
+      if (!l.ok || !(await abrir(historial, /Mostrando/))) {
+        vencida = { ...vencida, mensaje: `Rappi cerró la sesión y el login automático no entró (${l.ok ? "el historial no cargó después del login" : l.motivo}). Si sigue, corre rappi:login --exportar en la PC y sube el archivo al servidor.` };
+        return vencida;
+      }
+      relogin = true;
+    }
     // Avanza páginas del historial (más reciente primero) hasta pasar la fecha más antigua a revisar.
     const diasRepaso = Array.from({ length: repasar }, (_, i) => restarDias(fecha, i + 1));
     const masAntigua = diasRepaso.at(-1) ?? fecha;
@@ -121,7 +135,7 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
     if (!revisar) for (const [dia, c] of caches) guardarCache(dia, c);
     const estado = omitidas.length ? "error" : ordenes.length ? "ok" : "sin_ordenes";
     const textoCambios = cambios.length ? ` Cambios de estado: ${cambios.map((c) => `#${c.rappi_id} (${c.fecha}) ${c.de} → ${c.a}`).join(", ")}.` : "";
-    return { ...base, estado, enCurso: plan.enCurso, cambios, mensaje: `Leídas ${ordenes.length} órdenes (${plan.abrir.length} abiertas, ${plan.reusar.length} de caché), ${productos.length} renglones; en curso ${plan.enCurso}; omitidas ${omitidas.length}.${diasRepaso.length ? ` Repaso de ${diasRepaso.length} días.` : ""}${textoCambios}`, ordenes: ordenes.length, renglones: productos.length, omitidas, cuerpo: ordenes.length ? { ordenes, productos } : null };
+    return { ...base, estado, enCurso: plan.enCurso, cambios, relogin, mensaje: `${relogin ? "Sesión renovada con login automático. " : ""}Leídas ${ordenes.length} órdenes (${plan.abrir.length} abiertas, ${plan.reusar.length} de caché), ${productos.length} renglones; en curso ${plan.enCurso}; omitidas ${omitidas.length}.${diasRepaso.length ? ` Repaso de ${diasRepaso.length} días.` : ""}${textoCambios}`, ordenes: ordenes.length, renglones: productos.length, omitidas, cuerpo: ordenes.length ? { ordenes, productos } : null };
   } finally {
     await navegador.close();
   }
