@@ -5,7 +5,7 @@ FROM mcr.microsoft.com/playwright:v1.55.0-noble
 ENV NODE_ENV=production TZ=America/Mexico_City ESTADO=/datos/sesion.json PUERTO=3100
 WORKDIR /app
 RUN npm init -y >/dev/null && npm install --omit=dev playwright-core@1.55.0 && mkdir -p /datos && chown pwuser:pwuser /datos
-COPY api.mjs servidor.mjs ./
+COPY api.mjs login.mjs servidor.mjs ./
 USER pwuser
 VOLUME /datos
 EXPOSE 3100

@@ -1,6 +1,6 @@
 # Agregar este servicio al docker-compose donde corre n8n (misma red, igual que gotenberg).
 # n8n lo llama en http://rappi-extractor:3100/sincronizar; no se publica ningún puerto hacia afuera.
-# En el .env del compose: RAPPI_EXTRACTOR_KEY=<clave larga aleatoria>
+# En el .env del compose: RAPPI_EXTRACTOR_KEY=<clave larga aleatoria>, RAPPI_USUARIO y RAPPI_PASSWORD (cuenta del Portal Aliados).
 services:
   rappi-extractor:
     build:
@@ -10,6 +10,9 @@ services:
     environment:
       EXTRACTOR_KEY: ${RAPPI_EXTRACTOR_KEY}
       RAPPI_TIENDA: MX1930486109
+      # Login automático al vencer la sesión de 24 h. Valores solo en el .env del servidor.
+      RAPPI_USUARIO: ${RAPPI_USUARIO}
+      RAPPI_PASSWORD: ${RAPPI_PASSWORD}
     volumes:
       - rappi_sesion:/datos
     shm_size: "1gb"
