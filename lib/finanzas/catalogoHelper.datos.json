@@ -1,0 +1,7849 @@
+{
+  "fuente": "Catalogo Maestro Grupo Helper.xlsm",
+  "sha256": "69d91bc1ca84f438804ef8d83f62fc6156fe84f3e2db7d1e6a55e22e5f233c3e",
+  "hoja": "Catálogo Maestro",
+  "cuentas": [
+    {
+      "codigo": "100-00-000",
+      "nombre": "Activo",
+      "nivel": 0,
+      "naturaleza": "Deudora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 5
+    },
+    {
+      "codigo": "100-01-000",
+      "nombre": "Activo a corto plazo",
+      "nivel": 0,
+      "naturaleza": "Deudora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 6
+    },
+    {
+      "codigo": "100-02-000",
+      "nombre": "Activo a largo plazo",
+      "nivel": 0,
+      "naturaleza": "Deudora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 7
+    },
+    {
+      "codigo": "101-00-000",
+      "nombre": "Caja",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "101",
+      "rubro": "B101",
+      "nombreRubro": "Efectivo y equivalentes",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 8
+    },
+    {
+      "codigo": "101-01-000",
+      "nombre": "Caja y Efectivo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "101.01",
+      "rubro": "B101",
+      "nombreRubro": "Efectivo y equivalentes",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 9
+    },
+    {
+      "codigo": "101-01-101",
+      "nombre": "Fondo fijo de caja (por sucursal vía segmento)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "101.01",
+      "rubro": "B101",
+      "nombreRubro": "Efectivo y equivalentes",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 10
+    },
+    {
+      "codigo": "101-01-102",
+      "nombre": "Efectivo de ventas por depositar",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "101.01",
+      "rubro": "B101",
+      "nombreRubro": "Efectivo y equivalentes",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 11
+    },
+    {
+      "codigo": "102-00-000",
+      "nombre": "Bancos",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "102",
+      "rubro": "B101",
+      "nombreRubro": "Efectivo y equivalentes",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 12
+    },
+    {
+      "codigo": "102-01-000",
+      "nombre": "Bancos Nacionales",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "102.01",
+      "rubro": "B101",
+      "nombreRubro": "Efectivo y equivalentes",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 13
+    },
+    {
+      "codigo": "102-02-000",
+      "nombre": "Bancos Extranjeros",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "102.02",
+      "rubro": "B101",
+      "nombreRubro": "Efectivo y equivalentes",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 14
+    },
+    {
+      "codigo": "105-00-000",
+      "nombre": "Clientes",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "105",
+      "rubro": "B102",
+      "nombreRubro": "Clientes",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 21
+    },
+    {
+      "codigo": "105-01-000",
+      "nombre": "Clientes nacionales",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "105.01",
+      "rubro": "B102",
+      "nombreRubro": "Clientes",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 22
+    },
+    {
+      "codigo": "105-02-000",
+      "nombre": "Clientes extranjeros",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "105.02",
+      "rubro": "B102",
+      "nombreRubro": "Clientes",
+      "entidades": [
+        "03"
+      ],
+      "fila": 23
+    },
+    {
+      "codigo": "105-03-000",
+      "nombre": "Clientes nacionales partes relacionadas",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "105.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 24
+    },
+    {
+      "codigo": "105-03-001",
+      "nombre": "Clientes PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "105.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 25
+    },
+    {
+      "codigo": "105-03-002",
+      "nombre": "Clientes PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "105.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 26
+    },
+    {
+      "codigo": "105-03-003",
+      "nombre": "Clientes PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "105.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "06"
+      ],
+      "fila": 27
+    },
+    {
+      "codigo": "105-03-004",
+      "nombre": "Clientes PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "105.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 28
+    },
+    {
+      "codigo": "105-03-005",
+      "nombre": "Clientes PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "105.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 29
+    },
+    {
+      "codigo": "105-03-006",
+      "nombre": "Clientes PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "105.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03"
+      ],
+      "fila": 30
+    },
+    {
+      "codigo": "105-03-007",
+      "nombre": "Clientes PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "105.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 31
+    },
+    {
+      "codigo": "105-03-008",
+      "nombre": "Clientes PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "105.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 32
+    },
+    {
+      "codigo": "106-00-000",
+      "nombre": "Ctas y doctos x cobrar a corto plazo",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "106",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 34
+    },
+    {
+      "codigo": "106-01-000",
+      "nombre": "Ctas y doctos x cobrar a corto plazo nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "106.01",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 35
+    },
+    {
+      "codigo": "106-01-101",
+      "nombre": "Plataformas de delivery por liquidar (Rappi, Uber Eats, Didi)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "106.01",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 36
+    },
+    {
+      "codigo": "106-01-102",
+      "nombre": "Procesadores de pago por liquidar (Paywise, PayPal, Stripe, terminales)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "106.01",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 37
+    },
+    {
+      "codigo": "106-01-103",
+      "nombre": "Vouchers de tarjeta por depositar",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "106.01",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 38
+    },
+    {
+      "codigo": "107-00-000",
+      "nombre": "Deudores diversos",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "107",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 48
+    },
+    {
+      "codigo": "107-01-000",
+      "nombre": "Funcionarios y empleados",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "107.01",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 49
+    },
+    {
+      "codigo": "107-02-000",
+      "nombre": "Socios y accionistas",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "107.02",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 50
+    },
+    {
+      "codigo": "107-03-000",
+      "nombre": "Partes relacionadas nacionales",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 51
+    },
+    {
+      "codigo": "107-03-001",
+      "nombre": "Deudores PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 52
+    },
+    {
+      "codigo": "107-03-002",
+      "nombre": "Deudores PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 53
+    },
+    {
+      "codigo": "107-03-003",
+      "nombre": "Deudores PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "06"
+      ],
+      "fila": 54
+    },
+    {
+      "codigo": "107-03-004",
+      "nombre": "Deudores PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 55
+    },
+    {
+      "codigo": "107-03-005",
+      "nombre": "Deudores PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 56
+    },
+    {
+      "codigo": "107-03-006",
+      "nombre": "Deudores PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03"
+      ],
+      "fila": 57
+    },
+    {
+      "codigo": "107-03-007",
+      "nombre": "Deudores PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 58
+    },
+    {
+      "codigo": "107-03-008",
+      "nombre": "Deudores PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 59
+    },
+    {
+      "codigo": "107-03-101",
+      "nombre": "Truseg Desarrollos Inmobiliarios, S.A.P.I. (deudor)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 60
+    },
+    {
+      "codigo": "107-03-102",
+      "nombre": "Proyectos Industriales de Occidente Trumi (deudor)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 61
+    },
+    {
+      "codigo": "107-03-103",
+      "nombre": "Constructora Stetru, S.A.P.I. (deudor)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 62
+    },
+    {
+      "codigo": "107-03-104",
+      "nombre": "Desarrollos que Trascienden, S.A.P.I. (deudor)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 63
+    },
+    {
+      "codigo": "107-03-105",
+      "nombre": "Honest People (deudor)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 64
+    },
+    {
+      "codigo": "107-03-106",
+      "nombre": "Hush (deudor)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 65
+    },
+    {
+      "codigo": "107-03-107",
+      "nombre": "Human+ (deudor)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.03",
+      "rubro": "B103",
+      "nombreRubro": "Partes relacionadas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 66
+    },
+    {
+      "codigo": "107-05-000",
+      "nombre": "Otros deudores diversos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "107.05",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 68
+    },
+    {
+      "codigo": "107-05-901",
+      "nombre": "Interunidades – deudor (sólo Zoho; mismo RFC)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "107.05",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03"
+      ],
+      "fila": 69
+    },
+    {
+      "codigo": "109-00-000",
+      "nombre": "Pagos anticipados",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "109",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 75
+    },
+    {
+      "codigo": "109-01-000",
+      "nombre": "Seg y fianzas pagados x anticipado nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "109.01",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 76
+    },
+    {
+      "codigo": "109-05-000",
+      "nombre": "Rentas pagados x anticipado nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "109.05",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 80
+    },
+    {
+      "codigo": "109-23-000",
+      "nombre": "Otros pagos anticipados",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "109.23",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 98
+    },
+    {
+      "codigo": "113-00-000",
+      "nombre": "Impuestos a favor",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "113",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 105
+    },
+    {
+      "codigo": "113-01-000",
+      "nombre": "IVA a favor",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "113.01",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 106
+    },
+    {
+      "codigo": "113-02-000",
+      "nombre": "ISR a favor",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "113.02",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 107
+    },
+    {
+      "codigo": "113-08-000",
+      "nombre": "Otros impuestos a favor",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "113.08",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 113
+    },
+    {
+      "codigo": "113-08-102",
+      "nombre": "IVA retenido por plataformas digitales",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "113.08",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 115
+    },
+    {
+      "codigo": "114-00-000",
+      "nombre": "Pagos provisionales",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "114",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 116
+    },
+    {
+      "codigo": "114-01-000",
+      "nombre": "Pagos provisionales de ISR",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "114.01",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 117
+    },
+    {
+      "codigo": "115-00-000",
+      "nombre": "Inventario",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "115",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 118
+    },
+    {
+      "codigo": "115-01-000",
+      "nombre": "Inventario",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "115.01",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03"
+      ],
+      "fila": 119
+    },
+    {
+      "codigo": "115-01-101",
+      "nombre": "Mercancía para reventa (CEDIS)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "115.01",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03"
+      ],
+      "fila": 120
+    },
+    {
+      "codigo": "115-02-000",
+      "nombre": "Materia prima y materiales",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "115.02",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 121
+    },
+    {
+      "codigo": "115-02-101",
+      "nombre": "Insumos de alimentos",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "115.02",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 122
+    },
+    {
+      "codigo": "115-02-102",
+      "nombre": "Empaque y desechables",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "115.02",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 123
+    },
+    {
+      "codigo": "115-02-103",
+      "nombre": "Bebidas, lácteos y café",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "115.02",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 124
+    },
+    {
+      "codigo": "115-04-000",
+      "nombre": "Productos terminados",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "115.04",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 126
+    },
+    {
+      "codigo": "115-04-101",
+      "nombre": "Producto terminado (panadería / preparados)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "115.04",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 127
+    },
+    {
+      "codigo": "115-05-000",
+      "nombre": "Mercancías en tránsito",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "115.05",
+      "rubro": "B106",
+      "nombreRubro": "Inventarios",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 128
+    },
+    {
+      "codigo": "118-00-000",
+      "nombre": "Impuestos acreditables pagados",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "118",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 135
+    },
+    {
+      "codigo": "118-01-000",
+      "nombre": "IVA acreditable pagado",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "118.01",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 136
+    },
+    {
+      "codigo": "118-01-101",
+      "nombre": "IVA acreditable pagado 16%",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "118.01",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 137
+    },
+    {
+      "codigo": "118-01-102",
+      "nombre": "IVA acreditable de retenciones enteradas",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "118.01",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 138
+    },
+    {
+      "codigo": "118-02-000",
+      "nombre": "IVA acreditable de importación pagado",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "118.02",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03"
+      ],
+      "fila": 139
+    },
+    {
+      "codigo": "118-02-101",
+      "nombre": "IVA de importación de intangibles/servicios (regalías extranjero)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "118.02",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03"
+      ],
+      "fila": 140
+    },
+    {
+      "codigo": "119-00-000",
+      "nombre": "Impuestos acreditables por pagar",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "119",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 143
+    },
+    {
+      "codigo": "119-01-000",
+      "nombre": "IVA pendiente de pago",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "119.01",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 144
+    },
+    {
+      "codigo": "119-01-101",
+      "nombre": "IVA pendiente de pago 16%",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "119.01",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 145
+    },
+    {
+      "codigo": "119-01-102",
+      "nombre": "IVA retenido pendiente de entero",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "119.01",
+      "rubro": "B105",
+      "nombreRubro": "Impuestos a favor y por acreditar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 146
+    },
+    {
+      "codigo": "120-00-000",
+      "nombre": "Anticipo a proveedores",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "120",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 150
+    },
+    {
+      "codigo": "120-01-000",
+      "nombre": "Anticipo a proveedores nacional",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "120.01",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 151
+    },
+    {
+      "codigo": "120-02-000",
+      "nombre": "Anticipo a proveedores extranjero",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "120.02",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03"
+      ],
+      "fila": 152
+    },
+    {
+      "codigo": "120-03-000",
+      "nombre": "Anticipo a proveedores nacional parte relac",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "120.03",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 153
+    },
+    {
+      "codigo": "120-03-001",
+      "nombre": "Anticipo a proveedor PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "120.03",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 154
+    },
+    {
+      "codigo": "120-03-002",
+      "nombre": "Anticipo a proveedor PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "120.03",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 155
+    },
+    {
+      "codigo": "120-03-003",
+      "nombre": "Anticipo a proveedor PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "120.03",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "06"
+      ],
+      "fila": 156
+    },
+    {
+      "codigo": "120-03-004",
+      "nombre": "Anticipo a proveedor PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "120.03",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 157
+    },
+    {
+      "codigo": "120-03-005",
+      "nombre": "Anticipo a proveedor PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "120.03",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 158
+    },
+    {
+      "codigo": "120-03-006",
+      "nombre": "Anticipo a proveedor PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "120.03",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03"
+      ],
+      "fila": 159
+    },
+    {
+      "codigo": "120-03-007",
+      "nombre": "Anticipo a proveedor PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "120.03",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 160
+    },
+    {
+      "codigo": "120-03-008",
+      "nombre": "Anticipo a proveedor PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "120.03",
+      "rubro": "B107",
+      "nombreRubro": "Pagos anticipados y anticipos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 161
+    },
+    {
+      "codigo": "121-00-000",
+      "nombre": "Otros activos a corto plazo",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "121",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 163
+    },
+    {
+      "codigo": "121-01-000",
+      "nombre": "Otros activos a corto plazo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "121.01",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 164
+    },
+    {
+      "codigo": "121-01-101",
+      "nombre": "ISR retenido por instituciones financieras",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "121.01",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 165
+    },
+    {
+      "codigo": "121-01-102",
+      "nombre": "ISR retenido por plataformas digitales",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "121.01",
+      "rubro": "B104",
+      "nombreRubro": "Otras cuentas por cobrar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 166
+    },
+    {
+      "codigo": "153-00-000",
+      "nombre": "Maquinaria y equipo",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "153",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 171
+    },
+    {
+      "codigo": "153-01-000",
+      "nombre": "Maquinaria y equipo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "153.01",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 172
+    },
+    {
+      "codigo": "154-00-000",
+      "nombre": "Automóviles, autobuses, camiones de carga",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "154",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 173
+    },
+    {
+      "codigo": "154-01-000",
+      "nombre": "Automóviles, autobuses, camiones de carga",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "154.01",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 174
+    },
+    {
+      "codigo": "155-00-000",
+      "nombre": "Mobiliario y equipo de oficina",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "155",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 175
+    },
+    {
+      "codigo": "155-01-000",
+      "nombre": "Mobiliario y equipo de oficina",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "155.01",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 176
+    },
+    {
+      "codigo": "156-00-000",
+      "nombre": "Equipo de cómputo",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "156",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 177
+    },
+    {
+      "codigo": "156-01-000",
+      "nombre": "Equipo de cómputo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "156.01",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 178
+    },
+    {
+      "codigo": "159-00-000",
+      "nombre": "Obras en proceso de activos fijos",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "159",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 183
+    },
+    {
+      "codigo": "159-01-000",
+      "nombre": "Obras en proceso de activos fijos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "159.01",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 184
+    },
+    {
+      "codigo": "170-00-000",
+      "nombre": "Adaptaciones y mejoras",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "170",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 205
+    },
+    {
+      "codigo": "170-01-000",
+      "nombre": "Adaptaciones y mejoras",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "170.01",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 206
+    },
+    {
+      "codigo": "171-00-000",
+      "nombre": "Depreciación acumulada de activos fijos",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "171",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 207
+    },
+    {
+      "codigo": "171-02-000",
+      "nombre": "Depreciación acumulada de maquinaria y equipo",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "171.02",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 209
+    },
+    {
+      "codigo": "171-03-000",
+      "nombre": "Depr acum de automóviles, autobuses, camiones",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "171.03",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 210
+    },
+    {
+      "codigo": "171-04-000",
+      "nombre": "Depr acum de mobiliario y equipo de oficina",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "171.04",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 211
+    },
+    {
+      "codigo": "171-05-000",
+      "nombre": "Depreciación acumulada de eq de cómputo",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "171.05",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 212
+    },
+    {
+      "codigo": "171-17-000",
+      "nombre": "Depr acumulada de adaptaciones y mejoras",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "171.17",
+      "rubro": "B201",
+      "nombreRubro": "Activo fijo neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 224
+    },
+    {
+      "codigo": "173-00-000",
+      "nombre": "Gastos diferidos",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "173",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 245
+    },
+    {
+      "codigo": "173-01-000",
+      "nombre": "Gastos diferidos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "173.01",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 246
+    },
+    {
+      "codigo": "175-00-000",
+      "nombre": "Regalías, asistencia técnica y otros gtos dif",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "175",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 249
+    },
+    {
+      "codigo": "175-01-000",
+      "nombre": "Regalías, asistencia técnica y otros gtos dif",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "175.01",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 250
+    },
+    {
+      "codigo": "176-00-000",
+      "nombre": "Activos intangibles",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "176",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 251
+    },
+    {
+      "codigo": "176-01-000",
+      "nombre": "Activos intangibles",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "176.01",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 252
+    },
+    {
+      "codigo": "176-01-101",
+      "nombre": "Franquicia maestra The Coffee (Café Fratelli, Brasil)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "176.01",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03"
+      ],
+      "fila": 253
+    },
+    {
+      "codigo": "176-01-103",
+      "nombre": "Cuotas iniciales de franquicia de sucursales",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "176.01",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 255
+    },
+    {
+      "codigo": "177-00-000",
+      "nombre": "Gastos de organización",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "177",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 256
+    },
+    {
+      "codigo": "177-01-000",
+      "nombre": "Gastos de organización",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "177.01",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 257
+    },
+    {
+      "codigo": "183-00-000",
+      "nombre": "Amortización acumulada de activos diferidos",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "183",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 268
+    },
+    {
+      "codigo": "183-03-000",
+      "nombre": "Amort acum de regalías, asist téc y otros gtos dif",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "183.03",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 271
+    },
+    {
+      "codigo": "183-04-000",
+      "nombre": "Amortización acumulada de activos intangibles",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "183.04",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 272
+    },
+    {
+      "codigo": "183-05-000",
+      "nombre": "Amortización acumulada de gtos de organización",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "183.05",
+      "rubro": "B202",
+      "nombreRubro": "Intangibles y diferidos neto",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 273
+    },
+    {
+      "codigo": "184-00-000",
+      "nombre": "Depósitos en garantía",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "184",
+      "rubro": "B203",
+      "nombreRubro": "Depósitos en garantía y otros activos LP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 279
+    },
+    {
+      "codigo": "184-02-000",
+      "nombre": "Depósitos de arrendamiento de bienes inmuebles",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "184.02",
+      "rubro": "B203",
+      "nombreRubro": "Depósitos en garantía y otros activos LP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 281
+    },
+    {
+      "codigo": "184-03-000",
+      "nombre": "Otros depósitos en garantía",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "184.03",
+      "rubro": "B203",
+      "nombreRubro": "Depósitos en garantía y otros activos LP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 282
+    },
+    {
+      "codigo": "185-00-000",
+      "nombre": "Impuestos diferidos",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "185",
+      "rubro": "B205",
+      "nombreRubro": "Impuestos y PTU diferidos (activo)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 283
+    },
+    {
+      "codigo": "185-01-000",
+      "nombre": "Impuestos diferidos ISR",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "185.01",
+      "rubro": "B205",
+      "nombreRubro": "Impuestos y PTU diferidos (activo)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 284
+    },
+    {
+      "codigo": "187-00-000",
+      "nombre": "Part de los trabajadores en las utilidades dif",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "187",
+      "rubro": "B205",
+      "nombreRubro": "Impuestos y PTU diferidos (activo)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 296
+    },
+    {
+      "codigo": "187-01-000",
+      "nombre": "Part de los trabajadores en las utilidades dif",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "187.01",
+      "rubro": "B205",
+      "nombreRubro": "Impuestos y PTU diferidos (activo)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 297
+    },
+    {
+      "codigo": "200-00-000",
+      "nombre": "Pasivo",
+      "nivel": 0,
+      "naturaleza": "Acreedora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 315
+    },
+    {
+      "codigo": "200-01-000",
+      "nombre": "Pasivo a corto plazo",
+      "nivel": 0,
+      "naturaleza": "Acreedora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 316
+    },
+    {
+      "codigo": "200-02-000",
+      "nombre": "Pasivo a largo plazo",
+      "nivel": 0,
+      "naturaleza": "Acreedora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 317
+    },
+    {
+      "codigo": "201-00-000",
+      "nombre": "Proveedores",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "201",
+      "rubro": "B301",
+      "nombreRubro": "Proveedores",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 318
+    },
+    {
+      "codigo": "201-01-000",
+      "nombre": "Proveedores nacionales",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.01",
+      "rubro": "B301",
+      "nombreRubro": "Proveedores",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 319
+    },
+    {
+      "codigo": "201-02-000",
+      "nombre": "Proveedores extranjeros",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.02",
+      "rubro": "B301",
+      "nombreRubro": "Proveedores",
+      "entidades": [
+        "03"
+      ],
+      "fila": 320
+    },
+    {
+      "codigo": "201-03-000",
+      "nombre": "Proveedores nacionales parte relacionada",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.03",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 321
+    },
+    {
+      "codigo": "201-03-001",
+      "nombre": "Proveedores PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.03",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 322
+    },
+    {
+      "codigo": "201-03-002",
+      "nombre": "Proveedores PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.03",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 323
+    },
+    {
+      "codigo": "201-03-003",
+      "nombre": "Proveedores PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.03",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "06"
+      ],
+      "fila": 324
+    },
+    {
+      "codigo": "201-03-004",
+      "nombre": "Proveedores PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.03",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 325
+    },
+    {
+      "codigo": "201-03-005",
+      "nombre": "Proveedores PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.03",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 326
+    },
+    {
+      "codigo": "201-03-006",
+      "nombre": "Proveedores PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.03",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03"
+      ],
+      "fila": 327
+    },
+    {
+      "codigo": "201-03-007",
+      "nombre": "Proveedores PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.03",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 328
+    },
+    {
+      "codigo": "201-03-008",
+      "nombre": "Proveedores PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "201.03",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 329
+    },
+    {
+      "codigo": "202-00-000",
+      "nombre": "Cuentas por pagar a corto plazo",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "202",
+      "rubro": "B401",
+      "nombreRubro": "Deuda bancaria y financiera",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 331
+    },
+    {
+      "codigo": "202-01-000",
+      "nombre": "Doctos x pagar bancario y financiero nal",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "202.01",
+      "rubro": "B401",
+      "nombreRubro": "Deuda bancaria y financiera",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 332
+    },
+    {
+      "codigo": "202-01-101",
+      "nombre": "Tarjetas de crédito corporativas (AMEX, Clara)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "202.01",
+      "rubro": "B401",
+      "nombreRubro": "Deuda bancaria y financiera",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 333
+    },
+    {
+      "codigo": "205-00-000",
+      "nombre": "Acreedores diversos a corto plazo",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "205",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 366
+    },
+    {
+      "codigo": "205-01-000",
+      "nombre": "Socios, accionistas o representante legal",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.01",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 367
+    },
+    {
+      "codigo": "205-02-000",
+      "nombre": "Acreedores diversos a corto plazo nal",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.02",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 368
+    },
+    {
+      "codigo": "205-04-000",
+      "nombre": "Acreedores div a corto plazo nal pte relac",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 370
+    },
+    {
+      "codigo": "205-04-001",
+      "nombre": "Acreedores PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 371
+    },
+    {
+      "codigo": "205-04-002",
+      "nombre": "Acreedores PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 372
+    },
+    {
+      "codigo": "205-04-003",
+      "nombre": "Acreedores PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "06"
+      ],
+      "fila": 373
+    },
+    {
+      "codigo": "205-04-004",
+      "nombre": "Acreedores PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 374
+    },
+    {
+      "codigo": "205-04-005",
+      "nombre": "Acreedores PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 375
+    },
+    {
+      "codigo": "205-04-006",
+      "nombre": "Acreedores PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03"
+      ],
+      "fila": 376
+    },
+    {
+      "codigo": "205-04-007",
+      "nombre": "Acreedores PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 377
+    },
+    {
+      "codigo": "205-04-008",
+      "nombre": "Acreedores PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 378
+    },
+    {
+      "codigo": "205-04-101",
+      "nombre": "Truseg Desarrollos Inmobiliarios, S.A.P.I. (acreedor)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 379
+    },
+    {
+      "codigo": "205-04-102",
+      "nombre": "Proyectos Industriales de Occidente Trumi (acreedor)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 380
+    },
+    {
+      "codigo": "205-04-103",
+      "nombre": "Constructora Stetru, S.A.P.I. (acreedor)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 381
+    },
+    {
+      "codigo": "205-04-104",
+      "nombre": "Desarrollos que Trascienden, S.A.P.I. (acreedor)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 382
+    },
+    {
+      "codigo": "205-04-105",
+      "nombre": "Honest People (acreedor)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 383
+    },
+    {
+      "codigo": "205-04-106",
+      "nombre": "Hush (acreedor)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 384
+    },
+    {
+      "codigo": "205-04-107",
+      "nombre": "Human+ (acreedor)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.04",
+      "rubro": "B302",
+      "nombreRubro": "Partes relacionadas por pagar",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 385
+    },
+    {
+      "codigo": "205-06-000",
+      "nombre": "Otros acreedores diversos a corto plazo",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.06",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 387
+    },
+    {
+      "codigo": "205-06-101",
+      "nombre": "Propinas por pagar a colaboradores",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.06",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 388
+    },
+    {
+      "codigo": "205-06-901",
+      "nombre": "Interunidades – acreedor (sólo Zoho; mismo RFC)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "205.06",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03"
+      ],
+      "fila": 389
+    },
+    {
+      "codigo": "206-00-000",
+      "nombre": "Anticipo de cliente",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "206",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 390
+    },
+    {
+      "codigo": "206-01-000",
+      "nombre": "Anticipo de cliente nacional",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.01",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 391
+    },
+    {
+      "codigo": "206-01-101",
+      "nombre": "Anticipos de franquiciatarios (cuotas iniciales)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.01",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 392
+    },
+    {
+      "codigo": "206-03-000",
+      "nombre": "Anticipo de cliente nacional parte relac",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.03",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 394
+    },
+    {
+      "codigo": "206-03-001",
+      "nombre": "Anticipo de cliente PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.03",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 395
+    },
+    {
+      "codigo": "206-03-002",
+      "nombre": "Anticipo de cliente PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.03",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 396
+    },
+    {
+      "codigo": "206-03-003",
+      "nombre": "Anticipo de cliente PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.03",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "06"
+      ],
+      "fila": 397
+    },
+    {
+      "codigo": "206-03-004",
+      "nombre": "Anticipo de cliente PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.03",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 398
+    },
+    {
+      "codigo": "206-03-005",
+      "nombre": "Anticipo de cliente PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.03",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 399
+    },
+    {
+      "codigo": "206-03-006",
+      "nombre": "Anticipo de cliente PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.03",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03"
+      ],
+      "fila": 400
+    },
+    {
+      "codigo": "206-03-007",
+      "nombre": "Anticipo de cliente PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.03",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 401
+    },
+    {
+      "codigo": "206-03-008",
+      "nombre": "Anticipo de cliente PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "206.03",
+      "rubro": "B306",
+      "nombreRubro": "Anticipos de clientes y cobros anticipados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 402
+    },
+    {
+      "codigo": "208-00-000",
+      "nombre": "Impuestos trasladados cobrados",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "208",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 408
+    },
+    {
+      "codigo": "208-01-000",
+      "nombre": "IVA trasladado cobrado",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "208.01",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 409
+    },
+    {
+      "codigo": "209-00-000",
+      "nombre": "Impuestos trasladados no cobrados",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "209",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 411
+    },
+    {
+      "codigo": "209-01-000",
+      "nombre": "IVA trasladado no cobrado",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "209.01",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 412
+    },
+    {
+      "codigo": "210-00-000",
+      "nombre": "Provisión de sueldos y salarios x pagar",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "210",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 414
+    },
+    {
+      "codigo": "210-01-000",
+      "nombre": "Provisión de sueldos y salarios x pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "210.01",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 415
+    },
+    {
+      "codigo": "210-02-000",
+      "nombre": "Provisión de vacaciones por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "210.02",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 416
+    },
+    {
+      "codigo": "210-03-000",
+      "nombre": "Provisión de aguinaldo por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "210.03",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 417
+    },
+    {
+      "codigo": "210-05-000",
+      "nombre": "Provisión de asimilados a salarios por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "210.05",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 419
+    },
+    {
+      "codigo": "211-00-000",
+      "nombre": "Provisión de contribuciones segsocial x pagar",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "211",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 422
+    },
+    {
+      "codigo": "211-01-000",
+      "nombre": "Provisión de IMSS patronal por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "211.01",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 423
+    },
+    {
+      "codigo": "211-02-000",
+      "nombre": "Provisión de SAR por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "211.02",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 424
+    },
+    {
+      "codigo": "211-03-000",
+      "nombre": "Provisión de infonavit por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "211.03",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 425
+    },
+    {
+      "codigo": "212-00-000",
+      "nombre": "Provisión de imoto estatal s nómina x pagar",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "212",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 426
+    },
+    {
+      "codigo": "212-01-000",
+      "nombre": "Provisión de imoto estatal s nómina x pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "212.01",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 427
+    },
+    {
+      "codigo": "213-00-000",
+      "nombre": "Impuestos y derechos por pagar",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "213",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 428
+    },
+    {
+      "codigo": "213-01-000",
+      "nombre": "IVA por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "213.01",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 429
+    },
+    {
+      "codigo": "213-01-101",
+      "nombre": "IVA por importación de intangibles por pagar (autoliquidación)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "213.01",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03"
+      ],
+      "fila": 430
+    },
+    {
+      "codigo": "213-03-000",
+      "nombre": "ISR por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "213.03",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 432
+    },
+    {
+      "codigo": "213-04-000",
+      "nombre": "Impuesto estatal sobre nómina por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "213.04",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 433
+    },
+    {
+      "codigo": "213-07-000",
+      "nombre": "Otros impuestos por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "213.07",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 436
+    },
+    {
+      "codigo": "214-00-000",
+      "nombre": "Dividendos por pagar",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "214",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 437
+    },
+    {
+      "codigo": "214-01-000",
+      "nombre": "Dividendos por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "214.01",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 438
+    },
+    {
+      "codigo": "215-00-000",
+      "nombre": "PTU por pagar",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "215",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 439
+    },
+    {
+      "codigo": "215-01-000",
+      "nombre": "PTU por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "215.01",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 440
+    },
+    {
+      "codigo": "215-02-000",
+      "nombre": "PTU por pagar de ejercicios anteriores",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "215.02",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 441
+    },
+    {
+      "codigo": "215-03-000",
+      "nombre": "Provisión de PTU por pagar",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "215.03",
+      "rubro": "B305",
+      "nombreRubro": "Provisiones laborales y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 442
+    },
+    {
+      "codigo": "216-00-000",
+      "nombre": "Impuestos retenidos",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "216",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 443
+    },
+    {
+      "codigo": "216-01-000",
+      "nombre": "Impuestos ret de ISR x sdos y salarios",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.01",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 444
+    },
+    {
+      "codigo": "216-02-000",
+      "nombre": "Impuestos ret de ISR x asim salarios",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.02",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 445
+    },
+    {
+      "codigo": "216-03-000",
+      "nombre": "Impuestos ret de ISR x arrend",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.03",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 446
+    },
+    {
+      "codigo": "216-04-000",
+      "nombre": "Impuestos ret de ISR x servicios prof",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.04",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 447
+    },
+    {
+      "codigo": "216-05-000",
+      "nombre": "Impuestos ret de ISR x divid",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.05",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 448
+    },
+    {
+      "codigo": "216-07-000",
+      "nombre": "Impuestos ret de ISR x pagos al ext",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.07",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03"
+      ],
+      "fila": 450
+    },
+    {
+      "codigo": "216-07-101",
+      "nombre": "ISR retenido – regalías franquiciante Brasil (The Coffee)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.07",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03"
+      ],
+      "fila": 451
+    },
+    {
+      "codigo": "216-10-000",
+      "nombre": "Impuestos retenidos de IVA",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.10",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 455
+    },
+    {
+      "codigo": "216-10-101",
+      "nombre": "IVA retenido 2/3 honorarios y arrendamiento PF",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.10",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 456
+    },
+    {
+      "codigo": "216-10-102",
+      "nombre": "IVA retenido 6% servicios con personal",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.10",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 457
+    },
+    {
+      "codigo": "216-10-103",
+      "nombre": "IVA retenido 4% fletes",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.10",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 458
+    },
+    {
+      "codigo": "216-11-000",
+      "nombre": "Retenciones de IMSS a los trabaj",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.11",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 459
+    },
+    {
+      "codigo": "216-12-000",
+      "nombre": "Otros impuestos retenidos",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.12",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 460
+    },
+    {
+      "codigo": "216-12-101",
+      "nombre": "ISR retenido RESICO persona física 1.25%",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.12",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 461
+    },
+    {
+      "codigo": "216-12-102",
+      "nombre": "Descuentos INFONAVIT de trabajadores",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.12",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 462
+    },
+    {
+      "codigo": "216-12-103",
+      "nombre": "Descuentos FONACOT de trabajadores",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "216.12",
+      "rubro": "B304",
+      "nombreRubro": "Impuestos por pagar y retenidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 463
+    },
+    {
+      "codigo": "218-00-000",
+      "nombre": "Otros pasivos a corto plazo",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "218",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 466
+    },
+    {
+      "codigo": "218-01-000",
+      "nombre": "Otros pasivos a corto plazo",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "218.01",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 467
+    },
+    {
+      "codigo": "218-01-101",
+      "nombre": "Gastos devengados por pagar (luz, agua, renta)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "218.01",
+      "rubro": "B303",
+      "nombreRubro": "Acreedores y otros pasivos CP",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 468
+    },
+    {
+      "codigo": "252-00-000",
+      "nombre": "Cuentas por pagar a largo plazo",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "252",
+      "rubro": "B402",
+      "nombreRubro": "Pasivos LP y diferidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 476
+    },
+    {
+      "codigo": "252-01-000",
+      "nombre": "Dtos banc y fin x pagar lgo pzo nal",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "252.01",
+      "rubro": "B401",
+      "nombreRubro": "Deuda bancaria y financiera",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 477
+    },
+    {
+      "codigo": "259-00-000",
+      "nombre": "Impuestos diferidos",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "259",
+      "rubro": "B402",
+      "nombreRubro": "Pasivos LP y diferidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 523
+    },
+    {
+      "codigo": "259-01-000",
+      "nombre": "ISR diferido",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "259.01",
+      "rubro": "B402",
+      "nombreRubro": "Pasivos LP y diferidos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 524
+    },
+    {
+      "codigo": "300-00-000",
+      "nombre": "Capital",
+      "nivel": 0,
+      "naturaleza": "Acreedora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 529
+    },
+    {
+      "codigo": "301-00-000",
+      "nombre": "Capital Social",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "301",
+      "rubro": "B501",
+      "nombreRubro": "Capital social y aportaciones",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 530
+    },
+    {
+      "codigo": "301-01-000",
+      "nombre": "Capital fijo",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "301.01",
+      "rubro": "B501",
+      "nombreRubro": "Capital social y aportaciones",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 531
+    },
+    {
+      "codigo": "301-02-000",
+      "nombre": "Capital variable",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "301.02",
+      "rubro": "B501",
+      "nombreRubro": "Capital social y aportaciones",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 532
+    },
+    {
+      "codigo": "301-03-000",
+      "nombre": "Aportaciones p fut aumentos de capital",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "301.03",
+      "rubro": "B501",
+      "nombreRubro": "Capital social y aportaciones",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 533
+    },
+    {
+      "codigo": "303-00-000",
+      "nombre": "Reserva legal",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "303",
+      "rubro": "B502",
+      "nombreRubro": "Resultados acumulados y reservas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 540
+    },
+    {
+      "codigo": "303-01-000",
+      "nombre": "Reserva legal",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "303.01",
+      "rubro": "B502",
+      "nombreRubro": "Resultados acumulados y reservas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 541
+    },
+    {
+      "codigo": "304-00-000",
+      "nombre": "Resultado de ejercicios anteriores",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "304",
+      "rubro": "B502",
+      "nombreRubro": "Resultados acumulados y reservas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 542
+    },
+    {
+      "codigo": "304-01-000",
+      "nombre": "Utilidad de ejercicios anteriores",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "304.01",
+      "rubro": "B502",
+      "nombreRubro": "Resultados acumulados y reservas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 543
+    },
+    {
+      "codigo": "304-02-000",
+      "nombre": "Pérdida de ejercicios anteriores",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "304.02",
+      "rubro": "B502",
+      "nombreRubro": "Resultados acumulados y reservas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 544
+    },
+    {
+      "codigo": "305-00-000",
+      "nombre": "Resultado del ejercicio",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "305",
+      "rubro": "B502",
+      "nombreRubro": "Resultados acumulados y reservas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 547
+    },
+    {
+      "codigo": "305-01-000",
+      "nombre": "Utilidad del ejercicio",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "305.01",
+      "rubro": "B502",
+      "nombreRubro": "Resultados acumulados y reservas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 548
+    },
+    {
+      "codigo": "305-02-000",
+      "nombre": "Pérdida del ejercicio",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "305.02",
+      "rubro": "B502",
+      "nombreRubro": "Resultados acumulados y reservas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 549
+    },
+    {
+      "codigo": "400-00-000",
+      "nombre": "Ingresos",
+      "nivel": 0,
+      "naturaleza": "Acreedora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 553
+    },
+    {
+      "codigo": "401-00-000",
+      "nombre": "Ingresos",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "401",
+      "rubro": "R101",
+      "nombreRubro": "Venta sucursal / POS",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 554
+    },
+    {
+      "codigo": "401-01-000",
+      "nombre": "Ventas y/o servicios grav a tasa gral",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.01",
+      "rubro": "R101",
+      "nombreRubro": "Venta sucursal / POS",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 555
+    },
+    {
+      "codigo": "401-01-101",
+      "nombre": "Ventas sucursales – POS (alimentos y bebidas 16%)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.01",
+      "rubro": "R101",
+      "nombreRubro": "Venta sucursal / POS",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 556
+    },
+    {
+      "codigo": "401-01-102",
+      "nombre": "Ventas sucursales – agregadores (Rappi, Uber Eats, Didi)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.01",
+      "rubro": "R102",
+      "nombreRubro": "Venta por agregadores (Rappi, Uber, Didi)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 557
+    },
+    {
+      "codigo": "401-01-103",
+      "nombre": "Venta de insumos y producto a franquiciatarios 16%",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.01",
+      "rubro": "R103",
+      "nombreRubro": "Venta de insumos y producto a franquiciatarios",
+      "entidades": [
+        "03"
+      ],
+      "fila": 558
+    },
+    {
+      "codigo": "401-01-104",
+      "nombre": "Venta de equipamiento, merch, uniformes y POP",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.01",
+      "rubro": "R103",
+      "nombreRubro": "Venta de insumos y producto a franquiciatarios",
+      "entidades": [
+        "03"
+      ],
+      "fila": 559
+    },
+    {
+      "codigo": "401-01-105",
+      "nombre": "Fondo de marketing cobrado a franquiciatarios",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.01",
+      "rubro": "R105",
+      "nombreRubro": "Regalías, marketing y tecnología cobrados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 560
+    },
+    {
+      "codigo": "401-01-106",
+      "nombre": "Cuotas de tecnología / POS fee",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.01",
+      "rubro": "R105",
+      "nombreRubro": "Regalías, marketing y tecnología cobrados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 561
+    },
+    {
+      "codigo": "401-01-107",
+      "nombre": "Servicios a franquiciatarios (auditoría, capacitación, envíos)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.01",
+      "rubro": "R105",
+      "nombreRubro": "Regalías, marketing y tecnología cobrados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 562
+    },
+    {
+      "codigo": "401-04-000",
+      "nombre": "Ventas y/o servicios grav al 0%",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.04",
+      "rubro": "R101",
+      "nombreRubro": "Venta sucursal / POS",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 565
+    },
+    {
+      "codigo": "401-04-101",
+      "nombre": "Ventas sucursales tasa 0% (p. ej. café en grano)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.04",
+      "rubro": "R101",
+      "nombreRubro": "Venta sucursal / POS",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 566
+    },
+    {
+      "codigo": "401-04-102",
+      "nombre": "Venta de insumos tasa 0% a franquiciatarios",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.04",
+      "rubro": "R103",
+      "nombreRubro": "Venta de insumos y producto a franquiciatarios",
+      "entidades": [
+        "03"
+      ],
+      "fila": 567
+    },
+    {
+      "codigo": "401-10-000",
+      "nombre": "Ventas y/o serv grav a tasa gral nal pte relac",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.10",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 573
+    },
+    {
+      "codigo": "401-10-001",
+      "nombre": "Ventas tasa general PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.10",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 574
+    },
+    {
+      "codigo": "401-10-002",
+      "nombre": "Ventas tasa general PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.10",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 575
+    },
+    {
+      "codigo": "401-10-003",
+      "nombre": "Ventas tasa general PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.10",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "06"
+      ],
+      "fila": 576
+    },
+    {
+      "codigo": "401-10-004",
+      "nombre": "Ventas tasa general PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.10",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 577
+    },
+    {
+      "codigo": "401-10-005",
+      "nombre": "Ventas tasa general PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.10",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 578
+    },
+    {
+      "codigo": "401-10-006",
+      "nombre": "Ventas tasa general PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.10",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03"
+      ],
+      "fila": 579
+    },
+    {
+      "codigo": "401-10-007",
+      "nombre": "Ventas tasa general PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.10",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 580
+    },
+    {
+      "codigo": "401-10-008",
+      "nombre": "Ventas tasa general PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.10",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 581
+    },
+    {
+      "codigo": "401-29-000",
+      "nombre": "Ingresos por regalías",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 616
+    },
+    {
+      "codigo": "401-29-001",
+      "nombre": "Regalías y cuotas PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 617
+    },
+    {
+      "codigo": "401-29-002",
+      "nombre": "Regalías y cuotas PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 618
+    },
+    {
+      "codigo": "401-29-003",
+      "nombre": "Regalías y cuotas PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "06"
+      ],
+      "fila": 619
+    },
+    {
+      "codigo": "401-29-004",
+      "nombre": "Regalías y cuotas PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 620
+    },
+    {
+      "codigo": "401-29-005",
+      "nombre": "Regalías y cuotas PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 621
+    },
+    {
+      "codigo": "401-29-006",
+      "nombre": "Regalías y cuotas PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03"
+      ],
+      "fila": 622
+    },
+    {
+      "codigo": "401-29-007",
+      "nombre": "Regalías y cuotas PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 623
+    },
+    {
+      "codigo": "401-29-008",
+      "nombre": "Regalías y cuotas PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 624
+    },
+    {
+      "codigo": "401-29-101",
+      "nombre": "Cuotas iniciales de franquicia (terceros)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R104",
+      "nombreRubro": "Cuotas de franquicia",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 625
+    },
+    {
+      "codigo": "401-29-102",
+      "nombre": "Regalías de franquiciatarios (terceros)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.29",
+      "rubro": "R105",
+      "nombreRubro": "Regalías, marketing y tecnología cobrados",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 626
+    },
+    {
+      "codigo": "401-38-000",
+      "nombre": "Otros ingresos propios",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.38",
+      "rubro": "R101",
+      "nombreRubro": "Venta sucursal / POS",
+      "entidades": [
+        "03"
+      ],
+      "fila": 635
+    },
+    {
+      "codigo": "401-38-901",
+      "nombre": "Regalías internas cobradas a sucursales propias (sólo gestión; se elimina)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.38",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03"
+      ],
+      "fila": 636
+    },
+    {
+      "codigo": "401-38-902",
+      "nombre": "Ventas internas CEDIS a sucursales propias (sólo gestión; se elimina)",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "401.38",
+      "rubro": "R106",
+      "nombreRubro": "Ingresos intercompañía (servicios, rentas, ventas)",
+      "entidades": [
+        "03"
+      ],
+      "fila": 637
+    },
+    {
+      "codigo": "402-00-000",
+      "nombre": "Dev, descuentos o bonif sobre ingresos",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "402",
+      "rubro": "R109",
+      "nombreRubro": "Descuentos y devoluciones",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 641
+    },
+    {
+      "codigo": "402-01-000",
+      "nombre": "Dev, desctos o bonifi s vtas y/o serv tasa gral",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "402.01",
+      "rubro": "R109",
+      "nombreRubro": "Descuentos y devoluciones",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 642
+    },
+    {
+      "codigo": "402-01-101",
+      "nombre": "Descuentos en ventas sucursal (promociones)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "402.01",
+      "rubro": "R109",
+      "nombreRubro": "Descuentos y devoluciones",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 643
+    },
+    {
+      "codigo": "402-01-102",
+      "nombre": "Devoluciones y bonificaciones a franquiciatarios",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "402.01",
+      "rubro": "R109",
+      "nombreRubro": "Descuentos y devoluciones",
+      "entidades": [
+        "03"
+      ],
+      "fila": 644
+    },
+    {
+      "codigo": "402-02-000",
+      "nombre": "Dev, desctos o bonif s vtas y/o serva 0%",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "402.02",
+      "rubro": "R109",
+      "nombreRubro": "Descuentos y devoluciones",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 645
+    },
+    {
+      "codigo": "403-00-000",
+      "nombre": "Otros ingresos",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "403",
+      "rubro": "R701",
+      "nombreRubro": "Otros ingresos y gastos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 649
+    },
+    {
+      "codigo": "403-01-000",
+      "nombre": "Otros Ingresos",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "403.01",
+      "rubro": "R701",
+      "nombreRubro": "Otros ingresos y gastos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 650
+    },
+    {
+      "codigo": "500-00-000",
+      "nombre": "Costos",
+      "nivel": 0,
+      "naturaleza": "Deudora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 655
+    },
+    {
+      "codigo": "501-00-000",
+      "nombre": "Costos de venta y/o servicio",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "501",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 656
+    },
+    {
+      "codigo": "501-01-000",
+      "nombre": "Costo de venta",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "501.01",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 657
+    },
+    {
+      "codigo": "501-01-101",
+      "nombre": "Costo de alimento y empaque (consumo BOM)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "501.01",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 658
+    },
+    {
+      "codigo": "501-01-102",
+      "nombre": "Merma de producto terminado",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "501.01",
+      "rubro": "R202",
+      "nombreRubro": "Merma de producto terminado",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 659
+    },
+    {
+      "codigo": "501-01-103",
+      "nombre": "Merma de insumos",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "501.01",
+      "rubro": "R203",
+      "nombreRubro": "Merma de insumos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 660
+    },
+    {
+      "codigo": "501-01-104",
+      "nombre": "Costo de venta comercializadora (insumos a franquiciatarios)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "501.01",
+      "rubro": "R204",
+      "nombreRubro": "Costo comercializadora / CEDIS",
+      "entidades": [
+        "03"
+      ],
+      "fila": 661
+    },
+    {
+      "codigo": "501-01-105",
+      "nombre": "Costo de equipamiento, merch y POP vendido",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "501.01",
+      "rubro": "R204",
+      "nombreRubro": "Costo comercializadora / CEDIS",
+      "entidades": [
+        "03"
+      ],
+      "fila": 662
+    },
+    {
+      "codigo": "501-01-901",
+      "nombre": "Costo interno de mercancía recibida de CEDIS (sólo gestión; se elimina)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "501.01",
+      "rubro": "R204",
+      "nombreRubro": "Costo comercializadora / CEDIS",
+      "entidades": [
+        "03"
+      ],
+      "fila": 663
+    },
+    {
+      "codigo": "501-08-000",
+      "nombre": "Otros conceptos de costo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "501.08",
+      "rubro": "R205",
+      "nombreRubro": "Costo de franquicias (franquiciante, comisiones)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 670
+    },
+    {
+      "codigo": "501-08-101",
+      "nombre": "Fee al franquiciante extranjero por venta de franquicias",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "501.08",
+      "rubro": "R205",
+      "nombreRubro": "Costo de franquicias (franquiciante, comisiones)",
+      "entidades": [
+        "03"
+      ],
+      "fila": 671
+    },
+    {
+      "codigo": "501-08-102",
+      "nombre": "Comisiones por venta de franquicias",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "501.08",
+      "rubro": "R205",
+      "nombreRubro": "Costo de franquicias (franquiciante, comisiones)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 672
+    },
+    {
+      "codigo": "501-08-103",
+      "nombre": "Bonos y apoyos de apertura",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "501.08",
+      "rubro": "R205",
+      "nombreRubro": "Costo de franquicias (franquiciante, comisiones)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 673
+    },
+    {
+      "codigo": "502-00-000",
+      "nombre": "Compras",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "502",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 674
+    },
+    {
+      "codigo": "502-01-000",
+      "nombre": "Compras nacionales",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "502.01",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 675
+    },
+    {
+      "codigo": "502-02-000",
+      "nombre": "Compras nacionales parte relacionada",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "502.02",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 676
+    },
+    {
+      "codigo": "502-02-001",
+      "nombre": "Compras nacionales PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "502.02",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 677
+    },
+    {
+      "codigo": "502-02-002",
+      "nombre": "Compras nacionales PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "502.02",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 678
+    },
+    {
+      "codigo": "502-02-003",
+      "nombre": "Compras nacionales PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "502.02",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "06"
+      ],
+      "fila": 679
+    },
+    {
+      "codigo": "502-02-004",
+      "nombre": "Compras nacionales PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "502.02",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 680
+    },
+    {
+      "codigo": "502-02-005",
+      "nombre": "Compras nacionales PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "502.02",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 681
+    },
+    {
+      "codigo": "502-02-006",
+      "nombre": "Compras nacionales PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "502.02",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03"
+      ],
+      "fila": 682
+    },
+    {
+      "codigo": "502-02-007",
+      "nombre": "Compras nacionales PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "502.02",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 683
+    },
+    {
+      "codigo": "502-02-008",
+      "nombre": "Compras nacionales PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "502.02",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 684
+    },
+    {
+      "codigo": "502-03-000",
+      "nombre": "Compras de Importación",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "502.03",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03"
+      ],
+      "fila": 685
+    },
+    {
+      "codigo": "503-00-000",
+      "nombre": "Devoluciones, destos o bonif s compras",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "503",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 687
+    },
+    {
+      "codigo": "503-01-000",
+      "nombre": "Devoluciones, desctos o bonif s compras",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "503.01",
+      "rubro": "R201",
+      "nombreRubro": "Alimento y empaque",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 688
+    },
+    {
+      "codigo": "504-00-000",
+      "nombre": "Otras cuentas de costos",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "504",
+      "rubro": "R204",
+      "nombreRubro": "Costo comercializadora / CEDIS",
+      "entidades": [
+        "03"
+      ],
+      "fila": 689
+    },
+    {
+      "codigo": "504-04-000",
+      "nombre": "Otras cuentas de costos incurridos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "504.04",
+      "rubro": "R204",
+      "nombreRubro": "Costo comercializadora / CEDIS",
+      "entidades": [
+        "03"
+      ],
+      "fila": 693
+    },
+    {
+      "codigo": "505-00-000",
+      "nombre": "Costo de activo fijo",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "505",
+      "rubro": "R701",
+      "nombreRubro": "Otros ingresos y gastos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 715
+    },
+    {
+      "codigo": "505-01-000",
+      "nombre": "Costo por venta de activo fijo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "505.01",
+      "rubro": "R701",
+      "nombreRubro": "Otros ingresos y gastos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 716
+    },
+    {
+      "codigo": "505-02-000",
+      "nombre": "Costo por baja de activo fijo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "505.02",
+      "rubro": "R701",
+      "nombreRubro": "Otros ingresos y gastos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 717
+    },
+    {
+      "codigo": "600-00-000",
+      "nombre": "Gastos",
+      "nivel": 0,
+      "naturaleza": "Deudora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 718
+    },
+    {
+      "codigo": "602-00-000",
+      "nombre": "Gastos de venta",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "602",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 804
+    },
+    {
+      "codigo": "602-01-000",
+      "nombre": "Sueldos y salarios",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.01",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 805
+    },
+    {
+      "codigo": "602-01-101",
+      "nombre": "Sueldos y salarios – personal operativo (cocina/piso)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.01",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 806
+    },
+    {
+      "codigo": "602-01-102",
+      "nombre": "Sueldos y salarios – gerencia de tienda",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.01",
+      "rubro": "R302",
+      "nombreRubro": "Nómina gerencia de tienda",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 807
+    },
+    {
+      "codigo": "602-01-103",
+      "nombre": "Sueldos y salarios – repartidores propios",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.01",
+      "rubro": "R303",
+      "nombreRubro": "Repartidores",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 808
+    },
+    {
+      "codigo": "602-02-000",
+      "nombre": "Compensaciones",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.02",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 809
+    },
+    {
+      "codigo": "602-03-000",
+      "nombre": "Tiempos extras",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.03",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 810
+    },
+    {
+      "codigo": "602-06-000",
+      "nombre": "Vacaciones",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.06",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 813
+    },
+    {
+      "codigo": "602-06-101",
+      "nombre": "Vacaciones – personal operativo (cocina/piso)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.06",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 814
+    },
+    {
+      "codigo": "602-06-102",
+      "nombre": "Vacaciones – gerencia de tienda",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.06",
+      "rubro": "R302",
+      "nombreRubro": "Nómina gerencia de tienda",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 815
+    },
+    {
+      "codigo": "602-07-000",
+      "nombre": "Prima vacacional",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.07",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 816
+    },
+    {
+      "codigo": "602-07-101",
+      "nombre": "Prima vacacional – personal operativo (cocina/piso)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.07",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 817
+    },
+    {
+      "codigo": "602-07-102",
+      "nombre": "Prima vacacional – gerencia de tienda",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.07",
+      "rubro": "R302",
+      "nombreRubro": "Nómina gerencia de tienda",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 818
+    },
+    {
+      "codigo": "602-08-000",
+      "nombre": "Prima dominical",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.08",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 819
+    },
+    {
+      "codigo": "602-09-000",
+      "nombre": "Días festivos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.09",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 820
+    },
+    {
+      "codigo": "602-12-000",
+      "nombre": "Aguinaldo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.12",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 823
+    },
+    {
+      "codigo": "602-12-101",
+      "nombre": "Aguinaldo – personal operativo (cocina/piso)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.12",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 824
+    },
+    {
+      "codigo": "602-12-102",
+      "nombre": "Aguinaldo – gerencia de tienda",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.12",
+      "rubro": "R302",
+      "nombreRubro": "Nómina gerencia de tienda",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 825
+    },
+    {
+      "codigo": "602-13-000",
+      "nombre": "Indemnizaciones",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.13",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 826
+    },
+    {
+      "codigo": "602-15-000",
+      "nombre": "Despensa",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.15",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 828
+    },
+    {
+      "codigo": "602-16-000",
+      "nombre": "Transporte",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.16",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 829
+    },
+    {
+      "codigo": "602-22-000",
+      "nombre": "Estímulo al personal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.22",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 835
+    },
+    {
+      "codigo": "602-23-000",
+      "nombre": "Previsión social",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.23",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 836
+    },
+    {
+      "codigo": "602-26-000",
+      "nombre": "Cuotas al IMSS",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.26",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 839
+    },
+    {
+      "codigo": "602-26-101",
+      "nombre": "Cuotas al IMSS – personal operativo (cocina/piso)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.26",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 840
+    },
+    {
+      "codigo": "602-26-102",
+      "nombre": "Cuotas al IMSS – gerencia de tienda",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.26",
+      "rubro": "R302",
+      "nombreRubro": "Nómina gerencia de tienda",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 841
+    },
+    {
+      "codigo": "602-27-000",
+      "nombre": "Aportaciones al infonavit",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.27",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 842
+    },
+    {
+      "codigo": "602-27-101",
+      "nombre": "Aportaciones al INFONAVIT – personal operativo (cocina/piso)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.27",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 843
+    },
+    {
+      "codigo": "602-27-102",
+      "nombre": "Aportaciones al INFONAVIT – gerencia de tienda",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.27",
+      "rubro": "R302",
+      "nombreRubro": "Nómina gerencia de tienda",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 844
+    },
+    {
+      "codigo": "602-28-000",
+      "nombre": "Aportaciones al SAR",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.28",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 845
+    },
+    {
+      "codigo": "602-28-101",
+      "nombre": "Aportaciones al SAR – personal operativo (cocina/piso)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.28",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 846
+    },
+    {
+      "codigo": "602-28-102",
+      "nombre": "Aportaciones al SAR – gerencia de tienda",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.28",
+      "rubro": "R302",
+      "nombreRubro": "Nómina gerencia de tienda",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 847
+    },
+    {
+      "codigo": "602-29-000",
+      "nombre": "Impuesto estatal sobre nóminas",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.29",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 848
+    },
+    {
+      "codigo": "602-29-101",
+      "nombre": "Impuesto estatal sobre nóminas – personal operativo (cocina/piso)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.29",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 849
+    },
+    {
+      "codigo": "602-29-102",
+      "nombre": "Impuesto estatal sobre nóminas – gerencia de tienda",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.29",
+      "rubro": "R302",
+      "nombreRubro": "Nómina gerencia de tienda",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 850
+    },
+    {
+      "codigo": "602-32-000",
+      "nombre": "Servicios administrativos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.32",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 853
+    },
+    {
+      "codigo": "602-33-000",
+      "nombre": "Servicios administrativos partes relac",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.33",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 854
+    },
+    {
+      "codigo": "602-33-001",
+      "nombre": "Servicios administrativos y de personal PR (tienda) – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.33",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 855
+    },
+    {
+      "codigo": "602-33-002",
+      "nombre": "Servicios administrativos y de personal PR (tienda) – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.33",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 856
+    },
+    {
+      "codigo": "602-33-003",
+      "nombre": "Servicios administrativos y de personal PR (tienda) – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.33",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "06"
+      ],
+      "fila": 857
+    },
+    {
+      "codigo": "602-33-004",
+      "nombre": "Servicios administrativos y de personal PR (tienda) – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.33",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 858
+    },
+    {
+      "codigo": "602-33-005",
+      "nombre": "Servicios administrativos y de personal PR (tienda) – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.33",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 859
+    },
+    {
+      "codigo": "602-33-006",
+      "nombre": "Servicios administrativos y de personal PR (tienda) – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.33",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03"
+      ],
+      "fila": 860
+    },
+    {
+      "codigo": "602-33-007",
+      "nombre": "Servicios administrativos y de personal PR (tienda) – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.33",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 861
+    },
+    {
+      "codigo": "602-33-008",
+      "nombre": "Servicios administrativos y de personal PR (tienda) – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.33",
+      "rubro": "R301",
+      "nombreRubro": "Nómina cocina / operativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 862
+    },
+    {
+      "codigo": "602-34-000",
+      "nombre": "Honorarios a pers físicas residtes nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.34",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 863
+    },
+    {
+      "codigo": "602-38-000",
+      "nombre": "Honorarios a pers morales residtes nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.38",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 867
+    },
+    {
+      "codigo": "602-45-000",
+      "nombre": "Arrendamiento a personas físicas resid nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.45",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 874
+    },
+    {
+      "codigo": "602-45-101",
+      "nombre": "Renta de locales – arrendador persona física",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.45",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 875
+    },
+    {
+      "codigo": "602-46-000",
+      "nombre": "Arrendamiento a personas morales resid nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 876
+    },
+    {
+      "codigo": "602-46-001",
+      "nombre": "Arrendamiento de locales PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 877
+    },
+    {
+      "codigo": "602-46-002",
+      "nombre": "Arrendamiento de locales PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 878
+    },
+    {
+      "codigo": "602-46-003",
+      "nombre": "Arrendamiento de locales PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "06"
+      ],
+      "fila": 879
+    },
+    {
+      "codigo": "602-46-004",
+      "nombre": "Arrendamiento de locales PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 880
+    },
+    {
+      "codigo": "602-46-005",
+      "nombre": "Arrendamiento de locales PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 881
+    },
+    {
+      "codigo": "602-46-006",
+      "nombre": "Arrendamiento de locales PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03"
+      ],
+      "fila": 882
+    },
+    {
+      "codigo": "602-46-007",
+      "nombre": "Arrendamiento de locales PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 883
+    },
+    {
+      "codigo": "602-46-008",
+      "nombre": "Arrendamiento de locales PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 884
+    },
+    {
+      "codigo": "602-46-101",
+      "nombre": "Renta de locales – arrendador persona moral",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.46",
+      "rubro": "R307",
+      "nombreRubro": "Renta",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 885
+    },
+    {
+      "codigo": "602-48-000",
+      "nombre": "Combustibles y lubricantes",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.48",
+      "rubro": "R308",
+      "nombreRubro": "Servicios (luz, agua, gas, internet)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 887
+    },
+    {
+      "codigo": "602-48-101",
+      "nombre": "Gas LP / natural",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.48",
+      "rubro": "R308",
+      "nombreRubro": "Servicios (luz, agua, gas, internet)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 888
+    },
+    {
+      "codigo": "602-50-000",
+      "nombre": "Teléfono, internet",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.50",
+      "rubro": "R308",
+      "nombreRubro": "Servicios (luz, agua, gas, internet)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 890
+    },
+    {
+      "codigo": "602-51-000",
+      "nombre": "Agua",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.51",
+      "rubro": "R308",
+      "nombreRubro": "Servicios (luz, agua, gas, internet)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 891
+    },
+    {
+      "codigo": "602-52-000",
+      "nombre": "Energía eléctrica",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.52",
+      "rubro": "R308",
+      "nombreRubro": "Servicios (luz, agua, gas, internet)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 892
+    },
+    {
+      "codigo": "602-53-000",
+      "nombre": "Vigilancia y seguridad",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.53",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 893
+    },
+    {
+      "codigo": "602-54-000",
+      "nombre": "Limpieza",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.54",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 894
+    },
+    {
+      "codigo": "602-55-000",
+      "nombre": "Papelería y artículos de oficina",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.55",
+      "rubro": "R310",
+      "nombreRubro": "Consumibles y equipo menor",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 895
+    },
+    {
+      "codigo": "602-56-000",
+      "nombre": "Mantenimiento y conservación",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.56",
+      "rubro": "R309",
+      "nombreRubro": "Mantenimiento",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 896
+    },
+    {
+      "codigo": "602-57-000",
+      "nombre": "Seguros y fianzas",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.57",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 897
+    },
+    {
+      "codigo": "602-58-000",
+      "nombre": "Otros impuestos y derechos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.58",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 898
+    },
+    {
+      "codigo": "602-60-000",
+      "nombre": "Cuotas y suscripciones",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.60",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 900
+    },
+    {
+      "codigo": "602-61-000",
+      "nombre": "Propaganda y publicidad",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.61",
+      "rubro": "R306",
+      "nombreRubro": "Marketing",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 901
+    },
+    {
+      "codigo": "602-61-101",
+      "nombre": "Marketing en agregadores (promociones pagadas)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.61",
+      "rubro": "R305",
+      "nombreRubro": "Marketing de agregadores",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 902
+    },
+    {
+      "codigo": "602-61-102",
+      "nombre": "Marketing local y publicidad",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.61",
+      "rubro": "R306",
+      "nombreRubro": "Marketing",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 903
+    },
+    {
+      "codigo": "602-61-103",
+      "nombre": "Aportación al fondo de marketing de la marca",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.61",
+      "rubro": "R306",
+      "nombreRubro": "Marketing",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 904
+    },
+    {
+      "codigo": "602-68-000",
+      "nombre": "Regalías sujetas al 15%",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.68",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03"
+      ],
+      "fila": 912
+    },
+    {
+      "codigo": "602-68-101",
+      "nombre": "Regalías al franquiciante Brasil 15% (The Coffee)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.68",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03"
+      ],
+      "fila": 913
+    },
+    {
+      "codigo": "602-68-102",
+      "nombre": "Marketing fee al franquiciante Brasil",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.68",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03"
+      ],
+      "fila": 914
+    },
+    {
+      "codigo": "602-68-103",
+      "nombre": "POS fee al franquiciante Brasil",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.68",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03"
+      ],
+      "fila": 915
+    },
+    {
+      "codigo": "602-71-000",
+      "nombre": "Regalías sin retención",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 918
+    },
+    {
+      "codigo": "602-71-001",
+      "nombre": "Regalías y cuotas PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 919
+    },
+    {
+      "codigo": "602-71-002",
+      "nombre": "Regalías y cuotas PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 920
+    },
+    {
+      "codigo": "602-71-003",
+      "nombre": "Regalías y cuotas PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "06"
+      ],
+      "fila": 921
+    },
+    {
+      "codigo": "602-71-004",
+      "nombre": "Regalías y cuotas PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 922
+    },
+    {
+      "codigo": "602-71-005",
+      "nombre": "Regalías y cuotas PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 923
+    },
+    {
+      "codigo": "602-71-006",
+      "nombre": "Regalías y cuotas PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03"
+      ],
+      "fila": 924
+    },
+    {
+      "codigo": "602-71-007",
+      "nombre": "Regalías y cuotas PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 925
+    },
+    {
+      "codigo": "602-71-008",
+      "nombre": "Regalías y cuotas PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 926
+    },
+    {
+      "codigo": "602-71-901",
+      "nombre": "Regalía interna sucursales propias (sólo gestión; se elimina)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.71",
+      "rubro": "R311",
+      "nombreRubro": "Regalías pagadas",
+      "entidades": [
+        "03"
+      ],
+      "fila": 927
+    },
+    {
+      "codigo": "602-72-000",
+      "nombre": "Fletes y acarreos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.72",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 928
+    },
+    {
+      "codigo": "602-72-101",
+      "nombre": "Servicio de reparto tercerizado",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.72",
+      "rubro": "R303",
+      "nombreRubro": "Repartidores",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 929
+    },
+    {
+      "codigo": "602-74-000",
+      "nombre": "Comisiones sobre ventas",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.74",
+      "rubro": "R304",
+      "nombreRubro": "Comisión de agregadores",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 931
+    },
+    {
+      "codigo": "602-74-101",
+      "nombre": "Comisiones de plataformas de delivery",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.74",
+      "rubro": "R304",
+      "nombreRubro": "Comisión de agregadores",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 932
+    },
+    {
+      "codigo": "602-75-000",
+      "nombre": "Comisiones por tarjetas de crédito",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.75",
+      "rubro": "R312",
+      "nombreRubro": "Comisiones TPV y medios de pago",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 933
+    },
+    {
+      "codigo": "602-77-000",
+      "nombre": "Uniformes",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.77",
+      "rubro": "R310",
+      "nombreRubro": "Consumibles y equipo menor",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 935
+    },
+    {
+      "codigo": "602-83-000",
+      "nombre": "Gastos no deducibles (sin requisitos fiscales)",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.83",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 941
+    },
+    {
+      "codigo": "602-83-101",
+      "nombre": "Gastos sin CFDI o sin requisitos (tienda)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.83",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 942
+    },
+    {
+      "codigo": "602-83-102",
+      "nombre": "Faltantes y diferencias de caja",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.83",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 943
+    },
+    {
+      "codigo": "602-84-000",
+      "nombre": "Otros gastos de venta",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "602.84",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 944
+    },
+    {
+      "codigo": "602-84-101",
+      "nombre": "Consumibles y equipo menor",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.84",
+      "rubro": "R310",
+      "nombreRubro": "Consumibles y equipo menor",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 945
+    },
+    {
+      "codigo": "602-84-102",
+      "nombre": "Comida de personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "602.84",
+      "rubro": "R319",
+      "nombreRubro": "Otros gastos de operación",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 946
+    },
+    {
+      "codigo": "603-00-000",
+      "nombre": "Gastos de administración",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "603",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 947
+    },
+    {
+      "codigo": "603-01-000",
+      "nombre": "Sueldos y salarios",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.01",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 948
+    },
+    {
+      "codigo": "603-02-000",
+      "nombre": "Compensaciones",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.02",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 949
+    },
+    {
+      "codigo": "603-03-000",
+      "nombre": "Tiempos extras",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.03",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 950
+    },
+    {
+      "codigo": "603-06-000",
+      "nombre": "Vacaciones",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.06",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 953
+    },
+    {
+      "codigo": "603-07-000",
+      "nombre": "Prima vacacional",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.07",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 954
+    },
+    {
+      "codigo": "603-12-000",
+      "nombre": "Aguinaldo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.12",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 959
+    },
+    {
+      "codigo": "603-13-000",
+      "nombre": "Indemnizaciones",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.13",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 960
+    },
+    {
+      "codigo": "603-22-000",
+      "nombre": "Estímulo al personal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.22",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 969
+    },
+    {
+      "codigo": "603-23-000",
+      "nombre": "Previsión social",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.23",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 970
+    },
+    {
+      "codigo": "603-26-000",
+      "nombre": "Cuotas al IMSS",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.26",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 973
+    },
+    {
+      "codigo": "603-27-000",
+      "nombre": "Aportaciones al infonavit",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.27",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 974
+    },
+    {
+      "codigo": "603-28-000",
+      "nombre": "Aportaciones al SAR",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.28",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 975
+    },
+    {
+      "codigo": "603-29-000",
+      "nombre": "Impuesto estatal sobre nóminas",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.29",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 976
+    },
+    {
+      "codigo": "603-31-000",
+      "nombre": "Asimilados a salarios",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.31",
+      "rubro": "R401",
+      "nombreRubro": "Nómina corporativa",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 978
+    },
+    {
+      "codigo": "603-32-000",
+      "nombre": "Servicios administrativos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.32",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 979
+    },
+    {
+      "codigo": "603-33-000",
+      "nombre": "Servicios administrativos partes relac",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.33",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 980
+    },
+    {
+      "codigo": "603-33-001",
+      "nombre": "Servicios administrativos PR (corporativo) – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.33",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 981
+    },
+    {
+      "codigo": "603-33-002",
+      "nombre": "Servicios administrativos PR (corporativo) – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.33",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 982
+    },
+    {
+      "codigo": "603-33-003",
+      "nombre": "Servicios administrativos PR (corporativo) – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.33",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "06"
+      ],
+      "fila": 983
+    },
+    {
+      "codigo": "603-33-004",
+      "nombre": "Servicios administrativos PR (corporativo) – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.33",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 984
+    },
+    {
+      "codigo": "603-33-005",
+      "nombre": "Servicios administrativos PR (corporativo) – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.33",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 985
+    },
+    {
+      "codigo": "603-33-006",
+      "nombre": "Servicios administrativos PR (corporativo) – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.33",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "03"
+      ],
+      "fila": 986
+    },
+    {
+      "codigo": "603-33-007",
+      "nombre": "Servicios administrativos PR (corporativo) – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.33",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 987
+    },
+    {
+      "codigo": "603-33-008",
+      "nombre": "Servicios administrativos PR (corporativo) – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.33",
+      "rubro": "R402",
+      "nombreRubro": "Servicios administrativos intercompañía",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 988
+    },
+    {
+      "codigo": "603-34-000",
+      "nombre": "Honorarios a pers físicas residtes nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.34",
+      "rubro": "R403",
+      "nombreRubro": "Honorarios y asesorías",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 989
+    },
+    {
+      "codigo": "603-38-000",
+      "nombre": "Honorarios a pers morales residtes nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.38",
+      "rubro": "R403",
+      "nombreRubro": "Honorarios y asesorías",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 993
+    },
+    {
+      "codigo": "603-43-000",
+      "nombre": "Honorarios aduanales personas morales",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.43",
+      "rubro": "R403",
+      "nombreRubro": "Honorarios y asesorías",
+      "entidades": [
+        "03"
+      ],
+      "fila": 998
+    },
+    {
+      "codigo": "603-45-000",
+      "nombre": "Arrendamiento a personas físicas resid nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.45",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1000
+    },
+    {
+      "codigo": "603-46-000",
+      "nombre": "Arrendamiento a personas morales resid nal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.46",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1001
+    },
+    {
+      "codigo": "603-48-000",
+      "nombre": "Combustibles y lubricantes",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.48",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1003
+    },
+    {
+      "codigo": "603-49-000",
+      "nombre": "Viáticos y gastos de viaje",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.49",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1004
+    },
+    {
+      "codigo": "603-49-101",
+      "nombre": "Viáticos: hospedaje y transporte",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.49",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1005
+    },
+    {
+      "codigo": "603-49-102",
+      "nombre": "Viáticos: alimentación",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.49",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1006
+    },
+    {
+      "codigo": "603-50-000",
+      "nombre": "Teléfono, internet",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.50",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1007
+    },
+    {
+      "codigo": "603-51-000",
+      "nombre": "Agua",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.51",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1008
+    },
+    {
+      "codigo": "603-52-000",
+      "nombre": "Energía eléctrica",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.52",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1009
+    },
+    {
+      "codigo": "603-54-000",
+      "nombre": "Limpieza",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.54",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1011
+    },
+    {
+      "codigo": "603-55-000",
+      "nombre": "Papelería y artículos de oficina",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.55",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1012
+    },
+    {
+      "codigo": "603-56-000",
+      "nombre": "Mantenimiento y conservación",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.56",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1013
+    },
+    {
+      "codigo": "603-57-000",
+      "nombre": "Seguros y fianzas",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.57",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1014
+    },
+    {
+      "codigo": "603-58-000",
+      "nombre": "Otros impuestos y derechos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.58",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1015
+    },
+    {
+      "codigo": "603-59-000",
+      "nombre": "Recargos fiscales",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.59",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1016
+    },
+    {
+      "codigo": "603-60-000",
+      "nombre": "Cuotas y suscripciones",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.60",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1017
+    },
+    {
+      "codigo": "603-60-101",
+      "nombre": "Software, licencias y suscripciones",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.60",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1018
+    },
+    {
+      "codigo": "603-61-000",
+      "nombre": "Propaganda y publicidad",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.61",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1019
+    },
+    {
+      "codigo": "603-62-000",
+      "nombre": "Capacitación al personal",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.62",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1020
+    },
+    {
+      "codigo": "603-63-000",
+      "nombre": "Donativos y ayudas",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.63",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1021
+    },
+    {
+      "codigo": "603-72-000",
+      "nombre": "Fletes y acarreos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.72",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03"
+      ],
+      "fila": 1030
+    },
+    {
+      "codigo": "603-73-000",
+      "nombre": "Gastos de importación",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.73",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03"
+      ],
+      "fila": 1031
+    },
+    {
+      "codigo": "603-81-000",
+      "nombre": "Gastos no deducibles (sin requisitos fiscales)",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.81",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1039
+    },
+    {
+      "codigo": "603-81-101",
+      "nombre": "Gastos sin CFDI o sin requisitos fiscales",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.81",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1040
+    },
+    {
+      "codigo": "603-81-102",
+      "nombre": "Consumos en restaurantes – parte no deducible (91.5%)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.81",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1041
+    },
+    {
+      "codigo": "603-81-103",
+      "nombre": "Multas y sanciones",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.81",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1042
+    },
+    {
+      "codigo": "603-81-104",
+      "nombre": "Excedente no deducible de arrendamiento de automóviles",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.81",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1043
+    },
+    {
+      "codigo": "603-81-105",
+      "nombre": "ISR y accesorios de terceros asumidos",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.81",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1044
+    },
+    {
+      "codigo": "603-82-000",
+      "nombre": "Otros gastos de administración",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "603.82",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1045
+    },
+    {
+      "codigo": "603-82-101",
+      "nombre": "Consumos en restaurantes – parte deducible (8.5%)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.82",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1046
+    },
+    {
+      "codigo": "603-82-102",
+      "nombre": "Actualización de contribuciones",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "603.82",
+      "rubro": "R404",
+      "nombreRubro": "Otros gastos de oficina central",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1047
+    },
+    {
+      "codigo": "607-00-000",
+      "nombre": "Participación de los trabaj en las utilidades",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "607",
+      "rubro": "R801",
+      "nombreRubro": "ISR y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1165
+    },
+    {
+      "codigo": "607-01-000",
+      "nombre": "Participación de los trabaj en las utilidades",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "607.01",
+      "rubro": "R801",
+      "nombreRubro": "ISR y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1166
+    },
+    {
+      "codigo": "610-00-000",
+      "nombre": "Participación de los trabaj en utilidades dif",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "610",
+      "rubro": "R801",
+      "nombreRubro": "ISR y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1171
+    },
+    {
+      "codigo": "610-01-000",
+      "nombre": "Participación de los trabaj en utilidades dif",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "610.01",
+      "rubro": "R801",
+      "nombreRubro": "ISR y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1172
+    },
+    {
+      "codigo": "611-00-000",
+      "nombre": "Impuesto Sobre la renta",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "611",
+      "rubro": "R801",
+      "nombreRubro": "ISR y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1173
+    },
+    {
+      "codigo": "611-01-000",
+      "nombre": "Impuesto Sobre la renta",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "611.01",
+      "rubro": "R801",
+      "nombreRubro": "ISR y PTU",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1174
+    },
+    {
+      "codigo": "613-00-000",
+      "nombre": "Depreciacion Contable",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "613",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1178
+    },
+    {
+      "codigo": "613-02-000",
+      "nombre": "Depreciación de maquinaria y equipo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "613.02",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1180
+    },
+    {
+      "codigo": "613-03-000",
+      "nombre": "Depr de autom, autob, camiones, tractoc",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "613.03",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1181
+    },
+    {
+      "codigo": "613-04-000",
+      "nombre": "Depreciación de mobiliario y eq de ofic",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "613.04",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1182
+    },
+    {
+      "codigo": "613-05-000",
+      "nombre": "Depreciación de equipo de cómputo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "613.05",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1183
+    },
+    {
+      "codigo": "613-17-000",
+      "nombre": "Depreciación de adaptaciones y mejoras",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "613.17",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1195
+    },
+    {
+      "codigo": "614-00-000",
+      "nombre": "Amortización contable",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "614",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1197
+    },
+    {
+      "codigo": "614-03-000",
+      "nombre": "Amort acum de regalías, asist téc y otros gtos dif",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "614.03",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1200
+    },
+    {
+      "codigo": "614-04-000",
+      "nombre": "Amortización acumulada de activos intangibles",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "614.04",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1201
+    },
+    {
+      "codigo": "614-05-000",
+      "nombre": "Amortización acumulada de gtos de organización",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "614.05",
+      "rubro": "R501",
+      "nombreRubro": "Depreciación y amortización",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1202
+    },
+    {
+      "codigo": "700-00-000",
+      "nombre": "Resultado integral de financiamiento",
+      "nivel": 0,
+      "naturaleza": "Deudora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1208
+    },
+    {
+      "codigo": "701-00-000",
+      "nombre": "Gastos financieros",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "701",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1209
+    },
+    {
+      "codigo": "701-01-000",
+      "nombre": "Pérdida cambiaria",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "701.01",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03"
+      ],
+      "fila": 1210
+    },
+    {
+      "codigo": "701-04-000",
+      "nombre": "Intereses a cargo bancario nacional",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "701.04",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1213
+    },
+    {
+      "codigo": "701-08-000",
+      "nombre": "Intereses a cargo de personas morales nacional",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "701.08",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1217
+    },
+    {
+      "codigo": "701-08-001",
+      "nombre": "Intereses a cargo PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "701.08",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1218
+    },
+    {
+      "codigo": "701-08-002",
+      "nombre": "Intereses a cargo PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "701.08",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1219
+    },
+    {
+      "codigo": "701-08-003",
+      "nombre": "Intereses a cargo PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "701.08",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "06"
+      ],
+      "fila": 1220
+    },
+    {
+      "codigo": "701-08-004",
+      "nombre": "Intereses a cargo PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "701.08",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1221
+    },
+    {
+      "codigo": "701-08-005",
+      "nombre": "Intereses a cargo PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "701.08",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1222
+    },
+    {
+      "codigo": "701-08-006",
+      "nombre": "Intereses a cargo PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "701.08",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03"
+      ],
+      "fila": 1223
+    },
+    {
+      "codigo": "701-08-007",
+      "nombre": "Intereses a cargo PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "701.08",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1224
+    },
+    {
+      "codigo": "701-08-008",
+      "nombre": "Intereses a cargo PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "701.08",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1225
+    },
+    {
+      "codigo": "701-10-000",
+      "nombre": "Comisiones bancarias",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "701.10",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1227
+    },
+    {
+      "codigo": "701-11-000",
+      "nombre": "Otros gastos financieros",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "701.11",
+      "rubro": "R601",
+      "nombreRubro": "Gastos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1228
+    },
+    {
+      "codigo": "702-00-000",
+      "nombre": "Productos financieros",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "702",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1229
+    },
+    {
+      "codigo": "702-01-000",
+      "nombre": "Utilidad cambiaria",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "702.01",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03"
+      ],
+      "fila": 1230
+    },
+    {
+      "codigo": "702-01-101",
+      "nombre": "Utilidad cambiaria (antes 401.44 en CONTPAQi)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "702.01",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03"
+      ],
+      "fila": 1231
+    },
+    {
+      "codigo": "702-04-000",
+      "nombre": "Intereses a favor bancarios nacional",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "702.04",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1234
+    },
+    {
+      "codigo": "702-08-000",
+      "nombre": "Intereses a favor de personas morales nacional",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "702.08",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1238
+    },
+    {
+      "codigo": "702-08-001",
+      "nombre": "Intereses a favor PR – Holding Personal",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "702.08",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1239
+    },
+    {
+      "codigo": "702-08-002",
+      "nombre": "Intereses a favor PR – Helper Holding",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "702.08",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1240
+    },
+    {
+      "codigo": "702-08-003",
+      "nombre": "Intereses a favor PR – Master Sitru",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "702.08",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "06"
+      ],
+      "fila": 1241
+    },
+    {
+      "codigo": "702-08-004",
+      "nombre": "Intereses a favor PR – Pizza Holding Master",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "702.08",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1242
+    },
+    {
+      "codigo": "702-08-005",
+      "nombre": "Intereses a favor PR – Caraka Import",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "702.08",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1243
+    },
+    {
+      "codigo": "702-08-006",
+      "nombre": "Intereses a favor PR – Helper Comercializadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "702.08",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03"
+      ],
+      "fila": 1244
+    },
+    {
+      "codigo": "702-08-007",
+      "nombre": "Intereses a favor PR – Skynet",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "702.08",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1245
+    },
+    {
+      "codigo": "702-08-008",
+      "nombre": "Intereses a favor PR – Arrendadora",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "702.08",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1246
+    },
+    {
+      "codigo": "702-10-000",
+      "nombre": "Otros productos financieros",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "702.10",
+      "rubro": "R602",
+      "nombreRubro": "Productos financieros",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1248
+    },
+    {
+      "codigo": "703-00-000",
+      "nombre": "Otros gastos",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "703",
+      "rubro": "R701",
+      "nombreRubro": "Otros ingresos y gastos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1249
+    },
+    {
+      "codigo": "703-21-000",
+      "nombre": "Otros gastos",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "703.21",
+      "rubro": "R701",
+      "nombreRubro": "Otros ingresos y gastos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1270
+    },
+    {
+      "codigo": "704-00-000",
+      "nombre": "Otros productos",
+      "nivel": 1,
+      "naturaleza": "Acreedora",
+      "agrupador": "704",
+      "rubro": "R701",
+      "nombreRubro": "Otros ingresos y gastos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1271
+    },
+    {
+      "codigo": "704-23-000",
+      "nombre": "Otros productos",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "704.23",
+      "rubro": "R701",
+      "nombreRubro": "Otros ingresos y gastos",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1294
+    },
+    {
+      "codigo": "800-00-000",
+      "nombre": "Cuentas de Orden",
+      "nivel": 0,
+      "naturaleza": "Deudora",
+      "agrupador": null,
+      "rubro": null,
+      "nombreRubro": null,
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1295
+    },
+    {
+      "codigo": "802-00-000",
+      "nombre": "CUFIN del ejercicio",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "802",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1299
+    },
+    {
+      "codigo": "802-01-000",
+      "nombre": "CUFIN",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "802.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1300
+    },
+    {
+      "codigo": "802-02-000",
+      "nombre": "Contra cuenta CUFIN",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "802.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1301
+    },
+    {
+      "codigo": "803-00-000",
+      "nombre": "CUFIN de ejercicios anteriores",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "803",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1302
+    },
+    {
+      "codigo": "803-01-000",
+      "nombre": "CUFIN de ejercicios anteriores",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "803.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1303
+    },
+    {
+      "codigo": "803-02-000",
+      "nombre": "Contra cuenta CUFIN de ejercicios anteriores",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "803.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1304
+    },
+    {
+      "codigo": "807-00-000",
+      "nombre": "CUCA de ejercicios anteriores",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "807",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1314
+    },
+    {
+      "codigo": "807-01-000",
+      "nombre": "CUCA de ejercicios anteriores",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "807.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1315
+    },
+    {
+      "codigo": "807-02-000",
+      "nombre": "Contra cuenta CUCA de ejercicios anteriores",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "807.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1316
+    },
+    {
+      "codigo": "808-00-000",
+      "nombre": "Ajuste anual por inflación acumulable",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "808",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1317
+    },
+    {
+      "codigo": "808-01-000",
+      "nombre": "Ajuste anual por inflación acumulable",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "808.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1318
+    },
+    {
+      "codigo": "808-02-000",
+      "nombre": "Acumulación del ajuste anual inflacionario",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "808.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1319
+    },
+    {
+      "codigo": "809-00-000",
+      "nombre": "Ajuste anual por inflación deducible",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "809",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1320
+    },
+    {
+      "codigo": "809-01-000",
+      "nombre": "Ajuste anual por inflación deducible",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "809.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1321
+    },
+    {
+      "codigo": "809-02-000",
+      "nombre": "Deducción del ajuste anual inflacionario",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "809.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1322
+    },
+    {
+      "codigo": "810-00-000",
+      "nombre": "Deducción de inversión",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "810",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1323
+    },
+    {
+      "codigo": "810-01-000",
+      "nombre": "Deducción de inversión",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "810.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1324
+    },
+    {
+      "codigo": "810-02-000",
+      "nombre": "Contra cuenta deducción de inversiones",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "810.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1325
+    },
+    {
+      "codigo": "811-00-000",
+      "nombre": "Utili o pérd fiscal en vta y/o baja de act fijo",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "811",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1326
+    },
+    {
+      "codigo": "811-01-000",
+      "nombre": "Util o pérd fiscal en vta y/o baja de act fijo",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "811.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1327
+    },
+    {
+      "codigo": "811-02-000",
+      "nombre": "Contracta util o pérd fisc vta y/o baja act fijo",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "811.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1328
+    },
+    {
+      "codigo": "813-00-000",
+      "nombre": "Pérdidas fisc pendtes de amort act ej ant",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "813",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1332
+    },
+    {
+      "codigo": "813-01-000",
+      "nombre": "Pérdidas fisc pendtes de amort act ej ant",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "813.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1333
+    },
+    {
+      "codigo": "813-02-000",
+      "nombre": "Act de pérdidas fisc pendtes de amort ej ant",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "813.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1334
+    },
+    {
+      "codigo": "899-00-000",
+      "nombre": "Otras cuentas de orden",
+      "nivel": 1,
+      "naturaleza": "Deudora",
+      "agrupador": "899",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1344
+    },
+    {
+      "codigo": "899-01-000",
+      "nombre": "Otras cuentas de orden",
+      "nivel": 2,
+      "naturaleza": "Deudora",
+      "agrupador": "899.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1345
+    },
+    {
+      "codigo": "899-01-102",
+      "nombre": "MOI no deducible de automóviles (art. 36 fr. II LISR)",
+      "nivel": 3,
+      "naturaleza": "Deudora",
+      "agrupador": "899.01",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1347
+    },
+    {
+      "codigo": "899-02-000",
+      "nombre": "Contra cuenta otras cuentas de orden",
+      "nivel": 2,
+      "naturaleza": "Acreedora",
+      "agrupador": "899.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1348
+    },
+    {
+      "codigo": "899-02-102",
+      "nombre": "Contra cuenta MOI no deducible automóviles",
+      "nivel": 3,
+      "naturaleza": "Acreedora",
+      "agrupador": "899.02",
+      "rubro": "O801",
+      "nombreRubro": "Cuentas de orden (control fiscal)",
+      "entidades": [
+        "03",
+        "06"
+      ],
+      "fila": 1350
+    }
+  ]
+}

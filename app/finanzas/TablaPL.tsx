@@ -5,6 +5,7 @@ import type { Columnas } from "@/lib/finanzas/periodo";
 import type { EntradaPL, FilaPL } from "@/lib/finanzas/pl";
 import { SECCIONES } from "@/lib/finanzas/secciones";
 import { Importe } from "./Importe";
+import { referenciaHelper } from '@/lib/finanzas/catalogoHelper';
 
 type Detalle = { texto: string; monto: number; href?: string; nota?: string }[];
 const NOMBRE_MEMO = { insumos: NOMBRE_CUENTA.insumos, inversiones: NOMBRE_CUENTA.inversiones } as const;
@@ -46,7 +47,7 @@ export function TablaPL({ r, columnas, conDetalle = true }: {
     return (
       <tr key={f.clave} className={total ? "pl-total" : f.tipo === "detalle" ? "pl-desglose" : undefined}>
         <td data-label="Renglón">
-          <span className="celda-pila"><strong>{f.nombre}</strong>{conDetalle && desplegable(r.detalleDe(f.clave), "De dónde sale")}</span>
+          <span className="celda-pila"><strong>{f.nombre}</strong>{referenciaHelper(f.clave)&&<small>Referencia contable: {referenciaHelper(f.clave)}</small>}{conDetalle && desplegable(r.detalleDe(f.clave), "De dónde sale")}</span>
         </td>
         <td data-label="Real" className="monto"><Importe n={f.monto} /></td>
         <td data-label="%" className="monto">{porcentaje(f.pct)}</td>
