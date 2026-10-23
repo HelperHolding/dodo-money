@@ -20,6 +20,15 @@ test("revisiones: exige periodo válido y no amplía la lista a otras rutas de i
   assert.ok("error" in urlExplorar(q("ruta=/inventory/revisions&desde=2026-10-12&hasta=2026-10-18"), []));
 });
 
+test("revisiones: límites oficiales de 14 días, 10 unidades y 1000 registros", () => {
+  const base = "ruta=/inventory/revisions&desde=2026-10-12";
+  assert.ok("url" in urlExplorar(q(`${base}&hasta=2026-10-25&take=1000`), UNIDADES));
+  assert.deepEqual(urlExplorar(q(`${base}&hasta=2026-10-26`), UNIDADES), { error: "Máximo 14 días por consulta de revisiones." });
+  assert.ok("url" in urlExplorar(q(base), Array.from({ length: 10 }, (_, i) => `u${i}`)));
+  assert.ok("error" in urlExplorar(q(base), Array.from({ length: 11 }, (_, i) => `u${i}`)));
+  for (const take of ["0", "1001", "-1", "abc"]) assert.ok("error" in urlExplorar(q(`${base}&take=${take}`), UNIDADES));
+});
+
 test("arma la consulta: rutas de contabilidad y producción bajo /dodopizza/mx, con unidades y fechas", () => {
   assert.deepEqual(urlExplorar(q("ruta=/accounting/incoming-stock-items&desde=2026-10-01&hasta=2026-10-20"), UNIDADES),
     { url: "https://api.dodois.com/dodopizza/mx/accounting/incoming-stock-items?units=u1%2Cu2&from=2026-10-01T00%3A00%3A00&to=2026-10-21T00%3A00%3A00" });

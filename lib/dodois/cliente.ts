@@ -9,7 +9,9 @@ export { ErrorDodo };
 
 export const AUTH = "https://auth.dodois.com";
 export const API = "https://api.dodois.com";
-export const SCOPES = "openid offline_access user.role:read sales accounting:read unit:read productionefficiency";
+// Revisiones históricas exige accounting (no accounting:read). Requiere nuevo consentimiento OAuth.
+// https://docs.dodois.io/docs/Inventory/4a55fc95adac8-uchet-revizii
+export const SCOPES = "openid offline_access user.role:read sales accounting:read accounting unit:read productionefficiency";
 
 export type Tokens = { access_token: string; refresh_token: string; expires_in: number; scope?: string };
 const esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
