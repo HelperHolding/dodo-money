@@ -1283,6 +1283,9 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 @media(max-width:640px) { .activos-mes { gap:3px; }.activos-dia { min-height:70px; padding:5px; }.activos-dia-nombres,.activos-dia-palabra { display:none; }.activos-calendario { padding:12px; } }
 /* ─── Utilidades de texto (antes estilos en línea) ─── */
 .texto-libre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.galeria-manual { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 14px; }
+.galeria-manual li { display: grid; gap: 6px; align-content: start; }
+.galeria-manual img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; display: block; background: rgba(0, 0, 0, 0.05); }
 .texto-saltos { white-space: pre-wrap; }
 .texto-partible { overflow-wrap: anywhere; }
 

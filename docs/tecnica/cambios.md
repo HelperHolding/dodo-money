@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-23 · Fotos en manuales · 20261023120000 · pendiente de Supabase
+
+Administración agrega y retira fotos numeradas en cada manual de Conocimiento. Bucket privado con la misma audiencia que el manual; borradores y puestos excluidos no ven las fotos. Reducción a JPG en el navegador para fotos del celular. Retiro lógico con historial. Detalle en fotos-manuales.md.
+
 ## 2026-10-07 · Reporte de ventas por canal
 
 Tablero y PDF con ventas, pedidos, ticket y costo teórico separados POS/Dodo IS y Rappi. PDF añade detalle diario por fuente; Excel conserva hojas combinadas y agrega Resumen/Por día de POS y Rappi. Se separan las fuentes antes de combinarlas, conservando conciliaciones manuales de POS y las reglas existentes de inclusión de Rappi (Finalizado y sumar). La separación identifica la fuente importada, no el método de cobro ni el depósito bancario. No cambia P&L ni importaciones. Sin migración.

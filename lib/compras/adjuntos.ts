@@ -17,3 +17,9 @@ export function validarAdjunto(nombre:string,bytes:Uint8Array) {
   if(!valido)throw Error('El contenido no coincide con el formato del archivo.');
   return {nombre:limpio,extension:extension==='jpeg'?'jpg':extension,mime};
 }
+/** Fotos de los manuales de Conocimiento: solo imágenes que el navegador muestra. */
+export function validarImagen(nombre:string,bytes:Uint8Array) {
+  const f=validarAdjunto(nombre,bytes);
+  if(!f.mime.startsWith('image/'))throw Error('Usa una foto JPG, PNG o WebP.');
+  return f;
+}
