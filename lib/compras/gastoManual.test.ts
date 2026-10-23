@@ -18,6 +18,25 @@ const form = (o: Record<string, string>, renglones: string[][]) => ({
 });
 const BASE = { proveedor_id: "11111111-1111-1111-1111-111111111111", sucursal_id: "22222222-2222-2222-2222-222222222222", fecha: "2026-10-01", folio: " Prefactura 10 ", iva: "16", ret_iva: "dos_tercios", ret_isr: "diez" };
 
+test("ISR RESICO: PDF Photobooth, retención sobre subtotal y total de $5,510", () => {
+  const f = form({ ...BASE, fecha: "2026-10-09", ret_iva: "ninguna", ret_isr: "resico" }, [["Anticipo Servicio Photobooth", "4801.74", "otros"]]);
+  const r = leerGastoManual(f.valor, f.lista, CUENTAS, "2026-10-23");
+  assert.ok("datos" in r);
+  assert.equal(r.datos.subtotal, 4801.74);
+  assert.equal(r.datos.iva, 768.28);
+  assert.equal(r.datos.retencion_iva, 0);
+  assert.equal(r.datos.retencion_isr, 60.02);
+  assert.equal(r.datos.total, 5510);
+  assert.deepEqual(calcularGasto([{ importe: 4801.74 }], { iva: 0.16, retIva: "ninguna", retIsr: "resico" }),
+    { subtotal: 4801.74, iva: 768.28, retencion_iva: 0, retencion_isr: 60.02, retenciones: 60.02, total: 5510 });
+});
+
+test("ISR RESICO: suma renglones antes de redondear la retención y rechaza tasas desconocidas", () => {
+  assert.equal(calcularGasto([{ importe: 100.4 }, { importe: 100.4 }], { iva: 0.16, retIva: "ninguna", retIsr: "resico" }).retencion_isr, 2.51);
+  const f = form({ ...BASE, ret_isr: "1.25" }, [["Servicio", "100", "otros"]]);
+  assert.deepEqual(leerGastoManual(f.valor, f.lista, CUENTAS, "2026-10-23"), { error: "Elige una retención de ISR válida." });
+});
+
 test("leerGastoManual: datos completos, renglones vacíos se ignoran, Oficina = sin sucursal", () => {
   const f = form(BASE, [["Renta", "30,000", "renta"], ["Agua", "1200", "servicios"], ["", "", ""]]);
   const r = leerGastoManual(f.valor, f.lista, CUENTAS, "2026-10-05");

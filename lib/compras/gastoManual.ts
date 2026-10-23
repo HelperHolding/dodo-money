@@ -1,5 +1,5 @@
 /** Gasto sin CFDI (prefactura, recibo): renglones con su cuenta del P&L, IVA y retenciones. */
-export type Impuestos = { iva: 0 | 0.16; retIva: "ninguna" | "dos_tercios"; retIsr: "ninguna" | "diez" };
+export type Impuestos = { iva: 0 | 0.16; retIva: "ninguna" | "dos_tercios"; retIsr: "ninguna" | "diez" | "resico" };
 export const IMPUESTOS_ARRENDAMIENTO: Impuestos = { iva: 0.16, retIva: "dos_tercios", retIsr: "diez" };
 
 export type GastoManual = {
@@ -10,12 +10,12 @@ export type GastoManual = {
 
 const centavos = (n: number) => Math.round(n * 100) / 100;
 
-/** Subtotal, IVA, retenciones (2/3 del IVA; 10 % de ISR) y total = subtotal + IVA − retenciones. */
+/** Retenciones sobre su base: 2/3 del IVA; ISR del 10 % o 1.25 % del subtotal. */
 export function calcularGasto(renglones: readonly { importe: number }[], imp: Impuestos) {
   const subtotal = centavos(renglones.reduce((t, r) => t + (Number(r.importe) || 0), 0));
   const iva = centavos(subtotal * imp.iva);
   const retencion_iva = imp.retIva === "dos_tercios" ? centavos((iva * 2) / 3) : 0;
-  const retencion_isr = imp.retIsr === "diez" ? centavos(subtotal * 0.1) : 0;
+  const retencion_isr = centavos(subtotal * (imp.retIsr === "diez" ? 0.1 : imp.retIsr === "resico" ? 0.0125 : 0));
   const retenciones = centavos(retencion_iva + retencion_isr);
   return { subtotal, iva, retencion_iva, retencion_isr, retenciones, total: centavos(subtotal + iva - retenciones) };
 }
@@ -56,7 +56,8 @@ export function leerGastoManual(valor: (c: string) => string, lista: (c: string)
 
   const iva = valor("iva") === "0" ? 0 : 0.16;
   const retIva = valor("ret_iva") === "dos_tercios" ? "dos_tercios" : "ninguna";
-  const retIsr = valor("ret_isr") === "diez" ? "diez" : "ninguna";
+  const retIsr = valor("ret_isr") || "ninguna";
+  if (retIsr !== "ninguna" && retIsr !== "diez" && retIsr !== "resico") return { error: "Elige una retención de ISR válida." };
   if (retIva === "dos_tercios" && iva === 0) return { error: "La retención de IVA necesita IVA del 16 %." };
   const t = calcularGasto(renglones, { iva, retIva, retIsr });
   return {
