@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {validarAdjunto,MAX_ADJUNTO} from './adjuntos.ts';
+import {validarAdjunto,validarImagen,MAX_ADJUNTO} from './adjuntos.ts';
 test('adjuntos: acepta PDF e identifica MIME por contenido, no por MIME del navegador',()=>{
  assert.deepEqual(validarAdjunto('cotización.pdf',new TextEncoder().encode('%PDF-1.7 soporte')),{nombre:'cotización.pdf',extension:'pdf',mime:'application/pdf'});
  assert.equal(validarAdjunto('ticket.JPEG',Uint8Array.from([255,216,255,0])).extension,'jpg');
@@ -18,4 +18,9 @@ test('adjuntos: ZIP genérico no pasa como Excel/Word; se exige estructura Offic
  const base=new TextEncoder().encode('PK\x03\x04[Content_Types].xml xl/workbook.xml');
  assert.equal(validarAdjunto('cotizacion.xlsx',base).extension,'xlsx');
  assert.throws(()=>validarAdjunto('contrato.docx',base));
+});
+test('adjuntos: fotos de manuales solo JPG, PNG o WebP con contenido real',()=>{
+ assert.deepEqual(validarImagen('Medidor.JPEG',Uint8Array.from([255,216,255,224])),{nombre:'Medidor.JPEG',extension:'jpg',mime:'image/jpeg'});
+ assert.throws(()=>validarImagen('manual.pdf',new TextEncoder().encode('%PDF-1.7')),/JPG, PNG o WebP/);
+ assert.throws(()=>validarImagen('falsa.png',Uint8Array.from([255,216,255])),/no coincide/);
 });

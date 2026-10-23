@@ -1,0 +1,41 @@
+-- Reversible. Simula objetos de Storage; no sube archivos reales.
+do $$
+declare a uuid;c uuid;g uuid;pub uuid;priv uuid;x uuid:=gen_random_uuid();y uuid:=gen_random_uuid();j jsonb;r text;ry text;
+begin
+ select id into a from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' limit 1;
+ select id into c from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
+ select id into g from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='gerente' limit 1;
+ if a is null or c is null or g is null then raise exception 'FALTAN DATOS: admin, corporativo y gerente activos y sin cambio de contraseña pendiente.';end if;
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ set local role authenticated;
+ pub:=public.kb_guardar_articulo(null,0,'Manual con fotos','Pruebas','Contenido de prueba para un manual con fotos.',array['admin','corporativo'],true);
+ priv:=public.kb_guardar_articulo(null,0,'Borrador con fotos','Pruebas','Contenido de prueba para un borrador con fotos.',array['admin','corporativo'],false);
+ j:=public.kb_preparar_foto(x,pub,'medidor.jpg','jpg','image/jpeg',10,repeat('a',64),'Placa del medidor');r:=j->>'ruta';
+ if j->>'disponible'<>'false' then raise exception 'FALLÓ: reserva';end if;
+ if (public.kb_preparar_foto(x,pub,'medidor.jpg','jpg','image/jpeg',10,repeat('a',64),'Placa del medidor')->>'ruta')<>r then raise exception 'FALLÓ: doble envío';end if;
+ begin perform public.kb_preparar_foto(x,pub,'otra.jpg','jpg','image/jpeg',10,repeat('a',64),'');raise exception 'FALLÓ: sobrescritura';exception when others then if sqlerrm like 'FALLÓ:%' then raise;end if;end;
+ begin perform public.kb_preparar_foto(gen_random_uuid(),pub,'manual.pdf','pdf','application/pdf',10,repeat('a',64),'');raise exception 'FALLÓ: formato';exception when others then if sqlerrm<>'Usa una foto JPG, PNG o WebP.' then raise;end if;end;
+ begin perform public.kb_confirmar_foto(x);raise exception 'FALLÓ: confirmar sin archivo';exception when others then if sqlerrm<>'La foto no está subida o no coincide con la reserva.' then raise;end if;end;
+ begin insert into storage.objects(bucket_id,name,metadata) values('manuales','sin-reserva.jpg','{}');raise exception 'FALLÓ: subida libre';exception when insufficient_privilege then null;end;
+ insert into storage.objects(bucket_id,name,metadata) values('manuales',r,'{"size":10,"mimetype":"image/jpeg"}');
+ perform public.kb_confirmar_foto(x);perform public.kb_confirmar_foto(x);
+ if (select count(*) from public.kb_historial where articulo_id=pub and nuevo ? 'foto_agregada')<>1 then raise exception 'FALLÓ: historial único';end if;
+ ry:=public.kb_preparar_foto(y,priv,'borrador.png','png','image/png',10,repeat('b',64),'')->>'ruta';
+ insert into storage.objects(bucket_id,name,metadata) values('manuales',ry,'{"size":10,"mimetype":"image/png"}');
+ perform public.kb_confirmar_foto(y);
+ begin update public.kb_fotos set descripcion='otra' where id=x;raise exception 'FALLÓ: escritura directa';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',c,'role','authenticated')::text,true);
+ if not exists(select 1 from public.kb_fotos where id=x) or not exists(select 1 from storage.objects where bucket_id='manuales' and name=r) then raise exception 'FALLÓ: lector consulta foto publicada';end if;
+ if exists(select 1 from public.kb_fotos where id=y) or exists(select 1 from storage.objects where bucket_id='manuales' and name=ry) then raise exception 'FALLÓ: foto de borrador visible';end if;
+ begin perform public.kb_retirar_foto(x);raise exception 'FALLÓ: corporativo retira';exception when others then if sqlerrm<>'Solo administración retira fotos de los manuales.' then raise;end if;end;
+ begin perform public.kb_preparar_foto(gen_random_uuid(),pub,'x.jpg','jpg','image/jpeg',10,repeat('c',64),'');raise exception 'FALLÓ: corporativo agrega';exception when others then if sqlerrm<>'Solo administración agrega fotos a los manuales.' then raise;end if;end;
+ perform set_config('request.jwt.claims',json_build_object('sub',g,'role','authenticated')::text,true);
+ if exists(select 1 from public.kb_fotos where id=x) or exists(select 1 from storage.objects where bucket_id='manuales' and name=r) then raise exception 'FALLÓ: audiencia del manual';end if;
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+ perform public.kb_retirar_foto(x);perform public.kb_retirar_foto(x);
+ if exists(select 1 from public.kb_fotos where id=x) then raise exception 'FALLÓ: foto retirada visible';end if;
+ reset role;
+ if not exists(select 1 from storage.objects where bucket_id='manuales' and name=r) then raise exception 'FALLÓ: retiro borró archivo';end if;
+ if (select public from storage.buckets where id='manuales') or has_function_privilege('anon','public.kb_confirmar_foto(uuid)','execute') then raise exception 'FALLÓ: público';end if;
+ raise exception 'PRUEBAS OK — reserva privada · formato · sin subida libre · confirmación e historial únicos · sin sobrescritura · audiencia y borradores como el manual · solo administración agrega y retira · retiro conserva archivo · sin escritura directa · anónimo sin ejecución';
+end $$;
