@@ -115,7 +115,7 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy, razones
         <div className="campo">
           <label htmlFor="ret_isr">Retención de ISR</label>
           <select id="ret_isr" name="ret_isr" value={imp.retIsr} onChange={(e) => setImp({ ...imp, retIsr: e.target.value as Impuestos["retIsr"] })}>
-            <option value="ninguna">Ninguna</option><option value="diez">10 %</option>
+            <option value="ninguna">Ninguna</option><option value="diez">10 %</option><option value="resico">1.25 % (RESICO)</option>
           </select>
         </div>
       </div>
@@ -130,6 +130,7 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy, razones
         {t.retenciones > 0 && <><dt>A enterar al SAT</dt><dd>{pesos(t.retenciones)}</dd></>}
       </dl>
       <CampoArchivo id="adjunto" name="adjunto" etiqueta="Prefactura o recibo (PDF o foto, opcional)" accept="application/pdf,image/*" />
+      <p className="saldo-nota">Si tienes el PDF de la factura y falta el XML, puedes adjuntarlo aquí. El documento queda sin CFDI; después podrás asociar el XML a esta misma prefactura.</p>
       <BotonEnviar>Guardar gasto sin CFDI</BotonEnviar>
     </form>
   );
