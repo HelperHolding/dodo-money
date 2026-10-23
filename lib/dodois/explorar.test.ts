@@ -5,6 +5,19 @@ import { urlExplorar } from "./explorar.ts";
 const UNIDADES = ["u1", "u2"];
 const q = (s: string) => new URLSearchParams(s);
 
+test("traspasos vigentes: servicio raíz, unidades ligadas y sin fechas ignoradas", () => {
+  const ruta = "ruta=/accounting/stock-transfer/transfer-items";
+  assert.deepEqual(urlExplorar(q(`${ruta}&skip=1000&take=1000&units=ajena`), UNIDADES),
+    { url: "https://api.dodois.com/accounting/stock-transfer/transfer-items?units=u1%2Cu2&skip=1000&take=1000" });
+  assert.ok("error" in urlExplorar(q(`${ruta}&desde=2026-10-12&hasta=2026-10-18`), UNIDADES));
+  for (const take of ["0", "1001", "-1", "abc"]) assert.ok("error" in urlExplorar(q(`${ruta}&take=${take}`), UNIDADES));
+  assert.ok("error" in urlExplorar(q(ruta), []));
+  assert.ok("error" in urlExplorar(q(ruta), Array.from({length:31}, (_,i)=>`u${i}`)));
+  assert.ok("url" in urlExplorar(q(ruta), Array.from({length:30}, (_,i)=>`u${i}`)));
+  assert.deepEqual(urlExplorar(q("ruta=/accounting/stock-transfer/transfer-items-extra"), UNIDADES),
+    { url: "https://api.dodois.com/dodopizza/mx/accounting/stock-transfer/transfer-items-extra?units=u1%2Cu2" });
+});
+
 test("revisiones históricas: ruta sin país, semana inclusiva y unidades ligadas", () => {
   assert.deepEqual(urlExplorar(q("ruta=/inventory/revisions&desde=2026-10-12&hasta=2026-10-18&skip=0&take=1000&units=ajena&stockItems=ajeno"), ["calma"]),
     { url: "https://api.dodois.com/dodopizza/inventory/revisions?units=calma&from=2026-10-12T00%3A00%3A00&to=2026-10-19T00%3A00%3A00&skip=0&take=1000" });
