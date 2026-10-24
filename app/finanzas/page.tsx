@@ -40,6 +40,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         descripcion={<>{comp ? comp.periodoTitulo : <>{p.titulo}{enCurso && ` · hasta el ${fechaTexto(p.hasta)}`}</>}. Venta neta sin IVA, después de descuentos; criterio devengado.
           {meta && " Meta: PL Base del modelo de Dodo."}{meta && !meta.suc && " Elige una sucursal para ver de dónde sale cada renglón."}</>}
         acciones={<>
+          <Link className="boton boton-secundario boton-compacto" href="/finanzas/catalogo">Catálogo contable</Link>
           <Link className="boton boton-secundario boton-compacto" href={`/reporte/pl?${filtro}`} target="_blank"><Icono nombre="documento" />PDF</Link>
           <a className="boton boton-secundario boton-compacto" href={`/reporte/pl/excel?${filtro}`} download><Icono nombre="descargar" />Excel</a>
         </>}

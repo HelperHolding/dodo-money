@@ -4,6 +4,7 @@ import type { ColumnaPL } from "@/lib/finanzas/excel";
 import { RENGLONES, type ClaveRenglon } from "@/lib/finanzas/pl";
 import { SECCIONES } from "@/lib/finanzas/secciones";
 import { Importe } from "./Importe";
+import { referenciaHelper } from '@/lib/finanzas/catalogoHelper';
 
 const NOMBRE = new Map(RENGLONES.map((r) => [r.clave, r.nombre]));
 
@@ -14,7 +15,7 @@ export function TablaComparativo({ columnas, total }: { columnas: ColumnaPL[]; t
   const clase = (i: number) => `monto${i === columnas.length ? " pl-col-total" : ""}`;
   const renglon = (clave: ClaveRenglon, esTotal: boolean) => (
     <tr key={clave} className={esTotal ? "pl-total" : RENGLONES.find(r => r.clave === clave)?.tipo === "detalle" ? "pl-desglose" : undefined}>
-      <th scope="row">{total.filas.find(f=>f.clave===clave)?.nombre ?? NOMBRE.get(clave)}</th>
+      <th scope="row">{total.filas.find(f=>f.clave===clave)?.nombre ?? NOMBRE.get(clave)}{referenciaHelper(clave)&&<small className="pl-pct">Referencia: {referenciaHelper(clave)}</small>}</th>
       {todas.map((c, i) => {
         const f = c.filas.find((x) => x.clave === clave);
         return <td key={i} className={clase(i)}><Importe n={f?.monto ?? null} /><small className="pl-pct">{porcentaje(f?.pct ?? null)}</small></td>;
