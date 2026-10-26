@@ -17,12 +17,34 @@ Catálogo inmutable para los usuarios, semilla versionada por SHA-256 del archiv
 
 Bloqueos de origen + por clave y solicitud, versión anterior esperada y huella de origen impiden confirmaciones obsoletas. Cambiar un dato de la factura, incluso pagos o estado, invalida la huella: la clasificación se muestra «Revisar», no se considera verificada automáticamente. Facturas canceladas/sustituidas y gastos anulados salen de pendientes; su historial conserva acceso por la ruta original.
 
-## Alcance del P&L
+## P&L por cuentas y documentos
 
-La cuenta exacta queda guardada para el desglose contable. Esta entrega no cambia `cuenta_pl`, los cálculos, prorrateos, costo, ni agrupa todavía el P&L por el nuevo rubro. No reclasifica automáticamente octubre, nómina, movimientos bancarios o cargos calculados. La siguiente entrega de agrupación por cuenta/rubro debe conciliar antes/después y separar R312 de R319; no sumar estas filas de referencia como si fueran el estado financiero.
+La vista predeterminada «Por cuentas» muestra meses (o semanas) en columnas, categorías operativas como subtotales y cuentas exactas como subcuentas. Se pueden contraer y abrir los importes del periodo o acumulado. El diálogo presenta fecha, factura/concepto, proveedor, RFC, UUID y aportación neta devengada, con vínculo al origen. Los subtotales y resultados también tienen desglose con signo: ingresos suman, costos y gastos restan; no se duplican filas de canal ni subtotales.
+
+La agrupación toma las aportaciones ya calculadas por `datosPL`, nunca los importes de referencia de `contabilidad_movimientos`. Una factura conserva la base subtotal menos descuento, el signo de nota de crédito y el prorrateo por cobertura, incluso si el XML cambió la cabecera y se conservaron los conceptos previos. CP242 es el caso de control: base XML 2,972.03 y concepto original 2,940.00. El gasto informativo mantiene la fecha real y no mueve efectivo otra vez. Las compras de insumos capturadas como gasto también entran al memo.
+
+Solo una asignación vigente cuya huella coincide con el origen se muestra como cuenta confirmada. Pendientes, retiros y cambios de origen conservan sus importes, separados para revisión. Ventas, costo teórico, nómina, comisiones y otros cálculos se identifican como fuentes calculadas; no se les inventan facturas ni una cuenta exacta por inferencia. Las diferencias de redondeo o fuentes sin detalle se muestran explícitamente. El reparto de oficina expone sus facturas y la proporción aplicada; un saldo sin detalle permanece visible.
+
+Se conservan «Contra meta», «Comparativo» y los PDF/Excel operativos. La exportación específica de la nueva tabla por cuentas no se incluye en esta entrega. El resultado sigue siendo provisional cuando faltan costos, mermas o reportes financieros; no se reemplaza el costo teórico por costo real.
+
+## Correcciones revisadas de octubre
+
+El lote `CUENTAS-OCTUBRE-20261026` contiene 78 conceptos de 32 facturas y nueve gastos (41 documentos; 87 equivalencias). El JSON y SQL de `supabase/correcciones/2026-10-26_*` contienen el plan exacto. Son documentos revisados individualmente, no reglas automáticas para cualquier proveedor.
+
+Confirmaciones de Sebastián: renta/agua/gastos menores son Helper; Periquera es publicidad; cámaras es monitoreo; BGL6963 y FGDLCRE16133 corresponden a La Calma; Walmart 106 es insumos. BGL6973 y BGL6918 son gasto de limpieza de octubre, confirmado expresamente durante esta entrega. Se excluyen los documentos de septiembre. Las compras de insumos permanecen en memo para no duplicar el costo de venta.
+
+La corrección conserva una fotografía antes/después en `contabilidad_origen_historial`, además de notas de factura e historial de gastos. Valida conceptos, importes, categorías, RFC y sucursal revisados; solo corrige RFC en un origen manual sin UUID. Si una orden vinculada tiene una sucursal incompatible, detiene todo para revisión. El historial usa la identidad administradora activa `scervera@dodopizza.mx`; si no existe exactamente ese perfil activo, no hace nada.
+
+Un bloqueo breve y comparación completa antes/después protegen pagos, aplicaciones, reservas, cierres, recolecciones (incluida 004), movimientos y arqueos. Las líneas originales y los importes no cambian. Repetir la misma corrección no duplica diario ni historial; si el origen cambió después, se rechaza para no sobrescribir. Las asignaciones se calculan después de corregir todos los conceptos y la cabecera, para guardar la huella final.
 
 ## Instalación y validación
 
-Sebastián ejecuta primero `supabase/migrations/20261024001536_cuentas_contables_exactas.sql`, después `supabase/pruebas/20261024001536_cuentas_contables_exactas.sql`. Las pruebas terminan con NOTICE «PRUEBAS OK» y ROLLBACK. La migración crea estructura y catálogo; no aplica asignaciones reales. No publicar las pantallas dependientes sin recibir el resultado, según AGENTS.md.
+La primera migración y pruebas `20261024001536_cuentas_contables_exactas.sql` ya fueron reportadas como satisfactorias por Sebastián. Esta ampliación requiere, en orden:
 
-Ensayo local en PostgreSQL/PGlite con tablas de soporte aisladas: migración completa y pruebas reversibles. Falta validación con el esquema completo de Supabase por Sebastián y revisión visual autenticada en preview después de la migración. No se ejecutaron modificaciones en producción.
+1. `supabase/migrations/20261026155811_revision_octubre_cuentas.sql`: bitácora protegida y permite reclasificar un gasto a insumos memo desde administración. No aplica equivalencias reales.
+2. `supabase/pruebas/20261026155811_revision_octubre_cuentas.sql`: ensaya las correcciones completas sobre los registros reales y termina con ROLLBACK; devuelve una fila «PRUEBAS OK». No guarda las asignaciones.
+3. `supabase/correcciones/2026-10-26_cuentas_octubre.sql`: solo después del ensayo correcto; aplica el mismo plan y devuelve «CUENTAS OCTUBRE OK», 87 equivalencias y 41 documentos.
+
+Sebastián ejecuta producción y entrega los resultados antes de publicar, según AGENTS.md. No se ejecutaron modificaciones de producción desde esta sesión.
+
+Validación local: 641 pruebas, typecheck y build. PostgreSQL/PGlite con esquema de apoyo: migraciones, ensayo reversible sin guardar filas, aplicación de las 87 equivalencias, repetición sin duplicados, rechazo de deriva, permisos sin escritura directa y conservación de pagos/entrega 004. Falta la ejecución con el esquema completo y datos actuales en Supabase. La tabla real y su diálogo fueron probados en navegador con datos ficticios (abrir importe mensual/acumulado, contraer y cerrar con Escape devolviendo el foco). La prueba visual no acredita la conciliación de producción.

@@ -1430,6 +1430,25 @@ body { background: var(--papel-2); }
 /* ─── Vista general ─── */
 .pagina:has(.panel-admin) { max-width: 1280px; }
 .panel-admin { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.pagina:has(.pl-cuentas) { max-width: 1840px; }
+.tabla-cuentas { table-layout: auto; width: 100%; }
+.tabla-cuentas th:first-child { min-width: 18rem; text-align: left; }
+.tabla-cuentas td, .tabla-cuentas th { vertical-align: top; }
+.tabla-cuentas .monto { min-width: 9rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tabla-cuentas thead { background: var(--fondo-suave, #f6f6f8); }
+.pl-cuenta-padre { background: #faf8f6; }
+.pl-cuenta-hija th { padding-left: 2rem; font-weight: 400; }
+.pl-expandir, .pl-importe-enlace { border: 0; background: transparent; font: inherit; cursor: pointer; padding: 0; }
+.pl-expandir { text-align: left; font-weight: 600; }
+.pl-importe-enlace { color: var(--primario, #c54d1e); text-decoration: underline; text-underline-offset: 3px; }
+.pl-total .pl-importe-enlace { color: inherit; }
+.pl-importe-enlace:hover { text-decoration-thickness: 2px; }
+.pl-dialogo { width: min(1500px, 94vw); max-height: 90vh; border: 1px solid var(--linea); border-radius: 16px; padding: 24px; color: var(--texto); }
+.pl-dialogo::backdrop { background: rgb(0 0 0 / 45%); }
+.pl-dialogo-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.pl-dialogo .tabla { min-width: 800px; }
+.pl-dialogo .pl-uuid { overflow-wrap: anywhere; min-width: 10rem; }
+@media (max-width: 700px) { .pl-dialogo { padding: 14px; } .tabla-cuentas th:first-child { min-width: 12rem; } }
 .panel-admin > * { min-width: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .panel-admin > * { animation: panel-sube 320ms var(--curva) both; }

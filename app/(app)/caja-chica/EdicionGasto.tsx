@@ -18,7 +18,7 @@ export function EdicionGasto({g,personas}:{g:Gasto;personas:Map<string,string>})
    <label>Persona que pagó (solo si salió de un empleado)<select name="pagado_por" defaultValue={g.pagado_por??''}><option value="">No aplica</option>{[...personas].map(([id,n])=><option key={id} value={id}>{n}</option>)}</select></label>
    <label>Comprobante<select name="comprobante" defaultValue={g.comprobante}><option value="cfdi">Factura (CFDI)</option><option value="nota">Nota o ticket</option><option value="sin_comprobante">Sin comprobante</option></select></label>
    <label>UUID (obligatorio con CFDI)<input name="uuid_cfdi" defaultValue={g.uuid_cfdi??''} maxLength={36}/></label>
-   <label>Cuenta del P&L<select name="cuenta_pl" defaultValue={g.cuenta_pl??'otros'}>{CUENTAS_GASTO.map(c=><option key={c} value={c}>{NOMBRE_CUENTA[c]}</option>)}</select></label>
+   <label>Cuenta del P&L<select name="cuenta_pl" defaultValue={g.cuenta_pl??'otros'}>{([...CUENTAS_GASTO,"insumos"] as const).map(c=><option key={c} value={c}>{NOMBRE_CUENTA[c]}</option>)}</select></label>
    <label>Motivo<textarea name="motivo" required minLength={5} maxLength={1000}/></label>
    <p>Se conserva el comprobante original y el historial. Los cambios de monto u origen ajustan el saldo actual; no reescriben cierres anteriores. {g.informativo&&'Este gasto ya estaba cuadrado: sigue siendo informativo y no mueve efectivo.'}</p>
    <BotonEnviar confirmar="¿Guardar la corrección del gasto y su efecto en saldo y P&L?">Guardar corrección</BotonEnviar>

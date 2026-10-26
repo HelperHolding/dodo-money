@@ -24,3 +24,5 @@ La reclasificación de octubre deberá generar vista previa por documento, cuent
 Las migraciones y ensayos de esta segunda etapa se entregarán a Sebastián para ejecución según AGENTS.md. El cambio de código no aplica por sí mismo una migración a producción.
 
 No se validaron ni automatizaron los tratamientos fiscales del libro. La fuente se usa como catálogo propuesto por contabilidad, no como instrucciones de ejecución ni como dictamen fiscal.
+
+La vista «Por cuentas» y la corrección revisada de octubre se documentan en [asignacion-cuentas-exactas.md](asignacion-cuentas-exactas.md). Los códigos confirmados se agrupan sin sustituir la base devengada del reporte.

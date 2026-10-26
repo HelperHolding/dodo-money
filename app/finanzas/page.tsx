@@ -5,6 +5,8 @@ import { elegirPeriodo, etiquetaSemana, paramsPeriodo, semanasDesde } from "@/li
 import { INICIO_FECHA, INICIO_PL } from "@/lib/finanzas/pl";
 import { comparativoPL, plConHistoria } from "./datos";
 import { TablaComparativo } from "./TablaComparativo";
+import TablaCuentas from "./TablaCuentas";
+import { cuentasPL } from "./cuentasDatos";
 import { TablaPL } from "./TablaPL";
 import AdvertenciasPL from "./AdvertenciasPL";
 import { ResumenPL } from "./ResumenPL";
@@ -19,14 +21,16 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
   const { supabase } = await obtenerPerfil();
   const hoy = hoyMX();
   const p = elegirPeriodo(q, hoy, INICIO_FECHA);
+  const cuentas = !q.vista || q.vista === "cuentas";
+  const contable = cuentas ? await cuentasPL(supabase,p,q.sucursal) : null;
   const comparativo = q.vista === "comparativo";
-  const meta = comparativo ? null : await plConHistoria(supabase, p, q.sucursal);
+  const meta = comparativo || cuentas ? null : await plConHistoria(supabase, p, q.sucursal);
   const comp = comparativo ? await comparativoPL(supabase, p, q.sucursal) : null;
-  const titulo = meta?.titulo ?? comp?.titulo ?? "Consolidado";
-  const sucId = meta ? meta.suc?.id : comp?.suc?.id;
-  const sucursales = meta ? meta.datos.porSucursal : comp?.sucursales ?? [];
+  const titulo = contable?.titulo ?? meta?.titulo ?? comp?.titulo ?? "Consolidado";
+  const sucId = contable ? contable.sucursal : meta ? meta.suc?.id : comp?.suc?.id;
+  const sucursales = contable ? contable.sucursales : meta ? meta.datos.porSucursal : comp?.sucursales ?? [];
   const suc: Record<string, string> = sucId ? { sucursal: sucId } : {};
-  const vista: Record<string, string> = comparativo ? { vista: "comparativo" } : {};
+  const vista: Record<string, string> = {vista:cuentas?"cuentas":comparativo?"comparativo":"meta"};
   const filtro = new URLSearchParams({ ...paramsPeriodo(p), ...suc, ...vista }).toString();
   const enCurso = !p.vacio && p.hasta < p.finNominal;
   const pestana = (activa: boolean, href: string, texto: string) => (
@@ -42,8 +46,8 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         acciones={<>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/catalogo">Catálogo contable</Link>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/asignacion">Asignar cuentas</Link>
-          <Link className="boton boton-secundario boton-compacto" href={`/reporte/pl?${filtro}`} target="_blank"><Icono nombre="documento" />PDF</Link>
-          <a className="boton boton-secundario boton-compacto" href={`/reporte/pl/excel?${filtro}`} download><Icono nombre="descargar" />Excel</a>
+          <Link className="boton boton-secundario boton-compacto" href={`/reporte/pl?${filtro}`} target="_blank"><Icono nombre="documento" />{cuentas?"PDF operativo":"PDF"}</Link>
+          <a className="boton boton-secundario boton-compacto" href={`/reporte/pl/excel?${filtro}`} download><Icono nombre="descargar" />{cuentas?"Excel operativo":"Excel"}</a>
         </>}
       />
       <div className="barra-filtros">
@@ -52,12 +56,13 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
           {pestana(p.tipo === "semana", `/finanzas?${new URLSearchParams({ periodo: "semana", ...suc, ...vista })}`, "Semana")}
         </nav>
         <nav className="segmentos" aria-label="Vista">
-          {pestana(!comparativo, `/finanzas?${new URLSearchParams({ ...paramsPeriodo(p), ...suc })}`, "Contra meta")}
+          {pestana(cuentas, `/finanzas?${new URLSearchParams({ ...paramsPeriodo(p), ...suc, vista: "cuentas" })}`, "Por cuentas")}
+          {pestana(!comparativo&&!cuentas, `/finanzas?${new URLSearchParams({ ...paramsPeriodo(p), ...suc, vista: "meta" })}`, "Contra meta")}
           {pestana(comparativo, `/finanzas?${new URLSearchParams({ ...paramsPeriodo(p), ...suc, vista: "comparativo" })}`, "Comparativo")}
         </nav>
         <form className="barra-filtros" method="get" aria-label="Periodo y sucursal">
           <input type="hidden" name="periodo" value={p.tipo} />
-          {comparativo && <input type="hidden" name="vista" value="comparativo" />}
+          <input type="hidden" name="vista" value={vista.vista} />
           {p.tipo === "mes" ? (
             <>
               <label htmlFor="mes" className="solo-lector">Mes</label>
@@ -86,7 +91,11 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
           <p><Link href="/ventas/conciliacion">Revisar diferencias y conciliaciones de Dodo IS →</Link></p>
         </details>
       </div>
-      {comp ? (
+      {contable ? <>
+        <p className="nota">Cuentas exactas confirmadas del catálogo Helper. Los documentos pendientes y las fuentes calculadas se muestran por separado y permanecen incluidos en los totales. Insumos e inversiones se presentan en memo, fuera del resultado.</p>
+        <AdvertenciasPL avisos={contable.avisos}/>
+        {contable.columnas.length?<TablaCuentas filas={contable.filas} columnas={contable.columnas}/>:<EstadoVacio icono="calendario" titulo="Todavía no hay días cerrados" descripcion="Elige un periodo anterior."/>}
+      </> : comp ? (
         comp.columnas.length === 0
           ? <EstadoVacio icono="calendario" titulo="Todavía no hay días cerrados" descripcion="El comparativo aparece cuando el periodo tenga al menos un día cerrado." />
           : <TablaComparativo columnas={comp.columnas} total={comp.total} />
