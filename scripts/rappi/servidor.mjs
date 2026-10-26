@@ -19,7 +19,7 @@ import { createServer } from "node:http";
 import { existsSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium } from "playwright-core";
-import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso } from "./api.mjs";
+import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso, esperarHasta } from "./api.mjs";
 import { iniciarSesion } from "./login.mjs";
 
 const PORTAL = "https://restaurantes.rappi.com";
@@ -54,9 +54,11 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
     const pagina = await contexto.newPage();
     // Se escuchan las respuestas que el propio portal pide: listado del historial y detalle de cada orden.
     const listado = new Map();
+    let leyendo = 0; // respuestas del historial cuyo JSON todavía se está leyendo
     pagina.on("response", async (r) => {
       if (!r.url().includes("/orders/partner/status/v2/stores/orders/history") || !r.ok()) return;
-      try { for (const it of (await r.json())?.items ?? []) listado.set(String(it.id), it); } catch {}
+      leyendo++;
+      try { for (const it of (await r.json())?.items ?? []) listado.set(String(it.id), it); } catch {} finally { leyendo--; }
     });
     const enLogin = () => new URL(pagina.url()).pathname.startsWith("/login");
     // El portal pasa por /login mientras valida la sesión; solo se da por vencida si se queda ahí.
@@ -85,17 +87,21 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
     // Avanza páginas del historial (más reciente primero) hasta pasar la fecha más antigua a revisar.
     const diasRepaso = Array.from({ length: repasar }, (_, i) => restarDias(fecha, i + 1));
     const masAntigua = diasRepaso.at(-1) ?? fecha;
-    for (let hoja = 1; hoja <= 60; hoja++) {
+    // Tras cada clic se espera a que el listado crezca y no quede JSON por leer (antes una espera fija de 500 ms cortaba
+    // la paginación si el portal tardaba y se perdían órdenes en silencio). No se repite el clic: podría saltar una página.
+    await esperarHasta(() => listado.size > 0 && leyendo === 0, 15_000);
+    let alcanzada = false, finHistorial = false;
+    for (let hoja = 1; hoja <= 80; hoja++) {
       const fechas = [...listado.values()].map(fechaListado);
-      if (fechas.length && fechas.some((f) => f < masAntigua)) break;
+      if (fechas.some((f) => f < masAntigua)) { alcanzada = true; break; }
       const siguiente = pagina.locator(":has(> :text('Mostrando'))").first().locator("button").last();
-      if (!(await siguiente.count()) || await siguiente.isDisabled()) break;
+      if (!(await siguiente.count()) || await siguiente.isDisabled()) { finHistorial = true; break; }
       const antes = listado.size;
       await siguiente.click();
-      await pagina.waitForResponse((r) => r.url().includes("/stores/orders/history"), { timeout: 30_000 }).catch(() => {});
-      await pagina.waitForTimeout(500);
-      if (listado.size === antes) break;
+      if (!(await esperarHasta(() => listado.size > antes && leyendo === 0, 30_000))) break;
     }
+    // Si no llegó a una fecha anterior a la pedida ni al final del historial, la lectura quedó incompleta.
+    const cortado = !alcanzada && !finHistorial;
     const items = [...listado.values()];
     const ordenes = [], productos = [], omitidas = [], cambios = [];
     // Abre el detalle de una orden, la agrega al envío, anota si cambió de estado y actualiza la caché del día.
@@ -133,9 +139,9 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
     // Guarda la sesión renovada (escritura atómica para no dejar un archivo a medias) y las cachés.
     writeFileSync(`${ESTADO}.tmp`, JSON.stringify(await contexto.storageState())); renameSync(`${ESTADO}.tmp`, ESTADO);
     if (!revisar) for (const [dia, c] of caches) guardarCache(dia, c);
-    const estado = omitidas.length ? "error" : ordenes.length ? "ok" : "sin_ordenes";
+    const estado = omitidas.length || cortado ? "error" : ordenes.length ? "ok" : "sin_ordenes";
     const textoCambios = cambios.length ? ` Cambios de estado: ${cambios.map((c) => `#${c.rappi_id} (${c.fecha}) ${c.de} → ${c.a}`).join(", ")}.` : "";
-    return { ...base, estado, enCurso: plan.enCurso, cambios, relogin, mensaje: `${relogin ? "Sesión renovada con login automático. " : ""}Leídas ${ordenes.length} órdenes (${plan.abrir.length} abiertas, ${plan.reusar.length} de caché), ${productos.length} renglones; en curso ${plan.enCurso}; omitidas ${omitidas.length}.${diasRepaso.length ? ` Repaso de ${diasRepaso.length} días.` : ""}${textoCambios}`, ordenes: ordenes.length, renglones: productos.length, omitidas, cuerpo: ordenes.length ? { ordenes, productos } : null };
+    return { ...base, estado, enCurso: plan.enCurso, cambios, relogin, cortado, mensaje: `${relogin ? "Sesión renovada con login automático. " : ""}${cortado ? `El historial se cortó antes de llegar a ${masAntigua}: pueden faltar órdenes; la siguiente vuelta lo reintenta. ` : ""}Leídas ${ordenes.length} órdenes (${plan.abrir.length} abiertas, ${plan.reusar.length} de caché), ${productos.length} renglones; en curso ${plan.enCurso}; omitidas ${omitidas.length}.${diasRepaso.length ? ` Repaso de ${diasRepaso.length} días.` : ""}${textoCambios}`, ordenes: ordenes.length, renglones: productos.length, omitidas, cuerpo: ordenes.length ? { ordenes, productos } : null };
   } finally {
     await navegador.close();
   }
