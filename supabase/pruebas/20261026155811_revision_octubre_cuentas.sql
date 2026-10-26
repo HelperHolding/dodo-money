@@ -1,4 +1,5 @@
--- ENSAYO REVERSIBLE: ejecutar completo después de la migración. No guarda las correcciones.
+-- ENSAYO REVERSIBLE: este archivo termina en ROLLBACK y no guarda correcciones.
+-- Ejecutar completo DESPUÉS de 20261026155811_revision_octubre_cuentas.sql.
 -- Correcciones y equivalencias revisadas con Sebastián. No cambia pagos ni efectivo.
 -- Si un dato revisado cambió o hay vínculos incompatibles, se revierte TODO.
 begin;
@@ -1434,7 +1435,7 @@ begin
     if f.subtotal is distinct from linea.subtotal or f.rfc_receptor is distinct from linea.rfc_anterior or f.sucursal_id is distinct from linea.sucursal_anterior then raise exception 'Cambió subtotal, RFC o sucursal de %.',f.id;end if;
     if (select count(*) from public.factura_conceptos c where c.factura_id=f.id and c.descripcion=linea.concepto and c.importe=linea.importe and coalesce(c.cuenta_pl,f.cuenta_pl) is not distinct from linea.categoria_anterior)<>1 then raise exception 'Concepto modificado o ambiguo: % / %.',f.id,linea.concepto;end if;
     if linea.rfc<>f.rfc_receptor and (f.origen::text<>'manual' or f.uuid is not null) then raise exception 'No se puede cambiar el RFC de un CFDI: %.',f.id;end if;
-    if linea.sucursal is distinct from f.sucursal_id and exists(select 1 from public.factura_ordenes fo join public.ordenes_compra o on o.id=fo.orden_id where fo.factura_id=f.id and o.sucursal_id is distinct from linea.sucursal) then raise exception 'La factura % tiene una orden en otra sucursal; revisar antes de moverla.',f.id;end if;
+    if (linea.sucursal is distinct from f.sucursal_id or linea.rfc<>f.rfc_receptor) and exists(select 1 from public.factura_ordenes fo join public.ordenes_compra o on o.id=fo.orden_id where fo.factura_id=f.id and (o.sucursal_id is distinct from linea.sucursal or o.rfc_receptor is distinct from linea.rfc)) then raise exception 'La factura % tiene una orden de otra sucursal o razón social; revisar antes de corregirla.',f.id;end if;
    end loop;
    for linea in select * from plan_octubre where id=f.id and tipo='factura' loop
     update public.factura_conceptos set cuenta_pl=linea.categoria where factura_id=f.id and descripcion=linea.concepto and importe=linea.importe;
