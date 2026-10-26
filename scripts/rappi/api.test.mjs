@@ -75,3 +75,15 @@ test("repaso de días cerrados: solo abre las que cambiaron y no mueve las no re
   assert.deepEqual(r.base, { 4: { base: true, orden: { estado: "Finalizado" } } }); // nueva referencia, sin reimportar
   assert.deepEqual(planearRepaso([it(1, "finished")], "2026-10-18", {}).abrir, []);
 });
+
+import { esperarHasta } from "./api.mjs";
+test("esperarHasta: espera a que la condición se cumpla y respeta el tope", async () => {
+  let n = 0; const t0 = Date.now();
+  assert.equal(await esperarHasta(() => ++n >= 3, 2000, 10), true);
+  assert.equal(n, 3);
+  assert.equal(await esperarHasta(() => false, 60, 10), false);
+  assert.ok(Date.now() - t0 < 1000);
+  // Una condición que se cumple tarde (como el JSON del portal que tarda más de 500 ms) sí se alcanza.
+  let listo = false; setTimeout(() => { listo = true; }, 700);
+  assert.equal(await esperarHasta(() => listo, 3000, 50), true);
+});
