@@ -1411,8 +1411,19 @@ begin
  where lower(u.email)='scervera@dodopizza.mx' and p.rol::text='admin' and p.activo and not p.debe_cambiar_contrasena;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',autor,'role','authenticated')::text,true);
  -- Bloqueo corto para comparar exactamente las fuentes protegidas; no modifica sus registros.
- lock table public.facturas,public.factura_conceptos,public.factura_ordenes,public.ordenes_compra,public.gastos_caja_chica,
- public.pagos,public.pago_aplicaciones,public.reservas_boveda,public.cierres_dia,public.recolecciones_corporativo,public.movimientos,public.arqueos,public.factura_recepciones in share row exclusive mode;
+ lock table public.facturas in share row exclusive mode;
+ lock table public.factura_conceptos in share row exclusive mode;
+ lock table public.factura_ordenes in share row exclusive mode;
+ lock table public.ordenes_compra in share row exclusive mode;
+ lock table public.gastos_caja_chica in share row exclusive mode;
+ lock table public.pagos in share row exclusive mode;
+ lock table public.pago_aplicaciones in share row exclusive mode;
+ lock table public.reservas_boveda in share row exclusive mode;
+ lock table public.cierres_dia in share row exclusive mode;
+ lock table public.recolecciones_corporativo in share row exclusive mode;
+ lock table public.movimientos in share row exclusive mode;
+ lock table public.arqueos in share row exclusive mode;
+ lock table public.factura_recepciones in share row exclusive mode;
  create temp table respaldo_protegido(nombre text primary key,datos jsonb) on commit drop;
  foreach tabla in array array['pagos','pago_aplicaciones','reservas_boveda','cierres_dia','recolecciones_corporativo','movimientos','arqueos','factura_recepciones'] loop
   execute format('select coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),''[]''::jsonb) from public.%I t',tabla) into protegido;
