@@ -70,6 +70,14 @@ test("escribirXlsx: los formatos de número están bien escritos (Excel no abre 
   assert.ok(estilos.includes(`<numFmt numFmtId="167" formatCode="_(&quot;$&quot;* #,##0.00_);_(&quot;$&quot;* \\(#,##0.00\\);_(&quot;$&quot;* &quot;-&quot;??_);_(@_)"/>`));
 });
 
+test("escribirXlsx: enlace interno conserva fórmula numérica y escapa el destino",()=>{
+  const b=Buffer.from(escribirXlsx([{nombre:'Resumen',filas:[[{formula:'SUM(1,2)',resultado:3,formato:'contable',enlaceInterno:"'Detalle & origen'!A6"}]]}]));
+  const xml=parte(b,'xl/worksheets/sheet1.xml');
+  assert.match(xml,/<f>SUM\(1,2\)<\/f><v>3<\/v>/);
+  assert.ok(xml.includes('<hyperlinks><hyperlink ref="A1" location="\'Detalle &amp; origen\'!A6"/></hyperlinks>'));
+  assert.ok(xml.indexOf('<hyperlinks>')>xml.indexOf('</sheetData>'));
+});
+
 /** CRC-32 de referencia, bit por bit. */
 function crc32Ref(datos: Uint8Array): number {
   let crc = 0xffffffff;
