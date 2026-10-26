@@ -43,8 +43,9 @@ La primera migración y pruebas `20261024001536_cuentas_contables_exactas.sql` y
 
 1. `supabase/migrations/20261026155811_revision_octubre_cuentas.sql`: bitácora protegida y permite reclasificar un gasto a insumos memo desde administración. No aplica equivalencias reales.
 2. `supabase/migrations/20261026162310_correccion_rfc_historico_controlada.sql`: mantiene el trigger real y permite solo la corrección manual de renta G93 → B93, desde SQL Editor, con marca local, administrador activo y todos los demás campos intactos. API y cambios de otros documentos siguen bloqueados.
-3. `supabase/pruebas/20261026155811_revision_octubre_cuentas.sql`: ensaya las correcciones completas sobre los registros reales y termina con ROLLBACK; devuelve una fila «PRUEBAS OK». No guarda las asignaciones.
-4. `supabase/correcciones/2026-10-26_cuentas_octubre.sql`: solo después del ensayo correcto; aplica el mismo plan y devuelve «CUENTAS OCTUBRE OK», 87 equivalencias y 41 documentos.
+3. `supabase/migrations/20261026162842_correccion_sucursal_recepcion_controlada.sql`: conserva el trigger de recepción y permite solo las dos facturas confirmadas, Oficina → La Calma, desde SQL Editor con marca local y sin otros cambios.
+4. `supabase/pruebas/20261026155811_revision_octubre_cuentas.sql`: ensaya las correcciones completas sobre los registros reales y termina con ROLLBACK; devuelve una fila «PRUEBAS OK». No guarda las asignaciones.
+5. `supabase/correcciones/2026-10-26_cuentas_octubre.sql`: solo después del ensayo correcto; aplica el mismo plan y devuelve «CUENTAS OCTUBRE OK», 87 equivalencias y 41 documentos.
 
 Sebastián ejecuta producción y entrega los resultados antes de publicar, según AGENTS.md. No se ejecutaron modificaciones de producción desde esta sesión.
 
@@ -53,3 +54,9 @@ Validación local: 641 pruebas, typecheck y build. PostgreSQL/PGlite con esquema
 ### Regresión del trigger de razón social
 
 El ensayo inicial con esquema de apoyo omitió `validar_razon_documento` y no detectó la inmutabilidad del RFC. Se reprodujo el error con la función y ambos triggers de 0068. El nuevo ensayo los incluye: sin marca, con otro RFC, otro documento, cambio de importe, origen CFDI y rol authenticated se rechaza. La excepción solo permite el documento manual de renta identificado, G93 → B93, sin otra modificación de cabecera, y validando la relación empresa/sucursal. No se deshabilita ningún trigger. El lote completo, sus pruebas reversibles, idempotencia e invariantes se vuelven a ejecutar con estos controles activos.
+
+### Regresión de recepción directa
+
+El lote también encontró la protección de 0054 al cambiar Oficina → La Calma. La recepción directa no guarda sucursal propia: la consulta hereda la de su factura. Se conserva cada fila de recepción literalmente, incluidos ID, fecha, cantidades, autor y estado; el historial de origen ahora incluye esas filas antes/después y la sucursal de cabecera. El snapshot global protege toda `factura_recepciones`. No se anula, borra ni recrea una recepción. Si hay notas relacionadas, se detiene antes de mover sucursal para evitar cambios por seguimiento automático.
+
+El ensayo de apoyo carga los tres triggers originales de 0054 y el seguimiento de notas de crédito de 0025, junto con los de razón social de 0068. Reproduce ambos errores antes de sus correcciones. Verifica que cambios normales, otra factura, importes, cancelación, cantidades y rol de API sigan bloqueados; el lote y su repetición conservan íntegramente las recepciones. Se revisaron además los triggers versionados de factura/conceptos: UUID, sustitución y estado no se disparan por las columnas modificadas, y los de inserción no aplican a este lote. Sigue pendiente el ensayo con el esquema y datos de producción de Sebastián.

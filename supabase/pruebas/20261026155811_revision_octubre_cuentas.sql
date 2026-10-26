@@ -1,5 +1,5 @@
 -- ENSAYO REVERSIBLE: este archivo termina en ROLLBACK y no guarda correcciones.
--- Ejecutar después de 20261026155811 y 20261026162310. El cambio de RFC usa la excepción única validada por el trigger.
+-- Ejecutar después de 20261026155811, 20261026162310 y 20261026162842. El cambio de RFC usa la excepción única validada por el trigger.
 -- Correcciones y equivalencias revisadas con Sebastián. No cambia pagos ni efectivo.
 -- Si un dato revisado cambió o hay vínculos incompatibles, se revierte TODO.
 begin;
@@ -43,6 +43,34 @@ begin
  perform set_config('dodo.correccion_rfc_historico','',true);
  if to_jsonb(f) is distinct from (select to_jsonb(t) from public.facturas t where t.id=f.id) then raise exception 'FALLÓ: prueba alteró el documento.';end if;
 end $proteger_rfc$;
+-- Una recepción directa continúa bloqueando los cambios ordinarios y los importes.
+do $proteger_recepcion$
+declare f public.facturas;bloqueado boolean;
+begin
+ for f in select * from public.facturas where id in('f2a01469-2c13-4762-bf4a-d80e6c63d75d','c82935ad-f1c0-4edd-b4ac-04fa41645435') and sucursal_id is null and exists(select 1 from public.factura_recepciones r where r.factura_id=facturas.id and r.anulada_en is null) order by id for update loop
+  perform set_config('dodo.correccion_sucursal_recibida','',true);
+  bloqueado:=false;
+  begin
+   update public.facturas set sucursal_id='260324e5-6f5a-44d8-9a75-f4a4ba3ed10e' where id=f.id;
+  exception when raise_exception then
+   if sqlerrm<>'Anula la recepción antes de cancelar o cambiar la sucursal.' then raise;end if;
+   bloqueado:=true;
+  end;
+  if not bloqueado then raise exception 'FALLÓ: recepción permitió cambiar sucursal sin corrección controlada.';end if;
+  perform set_config('dodo.correccion_sucursal_recibida','CUENTAS-OCTUBRE-20261026',true);
+  bloqueado:=false;
+  begin
+   update public.facturas set sucursal_id='260324e5-6f5a-44d8-9a75-f4a4ba3ed10e',subtotal=subtotal+.01 where id=f.id;
+  exception when raise_exception then
+   if sqlerrm<>'Anula la recepción antes de cancelar o cambiar la sucursal.' then raise;end if;
+   bloqueado:=true;
+  end;
+  if not bloqueado then raise exception 'FALLÓ: corrección de sucursal alteró importes.';end if;
+  perform set_config('dodo.correccion_sucursal_recibida','',true);
+  if to_jsonb(f) is distinct from (select to_jsonb(t) from public.facturas t where t.id=f.id) then raise exception 'FALLÓ: prueba alteró factura recibida.';end if;
+ end loop;
+end $proteger_recepcion$;
+
 
 create temp table plan_octubre on commit drop as select * from jsonb_to_recordset(
  $plan$[
@@ -1453,9 +1481,9 @@ begin
  perform set_config('request.jwt.claims',jsonb_build_object('sub',autor,'role','authenticated')::text,true);
  -- Bloqueo corto para comparar exactamente las fuentes protegidas; no modifica sus registros.
  lock table public.facturas,public.factura_conceptos,public.factura_ordenes,public.ordenes_compra,public.gastos_caja_chica,
- public.pagos,public.pago_aplicaciones,public.reservas_boveda,public.cierres_dia,public.recolecciones_corporativo,public.movimientos,public.arqueos in share row exclusive mode;
+ public.pagos,public.pago_aplicaciones,public.reservas_boveda,public.cierres_dia,public.recolecciones_corporativo,public.movimientos,public.arqueos,public.factura_recepciones in share row exclusive mode;
  create temp table respaldo_protegido(nombre text primary key,datos jsonb) on commit drop;
- foreach tabla in array array['pagos','pago_aplicaciones','reservas_boveda','cierres_dia','recolecciones_corporativo','movimientos','arqueos'] loop
+ foreach tabla in array array['pagos','pago_aplicaciones','reservas_boveda','cierres_dia','recolecciones_corporativo','movimientos','arqueos','factura_recepciones'] loop
   execute format('select coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),''[]''::jsonb) from public.%I t',tabla) into protegido;
   insert into respaldo_protegido values(tabla,protegido);
  end loop;
@@ -1464,7 +1492,7 @@ begin
   select * into previo from public.contabilidad_origen_historial h where h.lote=v_lote and h.origen=objetivo.tipo and h.origen_id=objetivo.id;
   if objetivo.tipo='factura' then
    select * into strict f from public.facturas where id=objetivo.id for update;
-   select jsonb_build_object('factura',to_jsonb(f),'conceptos',coalesce(jsonb_agg(to_jsonb(c) order by c.id),'[]')) into antes from public.factura_conceptos c where c.factura_id=f.id;
+   select jsonb_build_object('factura',to_jsonb(f),'recepciones',(select coalesce(jsonb_agg(to_jsonb(r) order by r.id),'[]') from public.factura_recepciones r where r.factura_id=f.id),'conceptos',coalesce(jsonb_agg(to_jsonb(c) order by c.id),'[]')) into antes from public.factura_conceptos c where c.factura_id=f.id;
    if previo.origen_id is not null then
     if antes is distinct from previo.despues then raise exception 'La factura % cambió después de la corrección; revisar.',f.id;end if;
     continue;
@@ -1484,9 +1512,14 @@ begin
    if linea.rfc<>f.rfc_receptor then
     perform set_config('dodo.correccion_rfc_historico','CUENTAS-OCTUBRE-20261026',true);
    end if;
+   if linea.sucursal is distinct from f.sucursal_id then
+    if f.uuid_relacionado is not null or exists(select 1 from public.facturas n where n.uuid_relacionado=f.uuid) then raise exception 'La factura % tiene notas relacionadas; revisar antes de cambiar sucursal.',f.id;end if;
+    perform set_config('dodo.correccion_sucursal_recibida','CUENTAS-OCTUBRE-20261026',true);
+   end if;
    update public.facturas set rfc_receptor=linea.rfc,sucursal_id=linea.sucursal where id=f.id;
+   perform set_config('dodo.correccion_sucursal_recibida','',true);
    perform set_config('dodo.correccion_rfc_historico','',true);
-   select jsonb_build_object('factura',to_jsonb(t),'conceptos',(select coalesce(jsonb_agg(to_jsonb(c) order by c.id),'[]') from public.factura_conceptos c where c.factura_id=t.id)) into despues from public.facturas t where t.id=f.id;
+   select jsonb_build_object('factura',to_jsonb(t),'recepciones',(select coalesce(jsonb_agg(to_jsonb(r) order by r.id),'[]') from public.factura_recepciones r where r.factura_id=t.id),'conceptos',(select coalesce(jsonb_agg(to_jsonb(c) order by c.id),'[]') from public.factura_conceptos c where c.factura_id=t.id)) into despues from public.facturas t where t.id=f.id;
    if (antes->'factura')-array['rfc_receptor','sucursal_id'] is distinct from (despues->'factura')-array['rfc_receptor','sucursal_id'] then raise exception 'Cambió un dato protegido de factura %.',f.id;end if;
    if (select jsonb_agg(x-'cuenta_pl' order by x->>'id') from jsonb_array_elements(antes->'conceptos') x) is distinct from (select jsonb_agg(x-'cuenta_pl' order by x->>'id') from jsonb_array_elements(despues->'conceptos') x) then raise exception 'Cambió un importe o concepto en %.',f.id;end if;
    insert into public.compra_notas(factura_id,texto,usuario_id) values(f.id,v_lote||': equivalencias revisadas. RFC '||f.rfc_receptor||' → '||linea.rfc||'. Sucursal '||coalesce(f.sucursal_id::text,'Oficina')||' → '||linea.sucursal::text||'. Fuente completa antes/después en contabilidad_origen_historial. Pagos, importes y documentos originales sin cambios.',autor);
@@ -1536,5 +1569,5 @@ begin
  if has_table_privilege('anon','public.contabilidad_origen_historial','SELECT') then raise exception 'FALLÓ: lectura anónima.';end if;
  if (select cuenta_pl from public.gastos_caja_chica where id='2ac46985-35d0-45bb-b183-c9ee3a04cabf')<>'insumos' then raise exception 'FALLÓ: Walmart no está en memo.';end if;
 end $pruebas$;
-select 'PRUEBAS OK — 87 equivalencias · 41 documentos · RFC y sucursal con respaldo · XML conserva subtotal · limpieza en gasto · insumos en memo · sin mover efectivo · pagos y entrega 004 intactos · sin escritura directa · ensayo reversible' as resultado;
+select 'PRUEBAS OK — 87 equivalencias · 41 documentos · RFC y sucursal con respaldo · XML conserva subtotal · limpieza en gasto · insumos en memo · recepciones originales intactas · sin mover efectivo · pagos y entrega 004 intactos · sin escritura directa · ensayo reversible' as resultado;
 rollback;
