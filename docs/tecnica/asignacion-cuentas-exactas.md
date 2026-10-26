@@ -25,7 +25,7 @@ La agrupación toma las aportaciones ya calculadas por `datosPL`, nunca los impo
 
 Solo una asignación vigente cuya huella coincide con el origen se muestra como cuenta confirmada. Pendientes, retiros y cambios de origen conservan sus importes, separados para revisión. Ventas, costo teórico, nómina, comisiones y otros cálculos se identifican como fuentes calculadas; no se les inventan facturas ni una cuenta exacta por inferencia. Las diferencias de redondeo o fuentes sin detalle se muestran explícitamente. El reparto de oficina expone sus facturas y la proporción aplicada; un saldo sin detalle permanece visible.
 
-Se conservan «Contra meta», «Comparativo» y los PDF/Excel operativos. La exportación específica de la nueva tabla por cuentas no se incluye en esta entrega. El resultado sigue siendo provisional cuando faltan costos, mermas o reportes financieros; no se reemplaza el costo teórico por costo real.
+Se conservan «Contra meta», «Comparativo» y el PDF operativo. El Excel incluye además la tabla por cuentas y su detalle documental, descritos al final. El resultado sigue siendo provisional cuando faltan costos, mermas o reportes financieros; no se reemplaza el costo teórico por costo real.
 
 ## Correcciones revisadas de octubre
 
@@ -67,3 +67,11 @@ El ensayo de apoyo carga los tres triggers originales de 0054 y el seguimiento d
 0068 permite que la razón principal activa opere en sucursales sin insertar relaciones adicionales; la función contable inicial exigía esas filas y discrepaba de Compras. La nueva migración delega en `razon_admite_sucursal` para sucursales, conservando la comprobación de razón activa y el comportamiento de Oficina. No agrega relaciones ni activa razones. El preflight del lote recorre las combinaciones previstas antes de modificar el origen y reporta RFC/sucursal si no están autorizados.
 
 La fixture ahora representa la configuración inicial de 0068: Helper principal sin relación explícita, Sitru secundaria ligada a La Calma. Reproduce el error original; después de la migración prueba principal sin vínculo, secundaria autorizada y rechazo de secundaria ajena e inactiva. El lote completo vuelve a pasar con triggers de recepción/razón social activos, 87 asignaciones y 41 documentos, conservando pagos, recepciones, cierres y entrega 004. La copia entregada de pruebas/corrección es v5; ejecutar esta migración y luego el ensayo reversible antes de aplicar.
+
+### Excel por cuentas
+
+El Excel del P&L agrega `Por cuentas` y `Detalle` antes de las hojas operativas existentes. Usa `cuentasPL`, la misma fuente de la pantalla y sus rangos mensuales/semanales, sucursal, corte a ayer, estados provisionales y asignaciones vigentes. Cada importe tiene una liga interna al respaldo; las fórmulas del resumen suman aportaciones ya devengadas, sin recalcular impuestos o cobertura en Excel.
+
+Detalle conserva fecha, documento/concepto, proveedor, RFC de la razón social, UUID manual o XML, cuenta, periodo, importe y nota de cálculo. Las ligas a documentos usan el sitio de Dodo MX y requieren su sesión habitual. Fuentes calculadas, pendientes y redondeos siguen identificados. Los totales tienen su propio respaldo con signos; los documentos pueden repetirse en esos bloques, por lo que no se deben sumar bloques entre sí. Insumos e inversiones siguen fuera del resultado.
+
+No requiere migración ni cambia registros. La ruta conserva autenticación, permisos financieros y descarga privada sin caché. Pruebas: conciliación de fórmulas con detalle y acumulado, nota de crédito, ausencia versus cero, periodos sin días, filtros de ruta, cuatro hojas y enlaces internos del archivo guardado. Validación visual local con muestra y recálculo independiente de SUM/ROUND; la apertura y navegación nativa en Microsoft Excel no forman parte de ese ensayo.

@@ -1,6 +1,7 @@
 import { reportePL, type FiltrosPL } from "@/app/finanzas/reporte-datos";
 import { fechaMX, hora } from "@/lib/formato";
 import { hojaComparativo, hojaPL } from "@/lib/finanzas/excel";
+import { hojasCuentas } from "@/lib/finanzas/excelCuentas";
 import { PRESENTACION } from "@/lib/finanzas/secciones";
 import { escribirXlsx } from "@/lib/xlsx-escribir";
 
@@ -8,12 +9,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const q = Object.fromEntries(new URL(request.url).searchParams) as FiltrosPL;
-  const r = await reportePL(q, { meta: true, comparativo: true });
+  const r = await reportePL(q, { meta: true, comparativo: true, cuentas: true });
   const ahora = new Date().toISOString();
   const generado = `${r.generadoPor} · ${fechaMX(ahora)} ${hora(ahora)}`;
   const p = r.periodo;
   const enCurso = !p.vacio && p.hasta < p.finNominal;
   const archivo = escribirXlsx([
+    ...hojasCuentas({ ...r.cuentas!, generado }),
     ...hojaPL({
       titulo: r.titulo, periodo: `${p.titulo}${enCurso ? ` · hasta el ${p.hasta}` : ""}`, generado, filas: r.meta!.filas, entrada: r.meta!.entrada,
       anterior: r.meta!.anterior, acumulado: r.meta!.acumulado, columnas: r.meta!.columnas,

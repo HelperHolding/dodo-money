@@ -12,7 +12,7 @@ export type Celda =
   | { valor: number; formato: "pesos" | "porcentaje" | "puntos" | "contable"; estilo?:EstiloFila }
   | { fecha: string; estilo?:EstiloFila }
   | { texto:string; estilo?:EstiloFila }
-  | { formula:string; resultado:number|string; formato?:Formato; estilo?:EstiloFila };
+  | { formula:string; resultado:number|string; formato?:Formato; estilo?:EstiloFila; enlaceInterno?:string };
 
 export type HojaXlsx = {
   nombre: string;
@@ -101,6 +101,8 @@ function celdaXml(ref: string, c: Celda, e: Estilo, estilos: Estilos): string {
 }
 
 function hojaXml(h: HojaXlsx, estilos: Estilos): string {
+  const enlaces = h.filas.flatMap((fila,r)=>fila.flatMap((c,i)=>c!==null&&typeof c==='object'&&'enlaceInterno' in c&&c.enlaceInterno
+    ? [`<hyperlink ref="${columna(i)}${r+1}" location="${escapar(c.enlaceInterno)}"/>`] : []));
   const negritas = new Set(h.negritas ?? []);
   const ancho = Math.max(h.anchos?.length ?? 0, ...h.filas.map((f) => f.length));
   const cols = h.anchos?.length
@@ -112,8 +114,9 @@ function hojaXml(h: HojaXlsx, estilos: Estilos): string {
     const celdas = e.fondo ? Array.from({ length: ancho }, (_, i) => fila[i] ?? null) : fila;
     return `<row r="${r + 1}"${h.altos?.[r]?` ht="${h.altos[r]}" customHeight="1"`:''}>${celdas.map((c, i) => celdaXml(`${columna(i)}${r + 1}`, c, e, estilos)).join("")}</row>`;
   }).join("");
+  const hipervinculos=enlaces.length?`<hyperlinks>${enlaces.join('')}</hyperlinks>`:'';
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${h.impresion?'<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>':''}<sheetViews><sheetView workbookViewId="0"${h.ocultarCuadricula?' showGridLines="0"':''}>${h.inmovilizar?`<pane ySplit="${h.inmovilizar}" topLeftCell="A${h.inmovilizar+1}" activePane="bottomLeft" state="frozen"/>`:''}</sheetView></sheetViews>${cols}<sheetData>${filas}</sheetData>${h.combinadas?.length?`<mergeCells count="${h.combinadas.length}">${h.combinadas.map(r=>`<mergeCell ref="${escapar(r)}"/>`).join('')}</mergeCells>`:''}${h.impresion?'<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>':''}</worksheet>`;
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${h.impresion?'<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>':''}<sheetViews><sheetView workbookViewId="0"${h.ocultarCuadricula?' showGridLines="0"':''}>${h.inmovilizar?`<pane ySplit="${h.inmovilizar}" topLeftCell="A${h.inmovilizar+1}" activePane="bottomLeft" state="frozen"/>`:''}</sheetView></sheetViews>${cols}<sheetData>${filas}</sheetData>${h.combinadas?.length?`<mergeCells count="${h.combinadas.length}">${h.combinadas.map(r=>`<mergeCell ref="${escapar(r)}"/>`).join('')}</mergeCells>`:''}${hipervinculos}${h.impresion?'<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>':''}</worksheet>`;
 }
 
 /** Excel no acepta en el nombre de hoja \ / ? * [ ] : ni más de 31 caracteres. */
