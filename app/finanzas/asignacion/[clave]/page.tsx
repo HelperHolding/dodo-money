@@ -28,7 +28,7 @@ export default async function Revisar({params,searchParams}:{params:Promise<{cla
     {!m?<p>El origen ya no está vigente o no existe. Su historial se conserva.</p>:<>
       <section className="seccion"><h2>{m.descripcion}</h2><p>{m.fecha} · {m.categoria??'Otros'} · importe de origen {pesos(Number(m.importe))}</p><p>{m.factura_id&&<Link href={`/compras/facturas/${m.factura_id}`}>Ver documento original</Link>}</p>
       <p>Actual: <strong>{actual?.codigo??'Sin asignar'}</strong> · {estadoAsignacion(m,actual)}</p>
-      <p>Cobertura: {m.cubre_desde} al {m.cubre_hasta}.</p><p>La asignación conserva importes, impuestos, pagos, cobertura y sucursal. No modifica todavía la agrupación del P&L.</p></section>
+      <p>Cobertura: {m.cubre_desde} al {m.cubre_hasta}.</p><p>La asignación conserva importes, impuestos, pagos, cobertura y sucursal. La cuenta confirmada se muestra en el desglose por cuentas del P&L.</p></section>
       {perfil.rol==='admin'&&<section className="seccion"><h2>Seleccionar cuenta</h2>
         {!m.rfc&&<form method="get"><label>Razón social del gasto<select name="rfc" defaultValue={rfc} required><option value="">Elige…</option>{razones?.map(r=><option key={r.rfc} value={r.rfc}>{r.razon_social} · {r.rfc}</option>)}</select></label><button className="boton boton-secundario">Cargar cuentas</button><p>Confirma la empresa responsable; no se deduce solamente de la sucursal.</p></form>}
         {rfc&&<><p>RFC: <strong>{rfc}</strong></p><p>Referencias de la categoría: {candidatos.length?candidatos.map(c=>`${c.codigo} · ${c.nombre}`).join(' / '):'Requiere revisión por documento; no hay equivalencia exacta propuesta.'}</p>
