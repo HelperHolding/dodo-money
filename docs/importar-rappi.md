@@ -45,3 +45,7 @@ Rappi no deja renovar la sesión fuera de su portal (su refresh responde 500 y A
 - Estados del portal: Finalizado = `finished`, `finished_order`, `close_order`, `pending_review`, `on_the_route`, `arrive`; Cancelado = `canceled*`; el resto sigue en curso y no se importa.
 
 El portal muestra pesos redondeados: si no llega el JSON, los descuentos se recalculan como `productos − subtotal` y `subtotal − total sugerido` para que cuadren con lo que muestra Rappi, y cada ajuste sale como aviso. Las órdenes que no se pueden leer se omiten, se reportan y el script termina con código 1. No guarda nombres de cliente ni repartidor. Automatizar el portal puede ir contra los términos de Rappi; si Rappi da acceso a su API de integraciones, conviene cambiar el extractor por esa API y mantener el endpoint.
+
+## Costeo manual por renglón
+
+El admin puede ligar un renglón de una orden a un producto de costeo propio (p. ej. `Rappi interno · <orden>/<renglón> · combo confirmado`). Desde la migración `20261026200000_rappi_conservar_costeo_manual.sql`, `importar_rappi` conserva ese `producto_id` cuando el renglón llega igual (misma posición, nombre, opciones, cantidad e importe; sin distinguir mayúsculas ni espacios), así que reimportar —Excel, flujo en vivo, cierre o recargas— no deshace esos costeos. Si el renglón cambió, se liga por clave como siempre. Ensayo aislado con PGlite: `node tests/rappiConservarCosteo.mjs /ruta/a/@electric-sql/pglite/dist/index.js`.
