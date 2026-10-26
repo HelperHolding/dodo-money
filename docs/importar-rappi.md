@@ -49,3 +49,7 @@ El portal muestra pesos redondeados: si no llega el JSON, los descuentos se reca
 ## Paginación del historial
 
 El extractor recorre el historial del portal página por página hasta pasar la fecha más antigua que necesita. Tras cada clic espera (hasta 30 s) a que el listado crezca y a que el portal termine de entregar su JSON; no repite el clic para no saltar páginas. Si no llega a esa fecha ni al final del historial, responde `estado: "error"` con `cortado: true` y un mensaje que lo dice, en vez de `sin_ordenes`, así n8n avisa y la siguiente vuelta lo reintenta. Antes, una espera fija de 500 ms podía cortar la lectura en silencio (el 7/10 llegó a leerse vacío).
+
+## Costeo manual por renglón
+
+El admin puede ligar un renglón de una orden a un producto de costeo propio (p. ej. `Rappi interno · <orden>/<renglón> · combo confirmado`). Desde la migración `20261026200000_rappi_conservar_costeo_manual.sql`, `importar_rappi` conserva ese `producto_id` cuando el renglón llega igual (misma posición, nombre, opciones, cantidad e importe; sin distinguir mayúsculas ni espacios), así que reimportar —Excel, flujo en vivo, cierre o recargas— no deshace esos costeos. Si el renglón cambió, se liga por clave como siempre. Ensayo aislado con PGlite: `node tests/rappiConservarCosteo.mjs /ruta/a/@electric-sql/pglite/dist/index.js`.
