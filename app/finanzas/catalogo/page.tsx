@@ -7,7 +7,7 @@ export default async function Catalogo({searchParams}:{searchParams:Promise<{ent
   const q=await searchParams;
   const entidad=q.entidad==='03'?'03':'06';
   const cuentas=cuentasHelper(entidad,q.q);
-  return <div className="panel-admin">
+  return <div className="panel-admin catalogo-contable">
     <Link href="/finanzas">← P&L</Link>
     <h1>Catálogo contable · Grupo Helper</h1>
     <Link className="boton boton-secundario" href="/finanzas/asignacion">Revisar y asignar cuentas</Link>
