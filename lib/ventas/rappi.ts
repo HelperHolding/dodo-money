@@ -7,6 +7,10 @@ export type OrdenRappi = { rappi_id:string;tienda_id:string;fecha:string;hora:st
 export type ProductoRappi = {rappi_id:string;linea:number;nombre:string;opciones:string;cantidad:number;importe:number;clave:string};
 export type RappiGuardada = OrdenRappi & {sucursal_id:string;sumar:boolean;archivo:string;registrado_en:string;rappi_lineas:(Omit<ProductoRappi,"clave"> & {producto_id:number})[]};
 export type CatalogoRappi = {id:number;clave:string;nombre:string;dodo_id:number|null};
+/** Las órdenes que manda el extractor del portal (en vivo cada 15 min y el cierre diario) se guardan con este archivo; las del Excel, con su nombre. */
+export const PREFIJO_EN_VIVO="portal-rappi-";
+export const archivoEnVivo=(desde:string,hasta:string)=>`${PREFIJO_EN_VIVO}${desde}_${hasta}.json`;
+export const esEnVivo=(archivo:string)=>archivo.startsWith(PREFIJO_EN_VIVO);
 const centavos=(n:number)=>Math.round(n*100)/100;
 export function resumenPanelRappi(ordenes:readonly RappiGuardada[]) {
  const sumadas=ordenes.filter(o=>o.estado==='Finalizado'&&o.sumar);

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { hoyCalendarioMX } from "@/lib/formato";
-import { leerJsonRappi } from "@/lib/ventas/rappi";
+import { archivoEnVivo, leerJsonRappi } from "@/lib/ventas/rappi";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   if (req.nextUrl.searchParams.get("revisar") === "1") return NextResponse.json({ revisado: true, ...resumen });
 
   const huella = createHash("sha256").update(texto).digest("hex");
-  const archivo = `portal-rappi-${resumen.desde}_${resumen.hasta}.json`;
+  const archivo = archivoEnVivo(fechas[0], fechas[fechas.length - 1]);
   const { data: r, error } = await supabase.rpc("importar_rappi", { p_sucursal: sucursal, p_archivo: archivo, p_huella: huella, p_ordenes: lectura.ordenes, p_productos: lectura.productos });
   if (error) return NextResponse.json({ error: error.message }, { status: 422 });
   revalidatePath("/ventas", "layout"); revalidatePath("/finanzas", "layout"); revalidatePath("/reporte");

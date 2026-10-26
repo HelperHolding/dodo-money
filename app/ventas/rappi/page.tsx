@@ -5,7 +5,7 @@ import {PanelRappi} from './PanelRappi';
 import {ProductosRappi} from './ProductosRappi';
 import {unidadesRappi} from '@/lib/ventas/rappiProductos';
 import {obtenerPerfil} from "@/lib/contexto";
-import {puedeImportarVentas,veVentasDeTodas,puedeVerFinanzas} from "@/lib/roles";
+import {puedeImportarVentas,veVentasDeTodas} from "@/lib/roles";
 import {hoyCalendarioMX,pesos} from "@/lib/formato";
 import {leerTodo} from "@/lib/ventas/paginar";
 import {Aviso} from "@/components/Aviso";
@@ -14,8 +14,6 @@ import {BotonEnviar} from "@/components/BotonEnviar";
 import {FormularioRappi} from "./Formulario";
 import {cargarRappi,ventaDiariaRappi} from "./datos";
 import {vincularProducto,cambiarFuente,fuenteOrden} from "./acciones";
-import {leerFinancierosRappi} from '@/app/banca/rappi/datos';
-import {PanelFinancieroRappi} from '@/app/banca/rappi/Panel';
 export default async function Rappi({searchParams}:{searchParams:Promise<{mes?:string;desde?:string;hasta?:string;sucursal?:string;ok?:string;error?:string}>}){
   const {supabase,perfil}=await obtenerPerfil(),q=await searchParams,edita=puedeImportarVentas(perfil.rol);
   const hoy=hoyCalendarioMX();
@@ -28,10 +26,9 @@ export default async function Rappi({searchParams}:{searchParams:Promise<{mes?:s
 
   const {data:sucursales,error}=await supabase.from("sucursales").select("id,nombre").order("nombre");if(error)throw Error(error.message);
   const sucursal=veVentasDeTodas(perfil.rol)?(sucursales??[]).find(s=>s.id===q.sucursal)?.id??null:perfil.sucursal_id;
-  const [{ordenes,catalogo},ventaDiaria,financieros]=await Promise.all([
+  const [{ordenes,catalogo},ventaDiaria]=await Promise.all([
     cargarRappi(supabase,sucursal,desde,hasta),
     ventaDiariaRappi(supabase,sucursal,desde<inicioCalendario?desde:inicioCalendario,hoy),
-    puedeVerFinanzas(perfil.rol)?leerFinancierosRappi(supabase):Promise.resolve([]),
   ]);
   const nombres=new Map((sucursales??[]).map(s=>[s.id,s.nombre]));
   const ids=new Set(ordenes.flatMap(o=>o.rappi_lineas.map(p=>Number(p.producto_id)))),productos=catalogo.filter(c=>ids.has(Number(c.id)));
@@ -40,11 +37,10 @@ export default async function Rappi({searchParams}:{searchParams:Promise<{mes?:s
   return <><EncabezadoPagina titulo="Ventas Rappi" descripcion={<>{sucursal?nombres.get(sucursal):"Todas las sucursales"} · {ventas.length} órdenes finalizadas · <strong>{pesos(total)}</strong> de subtotal restaurante</>}/><Aviso ok={q.ok} error={q.error}/>
     <CalendarioVentas key={`${desde}|${hasta}|${sucursal??""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
       maxDias={MAX_DIAS} sucursal={sucursal} sucursales={veVentasDeTodas(perfil.rol)?sucursales??[]:null} ruta="/ventas/rappi"/>
-    <details className="nota-plegable"><summary>Qué suma de Rappi</summary><p>Órdenes y productos extraídos del historial. El calendario muestra el subtotal restaurante de órdenes finalizadas con fuente Rappi; los descuentos de Rappi quedan separados. Un día sin importe no confirma que se haya importado todo.</p></details>
-    {puedeVerFinanzas(perfil.rol)&&<PanelFinancieroRappi reportes={financieros.filter(f=>!sucursal||f.sucursal_id===sucursal)} desde={desde} hasta={hasta}/>}
-    <h2>Historial operativo de productos</h2><p>Estos indicadores conservan únicamente las órdenes finalizadas del historial. Pueden tener cobertura distinta al reporte financiero de arriba.</p>
+    <details className="nota-plegable"><summary>Qué suma de Rappi</summary><p>Solo órdenes que llegan en vivo del portal de Rappi (cada 15 minutos, con un repaso del día anterior a las 6:30). Las órdenes subidas por Excel y los reportes financieros importados no se muestran aquí. El calendario muestra el subtotal restaurante de órdenes finalizadas con fuente Rappi; los descuentos de Rappi quedan separados.</p></details>
+    <h2>Órdenes en vivo</h2><p>Indicadores de las órdenes finalizadas recibidas del portal de Rappi en el periodo.</p>
     <PanelRappi ordenes={ordenes}/><ProductosRappi resumen={unidadesRappi(ordenes,catalogo,dodo)}/>{edita&&<FormularioRappi sucursales={sucursales??[]}/>}
-    <details className="seccion rappi-acordeon"><summary><strong>Ver órdenes importadas ({ordenes.length})</strong><span>{ventas.length} sumadas · {pesos(total)}</span></summary>{!ordenes.length&&<p>No hay órdenes importadas en este periodo.</p>}<p>El costo se calcula únicamente para productos vinculados al catálogo, con costo vigente. Los combos requieren su equivalencia completa.</p>
+    <details className="seccion rappi-acordeon"><summary><strong>Ver órdenes en vivo ({ordenes.length})</strong><span>{ventas.length} sumadas · {pesos(total)}</span></summary>{!ordenes.length&&<p>No llegaron órdenes del portal en este periodo.</p>}<p>El costo se calcula únicamente para productos vinculados al catálogo, con costo vigente. Los combos requieren su equivalencia completa.</p>
       <ul className="lista-filas" style={{"--columnas":2} as React.CSSProperties}>{[...ordenes].sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.hora.localeCompare(a.hora)).map(o=><li className="fila" key={o.rappi_id}><div className="fila-nombre"><strong>#{o.rappi_id} · {nombres.get(o.sucursal_id)}</strong><small>{o.fecha} {o.hora} · {o.estado} · {o.sumar?"Fuente Rappi":"Incluida en Dodo IS"}</small><details><summary>Productos y descuentos</summary><ul>{o.rappi_lineas.map(p=><li key={p.linea}>{p.cantidad} × {p.nombre}{p.opciones?` · ${p.opciones}`:""} · {pesos(Number(p.importe))}</li>)}</ul><p>Descuento restaurante {pesos(Number(o.descuento_restaurante))} · Rappi {pesos(Number(o.descuento_rappi))}</p><small>{o.archivo}</small>{edita&&<form action={fuenteOrden}><input type="hidden" name="id" value={o.rappi_id}/><input type="hidden" name="sumar" value={o.sumar?"no":"si"}/><BotonEnviar confirmar="¿Cambiar la fuente de esta orden?">{o.sumar?"Ya incluida en Dodo IS":"Sumar desde Rappi"}</BotonEnviar></form>}</details></div><div className="fila-datos"><span>Subtotal restaurante {pesos(Number(o.subtotal_restaurante))}</span><span>A facturar {pesos(Number(o.facturar))}</span></div></li>)}</ul>
     </details>
     {edita&&productos.length>0&&<details className="seccion rappi-acordeon"><summary><strong>Vincular productos para calcular costos</strong><span>{productos.length} productos</span></summary>{productos.map(p=><form key={p.id} action={vincularProducto} className="formulario"><input type="hidden" name="id" value={p.id}/><div className="campo"><label htmlFor={`producto-${p.id}`}>{p.nombre}</label><select id={`producto-${p.id}`} name="dodo" defaultValue={p.dodo_id??""}><option value="">Sin vínculo / sin costo</option>{dodo.map(d=><option key={d.dodo_id} value={d.dodo_id}>{d.nombre}</option>)}</select></div><BotonEnviar>Guardar vínculo</BotonEnviar></form>)}</details>}
