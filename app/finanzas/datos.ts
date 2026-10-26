@@ -25,7 +25,7 @@ import {leerFinancierosRappi} from '@/app/banca/rappi/datos';
 import {efectoPLRappi} from '@/lib/banca/rappi';
 
 type Fila = { sucursal_id: string | null };
-type Detalle = { texto: string; monto: number; href?: string; nota?: string }[];
+type Detalle = import("@/lib/finanzas/reporteCuentas").AportacionPL[];
 const de = <T extends Fila>(filas: readonly T[], id: string | null) => filas.filter((f) => f.sucursal_id === id);
 const centavos = (n: number) => Math.round(n * 100) / 100;
 /** Renglón del P&L donde cae una cuenta (memo e "insumos/inversiones" no son renglón: van al memo). */
@@ -73,16 +73,16 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const metas = res[5].data ?? [];
 
   type FacturaPL = Fila & { id: string;
-    uuid:string|null;rfc_receptor:string;total:number;tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
-    nombre_emisor: string; fecha_emision: string; cubre_desde: string; cubre_hasta: string; creado_en: string; origen: "cfdi" | "manual"; factura_conceptos: { descripcion: string; importe: number; cuenta_pl: string | null }[];
+    uuid:string|null;uuid_manual:string|null;rfc_receptor:string;total:number;tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
+    nombre_emisor: string; fecha_emision: string; cubre_desde: string; cubre_hasta: string; creado_en: string; origen: "cfdi" | "manual"; factura_conceptos: { id: number; descripcion: string; importe: number; cuenta_pl: string | null }[];
   };
   const [facturasLeidas, cajaChica, cierres, arqueos, dias, desglose, ventas, catalogo, costos, datosRappi] = await Promise.all([
     desde > hasta ? Promise.resolve([] as FacturaPL[]) : leerTodo<FacturaPL>((d, h) => supabase.from("facturas")
-      .select("id, sucursal_id, uuid, rfc_receptor, total, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(descripcion, importe, cuenta_pl)")
+      .select("id, sucursal_id, uuid, uuid_manual, rfc_receptor, total, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(id, descripcion, importe, cuenta_pl)")
       .lte("cubre_desde", hasta).gte("cubre_hasta", desde).order("id").range(d, h).returns<FacturaPL[]>()),
-    leerTodo<Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null; informativo: boolean }>((d, h) => supabase.from("gastos_caja_chica")
-      .select("sucursal_id, fecha, concepto, monto, cuenta_pl, informativo").is("anulado_en",null).gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h)
-      .returns<(Fila & { fecha: string; concepto: string; monto: number; cuenta_pl: string | null; informativo: boolean })[]>()),
+    leerTodo<Fila & { id:string; proveedor:string|null; uuid_cfdi:string|null; fecha: string; concepto: string; monto: number; cuenta_pl: string | null; informativo: boolean }>((d, h) => supabase.from("gastos_caja_chica")
+      .select("id, sucursal_id, proveedor, uuid_cfdi, fecha, concepto, monto, cuenta_pl, informativo").is("anulado_en",null).gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h)
+      .returns<(Fila & { id:string; proveedor:string|null; uuid_cfdi:string|null; fecha: string; concepto: string; monto: number; cuenta_pl: string | null; informativo: boolean })[]>()),
     leerTodo<Fila & { boveda_diferencia: number }>((d, h) => supabase.from("cierres_dia").select("sucursal_id, boveda_diferencia")
       .gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h).returns<(Fila & { boveda_diferencia: number })[]>()),
     leerTodo<{ diferencia: number; turnos: { sucursal_id: string } }>((d, h) => supabase.from("arqueos").select("diferencia, turnos!inner(sucursal_id, fecha)")
@@ -133,7 +133,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const vigente: Vigente = (clave, f) => valorVigente(params, clave, f);
   const agregadorDe = new Map(desglose.map((x) => [x.ventas_dia_id, x]));
   const detalle = new Map<string, Detalle>();
-  const anotar = (suc: string, renglon: string, texto: string, monto: number, extra: { href?: string; nota?: string } = {}) => {
+  const anotar = (suc: string, renglon: string, texto: string, monto: number, extra: Omit<Detalle[number], 'texto'|'monto'> = {}) => {
     if (!monto) return;
     const k = `${suc}|${renglon}`;
     detalle.set(k, [...(detalle.get(k) ?? []), { texto, monto: centavos(monto), ...extra }]);
@@ -184,23 +184,15 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     const facturasSuc = de(facturas, s.id);
     const f = facturasAGastos(facturasSuc, fraccionDe);
     for (const x of facturasSuc) {
-      // Una línea por cuenta (no por concepto): una factura de insumos con 50 conceptos queda en una sola.
-      const porCuenta = new Map<string | null, number>();
-      for (const p of partesFactura(x, x.parte.fraccion)) porCuenta.set(p.cuenta, (porCuenta.get(p.cuenta) ?? 0) + p.monto);
-      const bases = new Map<string | null, number>();
-      for (const p of partesFactura(x)) bases.set(p.cuenta, (bases.get(p.cuenta) ?? 0) + p.monto);
-      const nombre = x.tipo === "egreso" ? "Nota de crédito" : x.origen === "manual" ? "Gasto sin CFDI" : "Factura";
-      const cubre = { desde: x.cubre_desde, hasta: x.cubre_hasta };
-      for (const [cuenta, monto] of porCuenta) {
-        const base = bases.get(cuenta) ?? 0;
-        const calculo = x.parte.fraccion < 1 ? `${pesos(base)} × ${x.parte.dias}/${x.parte.total} días` : pesos(base);
-        anotar(s.id, renglonDe(cuenta), `${nombre} ${x.serie ?? ""}${x.folio ?? ""}`.trim(), monto,
-          { href: `/compras/facturas/${x.id}`, nota: `${x.nombre_emisor} · ${x.fecha_emision} · Cubre ${textoCubre(cubre)} · ${calculo}${cuenta ? "" : " · sin cuenta"}` });
-      }
+      const conceptos=x.conceptos.filter(c=>Number(c.importe)>0);
+      partesFactura(x,x.parte.fraccion).forEach((p,i)=>anotar(s.id,renglonDe(p.cuenta),
+        `${x.tipo==='egreso'?'Nota de crédito':x.origen==='manual'?'Gasto sin CFDI':'Factura'} ${x.serie??''}${x.folio??''} · ${p.concepto??x.nombre_emisor}`,p.monto,
+        {href:`/compras/facturas/${x.id}`,clave:conceptos[i]?`concepto:${conceptos[i].id}`:`factura:${x.id}`,fecha:x.fecha_emision,proveedor:x.nombre_emisor,uuid:x.uuid??x.uuid_manual,rfc:x.rfc_receptor,
+         nota:`Cubre ${textoCubre({desde:x.cubre_desde,hasta:x.cubre_hasta})} · ${x.parte.dias}/${x.parte.total} días · base sin IVA distribuida desde subtotal menos descuento`}));
     }
     const cc = de(cajaChica, s.id);
     const caja = facturasAGastos(cc.map((g) => ({ tipo: "ingreso" as const, estado: "pagada", subtotal: Number(g.monto), descuento: 0, cuenta_pl: g.cuenta_pl })));
-    for (const g of cc) anotar(s.id, renglonDe(g.cuenta_pl), `Gasto${g.informativo?" informativo · ya pagado":""} · ${g.concepto} · ${g.fecha}${g.cuenta_pl ? "" : " · sin cuenta"}`, Number(g.monto));
+    for (const g of cc) anotar(s.id, renglonDe(g.cuenta_pl), `Gasto${g.informativo?" informativo · ya pagado":""} · ${g.concepto} · ${g.fecha}${g.cuenta_pl ? "" : " · sin cuenta"}`, Number(g.monto),{clave:`gasto:${g.id}`,fecha:g.fecha,proveedor:g.proveedor??undefined,uuid:g.uuid_cfdi,href:"/caja-chica",nota:g.informativo?"Informativo: ya cuadrado en corte; no vuelve a descontar efectivo":undefined});
 
     const nomina = nominaPeriodo(puestos, ajustes, s.id, meses, reales);
     for (const m of meses) {
@@ -251,7 +243,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       mermaProductos:merma.monto,mermaInsumos:merma.insumosMonto,mermaProductosPendiente:merma.parcial,mermaInsumosPendiente:merma.insumosParcial,
       nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia },
       gastos: sumarGastos(f.gastos, caja.gastos), sinCuenta: centavos(f.sinCuenta + caja.sinCuenta),
-      agregadores, comisionesCobro: cobro.total, faltantes, regalias: regaliasPeriodo, memos: f.memos,
+      agregadores, comisionesCobro: cobro.total, faltantes, regalias: regaliasPeriodo, memos: {insumos:centavos(f.memos.insumos+caja.memos.insumos),inversiones:centavos(f.memos.inversiones+caja.memos.inversiones)},
     };
 
     const avisos: string[] = [];
@@ -292,7 +284,17 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const reparto = prorratear(oficina, new Map(porSucursal.map((s) => [s.id, s.entrada.ventaNeta])));
   for (const s of porSucursal) {
     s.entrada.oficina = reparto.get(s.id) ?? 0;
-    anotar(s.id, "oficina", `Oficina central del periodo ${pesos(oficina)}, en proporción a la venta neta`, s.entrada.oficina);
+    const proporcionOficina=oficina?s.entrada.oficina/oficina:0;
+    for(const x of facturasOf){
+      const conceptos=x.conceptos.filter(c=>Number(c.importe)>0);
+      partesFactura(x,x.parte.fraccion).forEach((p,i)=>{
+        if(p.cuenta==='insumos'||p.cuenta==='inversiones')return;
+        anotar(s.id,'oficina',`Oficina · ${x.serie??''}${x.folio??''} · ${p.concepto??x.nombre_emisor}`,p.monto*proporcionOficina,
+          {clave:conceptos[i]?`concepto:${conceptos[i].id}`:`factura:${x.id}`,fecha:x.fecha_emision,proveedor:x.nombre_emisor,uuid:x.uuid??x.uuid_manual,rfc:x.rfc_receptor,
+           href:`/compras/facturas/${x.id}`,nota:`Devengado por cobertura y reparto de oficina según venta neta: ${(proporcionOficina*100).toFixed(4)} %`});
+      });
+    }
+    anotar(s.id,'oficina','Nómina de oficina prorrateada',(nOf.cocina+nOf.gerencia)*proporcionOficina,{href:'/finanzas/nomina'});
   }
 
   const entrada = { ...sumarEntradas(porSucursal.map((s) => s.entrada)), oficina };
