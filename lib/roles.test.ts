@@ -73,8 +73,8 @@ test("menú lateral: cada puesto ve solo sus grupos", () => {
   assert.deepEqual(grupos("operacion"), ["Sucursal", "Conocimiento"]);
   assert.deepEqual(grupos("encargado"), ["Sucursal", "Conocimiento"]);
   assert.deepEqual(grupos("gerente"), ["Sucursal", "Efectivo", "Ventas", "Conocimiento"]);
-  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Proyectos y admin.", "Conocimiento"]);
-  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Proyectos y admin.", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
+  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
   assert.deepEqual(grupo("admin", "Proyectos y admin."), ["/aperturas", "/activos", "/administracion/usuarios"]);
   assert.deepEqual(grupo("corporativo", "Proyectos y admin."), ["/aperturas", "/activos"]);
 });

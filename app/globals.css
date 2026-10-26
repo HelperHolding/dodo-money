@@ -1431,6 +1431,10 @@ body { background: var(--papel-2); }
 .pagina:has(.panel-admin) { max-width: 1280px; }
 .panel-admin { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .pagina:has(.pl-cuentas) { max-width: 1840px; }
+.pagina:has(.catalogo-contable) { max-width: none; width: 100%; padding-inline: clamp(16px, 2vw, 28px); }
+.catalogo-contable .tabla th:first-child,
+.catalogo-contable .tabla td:first-child { white-space: nowrap; min-width: 8rem; }
+.catalogo-contable .tabla td:nth-child(2) { min-width: 18rem; }
 .tabla-cuentas { table-layout: auto; width: 100%; }
 .tabla-cuentas th:first-child { min-width: 18rem; text-align: left; }
 .tabla-cuentas td, .tabla-cuentas th { vertical-align: top; }

@@ -120,6 +120,12 @@ export function menuLateral(rol: Rol): Menu {
       ],
     });
   }
+  if(puedeVerCompras(rol))grupos.push({titulo:'Catálogos',enlaces:[
+    {href:'/catalogos',texto:'Todos los catálogos'},
+    {href:'/finanzas/catalogo',texto:'Cuentas contables'},
+    {href:'/finanzas/asignacion',texto:'Asignación de cuentas'},
+    {href:'/compras/razones-sociales',texto:'Razones sociales'},
+  ]});
   // Aperturas, Activos y Usuarios tenían un grupo cada uno con un solo enlace: van juntos.
   const proyectos: Enlace[] = [
     ...(puedeVerCompras(rol) ? [{ href: "/aperturas", texto: "Aperturas" }, { href: "/activos", texto: "Activos" }] : []),
