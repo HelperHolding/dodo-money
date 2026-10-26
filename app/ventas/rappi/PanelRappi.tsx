@@ -6,8 +6,6 @@ export function PanelRappi({ordenes}:{ordenes:RappiGuardada[]}) {
  return <>
  <div className="ap-indicadores rappi-indicadores">
   <div className="ap-indicador"><span>Venta bruta sin descuentos</span><strong>{pesos(r.bruto)}</strong><small>Importe de productos antes de cualquier descuento · con IVA</small></div>
-  <div className="ap-indicador"><span>Descuentos restaurante</span><strong>{pesos(r.descuentoRestaurante)}</strong><small>Se restan de la venta bruta para obtener el subtotal restaurante.</small></div>
-  <div className="ap-indicador"><span>Descuentos DAR (Rappi)</span><strong>{pesos(r.descuentoRappi)}</strong><small>Financiados por Rappi. Se muestran separados del descuento del restaurante.</small></div>
   <div className="ap-indicador"><span>Subtotal restaurante</span><strong>{pesos(r.total)}</strong><small>Después del descuento restaurante · con IVA.</small></div>
   <div className="ap-indicador"><span>Órdenes sumadas</span><strong>{r.cantidad}</strong><small>Ticket promedio después del descuento restaurante: {r.ticket===null?'—':pesos(r.ticket)}. {r.enDodo} finalizadas incluidas en Dodo IS, excluidas de estos importes.</small></div>
  </div>
