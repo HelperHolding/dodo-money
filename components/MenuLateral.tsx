@@ -10,7 +10,7 @@ import { enlaceActivo, enlacesDelMenu, grupoAbierto, type Enlace, type Menu } fr
 /** Icono de cada grupo del menú (por título; un grupo nuevo sin icono se muestra sin él). */
 const ICONO_GRUPO: Record<string, NombreIcono> = {
   Sucursal: "tienda", Efectivo: "cartera", Ventas: "grafica", Compras: "carrito", Finanzas: "banco",
-  "Proyectos y admin.": "maletin", Conocimiento: "libro",
+  "Proyectos y admin.": "maletin", Conocimiento: "libro", Catálogos: "lista",
 };
 /** Icono de cada acceso rápido de la barra inferior. */
 const ICONO_ACCESO: Record<string, NombreIcono> = {
