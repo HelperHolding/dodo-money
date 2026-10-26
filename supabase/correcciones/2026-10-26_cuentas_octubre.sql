@@ -1,4 +1,4 @@
--- Ejecutar después de 20261026155811, 20261026162310 y 20261026162842. El cambio de RFC usa la excepción única validada por el trigger.
+-- Ejecutar después de 20261026155811, 20261026162310, 20261026162842 y 20261026164618. El cambio de RFC usa la excepción única validada por el trigger.
 -- Correcciones y equivalencias revisadas con Sebastián. No cambia pagos ni efectivo.
 -- Si un dato revisado cambió o hay vínculos incompatibles, se revierte TODO.
 begin;
@@ -1410,6 +1410,12 @@ begin
  select p.id into strict autor from public.perfiles p join auth.users u on u.id=p.id
  where lower(u.email)='scervera@dodopizza.mx' and p.rol::text='admin' and p.activo and not p.debe_cambiar_contrasena;
  perform set_config('request.jwt.claims',jsonb_build_object('sub',autor,'role','authenticated')::text,true);
+ for linea in select distinct rfc,sucursal from plan_octubre loop
+  if not exists(select 1 from public.razones_sociales r where r.rfc=linea.rfc and r.activa)
+   or (linea.sucursal is not null and not public.razon_admite_sucursal(linea.rfc,linea.sucursal)) then
+   raise exception 'Antes de corregir: RFC % no autorizado para sucursal %. Revisar configuración de Compras.',linea.rfc,coalesce(linea.sucursal::text,'Oficina');
+  end if;
+ end loop;
  -- Bloqueo corto para comparar exactamente las fuentes protegidas; no modifica sus registros.
  lock table public.facturas in share row exclusive mode;
  lock table public.factura_conceptos in share row exclusive mode;
