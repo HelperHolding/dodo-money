@@ -5,3 +5,6 @@ node_modules
 next-env.d.ts
 .vercel
 *.tsbuildinfo
+
+# Config MCP local (contiene token personal)
+.mcp.json
