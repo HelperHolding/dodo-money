@@ -42,9 +42,14 @@ Un bloqueo breve y comparación completa antes/después protegen pagos, aplicaci
 La primera migración y pruebas `20261024001536_cuentas_contables_exactas.sql` ya fueron reportadas como satisfactorias por Sebastián. Esta ampliación requiere, en orden:
 
 1. `supabase/migrations/20261026155811_revision_octubre_cuentas.sql`: bitácora protegida y permite reclasificar un gasto a insumos memo desde administración. No aplica equivalencias reales.
-2. `supabase/pruebas/20261026155811_revision_octubre_cuentas.sql`: ensaya las correcciones completas sobre los registros reales y termina con ROLLBACK; devuelve una fila «PRUEBAS OK». No guarda las asignaciones.
-3. `supabase/correcciones/2026-10-26_cuentas_octubre.sql`: solo después del ensayo correcto; aplica el mismo plan y devuelve «CUENTAS OCTUBRE OK», 87 equivalencias y 41 documentos.
+2. `supabase/migrations/20261026162310_correccion_rfc_historico_controlada.sql`: mantiene el trigger real y permite solo la corrección manual de renta G93 → B93, desde SQL Editor, con marca local, administrador activo y todos los demás campos intactos. API y cambios de otros documentos siguen bloqueados.
+3. `supabase/pruebas/20261026155811_revision_octubre_cuentas.sql`: ensaya las correcciones completas sobre los registros reales y termina con ROLLBACK; devuelve una fila «PRUEBAS OK». No guarda las asignaciones.
+4. `supabase/correcciones/2026-10-26_cuentas_octubre.sql`: solo después del ensayo correcto; aplica el mismo plan y devuelve «CUENTAS OCTUBRE OK», 87 equivalencias y 41 documentos.
 
 Sebastián ejecuta producción y entrega los resultados antes de publicar, según AGENTS.md. No se ejecutaron modificaciones de producción desde esta sesión.
 
 Validación local: 641 pruebas, typecheck y build. PostgreSQL/PGlite con esquema de apoyo: migraciones, ensayo reversible sin guardar filas, aplicación de las 87 equivalencias, repetición sin duplicados, rechazo de deriva, permisos sin escritura directa y conservación de pagos/entrega 004. Falta la ejecución con el esquema completo y datos actuales en Supabase. La tabla real y su diálogo fueron probados en navegador con datos ficticios (abrir importe mensual/acumulado, contraer y cerrar con Escape devolviendo el foco). La prueba visual no acredita la conciliación de producción.
+
+### Regresión del trigger de razón social
+
+El ensayo inicial con esquema de apoyo omitió `validar_razon_documento` y no detectó la inmutabilidad del RFC. Se reprodujo el error con la función y ambos triggers de 0068. El nuevo ensayo los incluye: sin marca, con otro RFC, otro documento, cambio de importe, origen CFDI y rol authenticated se rechaza. La excepción solo permite el documento manual de renta identificado, G93 → B93, sin otra modificación de cabecera, y validando la relación empresa/sucursal. No se deshabilita ningún trigger. El lote completo, sus pruebas reversibles, idempotencia e invariantes se vuelven a ejecutar con estos controles activos.

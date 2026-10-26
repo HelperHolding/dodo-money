@@ -1,9 +1,49 @@
 -- ENSAYO REVERSIBLE: este archivo termina en ROLLBACK y no guarda correcciones.
--- Ejecutar completo DESPUÉS de 20261026155811_revision_octubre_cuentas.sql.
+-- Ejecutar después de 20261026155811 y 20261026162310. El cambio de RFC usa la excepción única validada por el trigger.
 -- Correcciones y equivalencias revisadas con Sebastián. No cambia pagos ni efectivo.
 -- Si un dato revisado cambió o hay vínculos incompatibles, se revierte TODO.
 begin;
 set local lock_timeout='5s';
+-- El trigger real debe seguir bloqueando el cambio normal y las excepciones incorrectas.
+do $proteger_rfc$
+declare f public.facturas;autor uuid;bloqueado boolean;
+begin
+ select p.id into strict autor from public.perfiles p join auth.users u on u.id=p.id where lower(u.email)='scervera@dodopizza.mx' and p.rol::text='admin' and p.activo and not p.debe_cambiar_contrasena;
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',autor,'role','authenticated')::text,true);
+ select * into strict f from public.facturas where id='b4051f86-ce2d-465f-a470-aa1b9a1da0fe' for update;
+ if f.rfc_receptor='HCM260306G93' then
+  perform set_config('dodo.correccion_rfc_historico','',true);
+  bloqueado:=false;
+  begin
+   update public.facturas set rfc_receptor='HCM260306B93' where id=f.id;
+  exception when raise_exception then
+   if sqlerrm<>'La razón social de un documento registrado no se cambia.' then raise;end if;
+   bloqueado:=true;
+  end;
+  if not bloqueado then raise exception 'FALLÓ: se permitió RFC sin corrección controlada.';end if;
+  perform set_config('dodo.correccion_rfc_historico','CUENTAS-OCTUBRE-20261026',true);
+  bloqueado:=false;
+  begin
+   update public.facturas set rfc_receptor='HCM260306B93',subtotal=subtotal+.01 where id=f.id;
+  exception when raise_exception then
+   if sqlerrm<>'La razón social de un documento registrado no se cambia.' then raise;end if;
+   bloqueado:=true;
+  end;
+  if not bloqueado then raise exception 'FALLÓ: la corrección permitió alterar importes.';end if;
+ end if;
+ perform set_config('dodo.correccion_rfc_historico','CUENTAS-OCTUBRE-20261026',true);
+ bloqueado:=false;
+ begin
+  update public.facturas set rfc_receptor='CMS230321FI8' where id=f.id;
+ exception when raise_exception then
+  if sqlerrm<>'La razón social de un documento registrado no se cambia.' then raise;end if;
+  bloqueado:=true;
+ end;
+ if not bloqueado then raise exception 'FALLÓ: se permitió otra razón social.';end if;
+ perform set_config('dodo.correccion_rfc_historico','',true);
+ if to_jsonb(f) is distinct from (select to_jsonb(t) from public.facturas t where t.id=f.id) then raise exception 'FALLÓ: prueba alteró el documento.';end if;
+end $proteger_rfc$;
+
 create temp table plan_octubre on commit drop as select * from jsonb_to_recordset(
  $plan$[
   {
@@ -1441,7 +1481,11 @@ begin
     update public.factura_conceptos set cuenta_pl=linea.categoria where factura_id=f.id and descripcion=linea.concepto and importe=linea.importe;
    end loop;
    select * into linea from plan_octubre where id=f.id and tipo='factura' limit 1;
+   if linea.rfc<>f.rfc_receptor then
+    perform set_config('dodo.correccion_rfc_historico','CUENTAS-OCTUBRE-20261026',true);
+   end if;
    update public.facturas set rfc_receptor=linea.rfc,sucursal_id=linea.sucursal where id=f.id;
+   perform set_config('dodo.correccion_rfc_historico','',true);
    select jsonb_build_object('factura',to_jsonb(t),'conceptos',(select coalesce(jsonb_agg(to_jsonb(c) order by c.id),'[]') from public.factura_conceptos c where c.factura_id=t.id)) into despues from public.facturas t where t.id=f.id;
    if (antes->'factura')-array['rfc_receptor','sucursal_id'] is distinct from (despues->'factura')-array['rfc_receptor','sucursal_id'] then raise exception 'Cambió un dato protegido de factura %.',f.id;end if;
    if (select jsonb_agg(x-'cuenta_pl' order by x->>'id') from jsonb_array_elements(antes->'conceptos') x) is distinct from (select jsonb_agg(x-'cuenta_pl' order by x->>'id') from jsonb_array_elements(despues->'conceptos') x) then raise exception 'Cambió un importe o concepto en %.',f.id;end if;

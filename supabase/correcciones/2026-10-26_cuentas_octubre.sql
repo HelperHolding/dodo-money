@@ -1,4 +1,4 @@
--- Ejecutar completo DESPUÉS de 20261026155811_revision_octubre_cuentas.sql.
+-- Ejecutar después de 20261026155811 y 20261026162310. El cambio de RFC usa la excepción única validada por el trigger.
 -- Correcciones y equivalencias revisadas con Sebastián. No cambia pagos ni efectivo.
 -- Si un dato revisado cambió o hay vínculos incompatibles, se revierte TODO.
 begin;
@@ -1440,7 +1440,11 @@ begin
     update public.factura_conceptos set cuenta_pl=linea.categoria where factura_id=f.id and descripcion=linea.concepto and importe=linea.importe;
    end loop;
    select * into linea from plan_octubre where id=f.id and tipo='factura' limit 1;
+   if linea.rfc<>f.rfc_receptor then
+    perform set_config('dodo.correccion_rfc_historico','CUENTAS-OCTUBRE-20261026',true);
+   end if;
    update public.facturas set rfc_receptor=linea.rfc,sucursal_id=linea.sucursal where id=f.id;
+   perform set_config('dodo.correccion_rfc_historico','',true);
    select jsonb_build_object('factura',to_jsonb(t),'conceptos',(select coalesce(jsonb_agg(to_jsonb(c) order by c.id),'[]') from public.factura_conceptos c where c.factura_id=t.id)) into despues from public.facturas t where t.id=f.id;
    if (antes->'factura')-array['rfc_receptor','sucursal_id'] is distinct from (despues->'factura')-array['rfc_receptor','sucursal_id'] then raise exception 'Cambió un dato protegido de factura %.',f.id;end if;
    if (select jsonb_agg(x-'cuenta_pl' order by x->>'id') from jsonb_array_elements(antes->'conceptos') x) is distinct from (select jsonb_agg(x-'cuenta_pl' order by x->>'id') from jsonb_array_elements(despues->'conceptos') x) then raise exception 'Cambió un importe o concepto en %.',f.id;end if;
