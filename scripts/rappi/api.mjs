@@ -102,3 +102,13 @@ export function planearRepaso(items, fecha, cache = {}) {
   }
   return { abrir, cambios, base };
 }
+
+/** Espera a que condicion() sea verdadera, revisando cada paso ms, hasta ms milisegundos. Devuelve si se cumplió. */
+export async function esperarHasta(condicion, ms, paso = 200) {
+  const fin = Date.now() + ms;
+  for (;;) {
+    if (condicion()) return true;
+    if (Date.now() >= fin) return false;
+    await new Promise((r) => setTimeout(r, paso));
+  }
+}
