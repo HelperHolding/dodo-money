@@ -39,7 +39,7 @@ export async function obtenerContexto() {
 
   const [{ data: sucursal }, { data: cajas }, { data: turno }] = await Promise.all([
     supabase.from("sucursales")
-      .select("id, nombre, fondo_caja_venta, fondo_cambios, fondo_caja_chica, limite_retiro, fondo_boveda, fondo_emergencia")
+      .select("id, nombre, fondo_caja_venta, fondo_cambios, fondo_caja_chica, limite_retiro, fondo_boveda")
       .eq("id", sucursalId).maybeSingle<Sucursal>(),
     supabase.from("cajas").select("id, tipo, nombre").eq("sucursal_id", sucursalId).returns<Caja[]>(),
     supabase.from("turnos").select("id, fecha, tipo, abierto_en, cerrado_en, encargado_id")

@@ -20,9 +20,7 @@ type Cierre = {
   cambios_diferencia: number; diferencia_turnos: number; deposito_ficha: string | null;
 };
 
-/** "$4,500.00 (de ellos $3,000.00 de emergencia)" */
-const fondoBoveda = (s: { fondo_boveda: number; fondo_emergencia: number }) =>
-  `${pesos(s.fondo_boveda)} (de ellos ${pesos(s.fondo_emergencia)} de emergencia)`;
+const fondoBoveda = (s: { fondo_boveda: number }) => pesos(s.fondo_boveda);
 /** Lo que pasa del fondo de la bóveda y debe salir a corporativo. */
 
 const Fila = ({ texto, valor, fuerte }: { texto: string; valor: string; fuerte?: boolean }) => (

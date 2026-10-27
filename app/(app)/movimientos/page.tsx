@@ -29,7 +29,7 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
       <EncabezadoPagina titulo="Movimientos entre cajas" descripcion="Cada vez que el efectivo pasa de una caja a otra se registra aquí. Quien lo recibe lo confirma con su propio usuario." />
       <Aviso ok={ok} error={error} />
       {!soloLectura && <FormMovimiento limiteRetiro={Number(sucursal.limite_retiro)} fondoCajon={Number(sucursal.fondo_caja_venta)}
-        boveda={boveda} fondoEmergencia={Number(sucursal.fondo_emergencia)} />}
+        boveda={boveda} />}
 
       <section className="seccion" aria-labelledby="t-hoy">
         <h2 id="t-hoy">Movimientos de hoy</h2>

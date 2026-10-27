@@ -1,7 +1,7 @@
 /**
  * Fondos fijos del efectivo de cada sucursal:
  *   · cajero: cada turno arranca con su fondo (500) y al cerrar todo lo demás pasa solo a la bóveda;
- *   · bóveda: después de la salida a corporativo se queda con su fondo (4,500, de ellos 3,000 de emergencia).
+ *   · bóveda: después de la salida a corporativo se queda con su fondo (4,500).
  */
 
 const mxn = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
