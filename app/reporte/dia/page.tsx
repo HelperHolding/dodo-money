@@ -44,7 +44,7 @@ export default async function ReporteDia({ searchParams }: { searchParams: Promi
             <Fila texto="+ Retiros a bóveda" valor={pesos(c.retiros_dia)} />
             <Fila texto="− Fondos a caja de venta" valor={pesos(c.aperturas_dia)} />
             <Fila texto="− Salidas a corporativo" valor={pesos(c.deposito_dia)} />
-            <Fila texto="− Gastos pagados de la bóveda" valor={pesos(c.gastos_boveda_dia)} />
+            <Fila texto="− Gastos, pagos y ajustes de bóveda" valor={pesos(c.gastos_boveda_dia)} />
             <Fila texto="= Bóveda esperada" valor={pesos(c.boveda_esperado)} fuerte />
             <Fila texto="Bóveda contada" valor={pesos(c.boveda_contado)} />
             <Fila texto="Diferencia de bóveda" valor={pesos(c.boveda_diferencia)} fuerte />

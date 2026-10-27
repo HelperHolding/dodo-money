@@ -14,13 +14,15 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
   const { supabase, perfil, sucursal, cajas, soloLectura } = await obtenerContexto();
   const { desde, hasta } = rangoDiaMX(hoyMX());
 
-  const [{ data: movimientos }, { data: nombres }, boveda] = await Promise.all([
+  const [{ data: movimientos }, { data: nombres }, boveda, ajustes] = await Promise.all([
     supabase.from("movimientos").select("*").eq("sucursal_id", sucursal.id)
       .gte("creado_en", desde).lt("creado_en", hasta).order("creado_en", { ascending: false })
       .returns<Movimiento[]>(),
     supabase.from("perfiles").select("id, nombre").returns<{ id: string; nombre: string }[]>(),
     bovedaDe(supabase, sucursal.id, Number(sucursal.fondo_boveda)),
+    supabase.from("ajustes_boveda").select("id,importe,motivo,autor_id,creado_en").eq("sucursal_id",sucursal.id).order("creado_en",{ascending:false}).limit(50).returns<{id:string;importe:number;motivo:string;autor_id:string;creado_en:string}[]>(),
   ]);
+  if (ajustes.error) throw new Error(ajustes.error.message);
   const persona = new Map((nombres ?? []).map((p) => [p.id, p.nombre]));
   const caja = new Map(cajas.map((c) => [c.id, c.nombre]));
 
@@ -31,6 +33,11 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
       {!soloLectura && <FormMovimiento limiteRetiro={Number(sucursal.limite_retiro)} fondoCajon={Number(sucursal.fondo_caja_venta)}
         boveda={boveda} />}
 
+      <section className="seccion" aria-labelledby="t-ajustes">
+        <h2 id="t-ajustes">Ajustes de conciliación de bóveda</h2>
+        <p className="saldo-nota">Últimos 50 registros. Importe negativo: salida de bóveda; positivo: devolución.</p>
+        {!ajustes.data?.length ? <p>Sin ajustes registrados.</p> : <table className="tabla"><thead><tr><th>Fecha de registro</th><th>Motivo</th><th>Registró</th><th>Efecto en bóveda</th></tr></thead><tbody>{ajustes.data.map(a=><tr key={a.id}><td>{new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'short',timeZone:'America/Mexico_City'}).format(new Date(a.creado_en))}</td><td>{a.motivo}</td><td>{persona.get(a.autor_id) ?? 'Sin nombre'}</td><td className="monto">{pesos(-Number(a.importe))}</td></tr>)}</tbody></table>}
+      </section>
       <section className="seccion" aria-labelledby="t-hoy">
         <h2 id="t-hoy">Movimientos de hoy</h2>
         {!movimientos?.length ? (

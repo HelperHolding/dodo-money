@@ -158,7 +158,8 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
             <Fila texto="+ Entradas a bóveda desde el último cierre" valor={pesos(d.retiros)} />
             <Fila texto="− Fondos y reposiciones desde el último cierre" valor={pesos(d.aperturas)} />
             <Fila texto="− Salidas a corporativo desde el último cierre" valor={pesos(d.depositos)} />
-            <Fila texto="− Gastos y pagos de bóveda, netos de anulaciones" valor={pesos(d.gastosBoveda)} />
+            <Fila texto="− Gastos y pagos de bóveda, netos de anulaciones" valor={pesos(d.gastosBoveda - (d.ajustesBoveda ?? 0))} />
+            {!!d.ajustesBoveda && <Fila texto="− Ajustes de conciliación de bóveda" valor={pesos(d.ajustesBoveda)} />}
             <Fila texto="= Debe haber en bóveda" valor={pesos(esperado)} fuerte />
             <Fila texto="Fondo que se queda en bóveda" valor={fondoBoveda(sucursal)} />
             <Fila texto="Reservado para pagos" valor={pesos(disponibilidad.reservas)} />

@@ -1,0 +1,56 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {PGlite} from '@electric-sql/pglite';
+const load=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8').replace(/^\uFEFF/,'');
+const migration=load('supabase/migrations/20261027235402_ajustes_conciliacion_boveda.sql');
+const repair=load('supabase/correcciones/2026-10-27_ajuste_conciliacion_589_78.sql');
+for(const confirmed of [false,true])test('ajuste bóveda: entrega '+(confirmed?'confirmada':'pendiente'),async()=>{
+ const db=new PGlite();
+ try{
+ await db.exec(`create role anon;create role authenticated;create schema auth;
+ create function auth.uid() returns uuid language sql as $$select 'fab8c3e1-636d-45bc-80e3-a7185ebc75fd'::uuid$$;
+ create function ve_todas_las_sucursales() returns boolean language sql as $$select false$$;
+ create function mi_sucursal() returns uuid language sql as $$select '260324e5-6f5a-44d8-9a75-f4a4ba3ed10e'::uuid$$;
+ create function hoy_mx() returns date language sql as $$select current_date$$;
+ create table sucursales(id uuid primary key);insert into sucursales values ('260324e5-6f5a-44d8-9a75-f4a4ba3ed10e');
+ create table perfiles(id uuid primary key,activo boolean,rol text);insert into perfiles values('fab8c3e1-636d-45bc-80e3-a7185ebc75fd',true,'admin');
+ create table cajas(id uuid primary key,sucursal_id uuid,tipo text,nombre text,saldo_inicial numeric);
+ insert into cajas values('00000000-0000-0000-0000-000000000001','260324e5-6f5a-44d8-9a75-f4a4ba3ed10e','boveda','Bóveda',29938.78);
+ create table movimientos(id uuid,sucursal_id uuid,tipo text,estado text,monto numeric,caja_origen_id uuid,caja_destino_id uuid,creado_en timestamptz,confirmado_en timestamptz);
+ create table gastos_caja_chica(id uuid,sucursal_id uuid,origen text,monto numeric,informativo boolean,anulado_en timestamptz,creado_en timestamptz);
+ create table pagos_boveda_eventos(id uuid,sucursal_id uuid,importe numeric,creado_en timestamptz);
+ create table cierres_dia(id uuid,sucursal_id uuid,fecha date,cerrado_en timestamptz,boveda_contado numeric);
+ create table facturas(id uuid,total numeric);insert into facturas values(gen_random_uuid(),100);
+ create table pagos(id uuid);create table recolecciones_corporativo(id uuid);
+ `);
+ await db.query(`insert into movimientos values('8202bc03-642f-41b5-98c5-5271f1e416e9','260324e5-6f5a-44d8-9a75-f4a4ba3ed10e','salida_corporativo',$1,21980,'00000000-0000-0000-0000-000000000001',gen_random_uuid(),now(),$2)`,[confirmed?'confirmado':'pendiente',confirmed?new Date():null]);
+ await db.exec(migration);
+ const getSaldo=async()=>Number((await db.query('select saldo from saldos_cajas')).rows[0].saldo);
+ const saldo0=await getSaldo();
+ const before=(await db.query('select * from movimientos')).rows;
+ let output=await db.exec(repair);let result=output.flatMap(x=>x.rows??[]).find(x=>x.resultado);
+ assert.equal(result.resultado,'AJUSTE VALIDADO');assert.equal(result.remanente_tras_recoleccion,'7369.00');
+ assert.equal(await getSaldo(),saldo0);assert.equal((await db.query('select count(*) n from ajustes_boveda')).rows[0].n,0);
+ const apply=repair.replace(/ROLLBACK;\s*$/,'COMMIT;');await db.exec(apply);
+ assert.equal(await getSaldo(),confirmed?7369:29349);
+ assert.deepEqual((await db.query('select * from movimientos')).rows,before);
+ assert.equal((await db.query('select total from facturas')).rows[0].total,'100');
+ output=await db.exec(apply);result=output.flatMap(x=>x.rows??[]).find(x=>x.resultado);
+ assert.equal(result.resultado,'YA APLICADO · SIN OTRO DESCUENTO');assert.equal(await getSaldo(),confirmed?7369:29349);
+ let d=(await db.query("select datos_boveda_cierre('260324e5-6f5a-44d8-9a75-f4a4ba3ed10e',hoy_mx()) d")).rows[0].d;
+ assert.equal(d.ajustesBoveda,589.78);assert.equal(d.gastosBoveda,589.78);
+ // El siguiente cierre toma el conteo como nueva base y no repite el ajuste.
+ await db.exec("insert into cierres_dia values(gen_random_uuid(),'260324e5-6f5a-44d8-9a75-f4a4ba3ed10e',current_date-1,now(),7369)");
+ d=(await db.query("select datos_boveda_cierre('260324e5-6f5a-44d8-9a75-f4a4ba3ed10e',hoy_mx()) d")).rows[0].d;
+ assert.equal(d.ajustesBoveda,0);
+ assert.equal((await db.query("select has_table_privilege('authenticated','ajustes_boveda','insert') ok")).rows[0].ok,false);
+ assert.equal((await db.query("select has_table_privilege('anon','ajustes_boveda','select') ok")).rows[0].ok,false);
+ await db.exec('grant select on all tables in schema public to authenticated;set role authenticated');
+ assert.equal((await db.query('select count(*) n from ajustes_boveda')).rows[0].n,1);
+ await assert.rejects(db.exec('delete from ajustes_boveda'),/permission denied/);
+ await db.exec('reset role');
+ await db.exec("insert into sucursales values(gen_random_uuid());insert into ajustes_boveda(sucursal_id,solicitud,importe,saldo_antes,saldo_despues,motivo,autor_id) select id,'otra-sucursal',1,2,1,'Ensayo de aislamiento','fab8c3e1-636d-45bc-80e3-a7185ebc75fd' from sucursales where id<>'260324e5-6f5a-44d8-9a75-f4a4ba3ed10e';set role authenticated");
+ assert.equal((await db.query('select count(*) n from ajustes_boveda')).rows[0].n,1);
+ }finally{await db.close();}
+});
