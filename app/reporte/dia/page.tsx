@@ -48,7 +48,7 @@ export default async function ReporteDia({ searchParams }: { searchParams: Promi
             <Fila texto="= Bóveda esperada" valor={pesos(c.boveda_esperado)} fuerte />
             <Fila texto="Bóveda contada" valor={pesos(c.boveda_contado)} />
             <Fila texto="Diferencia de bóveda" valor={pesos(c.boveda_diferencia)} fuerte />
-            <Fila texto="Fondo que se queda en bóveda" valor={`${pesos(sucursal.fondo_boveda)} (de ellos ${pesos(sucursal.fondo_emergencia)} de emergencia)`} />
+            <Fila texto="Fondo que se queda en bóveda" valor={pesos(sucursal.fondo_boveda)} />
             <Fila texto="Debe salir a corporativo" valor={pesos(Math.max(0, Number(c.boveda_contado) - Number(sucursal.fondo_boveda)))} />
             <Fila texto="Diferencia del fondo de cambios" valor={pesos(c.cambios_diferencia)} />
             <Fila texto="Rappi según Dodo IS" valor={pesos(c.rappi)} />
