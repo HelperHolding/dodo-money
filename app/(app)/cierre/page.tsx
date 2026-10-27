@@ -121,7 +121,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <EncabezadoPagina titulo={`Cierre del día ${fecha}`} descripcion="Las ventas se copian del reporte de Dodo IS. Los datos de bóveda salen de los movimientos confirmados." />
+      <EncabezadoPagina titulo={`Cierre del día ${fecha}`} descripcion="Las ventas se copian del reporte de Dodo IS. La bóveda incluye los movimientos confirmados desde el último cierre, aunque haya días sin corte." />
       <Aviso ok={ok} error={error} />
       {turno && <p className="aviso aviso-error">Hay un turno abierto. Ciérralo con su <Link href="/arqueo">arqueo de cierre</Link> primero.</p>}
       {d.pendientes > 0 && <p className="aviso aviso-error">Hay {d.pendientes} movimientos sin confirmar en <Link href="/movimientos">Movimientos</Link>.</p>}
@@ -154,11 +154,12 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
 
         <section className="seccion" aria-labelledby="t-boveda">
           <h2 id="t-boveda"><span className="paso">3</span>Bóveda</h2>
+          <p className="saldo-nota">{d.ultimoCierre ? `Acumulado desde el cierre del ${d.ultimoCierre}.` : "Acumulado desde el saldo inicial de bóveda."} Los conteos de cierres anteriores se conservan.</p>
           <table className="tabla"><tbody>
             <Fila texto="Saldo del cierre anterior" valor={pesos(d.bovedaInicial)} />
-            <Fila texto="+ Retiros a bóveda de hoy" valor={pesos(d.retiros)} />
-            <Fila texto="− Fondos entregados a caja de venta" valor={pesos(d.aperturas)} />
-            <Fila texto="− Salidas a corporativo de hoy" valor={pesos(d.depositos)} />
+            <Fila texto="+ Entradas a bóveda desde el último cierre" valor={pesos(d.retiros)} />
+            <Fila texto="− Fondos y reposiciones desde el último cierre" valor={pesos(d.aperturas)} />
+            <Fila texto="− Salidas a corporativo desde el último cierre" valor={pesos(d.depositos)} />
             <Fila texto="− Gastos y pagos de bóveda, netos de anulaciones" valor={pesos(d.gastosBoveda)} />
             <Fila texto="= Debe haber en bóveda" valor={pesos(esperado)} fuerte />
             <Fila texto="Fondo que se queda en bóveda" valor={fondoBoveda(sucursal)} />
