@@ -30,7 +30,7 @@ fumigación de un mes pasado sin comprobar se ve en rojo.
 | Doble conteo | Una fecha con factura ligada ya no se muestra como prevista; se ve la factura |
 | Servicio | Casilla "requiere comprobar servicio" (por omisión: sí en fumigación, basura y trampas; no en renta). Estados: pendiente, realizado (fecha + nota de al menos 5 letras + foto o PDF opcional) o no realizado (motivo) |
 | Omitir una fecha | Se permite con motivo (ej. mes de gracia en renta); deja de contar como previsto |
-| Cambiar la regla | Monto, proveedor, forma de pago, fin, descripción y "requiere servicio" se pueden editar y afectan solo fechas sin factura. Para cambiar frecuencia, día o inicio se pone fin al compromiso y se crea otro |
+| Cambiar la regla | Monto, proveedor, forma de pago, fin, descripción y "requiere servicio" se pueden editar y afectan solo fechas sin factura. Para cambiar sucursal, concepto, frecuencia, día o inicio se pone fin al compromiso y se crea otro. El fin no puede quedar antes de una fecha ya trabajada |
 | Quién edita | Admin de Compras (`edita_compras`): Julio y Sebastián. Corporativo (`ve_compras`) solo consulta |
 | P&L | Los previstos **no** entran al P&L; solo la factura real, como hoy |
 
@@ -73,8 +73,9 @@ fumigación de un mes pasado sin comprobar se ve en rojo.
   `servicio_fecha`, `servicio_nota`, `revision`.
 - `compromiso_historial`: alta, cambios de la regla y cada acción sobre una fecha (anterior y nuevo en jsonb, usuario,
   fecha), igual que `activo_historial`.
-- Evidencia del servicio: `compra_adjuntos` gana la columna `compromiso_fecha_id` (con la misma regla de un solo
-  dueño por adjunto) y reutiliza el bucket `adjuntos-compras`.
+- Evidencia del servicio: tabla propia `compromiso_evidencias` con el mismo patrón preparar → subir → confirmar de
+  `compra_adjuntos` (que exige dueño orden/factura y no se toca), en el bucket `adjuntos-compras`.
+- Si un gasto sin CFDI ligado se sustituye por su CFDI, un trigger pasa la liga al CFDI.
 - RLS: lectura con `ve_compras()`; escritura solo a través de funciones `security definer` que exigen
   `edita_compras()`.
 

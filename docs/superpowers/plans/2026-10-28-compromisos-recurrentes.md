@@ -198,8 +198,8 @@ language sql stable set search_path='' as $$
    then ((extract(year from p_hasta)-extract(year from c.inicio))*12+extract(month from p_hasta)-extract(month from c.inicio))::int/c.cada
    else (p_hasta-c.inicio)/(7*c.cada) end)) k
  cross join lateral (select case when c.unidad='mes' then
-   (date_trunc('month',c.inicio)+make_interval(months=>(k*c.cada)::int))::date
-   +(least(c.dia_mes::int,extract(day from date_trunc('month',c.inicio)+make_interval(months=>(k*c.cada)::int)+interval '1 month - 1 day')::int)-1)
+   (date_trunc('month',c.inicio::timestamp)+make_interval(months=>(k*c.cada)::int))::date
+   +(least(c.dia_mes::int,extract(day from date_trunc('month',c.inicio::timestamp)+make_interval(months=>(k*c.cada)::int)+interval '1 month - 1 day')::int)-1)
   else c.inicio+(k*7*c.cada)::int end as vence) v
  where c.id=p_compromiso and v.vence>=c.inicio and (c.fin is null or v.vence<=c.fin) and v.vence between p_desde and p_hasta
  order by v.vence
@@ -258,7 +258,7 @@ commit;
 
 - [ ] **Step 3: Revisión estática**
 
-No hay Postgres local: revisar a mano que cada caso de la prueba SQL salga de la función como está escrita (en particular `fechas_compromiso` con `inicio=2027-01-20`, `dia_mes=15`, `cada=2`: k=0 → 15-ene < inicio, se omite; k=1 → 15-mar; k=2 → 15-may). Verificar que todo lleva `public.` y que no queda ningún `UPDATE` sin `WHERE`.
+No hay Postgres local: revisar a mano que cada caso de la prueba SQL salga de la función como está escrita (en particular `fechas_compromiso` con `inicio=2027-01-20`, `dia_mes=15`, `cada=2`: k=0 → 15-ene < inicio, se omite; k=1 → 15-mar; k=2 → 15-may). Verificar que todo lleva `public.` y que no queda ningún `UPDATE` sin `WHERE`. `date_trunc` recibe `inicio::timestamp` (sin zona horaria) para que el cálculo no dependa de la zona de la sesión.
 
 - [ ] **Step 4: Commit**
 
