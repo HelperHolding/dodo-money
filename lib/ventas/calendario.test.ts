@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { alElegirDia, diasEntreFechas, elegirDia, mesDe, moverMes, rangoElegido, semanasDelMes, ventaDelRango } from "./calendario.ts";
+import { alElegirDia, diasEntreFechas, elegirDia, mesDe, moverMes, periodosRapidos, rangoElegido, semanasDelMes, ventaDelRango } from "./calendario.ts";
 
 test("semanasDelMes: semanas de lunes a domingo con huecos al inicio y al final", () => {
   const sep = semanasDelMes(2026, 9);
@@ -69,4 +69,17 @@ test("alElegirDia: un rango de más días que el máximo no carga y conserva el 
   assert.deepEqual(largo, { sel: { inicio: "2026-10-12", fin: null }, cargar: null, excede: true });
   // Justo en el máximo sí carga.
   assert.deepEqual(alElegirDia(primero.sel, "2026-10-18", 7).cargar, { desde: "2026-10-12", hasta: "2026-10-18" });
+});
+
+test("periodosRapidos: hoy, últimos 7 días contando hoy y lo que va del mes", () => {
+  assert.deepEqual(periodosRapidos("2026-10-28"), [
+    { clave: "hoy", etiqueta: "Hoy", rango: { desde: "2026-10-28", hasta: "2026-10-28" } },
+    { clave: "semana", etiqueta: "Semana", rango: { desde: "2026-10-22", hasta: "2026-10-28" } },
+    { clave: "mes", etiqueta: "Mes", rango: { desde: "2026-10-01", hasta: "2026-10-28" } },
+  ]);
+  // La semana cruza al mes anterior; el primero del mes, "Mes" es solo ese día.
+  const primero = periodosRapidos("2026-11-01");
+  assert.deepEqual(primero[1].rango, { desde: "2026-10-26", hasta: "2026-11-01" });
+  assert.deepEqual(primero[2].rango, { desde: "2026-11-01", hasta: "2026-11-01" });
+  assert.equal(diasEntreFechas(periodosRapidos("2026-03-03")[1].rango), 7);
 });

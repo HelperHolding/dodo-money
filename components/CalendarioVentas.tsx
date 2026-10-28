@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { fechaTexto, pesos, pesosCortos } from "@/lib/formato";
 import {
-  alElegirDia, diasEntreFechas, mesDe, moverMes, rangoElegido, semanasDelMes, ventaDelRango, type Rango, type Seleccion,
+  alElegirDia, diasEntreFechas, mesDe, moverMes, periodosRapidos, rangoElegido, semanasDelMes, ventaDelRango, type Rango, type Seleccion,
 } from "@/lib/ventas/calendario";
 
 const DIAS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
@@ -16,8 +16,8 @@ const tituloMes = (anio: number, mes: number) => {
 };
 
 /**
- * Periodo de Ventas: una barra fija arriba (periodo cargado, sucursal y botón del calendario) y el calendario,
- * abierto en computadora y plegado en celular para que los números se vean sin bajar.
+ * Periodo de Ventas: una barra fija arriba (botones Hoy, Semana y Mes, periodo cargado, sucursal y botón del calendario)
+ * y el calendario, plegado al abrir para que los números se vean sin bajar; se despliega para elegir otro rango.
  * En el calendario cada día muestra su venta. Sin botón intermedio: el primer toque marca el inicio,
  * el segundo (otro día = rango; el mismo día = solo ese día) recarga todo el tablero con ese periodo.
  * Esc o "Limpiar" cancelan una selección a medias.
@@ -45,11 +45,9 @@ export function CalendarioVentas({ venta, periodo, hoy, maxDias, sucursal, sucur
   const esperando = Boolean(sel.inicio && !sel.fin);
   const esteMes = mesDe(hoy);
   const puedeAvanzar = mes.anio * 12 + mes.mes < esteMes.anio * 12 + esteMes.mes;
-  const [abierto, setAbierto] = useState(true);
-  useEffect(() => {
-    if (window.matchMedia("(max-width: 640px)").matches) setAbierto(false);
-  }, []);
+  const [abierto, setAbierto] = useState(false);
   const diasPeriodo = diasEntreFechas(periodo);
+  const rapidos = periodosRapidos(hoy);
 
   const ir = (r: Rango, suc: string | null) => {
     const q = new URLSearchParams({ desde: r.desde, hasta: r.hasta });
@@ -78,6 +76,13 @@ export function CalendarioVentas({ venta, periodo, hoy, maxDias, sucursal, sucur
   return (
     <>
     <div className="periodo-barra" aria-busy={pendiente || undefined}>
+      <div className="segmentos periodo-rapidos" role="group" aria-label="Periodo rápido">
+        {rapidos.map((r) => (
+          <button key={r.clave} type="button" disabled={pendiente}
+            aria-pressed={r.rango.desde === periodo.desde && r.rango.hasta === periodo.hasta}
+            onClick={() => ir(r.rango, sucursal)}>{r.etiqueta}</button>
+        ))}
+      </div>
       <button type="button" className="periodo-actual" aria-expanded={abierto} aria-controls="calendario-periodo"
         title={abierto ? "Ocultar calendario" : "Cambiar periodo"} onClick={() => setAbierto(!abierto)}>
         <Icono nombre="calendario" tamano={20} />

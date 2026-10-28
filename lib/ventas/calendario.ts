@@ -41,6 +41,17 @@ export function rangoElegido(s: Seleccion): Rango | null {
 /** Días del rango contando los dos extremos. */
 export const diasEntreFechas = (r: Rango) => Math.round((Date.parse(`${r.hasta}T00:00:00Z`) - Date.parse(`${r.desde}T00:00:00Z`)) / DIA) + 1;
 
+export type PeriodoRapido = { clave: "hoy" | "semana" | "mes"; etiqueta: string; rango: Rango };
+
+/** Botones de la barra del periodo: hoy, los últimos 7 días contando hoy y lo que va del mes. "Hoy" es el de por defecto. */
+export function periodosRapidos(hoy: string): PeriodoRapido[] {
+  return [
+    { clave: "hoy", etiqueta: "Hoy", rango: { desde: hoy, hasta: hoy } },
+    { clave: "semana", etiqueta: "Semana", rango: { desde: fecha(Date.parse(`${hoy}T00:00:00Z`) - 6 * DIA), hasta: hoy } },
+    { clave: "mes", etiqueta: "Mes", rango: { desde: `${hoy.slice(0, 7)}-01`, hasta: hoy } },
+  ];
+}
+
 /** Suma de la venta de los días del rango que tienen venta. */
 export function ventaDelRango(venta: Readonly<Record<string, number>>, r: Rango) {
   let total = 0, diasConVenta = 0;
