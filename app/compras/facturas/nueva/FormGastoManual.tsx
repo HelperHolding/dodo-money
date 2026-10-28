@@ -16,14 +16,16 @@ type Proveedor = { id: string; nombre: string; sucursal_id: string | null; cuent
 type Renglon = { descripcion: string; importe: string; cuenta: string };
 
 /** Alta de un gasto sin CFDI: renglones con su cuenta, IVA y retenciones con el total a la vista. */
-export function FormGastoManual({ proveedores, sucursales, cuentas, hoy, razones }: {
+export function FormGastoManual({ proveedores, sucursales, cuentas, hoy, razones, inicial }: {
  razones:RazonSocial[];
+  inicial?: { proveedor: string; sucursal: string; compromiso: string; vence: string; revision: number };
   proveedores: Proveedor[]; sucursales: { id: string; nombre: string }[]; cuentas: { clave: string; nombre: string }[]; hoy: string;
 }) {
-  const [proveedor, setProveedor] = useState("");
-  const [sucursal, setSucursal] = useState("oficina");
+  const pInicial = proveedores.find((x) => x.id === inicial?.proveedor);
+  const [proveedor, setProveedor] = useState(pInicial?.id ?? "");
+  const [sucursal, setSucursal] = useState(inicial?.sucursal ?? "oficina");
   const [fecha, setFecha] = useState(hoy);
-  const [cubre, setCubre] = useState({ desde: hoy.slice(0, 7), hasta: hoy.slice(0, 7) });
+  const [cubre, setCubre] = useState(() => { const c = periodoCubre(hoy, pInicial?.cubre_meses ?? 1, pInicial?.cubre_inicio ?? "emision"); return { desde: c.desde.slice(0, 7), hasta: c.hasta.slice(0, 7) }; });
   /** El periodo sale de la regla del proveedor y la fecha; se puede cambiar a mano. */
   const recalcular = (id: string, f: string) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return;
@@ -31,7 +33,7 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy, razones
     const c = periodoCubre(f, p?.cubre_meses ?? 1, p?.cubre_inicio ?? "emision");
     setCubre({ desde: c.desde.slice(0, 7), hasta: c.hasta.slice(0, 7) });
   };
-  const [renglones, setRenglones] = useState<Renglon[]>([{ descripcion: "", importe: "", cuenta: "" }]);
+  const [renglones, setRenglones] = useState<Renglon[]>([{ descripcion: "", importe: "", cuenta: pInicial?.cuenta_pl ?? "" }]);
   const [imp, setImp] = useState<Impuestos>({ iva: 0.16, retIva: "ninguna", retIsr: "ninguna" });
   const t = calcularGasto(renglones.map((r) => ({ importe: Number(r.importe.replace(/[$,\s]/g, "")) || 0 })), imp);
   const cambiarRenglon = (i: number, campo: keyof Renglon, valor: string) =>
@@ -48,6 +50,7 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy, razones
   const esInsumos=soloInsumos(renglones.map(r=>r.cuenta),proveedores.find(p=>p.id===proveedor)?.cuenta_pl);
   return (
     <form action={registrarGastoManual} className="formulario seccion"><CampoRazonSocial razones={razones} sucursal={sucursal}/>
+      {inicial && <><input type="hidden" name="compromiso_id" value={inicial.compromiso} /><input type="hidden" name="compromiso_vence" value={inicial.vence} /><input type="hidden" name="compromiso_revision" value={inicial.revision} /></>}
       <div className="rejilla">
         <div className="campo">
           <label htmlFor="proveedor_id">Proveedor</label>
