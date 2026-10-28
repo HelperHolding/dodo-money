@@ -10,7 +10,7 @@ function valor(i: Indicador) {
 }
 
 /** El cambio se lee por flecha y signo, no solo por color (el color dice si es bueno o malo para el negocio). */
-function Cambio({ i }: { i: Indicador }) {
+export function Cambio({ i }: { i: Indicador }) {
   if (i.cambio === null) return <>Sin periodo anterior</>;
   const monto = i.unidad === "puntos" ? `${Math.abs(i.cambio).toFixed(1)} pts` : porcentaje(Math.abs(i.cambio));
   const sentido = i.cambio > 0 ? "sube" : i.cambio < 0 ? "baja" : "igual";
@@ -24,10 +24,12 @@ function Cambio({ i }: { i: Indicador }) {
 }
 
 /** Los números clave del tablero, cada uno con su cambio contra el periodo anterior (verde si es bueno, rojo si es malo). */
-export function Indicadores({ lista, detalle }: { lista: readonly Indicador[]; detalle: Partial<Record<Indicador["clave"], string>> }) {
+export function Indicadores({ lista, detalle, columnas }: {
+  lista: readonly Indicador[]; detalle: Partial<Record<Indicador["clave"], string>>; columnas?: 3;
+}) {
   return (
     <div className="indicadores-marco">
-      <div className="indicadores">
+      <div className="indicadores" data-columnas={columnas}>
         {lista.map((i) => (
           <div key={i.clave} className="indicador">
             <span className="indicador-etiqueta">{i.etiqueta}</span>

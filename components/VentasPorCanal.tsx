@@ -1,5 +1,7 @@
 import {participacionCanales} from "@/lib/ventas/reporte";
-import { pesos,porcentaje,fechaTexto } from "@/lib/formato";
+import { pesos,pesosRedondos,porcentaje,fechaTexto } from "@/lib/formato";
+import { Cambio } from "@/components/Indicadores";
+import { cambioRelativo,type Indicador } from "@/lib/ventas/tablero";
 import type { CanalReporte } from "@/lib/ventas/reporte";
 
 export function VentasPorCanal({canales,detalle=false}:{canales:CanalReporte[];detalle?:boolean}){
@@ -13,4 +15,23 @@ export function VentasPorCanal({canales,detalle=false}:{canales:CanalReporte[];d
  </section>
  {detalle&&canales.map(c=><section className="seccion" key={c.clave}><h2>Venta por día · {c.nombre}</h2>
  {!c.dias.length?<p className="vacio">Sin ventas importadas para este canal en el periodo.</p>:<div className="tabla-contenedor"><table className="tabla tabla-tarjetas"><thead><tr><th>Fecha</th><th>Pedidos</th><th>Venta con IVA</th><th>IVA</th><th>Ticket</th></tr></thead><tbody>{c.dias.map(d=><tr key={d.fecha}><td data-label="Fecha">{fechaTexto(d.fecha)}</td><td data-label="Pedidos" className="monto">{d.pedidos}</td><td data-label="Venta con IVA" className="monto">{pesos(d.total)}</td><td data-label="IVA" className="monto">{pesos(d.iva)}</td><td data-label="Ticket" className="monto">{d.ticket===null?"—":pesos(d.ticket)}</td></tr>)}</tbody></table></div>}</section>)}</>;
+}
+
+/** Tarjetas de arriba del tablero: cuánto vendió cada canal en el periodo, con su cambio contra el periodo anterior. */
+export function TarjetasCanales({canales}:{canales:CanalReporte[]}){
+ const participaciones=participacionCanales(canales.map(c=>c.actual.total));
+ return <section className="canales-resumen indicadores-marco" aria-labelledby="t-canales"><h2 id="t-canales">Por canal</h2>
+ <div className="indicadores" data-columnas={2}>{canales.map((c,i)=>{
+  const cambio=cambioRelativo(c.actual.total,c.anterior?.total??null);
+  const indicador:Indicador={clave:"venta",etiqueta:c.nombre,valor:c.actual.total,cambio,unidad:"fraccion",favorable:cambio===null||cambio===0?null:cambio>0};
+  return <div key={c.clave} className="indicador">
+   <span className="indicador-etiqueta">{c.nombre} · {participaciones[i]===null?"—":porcentaje(participaciones[i]!)} de la venta</span>
+   <strong className="indicador-valor">{pesosRedondos(c.actual.total)}</strong>
+   <span className="indicador-cambio" data-favorable={indicador.favorable===null?undefined:indicador.favorable?"si":"no"} title="Contra el periodo anterior del mismo largo"><Cambio i={indicador}/></span>
+   <span className="indicador-detalle">{c.actual.pedidos.toLocaleString("es-MX")} pedidos · ticket {c.actual.ticket===null?"—":pesos(c.actual.ticket)}</span>
+   <span className="indicador-detalle">Neta {pesosRedondos(c.actual.neta)} · costo {c.actual.costoPct===null?"—":porcentaje(c.actual.costoPct)}</span>
+  </div>;
+ })}</div>
+ <p className="saldo-nota">Rappi usa el subtotal del restaurante; no es el depósito recibido ni la liquidación después de comisiones.</p>
+ </section>;
 }

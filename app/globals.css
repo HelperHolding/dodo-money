@@ -550,6 +550,15 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 /* 4 en fila si hay espacio; 2×2 cuando el contenido es angosto (celular o ventana chica con menú). */
 .indicadores-marco { container-type: inline-size; }
 @container (max-width: 720px) { .indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.indicadores[data-columnas="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.indicadores[data-columnas="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Con 3 en celular, la venta total ocupa toda la fila y pedidos y ticket quedan abajo. */
+@container (max-width: 720px) {
+  .indicadores[data-columnas="3"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .indicadores[data-columnas="3"] > :first-child { grid-column: 1 / -1; }
+}
+.canales-resumen { margin-top: 12px; }
+.canales-resumen h2 { font-size: 0.95rem; margin: 0 0 8px; color: var(--tinta-2); }
 .indicador {
   background: var(--blanco); border: 1px solid var(--linea); border-radius: var(--r-md);
   padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0;
