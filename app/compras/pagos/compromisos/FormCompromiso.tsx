@@ -49,7 +49,7 @@ export function FormCompromiso({ c, sucursales, proveedores, hoy, sucursalInicia
         </label>
         <label className="campo">Cada cuántos {unidad === "mes" ? "meses" : "semanas"}<input name="cada" type="number" min={1} max={12} defaultValue={c?.cada ?? 1} required readOnly={fijo} /></label>
         {unidad === "mes" && <label className="campo">Día del mes<input name="dia_mes" type="number" min={1} max={31} defaultValue={c?.dia_mes ?? 1} required readOnly={fijo} /><small>Si el mes es más corto, el último día.</small></label>}
-        <label className="campo">Desde<input name="inicio" type="date" defaultValue={c?.inicio ?? hoy} required readOnly={fijo} /></label>
+        <label className="campo">Desde<input name="inicio" type="date" defaultValue={c?.inicio ?? hoy} required readOnly={fijo} /><small>La primera fecha que falta por pagar, no el inicio del contrato.</small></label>
         <label className="campo">Hasta (opcional)<input name="fin" type="date" defaultValue={c?.fin ?? ""} /><small>Cuando termina el contrato.</small></label>
       </div>
       <label className="casilla"><input type="checkbox" name="requiere_servicio" value="si" checked={requiere} onChange={(e) => setRequiere(e.target.checked)} /> Comprobar que el servicio se hizo (fecha, nota y foto)</label>

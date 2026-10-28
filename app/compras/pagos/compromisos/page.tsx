@@ -6,8 +6,7 @@ import { Icono } from "@/components/Icono";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { puedeEditarCompras } from "@/lib/roles";
-import { sumarDias } from "@/lib/compras/diasPago";
-import { CONCEPTOS, ESTADO_PAGO, avisosCompromisos, estadoPago, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "@/lib/compras/compromisos";
+import { ventanaCompromisos, CONCEPTOS, ESTADO_PAGO, avisosCompromisos, estadoPago, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "@/lib/compras/compromisos";
 import { leerCompromisos, leerFechas, proveedorDe, sucursalDe, type CompromisoConNombres } from "./datos";
 
 export default async function Compromisos({ searchParams }: { searchParams: Promise<{ sucursal?: string; concepto?: string; ok?: string; error?: string }> }) {
@@ -15,7 +14,7 @@ export default async function Compromisos({ searchParams }: { searchParams: Prom
   const { supabase, perfil } = await obtenerPerfil();
   const hoy = hoyCalendarioMX();
   let todos: CompromisoConNombres[], fechas: FechaCompromiso[];
-  try { [todos, fechas] = await Promise.all([leerCompromisos(supabase), leerFechas(supabase, sumarDias(hoy, -365), sumarDias(hoy, 365))]); }
+  try { [todos, fechas] = await Promise.all([leerCompromisos(supabase), leerFechas(supabase, ventanaCompromisos(hoy).desde, ventanaCompromisos(hoy).hasta)]); }
   catch { return <p className="aviso aviso-error">No se pudieron consultar los compromisos. Revisa que la migración 20261028180000 esté aplicada.</p>; }
   const lista = todos.filter((c) => (!sucursal || c.sucursal_id === sucursal) && (!concepto || c.concepto === concepto));
   const ids = new Set(lista.map((c) => c.id));

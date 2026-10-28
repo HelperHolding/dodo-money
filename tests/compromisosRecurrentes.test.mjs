@@ -18,7 +18,10 @@ const BASE=`create role anon;create role authenticated;create schema auth;create
  create type forma_pago as enum('transferencia','efectivo','tarjeta','cheque');
  create table sucursales(id uuid primary key);insert into sucursales values('00000000-0000-0000-0000-0000000000e1');
  create table proveedores(id uuid primary key);insert into proveedores values('00000000-0000-0000-0000-0000000000b1'),('00000000-0000-0000-0000-0000000000b2');
- create table facturas(id uuid primary key,tipo text,estado text,proveedor_id uuid,sucursal_id uuid,sustituido_por uuid,saldo numeric);
+ create type estado_factura as enum('por_pagar','parcial','pagada','cancelada');
+ create table facturas(id uuid primary key,tipo text,estado estado_factura,proveedor_id uuid,sucursal_id uuid,sustituido_por uuid,saldo numeric,motivo_cancelacion text,
+  check (estado <> 'cancelada' or coalesce(trim(motivo_cancelacion), '') <> ''));
+ create table factura_recepciones(id uuid primary key,factura_id uuid,anulada_en timestamptz);
  insert into facturas values('00000000-0000-0000-0000-0000000000f1','ingreso','por_pagar','00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000e1',null,45000),
   ('00000000-0000-0000-0000-0000000000f2','ingreso','por_pagar','00000000-0000-0000-0000-0000000000b2','00000000-0000-0000-0000-0000000000e1',null,100);
  create view facturas_saldo as select id,tipo,estado,proveedor_id,sucursal_id,saldo from facturas;

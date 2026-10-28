@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "./compromisos.ts";
+import { ventanaCompromisos, avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "./compromisos.ts";
 
 const fecha = (x: Partial<FechaCompromiso> = {}): FechaCompromiso => ({
   compromiso_id: "c1", vence: "2026-11-01", fecha_id: null, factura_id: null, factura_estado: null, factura_saldo: null,
@@ -76,4 +76,9 @@ test("leer el formulario", () => {
   assert.deepEqual(leer({ ...base, cada: "13" }), { error: "La frecuencia va de 1 a 12." });
   assert.deepEqual(leer({ ...base, fin: "2026-11-01" }), { error: "El fin no puede ser antes del inicio." });
   assert.deepEqual(leer({ ...base, proveedor_id: "" }), { error: "Elige sucursal y proveedor." });
+});
+
+test("ventana de fechas: los últimos 3 meses (lo que el detalle deja atender) y los próximos 12", () => {
+  assert.deepEqual(ventanaCompromisos("2026-10-28"), { desde: "2026-07-28", hasta: "2027-10-28" });
+  assert.deepEqual(ventanaCompromisos("2026-05-31"), { desde: "2026-02-28", hasta: "2027-05-31" });
 });

@@ -107,7 +107,9 @@ begin
    or (p_datos->>'cada')::smallint is distinct from a.cada or nullif(p_datos->>'dia_mes','')::smallint is distinct from a.dia_mes or (p_datos->>'inicio')::date is distinct from a.inicio then
    raise exception 'Sucursal, concepto, frecuencia, día e inicio no cambian. Ponle fin a este compromiso y crea otro.';
   end if;
-  if v_fin is not null and exists(select 1 from public.compromiso_fechas where compromiso_id=p_id and vence>v_fin) then raise exception 'Hay fechas con factura, servicio u omisión después del fin.';end if;
+  -- Solo cuentan las fechas con algo guardado; una fila que quedó vacía (factura quitada, omisión quitada) no estorba.
+  if v_fin is not null and exists(select 1 from public.compromiso_fechas where compromiso_id=p_id and vence>v_fin
+   and (factura_id is not null or omitida_motivo is not null or servicio<>'pendiente')) then raise exception 'Hay fechas con factura, servicio u omisión después del fin.';end if;
   update public.compromisos set descripcion=nullif(trim(p_datos->>'descripcion'),''),proveedor_id=(p_datos->>'proveedor_id')::uuid,monto_estimado=(p_datos->>'monto_estimado')::numeric,
    forma_pago=(p_datos->>'forma_pago')::public.forma_pago,fin=v_fin,requiere_servicio=coalesce((p_datos->>'requiere_servicio')::boolean,false),revision=revision+1
    where id=p_id returning * into n;

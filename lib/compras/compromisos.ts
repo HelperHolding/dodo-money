@@ -75,6 +75,17 @@ export function previstosPorDia(fechas: readonly FechaCompromiso[], datos: Reado
 export const filtrarPrevistos = <T extends { sucursal_id: string; proveedor_id: string }>(cs: T[], f: { sucursal: string; proveedor: string }) =>
   cs.filter((c) => (!f.sucursal || c.sucursal_id === f.sucursal) && (!f.proveedor || c.proveedor_id === f.proveedor));
 
+/** Mismo día `n` meses antes o después; si ese mes es más corto, su último día. */
+function moverMeses(f: string, n: number): string {
+  const [a, m, d] = f.split("-").map(Number), total = a * 12 + (m - 1) + n, anio = Math.floor(total / 12), mes = (total % 12) + 1;
+  const dia = Math.min(d, new Date(Date.UTC(anio, mes, 0)).getUTCDate());
+  return `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+/** Fechas que muestran Pagos, la lista y el detalle: los últimos 3 meses y los próximos 12. Una sola ventana para que
+ * todo vencido que se avisa tenga su tarjeta en el detalle (y se pueda ligar u omitir). */
+export const ventanaCompromisos = (hoy: string) => ({ desde: moverMeses(hoy, -3), hasta: moverMeses(hoy, 12) });
+
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const FORMAS = ["transferencia", "efectivo", "tarjeta", "cheque"];
 

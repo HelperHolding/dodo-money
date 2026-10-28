@@ -3,7 +3,8 @@ do $$
 declare a uuid;f record;otra uuid;c uuid;c2 uuid;c3 uuid;fechas date[];ok boolean;n integer;
 begin
   select id into a from public.perfiles where activo and rol::text='admin' limit 1;
-  select id,proveedor_id,sucursal_id into f from public.facturas x where tipo='ingreso' and estado<>'cancelada' and sucursal_id is not null limit 1;
+  select id,proveedor_id,sucursal_id into f from public.facturas x where tipo='ingreso' and estado<>'cancelada' and sucursal_id is not null
+    and not exists(select 1 from public.factura_recepciones r where r.factura_id=x.id and r.anulada_en is null) limit 1;
   select id into otra from public.facturas where tipo='ingreso' and estado<>'cancelada' and proveedor_id<>f.proveedor_id limit 1;
   if a is null or f.id is null or otra is null then raise exception 'FALTAN DATOS: admin y dos facturas vigentes de proveedores distintos.';end if;
   perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
@@ -94,8 +95,13 @@ begin
     if ok then raise exception 'FALLÓ: evidencia confirmada sin archivo';end if;
   end;
   -- 16. Sustitución: si el gasto ligado se sustituye, la liga pasa a la factura que lo sustituye.
-  update public.facturas set estado='cancelada',sustituido_por=otra where id=f.id;
+  update public.facturas set estado='cancelada',sustituido_por=otra,motivo_cancelacion='Prueba de sustitución' where id=f.id;
   if not exists(select 1 from public.compromiso_fechas where compromiso_id=c and vence='2027-01-31' and factura_id=otra) then raise exception 'FALLÓ: la liga no siguió la sustitución';end if;
+  -- 16b. Una fecha que quedó vacía (omitida y luego sin omitir) no impide ponerle fin al compromiso.
+  perform public.omitir_fecha_compromiso(c2,'2027-05-15',0,'Se pospone el servicio');
+  perform public.omitir_fecha_compromiso(c2,'2027-05-15',1,'');
+  perform public.guardar_compromiso(c2,1,jsonb_build_object('sucursal_id',f.sucursal_id,'concepto','fumigacion','descripcion','','proveedor_id',f.proveedor_id,'monto_estimado','1200.50','forma_pago','efectivo','unidad','mes','cada','2','dia_mes','15','inicio','2027-01-20','fin','2027-04-01','requiere_servicio','true'));
+  if (select fin from public.compromisos where id=c2) is distinct from '2027-04-01'::date then raise exception 'FALLÓ: fin con fecha vacía después';end if;
   -- 17. Sin permiso de Compras: rechazado.
   select id into a from public.perfiles where activo and rol::text not in ('admin') limit 1;
   if a is not null then

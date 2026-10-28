@@ -15,8 +15,8 @@ import { NOMBRE_FORMA_PAGO, type FormaPago } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { CalendarioPagos, type FacturaDelDia } from "./CalendarioPagos";
-import { diaDePagoSugerido, sumarDias } from "@/lib/compras/diasPago";
-import { avisosCompromisos, filtrarPrevistos, previstosPorDia, tituloCompromiso } from "@/lib/compras/compromisos";
+import { diaDePagoSugerido } from "@/lib/compras/diasPago";
+import { avisosCompromisos, filtrarPrevistos, previstosPorDia, tituloCompromiso, ventanaCompromisos } from "@/lib/compras/compromisos";
 import { leerCompromisos, leerFechas, sucursalDe } from "./compromisos/datos";
 import { diasDePago } from "../servidor";
 import { FormComplementos } from "./FormComplementos";
@@ -56,7 +56,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   // Sin fecha programada, una factura se paga en su día de pago sugerido (el autorizado anterior a su vencimiento).
   const dias = await diasDePago(supabase);
   // Compromisos fijos: lo que aún no tiene factura sale como previsto. Si la migración no está, Pagos sigue igual.
-  const [compromisos, fechasCompromiso] = await Promise.all([leerCompromisos(supabase), leerFechas(supabase, sumarDias(hoy, -365), sumarDias(hoy, 365))])
+  const [compromisos, fechasCompromiso] = await Promise.all([leerCompromisos(supabase), leerFechas(supabase, ventanaCompromisos(hoy).desde, ventanaCompromisos(hoy).hasta)])
     .catch(() => [[], []] as [Awaited<ReturnType<typeof leerCompromisos>>, Awaited<ReturnType<typeof leerFechas>>]);
   const compromisosVisibles = filtrarPrevistos(compromisos, { sucursal, proveedor });
   const idsCompromiso = new Set(compromisosVisibles.map((c) => c.id));
