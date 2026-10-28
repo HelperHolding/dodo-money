@@ -118,4 +118,84 @@ end $$;
 
 revoke all on function public.fechas_compromiso(uuid,date,date),public.compromisos_en_rango(date,date),public.guardar_compromiso(uuid,integer,jsonb) from public,anon;
 grant execute on function public.fechas_compromiso(uuid,date,date),public.compromisos_en_rango(date,date),public.guardar_compromiso(uuid,integer,jsonb) to authenticated;
+
+-- Fila de una fecha (la crea si aún no existe), bloqueada. Rechaza fechas que no salen de la regla.
+create function public.fila_fecha_compromiso(p_compromiso uuid,p_vence date) returns public.compromiso_fechas
+language plpgsql security definer set search_path='' as $$
+declare r public.compromiso_fechas;
+begin
+ if not exists(select 1 from public.fechas_compromiso(p_compromiso,p_vence,p_vence)) then raise exception 'Esa fecha no corresponde al compromiso.';end if;
+ insert into public.compromiso_fechas(compromiso_id,vence) values(p_compromiso,p_vence) on conflict(compromiso_id,vence) do nothing;
+ select * into r from public.compromiso_fechas where compromiso_id=p_compromiso and vence=p_vence for update;
+ return r;
+end $$;
+
+create function public.ligar_factura_compromiso(p_compromiso uuid,p_vence date,p_revision integer,p_factura uuid) returns void
+language plpgsql security definer set search_path='' as $$
+declare c public.compromisos;r public.compromiso_fechas;n public.compromiso_fechas;f public.facturas;
+begin
+ perform public.exigir_admin_compras();
+ select * into c from public.compromisos where id=p_compromiso for update;
+ if not found then raise exception 'Compromiso inexistente.';end if;
+ r:=public.fila_fecha_compromiso(p_compromiso,p_vence);
+ if r.revision is distinct from p_revision then raise exception 'La fecha cambió. Recarga antes de guardar.';end if;
+ if p_factura is not null then
+  if r.omitida_motivo is not null then raise exception 'La fecha está omitida. Quita la omisión antes de ligar la factura.';end if;
+  select * into f from public.facturas where id=p_factura for update;
+  if not found or f.tipo<>'ingreso' or f.estado='cancelada' then raise exception 'Elige una factura vigente.';end if;
+  if f.proveedor_id<>c.proveedor_id or f.sucursal_id is distinct from c.sucursal_id then raise exception 'La factura debe ser del mismo proveedor y sucursal del compromiso.';end if;
+  if exists(select 1 from public.compromiso_fechas where factura_id=p_factura and id<>r.id) then raise exception 'Esa factura ya está ligada a otra fecha.';end if;
+ end if;
+ update public.compromiso_fechas set factura_id=p_factura,revision=revision+1 where id=r.id returning * into n;
+ insert into public.compromiso_historial(compromiso_id,evento,anterior,nuevo,usuario_id) values(p_compromiso,case when p_factura is null then 'Factura quitada' else 'Factura ligada' end,to_jsonb(r),to_jsonb(n),auth.uid());
+end $$;
+
+create function public.comprobar_servicio_compromiso(p_compromiso uuid,p_vence date,p_revision integer,p_estado text,p_fecha date,p_nota text) returns void
+language plpgsql security definer set search_path='' as $$
+declare c public.compromisos;r public.compromiso_fechas;n public.compromiso_fechas;
+begin
+ perform public.exigir_admin_compras();
+ select * into c from public.compromisos where id=p_compromiso for update;
+ if not found then raise exception 'Compromiso inexistente.';end if;
+ if not c.requiere_servicio then raise exception 'Este compromiso no lleva comprobación de servicio.';end if;
+ if p_estado is null or p_estado not in ('pendiente','realizado','no_realizado') then raise exception 'Estado de servicio inválido.';end if;
+ if p_estado='realizado' and (p_fecha is null or p_fecha>public.hoy_mx()) then raise exception 'Indica cuándo se hizo el servicio; no puede ser una fecha futura.';end if;
+ if p_estado<>'pendiente' and length(trim(coalesce(p_nota,'')))<5 then raise exception 'Escribe qué se hizo o por qué no se hizo (al menos 5 letras).';end if;
+ r:=public.fila_fecha_compromiso(p_compromiso,p_vence);
+ if r.revision is distinct from p_revision then raise exception 'La fecha cambió. Recarga antes de guardar.';end if;
+ if r.omitida_motivo is not null then raise exception 'La fecha está omitida.';end if;
+ update public.compromiso_fechas set servicio=p_estado,servicio_fecha=case when p_estado='realizado' then p_fecha end,
+  servicio_nota=case when p_estado='pendiente' then null else trim(p_nota) end,revision=revision+1 where id=r.id returning * into n;
+ insert into public.compromiso_historial(compromiso_id,evento,anterior,nuevo,usuario_id) values(p_compromiso,'Servicio',to_jsonb(r),to_jsonb(n),auth.uid());
+end $$;
+
+create function public.omitir_fecha_compromiso(p_compromiso uuid,p_vence date,p_revision integer,p_motivo text) returns void
+language plpgsql security definer set search_path='' as $$
+declare r public.compromiso_fechas;n public.compromiso_fechas;
+begin
+ perform public.exigir_admin_compras();
+ if not exists(select 1 from public.compromisos where id=p_compromiso) then raise exception 'Compromiso inexistente.';end if;
+ if nullif(trim(coalesce(p_motivo,'')),'') is not null and length(trim(p_motivo))<5 then raise exception 'Escribe el motivo (al menos 5 letras).';end if;
+ r:=public.fila_fecha_compromiso(p_compromiso,p_vence);
+ if r.revision is distinct from p_revision then raise exception 'La fecha cambió. Recarga antes de guardar.';end if;
+ if r.factura_id is not null then raise exception 'La fecha ya tiene factura. Quítala antes de omitirla.';end if;
+ update public.compromiso_fechas set omitida_motivo=nullif(trim(coalesce(p_motivo,'')),''),revision=revision+1 where id=r.id returning * into n;
+ insert into public.compromiso_historial(compromiso_id,evento,anterior,nuevo,usuario_id) values(p_compromiso,case when n.omitida_motivo is null then 'Omisión quitada' else 'Fecha omitida' end,to_jsonb(r),to_jsonb(n),auth.uid());
+end $$;
+
+-- Cuando un gasto sin CFDI ligado se sustituye por su CFDI, la liga pasa al CFDI (si el CFDI no está ligado ya).
+create function public.compromiso_sigue_sustitucion() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ update public.compromiso_fechas set factura_id=new.sustituido_por,revision=revision+1
+  where factura_id=new.id and not exists(select 1 from public.compromiso_fechas x where x.factura_id=new.sustituido_por);
+ return new;
+end $$;
+create trigger compromiso_sustitucion after update of sustituido_por on public.facturas
+ for each row when (new.sustituido_por is not null and old.sustituido_por is distinct from new.sustituido_por)
+ execute function public.compromiso_sigue_sustitucion();
+
+revoke all on function public.fila_fecha_compromiso(uuid,date),public.compromiso_sigue_sustitucion() from public,anon,authenticated;
+revoke all on function public.ligar_factura_compromiso(uuid,date,integer,uuid),public.comprobar_servicio_compromiso(uuid,date,integer,text,date,text),public.omitir_fecha_compromiso(uuid,date,integer,text) from public,anon;
+grant execute on function public.ligar_factura_compromiso(uuid,date,integer,uuid),public.comprobar_servicio_compromiso(uuid,date,integer,text,date,text),public.omitir_fecha_compromiso(uuid,date,integer,text) to authenticated;
 commit;

@@ -50,5 +50,49 @@ begin
   exception when others then ok:=false;end;
   if ok then raise exception 'FALLÓ: rango demasiado largo aceptado';end if;
 
+  -- 8. Ligar la factura del mismo proveedor y sucursal: crea la fila con revisión 1.
+  perform public.ligar_factura_compromiso(c,'2027-01-31',0,f.id);
+  if not exists(select 1 from public.compromiso_fechas where compromiso_id=c and vence='2027-01-31' and factura_id=f.id and revision=1) then raise exception 'FALLÓ: ligar factura';end if;
+  -- 9. Factura de otro proveedor: rechazada.
+  begin perform public.ligar_factura_compromiso(c,'2027-02-28',0,otra);ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: factura de otro proveedor aceptada';end if;
+  -- 10. La misma factura en otra fecha: rechazada.
+  begin perform public.ligar_factura_compromiso(c,'2027-02-28',0,f.id);ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: factura ligada dos veces';end if;
+  -- 11. Fecha que no sale de la regla: rechazada.
+  begin perform public.ligar_factura_compromiso(c,'2027-02-15',0,f.id);ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: fecha fuera de la regla aceptada';end if;
+  -- 12. Revisión vieja: rechazada.
+  begin perform public.ligar_factura_compromiso(c,'2027-01-31',0,null);ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: revisión vieja de fecha aceptada';end if;
+  -- 13. Omitir una fecha con factura: rechazado. Omitir otra con motivo: queda.
+  begin perform public.omitir_fecha_compromiso(c,'2027-01-31',1,'Mes de gracia');ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: omitir fecha con factura';end if;
+  perform public.omitir_fecha_compromiso(c,'2027-02-28',0,'Mes de gracia por remodelación');
+  if not exists(select 1 from public.compromiso_fechas where compromiso_id=c and vence='2027-02-28' and omitida_motivo is not null) then raise exception 'FALLÓ: omitir fecha';end if;
+  -- 14. Poner fin antes de una fecha trabajada: rechazado.
+  begin perform public.guardar_compromiso(c,2,jsonb_build_object('sucursal_id',f.sucursal_id,'concepto','renta','descripcion','','proveedor_id',f.proveedor_id,'monto_estimado','47000','forma_pago','transferencia','unidad','mes','cada','1','dia_mes','31','inicio','2027-01-31','fin','2027-02-01','requiere_servicio','false'));ok:=true;
+  exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: fin antes de una fecha trabajada';end if;
+  -- 15. Servicio: no aplica a la renta; en fumigación pide nota y no acepta fecha futura.
+  begin perform public.comprobar_servicio_compromiso(c,'2027-03-31',0,'realizado',public.hoy_mx(),'Se pagó la renta');ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: servicio en compromiso sin servicio';end if;
+  begin perform public.comprobar_servicio_compromiso(c2,'2027-03-15',0,'realizado',public.hoy_mx()+1,'Fumigación general');ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: servicio en fecha futura';end if;
+  begin perform public.comprobar_servicio_compromiso(c2,'2027-03-15',0,'realizado',public.hoy_mx(),'');ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: servicio sin nota';end if;
+  perform public.comprobar_servicio_compromiso(c2,'2027-03-15',0,'realizado',public.hoy_mx(),'Fumigación general, cocina y bodega');
+  if not exists(select 1 from public.compromiso_fechas where compromiso_id=c2 and vence='2027-03-15' and servicio='realizado') then raise exception 'FALLÓ: comprobar servicio';end if;
+  -- 16. Sustitución: si el gasto ligado se sustituye, la liga pasa a la factura que lo sustituye.
+  update public.facturas set estado='cancelada',sustituido_por=otra where id=f.id;
+  if not exists(select 1 from public.compromiso_fechas where compromiso_id=c and vence='2027-01-31' and factura_id=otra) then raise exception 'FALLÓ: la liga no siguió la sustitución';end if;
+  -- 17. Sin permiso de Compras: rechazado.
+  select id into a from public.perfiles where activo and rol::text not in ('admin') limit 1;
+  if a is not null then
+    perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+    begin perform public.omitir_fecha_compromiso(c,'2027-03-31',0,'Sin permiso de compras');ok:=true;exception when others then ok:=false;end;
+    if ok then raise exception 'FALLÓ: usuario sin Compras pudo omitir';end if;
+  end if;
+
   raise exception 'PRUEBAS OK';
 end $$;
