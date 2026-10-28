@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type BovedaCierre = {
   bovedaInicial: number; retiros: number; aperturas: number; depositos: number;
-  gastosBoveda: number; pendientes: number; ultimoCierre: string | null;
+  gastosBoveda: number; ajustesBoveda?: number; pendientes: number; ultimoCierre: string | null;
 };
 
 /** Solo consulta: el servidor usa el mismo cálculo al insertar un cierre nuevo. */
