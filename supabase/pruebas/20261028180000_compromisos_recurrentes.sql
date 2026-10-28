@@ -83,6 +83,16 @@ begin
   if ok then raise exception 'FALLÓ: servicio sin nota';end if;
   perform public.comprobar_servicio_compromiso(c2,'2027-03-15',0,'realizado',public.hoy_mx(),'Fumigación general, cocina y bodega');
   if not exists(select 1 from public.compromiso_fechas where compromiso_id=c2 and vence='2027-03-15' and servicio='realizado') then raise exception 'FALLÓ: comprobar servicio';end if;
+  -- 15b. Evidencia: formato que no coincide, rechazado; confirmar sin archivo subido, rechazado.
+  begin perform public.preparar_evidencia_compromiso(gen_random_uuid(),c2,'2027-03-15','foto.jpg','jpg','application/pdf',1000,repeat('a',64));ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: evidencia con formato que no coincide';end if;
+  declare e uuid:=gen_random_uuid();j jsonb;
+  begin
+    j:=public.preparar_evidencia_compromiso(e,c2,'2027-03-15','foto.jpg','jpg','image/jpeg',1000,repeat('a',64));
+    if j->>'ruta' not like 'compromiso/%/'||e::text||'.jpg' or (j->>'disponible')::boolean then raise exception 'FALLÓ: ruta de evidencia %',j;end if;
+    begin perform public.confirmar_evidencia_compromiso(e);ok:=true;exception when others then ok:=false;end;
+    if ok then raise exception 'FALLÓ: evidencia confirmada sin archivo';end if;
+  end;
   -- 16. Sustitución: si el gasto ligado se sustituye, la liga pasa a la factura que lo sustituye.
   update public.facturas set estado='cancelada',sustituido_por=otra where id=f.id;
   if not exists(select 1 from public.compromiso_fechas where compromiso_id=c and vence='2027-01-31' and factura_id=otra) then raise exception 'FALLÓ: la liga no siguió la sustitución';end if;

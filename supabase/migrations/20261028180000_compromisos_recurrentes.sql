@@ -198,4 +198,57 @@ create trigger compromiso_sustitucion after update of sustituido_por on public.f
 revoke all on function public.fila_fecha_compromiso(uuid,date),public.compromiso_sigue_sustitucion() from public,anon,authenticated;
 revoke all on function public.ligar_factura_compromiso(uuid,date,integer,uuid),public.comprobar_servicio_compromiso(uuid,date,integer,text,date,text),public.omitir_fecha_compromiso(uuid,date,integer,text) from public,anon;
 grant execute on function public.ligar_factura_compromiso(uuid,date,integer,uuid),public.comprobar_servicio_compromiso(uuid,date,integer,text,date,text),public.omitir_fecha_compromiso(uuid,date,integer,text) to authenticated;
+
+-- Evidencia del servicio (foto o PDF): mismo patrón preparar → subir → confirmar que compra_adjuntos, tabla propia.
+create table public.compromiso_evidencias (
+ id uuid primary key, fecha_id uuid not null references public.compromiso_fechas(id),
+ nombre text not null check(length(nombre) between 1 and 200), ruta text not null unique,
+ mime text not null check(mime in ('application/pdf','image/jpeg','image/png','image/webp')),
+ bytes integer not null check(bytes between 1 and 4194304), sha256 text not null check(sha256~'^[0-9a-f]{64}$'),
+ usuario_id uuid not null references public.perfiles(id), creado_en timestamptz not null default now(), confirmado_en timestamptz
+);
+create index compromiso_evidencias_fecha on public.compromiso_evidencias(fecha_id,creado_en);
+alter table public.compromiso_evidencias enable row level security;
+revoke all on public.compromiso_evidencias from public,anon,authenticated;
+grant select on public.compromiso_evidencias to authenticated;
+create policy ver_compromiso_evidencias on public.compromiso_evidencias for select to authenticated using(public.ve_compras() and (confirmado_en is not null or usuario_id=auth.uid() and public.edita_compras()));
+create policy compromiso_evidencias_lectura on storage.objects for select to authenticated using(bucket_id='adjuntos-compras' and public.ve_compras() and exists(select 1 from public.compromiso_evidencias e where e.ruta=name));
+create policy compromiso_evidencias_subir on storage.objects for insert to authenticated with check(bucket_id='adjuntos-compras' and public.edita_compras() and exists(select 1 from public.compromiso_evidencias e where e.ruta=name and e.usuario_id=auth.uid() and e.confirmado_en is null and e.creado_en>now()-interval '1 day'));
+
+create function public.preparar_evidencia_compromiso(p_id uuid,p_compromiso uuid,p_vence date,p_nombre text,p_extension text,p_mime text,p_bytes integer,p_sha256 text) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare r public.compromiso_fechas;v public.compromiso_evidencias;ruta_nueva text;mime_esperado text;
+begin
+ perform public.exigir_admin_compras();
+ if p_id is null or p_nombre is null or length(trim(p_nombre)) not between 1 and 200 or p_nombre~'[[:cntrl:]/\\]' or p_bytes is null or p_bytes not between 1 and 4194304 or p_sha256 is null or p_sha256!~'^[0-9a-f]{64}$' then raise exception 'Datos de archivo inválidos.';end if;
+ mime_esperado:=case p_extension when 'pdf' then 'application/pdf' when 'jpg' then 'image/jpeg' when 'png' then 'image/png' when 'webp' then 'image/webp' end;
+ if mime_esperado is null or p_mime is distinct from mime_esperado then raise exception 'La evidencia debe ser PDF o foto.';end if;
+ if not exists(select 1 from public.compromisos where id=p_compromiso and requiere_servicio) then raise exception 'Este compromiso no lleva comprobación de servicio.';end if;
+ r:=public.fila_fecha_compromiso(p_compromiso,p_vence);
+ perform pg_advisory_xact_lock(hashtextextended('evidencia-compromiso:'||p_id::text,0));
+ ruta_nueva:='compromiso/'||r.id::text||'/'||p_id::text||'.'||p_extension;
+ select * into v from public.compromiso_evidencias where id=p_id;
+ if found then
+  if v.usuario_id<>auth.uid() or v.ruta<>ruta_nueva or v.sha256<>p_sha256 or v.bytes<>p_bytes then raise exception 'Esta solicitud ya corresponde a otro archivo.';end if;
+ else
+  insert into public.compromiso_evidencias(id,fecha_id,nombre,ruta,mime,bytes,sha256,usuario_id) values(p_id,r.id,trim(p_nombre),ruta_nueva,p_mime,p_bytes,p_sha256,auth.uid()) returning * into v;
+ end if;
+ return jsonb_build_object('ruta',v.ruta,'disponible',v.confirmado_en is not null);
+end $$;
+
+create function public.confirmar_evidencia_compromiso(p_id uuid) returns void
+language plpgsql security definer set search_path='' as $$
+declare v public.compromiso_evidencias;
+begin
+ perform public.exigir_admin_compras();
+ select * into v from public.compromiso_evidencias where id=p_id for update;
+ if not found or v.usuario_id<>auth.uid() then raise exception 'Evidencia no encontrada.';end if;
+ if v.confirmado_en is not null then return;end if;
+ if not exists(select 1 from storage.objects o where o.bucket_id='adjuntos-compras' and o.name=v.ruta and (o.metadata->>'size')::bigint=v.bytes and o.metadata->>'mimetype'=v.mime) then raise exception 'El archivo no está subido o no coincide con la reserva.';end if;
+ update public.compromiso_evidencias set confirmado_en=now() where id=p_id;
+ insert into public.compromiso_historial(compromiso_id,evento,anterior,nuevo,usuario_id)
+  select f.compromiso_id,'Evidencia','{}'::jsonb,jsonb_build_object('nombre',v.nombre,'fecha',f.vence),auth.uid() from public.compromiso_fechas f where f.id=v.fecha_id;
+end $$;
+revoke all on function public.preparar_evidencia_compromiso(uuid,uuid,date,text,text,text,integer,text),public.confirmar_evidencia_compromiso(uuid) from public,anon;
+grant execute on function public.preparar_evidencia_compromiso(uuid,uuid,date,text,text,text,integer,text),public.confirmar_evidencia_compromiso(uuid) to authenticated;
 commit;
