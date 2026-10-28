@@ -19,10 +19,10 @@ import { diaYNumero, fechaTexto, hoyMX, pesos, pesosRedondos, porcentaje } from 
 import { puedeImportarVentas, veAvisoSinCosto, veVentasDeTodas } from "@/lib/roles";
 import {
   costeo, descuentos, diasConCierre, MAX_DIAS, resumenSinCosto, NOMBRE_CATEGORIA, NOMBRE_TIPO, periodoAnterior, periodoElegido,
-  periodoPorDefecto, porProducto, resumenVentas, separarDesglose, topProductos, ventaPorDia, type Categoria,
+  porProducto, resumenVentas, separarDesglose, topProductos, ventaPorDia, type Categoria,
 } from "@/lib/ventas/calculos";
 import { indicadores } from "@/lib/ventas/tablero";
-import { moverMes } from "@/lib/ventas/calendario";
+import { moverMes, periodosRapidos } from "@/lib/ventas/calendario";
 import { datosPedidos, datosVentas, sucursalElegida, ultimoDiaConDatos, ventaDiariaDesde } from "./datos";
 import { SeccionesPedidos } from "./SeccionesPedidos";
 import { TarjetasCanales } from "@/components/VentasPorCanal";
@@ -63,8 +63,9 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
     );
   }
 
-  const periodo = periodoElegido(q.desde, q.hasta, periodoPorDefecto(ultimo));
   const hoy = hoyMX();
+  // Sin fechas en la URL se abre en "Hoy": el día de operación en curso (corta a las 4:00).
+  const periodo = periodoElegido(q.desde, q.hasta, periodosRapidos(hoy)[0].rango);
   // El calendario trae 13 meses de venta diaria de una vez: cambiar de mes no vuelve a consultar.
   const inicioCalendario = moverMes({ anio: Number(hoy.slice(0, 4)), mes: Number(hoy.slice(5, 7)) }, -12);
   const [d, ventaDiaria, detalle] = await Promise.all([
@@ -116,16 +117,17 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         </>} />
       {avisoDodo && <p className="aviso aviso-error">{avisoDodo} <Link href="/ventas/dodois">Revisar</Link></p>}
 
-      {/* Lo primero que se busca al abrir Ventas: venta, pedidos y ticket del periodo, y cuánto vendió cada canal. */}
+      {/* Barra del periodo (Hoy, Semana, Mes o calendario plegado) y debajo lo primero que se busca al abrir Ventas:
+          venta, pedidos y ticket del periodo, y cuánto vendió cada canal. */}
+      <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
+        maxDias={MAX_DIAS} sucursal={sucursal} sucursales={todas ? sucursales ?? [] : null} />
+
       <Indicadores columnas={3} lista={kpis.filter((k) => k.clave !== "costo")} detalle={{
         venta: `Neta ${pesosRedondos(resumen.neta)} · IVA ${pesosRedondos(resumen.iva)}`,
         pedidos: `${resumen.dias} ${resumen.dias === 1 ? "día" : "días"}`,
         ticket: "Con IVA",
       }} />
       <TarjetasCanales canales={reporteCanales(d.canales, d.anterior.canales)} />
-
-      <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
-        maxDias={MAX_DIAS} sucursal={sucursal} sucursales={todas ? sucursales ?? [] : null} />
 
       <ResumenEjecutivoVentas desde={periodo.desde} hasta={periodo.hasta} total={resumen.total} piezas={costos.total.piezas} pedidos={resumen.pedidos} global={!sucursal} />
       {conDiferencia.length > 0 && (

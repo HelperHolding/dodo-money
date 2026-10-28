@@ -1247,6 +1247,9 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .periodo-cargando { color: var(--tinta-2); }
 .periodo-barra[aria-busy] .periodo-texto strong { opacity: 0.6; }
 .periodo-sucursal { min-height: 44px; padding: 6px 10px; flex: 0 1 240px; }
+.periodo-rapidos { flex: none; }
+.periodo-rapidos button { min-height: 38px; padding: 0 18px; }
+.periodo-rapidos button:disabled { cursor: progress; }
 /* La sección .seccion es flex: sin esto, el atributo hidden no ocultaría el calendario. */
 .calendario[hidden] { display: none; }
 /* En celular la franja negra de arriba también es fija: la barra va justo debajo. */
@@ -1256,11 +1259,14 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   .periodo-barra { display: contents; }
   .periodo-barra > .periodo-actual { flex: none; position: sticky; top: 60px; z-index: 15; box-shadow: var(--sombra-1); }
   .periodo-sucursal { flex: none; width: 100%; margin-top: -16px; }
+  /* Hoy, Semana y Mes a todo lo ancho, pegados al botón del periodo. */
+  .periodo-rapidos { display: flex; margin-bottom: -16px; }
+  .periodo-rapidos button { flex: 1; justify-content: center; }
 }
 @media print { .periodo-barra { position: static; box-shadow: none; } }
 /* Mientras se carga el periodo nuevo, los datos de abajo se atenúan (siguen visibles hasta que llegan los nuevos). */
 .pagina > * { transition: opacity var(--dur-media) var(--curva); }
-.pagina:has(.periodo-barra[aria-busy]) > :not(.periodo-barra):not(.calendario):not(.encabezado-pagina):not(.migas):not(.periodo-actual):not(.periodo-sucursal) { opacity: 0.5; }
+.pagina:has(.periodo-barra[aria-busy]) > :not(.periodo-barra):not(.calendario):not(.encabezado-pagina):not(.migas):not(.periodo-actual):not(.periodo-sucursal):not(.periodo-rapidos) { opacity: 0.5; }
 .calendario-rejilla[aria-busy] { opacity: 0.7; }
 
 /* ─── Avance "X de Y" (checklists) ─── */

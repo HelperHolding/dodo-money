@@ -2,7 +2,9 @@ import {datosGraficasReporte} from "./graficas-reporte-datos";
 import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { puedeVerVentas, veVentasDeTodas } from "@/lib/roles";
-import { costeo, periodoAnterior, periodoElegido, periodoPorDefecto, resumenVentas, type Periodo } from "@/lib/ventas/calculos";
+import { costeo, periodoAnterior, periodoElegido, resumenVentas, type Periodo } from "@/lib/ventas/calculos";
+import { periodosRapidos } from "@/lib/ventas/calendario";
+import { hoyMX } from "@/lib/formato";
 import { filasPorDia, renglonesResumen, type FilaDia, type RenglonResumen,type CanalReporte } from "@/lib/ventas/reporte";
 import { datosVentas, sucursalElegida, ultimoDiaConDatos,type CanalesVentas } from "./datos";
 
@@ -30,7 +32,7 @@ export async function datosReporteVentas(q: { desde?: string; hasta?: string; su
 
   const ultimo = await ultimoDiaConDatos(supabase, sucursal);
   if (!ultimo) return null;
-  const periodo = periodoElegido(q.desde, q.hasta, periodoPorDefecto(ultimo));
+  const periodo = periodoElegido(q.desde, q.hasta, periodosRapidos(hoyMX())[0].rango);
   const [d,graficas] = await Promise.all([datosVentas(supabase, sucursal, periodo, periodoAnterior(periodo)),datosGraficasReporte(supabase,sucursal,periodo)]);
 
   const resumen = resumenVentas(d.dias);

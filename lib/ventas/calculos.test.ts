@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { leerPrimeraHoja } from "./xlsx.ts";
 import { extraerProductos, extraerVentas } from "./extraer.ts";
 import {
-  compararConCierre, costearProductos, costeo, resumenSinCosto, costoVigente, descuentos, diasConCierre, errorDeCosto, errorDeMonto, separarDesglose, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido, periodoPorDefecto,
+  compararConCierre, costearProductos, costeo, resumenSinCosto, costoVigente, descuentos, diasConCierre, errorDeCosto, errorDeMonto, separarDesglose, sumarDesglose, ventaPorDia, periodoAnterior, periodoElegido,
   porProducto, resumenVentas, tamanoPorNombre, topProductos, type Categoria, type RenglonCosteo, type VentaDia,
 } from "./calculos.ts";
 
@@ -123,8 +123,7 @@ test("compararConCierre marca lo que difiere más de $1 o de 0 pedidos", () => {
 });
 
 test("periodos", () => {
-  assert.deepEqual(periodoPorDefecto("2026-09-25"), { desde: "2026-09-14", hasta: "2026-09-20" });
-  const def = periodoPorDefecto("2026-09-25");
+  const def = { desde: "2026-09-25", hasta: "2026-09-25" };
   assert.deepEqual(periodoElegido("2026-09-01", "2026-09-10", def), { desde: "2026-09-01", hasta: "2026-09-10" });
   assert.deepEqual(periodoElegido("2026-09-10", "2026-09-01", def), def);
   assert.deepEqual(periodoElegido("2026-02-31", "2026-03-01", def), def);
@@ -132,16 +131,6 @@ test("periodos", () => {
   assert.deepEqual(periodoElegido("2026-01-01", "2026-09-01", def), def);
   assert.deepEqual(periodoAnterior({ desde: "2026-09-19", hasta: "2026-09-25" }), { desde: "2026-09-12", hasta: "2026-09-18" });
   assert.deepEqual(periodoAnterior({ desde: "2026-03-01", hasta: "2026-03-01" }), { desde: "2026-02-28", hasta: "2026-02-28" });
-});
-
-test("corte semanal cerrado: lunes a domingo, sin arrastrar el lunes siguiente", () => {
-  for (const fecha of ["2026-10-18", "2026-10-19", "2026-10-20", "2026-10-24"]) {
-    assert.deepEqual(periodoPorDefecto(fecha), { desde: "2026-10-12", hasta: "2026-10-18" });
-  }
-  assert.deepEqual(periodoPorDefecto("2026-10-25"), { desde: "2026-10-19", hasta: "2026-10-25" });
-  assert.deepEqual(periodoPorDefecto("2027-01-01"), { desde: "2026-12-21", hasta: "2026-12-27" });
-  assert.deepEqual(periodoPorDefecto("2026-03-02"), { desde: "2026-02-23", hasta: "2026-03-01" });
-  assert.deepEqual(periodoAnterior(periodoPorDefecto("2026-10-19")), { desde: "2026-10-05", hasta: "2026-10-11" });
 });
 
 test("ventaPorDia suma sucursales y ordena por fecha", () => {
