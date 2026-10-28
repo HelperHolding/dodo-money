@@ -15,3 +15,9 @@ test('pagos: documentos diferenciados, saldo real y UUID manual',()=>{
  const html=renderToStaticMarkup(React.createElement(TablaFacturasPago,{filas:[fila]}));
  assert.match(html,/Datos del proveedor/);assert.match(html,/<dialog/);assert.match(html,/COMERCIALIZADORA MASTER SITRU/);assert.match(html,/CMS230321FI8/);assert.match(html,/Comprobante · Foto 1/);assert.match(html,/Comprobante · PDF 2/);assert.match(html,/PDF Dodo MX/);assert.match(html,/XML pendiente/);assert.match(html,/Capturado manualmente/);assert.match(html,/60\.00/);assert.ok(!html.includes('tipo=xml'));
 });
+test('pagos: los compromisos fijos sin factura salen como previstos y suman al día',()=>{
+ const previstos={'2026-10-02':[{compromisoId:'c1',vence:'2026-10-03',fechaPago:'2026-10-02',monto:45000,titulo:'Renta · Zapopan',vencido:false}]};
+ const html=renderToStaticMarkup(React.createElement(CalendarioPagos,{hoy:'2026-10-01',rangoInicial:{desde:'2026-10-02',hasta:'2026-10-02'},porDia:{'2026-10-02':[{...fila,vencida:false}]},previstos}));
+ assert.match(html,/Renta · Zapopan/);assert.match(html,/href="\/compras\/pagos\/compromisos\/c1#fecha-2026-10-03"/);assert.match(html,/Previsto/);
+ assert.match(html,/aria-label="[^"]*45,060\.00[^"]*1 previstos"/);assert.match(html,/data-previsto="si"/);
+});
