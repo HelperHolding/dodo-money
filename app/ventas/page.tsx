@@ -25,7 +25,7 @@ import { indicadores } from "@/lib/ventas/tablero";
 import { moverMes } from "@/lib/ventas/calendario";
 import { datosPedidos, datosVentas, sucursalElegida, ultimoDiaConDatos, ventaDiariaDesde } from "./datos";
 import { SeccionesPedidos } from "./SeccionesPedidos";
-import { VentasPorCanal } from "@/components/VentasPorCanal";
+import { TarjetasCanales } from "@/components/VentasPorCanal";
 import { reporteCanales } from "./reporte-datos";
 
 const categoria = (c: Categoria | null) => (c ? NOMBRE_CATEGORIA[c] : "Sin categoría");
@@ -109,22 +109,23 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   return (
     <>
       <EncabezadoPagina titulo="Ventas"
-        descripcion={`${titulo} · ${resumen.dias} ${resumen.dias === 1 ? "día" : "días"} con datos`}
+        descripcion={`${titulo} · ${fechaTexto(periodo.desde)} a ${fechaTexto(periodo.hasta)} · ${resumen.dias} ${resumen.dias === 1 ? "día" : "días"} con datos`}
         acciones={<>
           <Link className="boton boton-secundario" href={`/reporte/ventas?${filtroReporte}`} target="_blank"><Icono nombre="documento" /> Reporte PDF</Link>
           <a className="boton boton-secundario" href={`/reporte/ventas/excel?${filtroReporte}`} download><Icono nombre="descargar" /> Descargar Excel</a>
         </>} />
       {avisoDodo && <p className="aviso aviso-error">{avisoDodo} <Link href="/ventas/dodois">Revisar</Link></p>}
 
-      <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
-        maxDias={MAX_DIAS} sucursal={sucursal} sucursales={todas ? sucursales ?? [] : null} />
-
-      <Indicadores lista={kpis} detalle={{
+      {/* Lo primero que se busca al abrir Ventas: venta, pedidos y ticket del periodo, y cuánto vendió cada canal. */}
+      <Indicadores columnas={3} lista={kpis.filter((k) => k.clave !== "costo")} detalle={{
         venta: `Neta ${pesosRedondos(resumen.neta)} · IVA ${pesosRedondos(resumen.iva)}`,
         pedidos: `${resumen.dias} ${resumen.dias === 1 ? "día" : "días"}`,
         ticket: "Con IVA",
-        costo: `${pesosRedondos(costos.total.costo)} sobre venta con costo`,
       }} />
+      <TarjetasCanales canales={reporteCanales(d.canales, d.anterior.canales)} />
+
+      <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
+        maxDias={MAX_DIAS} sucursal={sucursal} sucursales={todas ? sucursales ?? [] : null} />
 
       <ResumenEjecutivoVentas desde={periodo.desde} hasta={periodo.hasta} total={resumen.total} piezas={costos.total.piezas} pedidos={resumen.pedidos} global={!sucursal} />
       {conDiferencia.length > 0 && (
@@ -159,7 +160,6 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         <section className="seccion"><h2>Venta por día de la semana</h2><Grafica titulo="Venta acumulada por día de la semana" barras={diasSemana.map(d=>({...d,texto:pesos(d.valor)}))}/></section>
         <section className="seccion"><h2>Ventas por semana</h2><BarrasVerticales titulo="Histórico semanal" dias={[...semanas].sort(([a],[b])=>a.localeCompare(b)).slice(-13).map(([lunes,total])=>({clave:lunes,rotulo:diaYNumero(lunes),valor:total,detalle:`Semana del ${fechaTexto(lunes)} · ${pesos(total)}`}))}/><p className="saldo-nota">Lunes a domingo. Semanas inicial y final pueden tener cobertura parcial.</p></section>
       </div>
-      <VentasPorCanal canales={reporteCanales(d.canales,d.anterior.canales)} />
 
       <GraficasReporteVentas mensuales={ventasMensuales(ventaDiaria, `${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`, periodo.hasta)}
         {...ventasHorarias(detalle.pedidos.filter(cuentaComoVenta))} desde={`${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`} hasta={periodo.hasta} totalPeriodo={resumen.total} />
