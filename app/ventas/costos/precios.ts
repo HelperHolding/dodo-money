@@ -2,6 +2,17 @@ import type {SupabaseClient} from "@supabase/supabase-js";
 import type {CatalogoRappi,RappiGuardada} from "@/lib/ventas/rappi";
 import {leerTodo} from "@/lib/ventas/paginar";
 import {preciosRappi} from "@/lib/costeo/trazabilidad";
+import {ultimosPreciosPOS,type LineaPrecioPOS} from "@/lib/costeo/preciosPOS";
+import {sumarDias} from "@/lib/finanzas/periodo";
+/** Precio POS de lista desde las ventas de Dodo IS (sincronización o Datos brutos) de los últimos 60 días; un producto sin cobro en ese periodo no aparece. */
+export async function preciosPOSDodo(supabase:SupabaseClient,hoy:string,id?:number){
+ const lineas=await leerTodo<LineaPrecioPOS>((a,b)=>{
+  let q=supabase.from("pedido_productos").select("dodo_id,precio_sin_descuento,pedidos!inner(fecha,hora,agregador,tipo,estado)").gte("pedidos.fecha",sumarDias(hoy,-59)).lte("pedidos.fecha",hoy).is("pedidos.agregador",null).eq("pedidos.estado","entregado");
+  if(id!==undefined)q=q.eq("dodo_id",id);
+  return q.order("pedido_id").order("renglon").range(a,b).returns<LineaPrecioPOS[]>();
+ });
+ return ultimosPreciosPOS(lineas,hoy);
+}
 /** Solo carga el historial vinculado a este SKU, no todas las ventas del negocio. */
 export async function preciosDelProducto(supabase:SupabaseClient,id:number,hoy:string){
  const catalogo=await leerTodo<CatalogoRappi>((a,b)=>supabase.from("rappi_productos").select("id,clave,nombre,dodo_id").eq("dodo_id",id).order("id").range(a,b));
