@@ -10,6 +10,8 @@ import { fechaTexto, hoyCalendarioMX, hora, pesos } from "@/lib/formato";
 import { avanceRenglon } from "@/lib/compras/ordenes";
 import { puedeRecibirCompras, puedeVerVentas, puedeVerCompras, puedeVerFinanzas } from "@/lib/roles";
 import { NOMBRE_MOVIMIENTO, type Movimiento } from "@/lib/tipos";
+import { FranjaAlertas } from "@/app/cumplimiento/FranjaAlertas";
+import { leerAlertas } from "@/app/cumplimiento/datos";
 import { abrirTurno } from "./actions";
 import { confirmarMovimiento, rechazarMovimiento } from "./movimientos/actions";
 
@@ -24,6 +26,8 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       .order("creado_en").returns<Movimiento[]>(),
     supabase.from("perfiles").select("id, nombre").returns<{ id: string; nombre: string }[]>(),
   ]);
+  // Cumplimiento: si la consulta falla (migración pendiente), el inicio se muestra sin la franja.
+  const alertasCumplimiento = puedeVerCompras(perfil.rol) ? await leerAlertas(supabase, hoyCalendarioMX()).catch(() => null) : null;
   const { data: porRecibir } = puedeRecibirCompras(perfil.rol) ? await supabase.rpc("ordenes_por_recibir") : { data: [] };
   const ordenesPorRecibir = new Set(((porRecibir ?? []) as { orden_id: string; cantidad: number; recibido: number }[])
     .filter((r) => avanceRenglon(Number(r.cantidad), Number(r.recibido)) !== "completa").map((r) => r.orden_id)).size;
@@ -80,6 +84,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         </span>}
       </>} />
       <Aviso ok={ok} error={error} />
+      {alertasCumplimiento && <FranjaAlertas alertas={alertasCumplimiento} />}
 
       {(porConfirmar > 0 || ordenesPorRecibir > 0 || (!turno && puedeAbrirTurno(perfil.rol))) && (
         <section className="atencion" aria-label="Pendientes de hoy">

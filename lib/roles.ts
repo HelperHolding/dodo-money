@@ -128,7 +128,7 @@ export function menuLateral(rol: Rol): Menu {
   ]});
   // Aperturas, Activos y Usuarios tenían un grupo cada uno con un solo enlace: van juntos.
   const proyectos: Enlace[] = [
-    ...(puedeVerCompras(rol) ? [{ href: "/aperturas", texto: "Aperturas" }, { href: "/activos", texto: "Activos" }] : []),
+    ...(puedeVerCompras(rol) ? [{ href: "/aperturas", texto: "Aperturas" }, { href: "/activos", texto: "Activos" }, { href: "/cumplimiento", texto: "Calendario de cumplimiento" }] : []),
     ...(rol === "admin" ? [{ href: "/administracion/usuarios", texto: "Usuarios y sucursales" }] : []),
   ];
   if (proyectos.length) grupos.push({ titulo: "Proyectos y admin.", enlaces: proyectos });

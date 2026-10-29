@@ -21,17 +21,19 @@ export default async function DetalleCompromiso({ params, searchParams }: { para
   if (!c) notFound();
   const fechas = todas.filter((f) => f.compromiso_id === id);
   const conFila = fechas.map((f) => f.fecha_id).filter((x): x is string => !!x);
-  const [{ data: candidatas }, { data: ligadas }, { data: evidencias }, { data: historial }] = await Promise.all([
+  const [{ data: candidatas }, { data: ligadas }, { data: enCumplimiento }, { data: evidencias }, { data: historial }] = await Promise.all([
     supabase.from("facturas_saldo").select("id, serie, folio, uuid, uuid_manual, saldo").eq("tipo", "ingreso").neq("estado", "cancelada")
       .eq("proveedor_id", c.proveedor_id).eq("sucursal_id", c.sucursal_id).order("vence_el", { ascending: false }).limit(50)
       .returns<{ id: string; serie: string | null; folio: string | null; uuid: string | null; uuid_manual: string | null; saldo: number }[]>(),
     supabase.from("compromiso_fechas").select("factura_id").not("factura_id", "is", null).returns<{ factura_id: string }[]>(),
+    // Una factura va a una sola fecha: tampoco se ofrecen las ligadas al calendario de cumplimiento.
+    supabase.from("cumplimiento_fechas").select("factura_id").not("factura_id", "is", null).returns<{ factura_id: string }[]>(),
     conFila.length
       ? supabase.from("compromiso_evidencias").select("id, nombre, fecha_id").in("fecha_id", conFila).not("confirmado_en", "is", null).returns<{ id: string; nombre: string; fecha_id: string }[]>()
       : Promise.resolve({ data: [] as { id: string; nombre: string; fecha_id: string }[] }),
     supabase.from("compromiso_historial").select("id, evento, fecha").eq("compromiso_id", id).order("fecha", { ascending: false }).limit(20).returns<{ id: number; evento: string; fecha: string }[]>(),
   ]);
-  const usadas = new Set((ligadas ?? []).map((l) => l.factura_id));
+  const usadas = new Set([...(ligadas ?? []), ...(enCumplimiento ?? [])].map((l) => l.factura_id));
   const facturas = (candidatas ?? []).filter((x) => !usadas.has(x.id)).map((x) => ({ id: x.id, nombre: nombreFactura({ ...x, uuid: x.uuid ?? x.uuid_manual }), saldo: Number(x.saldo) }));
   const edita = puedeEditarCompras(perfil.rol), sucursal = sucursalDe(c);
   const nuevaFactura = (vence: string) => `/compras/facturas/nueva?${new URLSearchParams({ proveedor: c.proveedor_id, sucursal: c.sucursal_id, compromiso: c.id, vence })}`;
