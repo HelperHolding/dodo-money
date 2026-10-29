@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-29 · Costeo con comisiones por canal
+
+Costeo con el formato de The Coffee: margen bruto, comisión, margen con comisión y utilidad por canal en la ficha; la lista y las calculadoras muestran POS después de la comisión de terminal. POS = tasa NetPay (Amex/internacional en su parte) × parte de la venta fuera de Rappi cobrada con tarjeta en los últimos 30 días. Rappi sigue con `rappi_pct` sobre el precio con IVA; la gracia de tres meses se quita registrando 18 % desde la fecha real en Finanzas → Parámetros, lo que también aplica al P&L. La ficha usa la lista oficial Rappi vigente. Sin migración.
+
 ## 2026-10-29 · Lista oficial de precios Rappi · 20261029130000 · corrida en Supabase
 
 Tabla `precios_rappi` con vigencia por producto y función `cargar_precios_rappi` (solo admin), que liga cada renglón del menú a productos del catálogo por nombre exacto normalizado y devuelve los que no encontró. Costeo y calculadoras usan la lista vigente y, sin ella, el último precio observado; el título del precio dice cuál es. Carga inicial `supabase/cargas/precios_rappi_menu_final_3.sql` desde "MENU DODO FINAL (3).xlsx" (hoja Sheet3): pizzas 30/35 cm a Mediano/Grande en masa tradicional y delgada, snacks, postres, bebidas y dips. No carga los siete combos propios de Rappi. Los costos siguen saliendo del BOM.

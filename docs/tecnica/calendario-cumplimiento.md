@@ -1,0 +1,5 @@
+# Calendario de cumplimiento
+
+`/cumplimiento` muestra en un calendario mensual obligaciones (permisos, licencias, protección civil, extintores, trámites fiscales y seguros), compromisos fijos que comprueban servicio y mantenimientos de activos. Todo sale de `cumplimiento_en_rango(desde, hasta, hoy)`: las cumplidas se pintan en su fecha real y lo demás en su vencimiento. Filtros por origen, tipo de obligación (`?tipo=`), estado y sucursal o razón social; Activos enlaza con el origen `mantenimiento` ya elegido.
+
+Las obligaciones se cierran en su detalle con al menos una foto y un PDF; si llevan pago, quedan *cumplidas sin factura* hasta ligarla. Compromisos y mantenimientos se cierran en sus pantallas. La franja de alertas del inicio y del calendario usa la misma ventana que los avisos de n8n (`docs/n8n-cumplimiento.md`): 12 meses atrás y 61 días adelante, y solo 3 meses atrás para compromisos, lo que muestran el calendario y la ficha del compromiso. Una factura va a una sola fecha, de compromiso o de cumplimiento; las dos pantallas y sus funciones lo revisan. Migración: `20261029150000_calendario_cumplimiento.sql`.

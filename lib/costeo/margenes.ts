@@ -22,3 +22,10 @@ export function precioParaMargenConComision(costo:number|null,margenPct:number,c
  const divisor=(1-margenPct/100)/(1+ivaPct/100)-comisionPct/100;
  return divisor>0?Math.ceil(costo/divisor*100-1e-8)/100:null;
 }
+/** Comisión de terminal para costear POS, en % del precio con IVA: la tasa NetPay (Amex/internacional en su parte) solo sobre la parte de la venta fuera de Rappi cobrada con tarjeta. Tasas en fracción, como pl_parametros. null sin ventas. */
+export function comisionPOS(dias:readonly {total:number;tarjeta:number;agregadorTotal:number;agregadorTarjeta:number}[],netpay:number,amex:number,amexParte:number){
+ let venta=0,tarjeta=0;for(const d of dias){venta+=Number(d.total)-Number(d.agregadorTotal);tarjeta+=Math.max(0,Number(d.tarjeta)-Number(d.agregadorTarjeta));}
+ if(!(venta>0)||![netpay,amex,amexParte].every(Number.isFinite))return null;
+ const tarjetaPct=Math.min(1,tarjeta/venta)*100,tasaPct=((1-amexParte)*netpay+amexParte*amex)*100;
+ return {pct:tarjetaPct*tasaPct/100,tarjetaPct,tasaPct};
+}

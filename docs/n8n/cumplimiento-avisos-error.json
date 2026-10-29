@@ -1,0 +1,11 @@
+{
+  "name": "cumplimiento-avisos-error",
+  "settings": { "timezone": "America/Mexico_City", "executionOrder": "v1" },
+  "nodes": [
+    { "id": "1", "name": "Al fallar", "type": "n8n-nodes-base.errorTrigger", "typeVersion": 1, "position": [0, 0], "parameters": {} },
+    { "id": "2", "name": "Avisar falla", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [240, 0],
+      "parameters": { "method": "POST", "url": "={{ $vars.GCHAT_WEBHOOK_URL }}", "sendBody": true, "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `⚠️ Falló el aviso de cumplimiento en el nodo \"${$json.execution.lastNodeExecuted}\": ${$json.execution.error.message}. Se reintenta mañana; revisa ${$json.execution.url}` }) }}", "options": {} } }
+  ],
+  "connections": { "Al fallar": { "main": [[{ "node": "Avisar falla", "type": "main", "index": 0 }]] } }
+}
