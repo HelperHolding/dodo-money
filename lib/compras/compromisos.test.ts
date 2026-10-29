@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { calcularGasto } from "./gastoManual.ts";
-import { impuestosDe, ventanaCompromisos, avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "./compromisos.ts";
+import { compromisoDesdeFactura, impuestosDe, ventanaCompromisos, avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "./compromisos.ts";
 
 const fecha = (x: Partial<FechaCompromiso> = {}): FechaCompromiso => ({
   compromiso_id: "c1", vence: "2026-11-01", fecha_id: null, factura_id: null, factura_estado: null, factura_saldo: null,
@@ -100,4 +100,31 @@ test("renta de persona física: total a pagar con retenciones, mismo cálculo qu
   assert.deepEqual({ iva: t.iva, retIva: t.retencion_iva, retIsr: t.retencion_isr, total: t.total }, { iva: 6400, retIva: 4266.67, retIsr: 4000, total: 38133.33 });
   // Un compromiso sin impuestos (los de antes de la migración) paga su monto tal cual.
   assert.equal(calcularGasto([{ importe: 1200.5 }], impuestosDe({ iva: 0, ret_iva: "ninguna", ret_isr: "ninguna" })).total, 1200.5);
+});
+
+const factura = { proveedor_id: "p1", sucursal_id: "s1", subtotal: 40000, descuento: 0, iva: 6400, retencion_iva: 4266.67, retencion_isr: 4000, vence_el: "2026-10-05" };
+
+test("factura → compromiso: renta de persona física, mensual desde su vencimiento", () => {
+  assert.deepEqual(compromisoDesdeFactura(factura, "Renta y agua octubre"), {
+    sucursal_id: "s1", proveedor_id: "p1", concepto: "renta", descripcion: "", monto_estimado: 40000,
+    iva: 0.16, ret_iva: "dos_tercios", ret_isr: "diez", unidad: "mes", cada: 1, dia_mes: 5, inicio: "2026-10-05",
+  });
+});
+
+test("factura → compromiso: impuestos según lo que retuvo la factura", () => {
+  const sinIva = compromisoDesdeFactura({ ...factura, iva: 0, retencion_iva: 0, retencion_isr: 0 }, "Renta");
+  assert.deepEqual([sinIva.iva, sinIva.ret_iva, sinIva.ret_isr], [0, "ninguna", "ninguna"]);
+  const resico = compromisoDesdeFactura({ ...factura, retencion_iva: 0, retencion_isr: 500 }, "Renta");
+  assert.deepEqual([resico.iva, resico.ret_iva, resico.ret_isr], [0.16, "ninguna", "resico"]);
+  // Con descuento, el importe es el subtotal neto.
+  assert.equal(compromisoDesdeFactura({ ...factura, descuento: 1000 }, "Renta").monto_estimado, 39000);
+});
+
+test("factura → compromiso: concepto por la descripción; si no se reconoce, Otro con su descripción", () => {
+  assert.equal(compromisoDesdeFactura(factura, "Servicio de FUMIGACIÓN mensual").concepto, "fumigacion");
+  assert.equal(compromisoDesdeFactura(factura, "Recolección de basura").concepto, "basura");
+  assert.equal(compromisoDesdeFactura(factura, "Limpieza de trampa de grasa").concepto, "trampas_grasa");
+  assert.equal(compromisoDesdeFactura(factura, "Arrendamiento local 4").concepto, "renta");
+  const otro = compromisoDesdeFactura(factura, "  Monitoreo de alarma  ");
+  assert.deepEqual([otro.concepto, otro.descripcion], ["otro", "Monitoreo de alarma"]);
 });
