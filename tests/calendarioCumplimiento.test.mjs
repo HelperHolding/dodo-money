@@ -64,3 +64,42 @@ test('cumplimiento: la app solo lee las tablas',async()=>{
     assert.equal((await db.query(`select has_table_privilege('authenticated','${t}','${p}') ok`)).rows[0].ok,false,`${t} ${p}`);
  }finally{await db.close();}
 });
+
+const ADMIN=`select set_config('request.jwt.claims','{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}',false)`;
+
+test('cumplimiento: la evidencia se confirma solo si el archivo existe con el mismo tamaño y tipo',async()=>{
+ const db=await montar();
+ try{
+  await db.exec(ADMIN);
+  const {rows:[{id:o}]}=await db.query(`select public.guardar_obligacion(null,0,'{"tipo":"permiso","nombre":"Uso de suelo","sucursal_id":"00000000-0000-0000-0000-0000000000e1","frecuencia":"anual","inicio":"2027-01-10","con_pago":"false"}'::jsonb) id`);
+  const ev='00000000-0000-0000-0000-00000000ee01';
+  const {rows:[{r}]}=await db.query(`select public.preparar_evidencia_cumplimiento('${ev}','${o}','2027-01-10','uso.pdf','pdf','application/pdf',2000,repeat('b',64)) r`);
+  assert.equal(r.disponible,false);assert.match(r.ruta,/^cumplimiento\/[0-9a-f-]{36}\/0{8}-0{4}-0{4}-0{4}-00000000ee01\.pdf$/);
+  await assert.rejects(db.exec(`select public.confirmar_evidencia_cumplimiento('${ev}')`),/no está subido/);
+  await db.query(`insert into storage.objects values('adjuntos-compras',$1,'{"size":"2000","mimetype":"application/pdf"}')`,[r.ruta]);
+  await db.exec(`select public.confirmar_evidencia_cumplimiento('${ev}')`);
+  assert.ok((await db.query(`select confirmado_en from cumplimiento_evidencias where id='${ev}'`)).rows[0].confirmado_en);
+ }finally{await db.close();}
+});
+
+test('cumplimiento: al sustituir un gasto sin CFDI por su CFDI la liga pasa al CFDI',async()=>{
+ const db=await montar();
+ try{
+  await db.exec(ADMIN);
+  const {rows:[{id:o}]}=await db.query(`select public.guardar_obligacion(null,0,'{"tipo":"seguro","nombre":"Póliza","sucursal_id":"00000000-0000-0000-0000-0000000000e1","frecuencia":"anual","inicio":"2027-01-10","con_pago":"true","proveedor_id":"00000000-0000-0000-0000-0000000000b1"}'::jsonb) id`);
+  await db.exec(`select public.ligar_factura_cumplimiento('${o}','2027-01-10',0,'00000000-0000-0000-0000-0000000000f1')`);
+  await db.exec(`update facturas set sustituido_por='00000000-0000-0000-0000-0000000000f3' where id='00000000-0000-0000-0000-0000000000f1'`);
+  assert.equal((await db.query(`select factura_id from cumplimiento_fechas where obligacion_id='${o}'`)).rows[0].factura_id,'00000000-0000-0000-0000-0000000000f3');
+ }finally{await db.close();}
+});
+
+test('cumplimiento: la factura de una obligación de razón social debe ser de ese RFC receptor',async()=>{
+ const db=await montar();
+ try{
+  await db.exec(ADMIN);
+  await db.exec(`update facturas set rfc_receptor=null where id='00000000-0000-0000-0000-0000000000f3'`);
+  const {rows:[{id:o}]}=await db.query(`select public.guardar_obligacion(null,0,'{"tipo":"tramite_fiscal","nombre":"Declaración anual","razon_social_rfc":"CMS230321FI8","frecuencia":"anual","inicio":"2027-03-31","con_pago":"true","proveedor_id":"00000000-0000-0000-0000-0000000000b1"}'::jsonb) id`);
+  await assert.rejects(db.exec(`select public.ligar_factura_cumplimiento('${o}','2027-03-31',0,'00000000-0000-0000-0000-0000000000f3')`),/razón social/);
+  await db.exec(`select public.ligar_factura_cumplimiento('${o}','2027-03-31',0,'00000000-0000-0000-0000-0000000000f1')`);
+ }finally{await db.close();}
+});

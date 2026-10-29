@@ -133,4 +133,148 @@ end $$;
 
 revoke all on function public.fechas_cumplimiento(uuid,date,date),public.dias_aviso_cumplimiento(text),public.guardar_obligacion(uuid,integer,jsonb) from public,anon;
 grant execute on function public.fechas_cumplimiento(uuid,date,date),public.dias_aviso_cumplimiento(text),public.guardar_obligacion(uuid,integer,jsonb) to authenticated;
+
+-- Fila de una fecha (la crea si aún no existe), bloqueada. Rechaza fechas que no salen de la regla.
+create function public.fila_fecha_cumplimiento(p_obligacion uuid,p_vence date) returns public.cumplimiento_fechas
+language plpgsql security definer set search_path='' as $$
+declare r public.cumplimiento_fechas;
+begin
+ if not exists(select 1 from public.fechas_cumplimiento(p_obligacion,p_vence,p_vence)) then raise exception 'Esa fecha no corresponde a la obligación.';end if;
+ insert into public.cumplimiento_fechas(obligacion_id,vence) values(p_obligacion,p_vence) on conflict(obligacion_id,vence) do nothing;
+ select * into r from public.cumplimiento_fechas where obligacion_id=p_obligacion and vence=p_vence for update;
+ return r;
+end $$;
+
+-- Evidencia (foto o PDF): mismo patrón preparar → subir → confirmar que compromiso_evidencias.
+create table public.cumplimiento_evidencias (
+ id uuid primary key, fecha_id uuid not null references public.cumplimiento_fechas(id),
+ clase text not null check(clase in ('foto','documento')),
+ nombre text not null check(length(nombre) between 1 and 200), ruta text not null unique,
+ mime text not null check(mime in ('application/pdf','image/jpeg','image/png','image/webp')),
+ bytes integer not null check(bytes between 1 and 4194304), sha256 text not null check(sha256~'^[0-9a-f]{64}$'),
+ usuario_id uuid not null references public.perfiles(id), creado_en timestamptz not null default now(), confirmado_en timestamptz,
+ check((clase='documento')=(mime='application/pdf'))
+);
+create index cumplimiento_evidencias_fecha on public.cumplimiento_evidencias(fecha_id,creado_en);
+alter table public.cumplimiento_evidencias enable row level security;
+revoke all on public.cumplimiento_evidencias from public,anon,authenticated;
+grant select on public.cumplimiento_evidencias to authenticated;
+create policy ver_cumplimiento_evidencias on public.cumplimiento_evidencias for select to authenticated using(public.ve_compras() and (confirmado_en is not null or usuario_id=auth.uid() and public.edita_compras()));
+create policy cumplimiento_evidencias_lectura on storage.objects for select to authenticated using(bucket_id='adjuntos-compras' and public.ve_compras() and exists(select 1 from public.cumplimiento_evidencias e where e.ruta=name));
+create policy cumplimiento_evidencias_subir on storage.objects for insert to authenticated with check(bucket_id='adjuntos-compras' and public.edita_compras() and exists(select 1 from public.cumplimiento_evidencias e where e.ruta=name and e.usuario_id=auth.uid() and e.confirmado_en is null and e.creado_en>now()-interval '1 day'));
+
+create function public.preparar_evidencia_cumplimiento(p_id uuid,p_obligacion uuid,p_vence date,p_nombre text,p_extension text,p_mime text,p_bytes integer,p_sha256 text) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare r public.cumplimiento_fechas;v public.cumplimiento_evidencias;ruta_nueva text;mime_esperado text;
+begin
+ perform public.exigir_admin_compras();
+ if p_id is null or p_nombre is null or length(trim(p_nombre)) not between 1 and 200 or p_nombre~'[[:cntrl:]/\\]' or p_bytes is null or p_bytes not between 1 and 4194304 or p_sha256 is null or p_sha256!~'^[0-9a-f]{64}$' then raise exception 'Datos de archivo inválidos.';end if;
+ mime_esperado:=case p_extension when 'pdf' then 'application/pdf' when 'jpg' then 'image/jpeg' when 'png' then 'image/png' when 'webp' then 'image/webp' end;
+ if mime_esperado is null or p_mime is distinct from mime_esperado then raise exception 'La evidencia debe ser PDF o foto.';end if;
+ if not exists(select 1 from public.cumplimiento_obligaciones where id=p_obligacion) then raise exception 'Obligación inexistente.';end if;
+ r:=public.fila_fecha_cumplimiento(p_obligacion,p_vence);
+ if r.estado='omitida' then raise exception 'La fecha está omitida.';end if;
+ perform pg_advisory_xact_lock(hashtextextended('evidencia-cumplimiento:'||p_id::text,0));
+ ruta_nueva:='cumplimiento/'||r.id::text||'/'||p_id::text||'.'||p_extension;
+ select * into v from public.cumplimiento_evidencias where id=p_id;
+ if found then
+  if v.usuario_id<>auth.uid() or v.ruta<>ruta_nueva or v.sha256<>p_sha256 or v.bytes<>p_bytes then raise exception 'Esta solicitud ya corresponde a otro archivo.';end if;
+ else
+  insert into public.cumplimiento_evidencias(id,fecha_id,clase,nombre,ruta,mime,bytes,sha256,usuario_id)
+  values(p_id,r.id,case when p_mime='application/pdf' then 'documento' else 'foto' end,trim(p_nombre),ruta_nueva,p_mime,p_bytes,p_sha256,auth.uid()) returning * into v;
+ end if;
+ return jsonb_build_object('ruta',v.ruta,'disponible',v.confirmado_en is not null);
+end $$;
+
+create function public.confirmar_evidencia_cumplimiento(p_id uuid) returns void
+language plpgsql security definer set search_path='' as $$
+declare v public.cumplimiento_evidencias;
+begin
+ perform public.exigir_admin_compras();
+ select * into v from public.cumplimiento_evidencias where id=p_id for update;
+ if not found or v.usuario_id<>auth.uid() then raise exception 'Evidencia no encontrada.';end if;
+ if v.confirmado_en is not null then return;end if;
+ if not exists(select 1 from storage.objects o where o.bucket_id='adjuntos-compras' and o.name=v.ruta and (o.metadata->>'size')::bigint=v.bytes and o.metadata->>'mimetype'=v.mime) then raise exception 'El archivo no está subido o no coincide con la reserva.';end if;
+ update public.cumplimiento_evidencias set confirmado_en=now() where id=p_id;
+ insert into public.cumplimiento_historial(obligacion_id,evento,anterior,nuevo,usuario_id)
+  select f.obligacion_id,'Evidencia','{}'::jsonb,jsonb_build_object('nombre',v.nombre,'clase',v.clase,'fecha',f.vence),auth.uid() from public.cumplimiento_fechas f where f.id=v.fecha_id;
+end $$;
+
+create function public.cerrar_fecha_cumplimiento(p_obligacion uuid,p_vence date,p_revision integer,p_fecha date,p_nota text) returns void
+language plpgsql security definer set search_path='' as $$
+declare r public.cumplimiento_fechas;n public.cumplimiento_fechas;
+begin
+ perform public.exigir_admin_compras();
+ perform 1 from public.cumplimiento_obligaciones where id=p_obligacion for update;
+ if not found then raise exception 'Obligación inexistente.';end if;
+ if p_fecha is null or p_fecha>public.hoy_mx() then raise exception 'Indica cuándo se cumplió; no puede ser una fecha futura.';end if;
+ if length(trim(coalesce(p_nota,'')))<5 then raise exception 'Escribe qué se hizo (al menos 5 letras).';end if;
+ r:=public.fila_fecha_cumplimiento(p_obligacion,p_vence);
+ if r.revision is distinct from p_revision then raise exception 'La fecha cambió. Recarga antes de guardar.';end if;
+ if r.estado='omitida' then raise exception 'La fecha está omitida.';end if;
+ if r.estado='cumplida' then raise exception 'La fecha ya está cumplida.';end if;
+ if not exists(select 1 from public.cumplimiento_evidencias e where e.fecha_id=r.id and e.clase='foto' and e.confirmado_en is not null)
+  or not exists(select 1 from public.cumplimiento_evidencias e where e.fecha_id=r.id and e.clase='documento' and e.confirmado_en is not null) then
+  raise exception 'Sube al menos una foto y un documento PDF antes de cerrarla.';end if;
+ update public.cumplimiento_fechas set estado='cumplida',cumplida_fecha=p_fecha,nota=trim(p_nota),revision=revision+1 where id=r.id returning * into n;
+ insert into public.cumplimiento_historial(obligacion_id,evento,anterior,nuevo,usuario_id) values(p_obligacion,'Cumplida',to_jsonb(r),to_jsonb(n),auth.uid());
+end $$;
+
+create function public.omitir_fecha_cumplimiento(p_obligacion uuid,p_vence date,p_revision integer,p_motivo text) returns void
+language plpgsql security definer set search_path='' as $$
+declare r public.cumplimiento_fechas;n public.cumplimiento_fechas;v_motivo text:=nullif(trim(coalesce(p_motivo,'')),'');
+begin
+ perform public.exigir_admin_compras();
+ if not exists(select 1 from public.cumplimiento_obligaciones where id=p_obligacion) then raise exception 'Obligación inexistente.';end if;
+ if v_motivo is not null and length(v_motivo)<5 then raise exception 'Escribe el motivo (al menos 5 letras).';end if;
+ r:=public.fila_fecha_cumplimiento(p_obligacion,p_vence);
+ if r.revision is distinct from p_revision then raise exception 'La fecha cambió. Recarga antes de guardar.';end if;
+ if r.estado='cumplida' then raise exception 'La fecha ya está cumplida.';end if;
+ if r.factura_id is not null then raise exception 'La fecha ya tiene factura. Quítala antes de omitirla.';end if;
+ update public.cumplimiento_fechas set estado=case when v_motivo is null then 'pendiente' else 'omitida' end,omitida_motivo=v_motivo,revision=revision+1 where id=r.id returning * into n;
+ insert into public.cumplimiento_historial(obligacion_id,evento,anterior,nuevo,usuario_id) values(p_obligacion,case when v_motivo is null then 'Omisión quitada' else 'Fecha omitida' end,to_jsonb(r),to_jsonb(n),auth.uid());
+end $$;
+
+create function public.ligar_factura_cumplimiento(p_obligacion uuid,p_vence date,p_revision integer,p_factura uuid) returns void
+language plpgsql security definer set search_path='' as $$
+declare o public.cumplimiento_obligaciones;r public.cumplimiento_fechas;n public.cumplimiento_fechas;f public.facturas;
+begin
+ perform public.exigir_admin_compras();
+ select * into o from public.cumplimiento_obligaciones where id=p_obligacion for update;
+ if not found then raise exception 'Obligación inexistente.';end if;
+ r:=public.fila_fecha_cumplimiento(p_obligacion,p_vence);
+ if r.revision is distinct from p_revision then raise exception 'La fecha cambió. Recarga antes de guardar.';end if;
+ if p_factura is not null then
+  if not o.con_pago then raise exception 'Esta obligación no lleva pago.';end if;
+  if r.estado='omitida' then raise exception 'La fecha está omitida. Quita la omisión antes de ligar la factura.';end if;
+  select * into f from public.facturas where id=p_factura for update;
+  if not found or f.tipo<>'ingreso' or f.estado='cancelada' then raise exception 'Elige una factura vigente.';end if;
+  if f.proveedor_id<>o.proveedor_id then raise exception 'La factura debe ser del proveedor de la obligación.';end if;
+  if o.sucursal_id is not null and f.sucursal_id is distinct from o.sucursal_id then raise exception 'La factura debe ser de la sucursal de la obligación.';end if;
+  if o.razon_social_rfc is not null and f.rfc_receptor is distinct from o.razon_social_rfc then raise exception 'La factura debe ser de la razón social de la obligación.';end if;
+  if exists(select 1 from public.cumplimiento_fechas where factura_id=p_factura and id<>r.id) or exists(select 1 from public.compromiso_fechas where factura_id=p_factura) then
+   raise exception 'Esa factura ya está ligada a otra fecha.';end if;
+ end if;
+ update public.cumplimiento_fechas set factura_id=p_factura,revision=revision+1 where id=r.id returning * into n;
+ insert into public.cumplimiento_historial(obligacion_id,evento,anterior,nuevo,usuario_id) values(p_obligacion,case when p_factura is null then 'Factura quitada' else 'Factura ligada' end,to_jsonb(r),to_jsonb(n),auth.uid());
+end $$;
+
+-- Cuando un gasto sin CFDI ligado se sustituye por su CFDI, la liga pasa al CFDI (si el CFDI no está ligado ya).
+create function public.cumplimiento_sigue_sustitucion() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ update public.cumplimiento_fechas set factura_id=new.sustituido_por,revision=revision+1
+  where factura_id=new.id and not exists(select 1 from public.cumplimiento_fechas x where x.factura_id=new.sustituido_por)
+   and not exists(select 1 from public.compromiso_fechas x where x.factura_id=new.sustituido_por);
+ return new;
+end $$;
+create trigger cumplimiento_sustitucion after update of sustituido_por on public.facturas
+ for each row when (new.sustituido_por is not null and old.sustituido_por is distinct from new.sustituido_por)
+ execute function public.cumplimiento_sigue_sustitucion();
+
+revoke all on function public.fila_fecha_cumplimiento(uuid,date),public.cumplimiento_sigue_sustitucion() from public,anon,authenticated;
+revoke all on function public.preparar_evidencia_cumplimiento(uuid,uuid,date,text,text,text,integer,text),public.confirmar_evidencia_cumplimiento(uuid),
+ public.cerrar_fecha_cumplimiento(uuid,date,integer,date,text),public.omitir_fecha_cumplimiento(uuid,date,integer,text),public.ligar_factura_cumplimiento(uuid,date,integer,uuid) from public,anon;
+grant execute on function public.preparar_evidencia_cumplimiento(uuid,uuid,date,text,text,text,integer,text),public.confirmar_evidencia_cumplimiento(uuid),
+ public.cerrar_fecha_cumplimiento(uuid,date,integer,date,text),public.omitir_fecha_cumplimiento(uuid,date,integer,text),public.ligar_factura_cumplimiento(uuid,date,integer,uuid) to authenticated;
 commit;
