@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {filtrarCosteo,agruparCosteo,margenFila,type FilaCosteo} from './lista.ts';
 // @ts-expect-error Extensión explícita para las pruebas con Node strip-types.
-import {margenConComision} from './margenes.ts';
+import {margenConComision,comisionPOS} from './margenes.ts';
 const base:FilaCosteo={id:1,nombre:'Pizza Álamo',categoria:'Pizzas',tamano:'Grande',costo:40,desde:'2026-10-01',fuente:null,nota:null,pos:116,rappi:232,rappiFecha:'2026-10-08',rappiOficial:false,bom:true,costoBOM:40,insumos:['Queso mozzarella']};
 
 test('costeo: aproximación en producto e insumo, códigos literales y orden por columna',()=>{
@@ -46,4 +46,18 @@ test('costeo lista: margen con comisión Rappi sobre el precio con IVA, filtro y
  const otro={...base,id:2,rappi:300};
  assert.equal(filtrarCosteo([otro,base],{orden:'margenRappi'},18)[0].id,1);
  assert.equal(filtrarCosteo([base,{...base,id:3,rappi:null}],{orden:'margenRappi',direccion:'desc'},18).at(-1)?.id,3);
+});
+test('costeo: comisión POS = tasa NetPay × parte cobrada con tarjeta, sin Rappi',()=>{
+ // Fuera de Rappi: venta 1000, tarjeta 600 → 60 %; tasa 1.8 % (sin Amex) → 1.08 % del precio con IVA
+ const c=comisionPOS([{total:1100,tarjeta:650,agregadorTotal:100,agregadorTarjeta:50}],.018,.032,0)!;
+ assert.ok(Math.abs(c.tarjetaPct-60)<1e-9);assert.ok(Math.abs(c.tasaPct-1.8)<1e-9);assert.ok(Math.abs(c.pct-1.08)<1e-9);
+ // 10 % de la tarjeta en Amex a 3.2 %: 0.9×1.8 + 0.1×3.2 = 1.94 %
+ assert.ok(Math.abs(comisionPOS([{total:100,tarjeta:100,agregadorTotal:0,agregadorTarjeta:0}],.018,.032,.1)!.pct-1.94)<1e-9);
+ assert.equal(comisionPOS([],.018,.032,0),null);
+ assert.equal(comisionPOS([{total:50,tarjeta:0,agregadorTotal:50,agregadorTarjeta:0}],.018,.032,0),null);
+ // Pizza POS 116 con IVA → venta 100, costo 40; comisión 1.08 % de 116 = 1.2528 → 58.7472 %
+ assert.ok(Math.abs(margenFila(base,'pos',0,1.08)!-58.7472)<1e-9);
+ assert.equal(margenFila(base,'pos',0,null),null);
+ assert.equal(filtrarCosteo([base],{rapido:'margen-bajo',umbral:'59'},0,1.08).length,1);
+ assert.equal(filtrarCosteo([base],{rapido:'margen-bajo',umbral:'59'},0,0).length,0);
 });
