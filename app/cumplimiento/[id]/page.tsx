@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Aviso } from "@/components/Aviso";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { obtenerPerfil } from "@/lib/contexto";
-import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
+import { fechaConAnio, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { puedeEditarCompras, puedeVerCompras } from "@/lib/roles";
 import { nombreFactura } from "@/lib/compras/facturas";
 import { TIPOS, textoFrecuencia, ventanaCalendario } from "@/lib/cumplimiento";
@@ -45,7 +45,7 @@ export default async function DetalleObligacion({ params, searchParams }: { para
     <section className="seccion"><dl className="tarjeta-datos">
       {o.autoridad && <><dt>Autoridad o aseguradora</dt><dd>{o.autoridad}</dd></>}
       {o.folio && <><dt>Folio</dt><dd>{o.folio}</dd></>}
-      <dt>Vigencia</dt><dd>Desde {fechaTexto(o.inicio)}{o.fin ? ` hasta ${fechaTexto(o.fin)}` : ", sin fecha de fin"}</dd>
+      <dt>Vigencia</dt><dd>Desde {fechaConAnio(o.inicio)}{o.fin ? ` hasta ${fechaConAnio(o.fin)}` : ", sin fecha de fin"}</dd>
       <dt>Pago</dt><dd>{o.con_pago ? `${proveedorTexto(o)}${o.monto_estimado ? ` · ${pesos(o.monto_estimado)} estimado` : ""}` : "No lleva pago"}</dd>
       {o.descripcion && <><dt>Descripción</dt><dd className="texto-libre">{o.descripcion}</dd></>}
       {o.notas && <><dt>Notas</dt><dd className="texto-libre">{o.notas}</dd></>}
@@ -55,6 +55,6 @@ export default async function DetalleObligacion({ params, searchParams }: { para
         <TarjetaFecha key={f.vence} f={f} obligacion={id} hoy={hoy} edita={edita} conPago={o.con_pago} facturas={facturas}
           evidencias={(evidencias ?? []).filter((e) => e.fecha_id === f.fecha_id)} />)}</div>}
     </section>
-    {!!historial?.length && <section className="seccion"><h2>Historial</h2><ul>{historial.map((h) => <li key={h.id}>{h.evento} · {fechaTexto(h.fecha.slice(0, 10))}</li>)}</ul></section>}
+    {!!historial?.length && <section className="seccion"><h2>Historial</h2><ul>{historial.map((h) => <li key={h.id}>{h.evento} · {fechaConAnio(h.fecha.slice(0, 10))}</li>)}</ul></section>}
   </>;
 }

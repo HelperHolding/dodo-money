@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { ESTADOS, type FilaCumplimiento } from "@/lib/cumplimiento";
-import { fechaTexto, pesos } from "@/lib/formato";
+import { fechaConAnio, pesos } from "@/lib/formato";
 import { cerrarFecha, ligarFactura, omitirFecha, subirEvidencia } from "../acciones";
 
 type Factura = { id: string; nombre: string; saldo: number };
@@ -21,7 +21,7 @@ export function TarjetaFecha({ f, obligacion, hoy, edita, conPago, facturas, evi
     : <label className="campo">Factura del proveedor<select name="factura_id" defaultValue=""><option value="">Después</option>{opciones}</select></label>;
   return (
     <article id={`fecha-${f.vence}`} className="tarjeta" data-alerta={f.estado === "vencida" || f.estado === "cumplida_sin_factura" ? "si" : undefined}>
-      <div className="tarjeta-encabezado"><div><h3>Vence {fechaTexto(f.vence)}</h3>{cumplida && <p>Cumplida el {fechaTexto(f.fecha)}</p>}</div>
+      <div className="tarjeta-encabezado"><div><h3>Vence {fechaConAnio(f.vence)}</h3>{cumplida && <p>Cumplida el {fechaConAnio(f.fecha)}</p>}</div>
         <span className="insignia" data-tono={ESTADOS[f.estado].tono}>{ESTADOS[f.estado].texto}</span></div>
       <dl className="tarjeta-datos">
         <dt>Evidencia</dt><dd>{evidencias.length ? evidencias.map((e) => <Link key={e.id} href={`/cumplimiento/evidencia/${e.id}`} target="_blank">{e.clase === "foto" ? "Foto" : "PDF"}: {e.nombre} </Link>) : "Sin archivos"}{!cumplida && !omitida && <small className="saldo-nota"> · {fotos} foto(s) y {documentos} PDF; se necesita al menos uno de cada uno.</small>}</dd>

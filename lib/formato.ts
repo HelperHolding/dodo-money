@@ -59,6 +59,11 @@ const diaCorto = new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "nume
 /** "2026-09-25" → "vie 25 de sep". */
 export const fechaTexto = (fecha: string) => diaCorto.format(new Date(`${fecha}T00:00:00Z`));
 
+const diaConAnio = new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
+/** "2026-10-29" → "jue 29 de oct de 2026", para listas que cruzan de un año a otro. */
+export const fechaConAnio = (fecha: string) => diaConAnio.format(new Date(`${fecha}T00:00:00Z`)).replace(",", "");
+
 /** Fracción como porcentaje con un decimal: 0.3421 → "34.2 %"; null → "—". */
 export const porcentaje = (fraccion: number | null) => (fraccion === null ? "—" : `${(fraccion * 100).toFixed(1)} %`);
 
