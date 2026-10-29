@@ -1,6 +1,6 @@
 -- Ejecutar completo después de 20261029150000_calendario_cumplimiento.sql. PRUEBAS OK revierte los datos mediante un ERROR intencional.
 do $$
-declare a uuid;corp uuid;f record;o uuid;o2 uuid;fechas date[];ok boolean;n integer;p uuid;ef uuid;ed uuid;r record;msg text;s uuid;an uuid;m uuid;act uuid;claves text[];
+declare a uuid;corp uuid;f record;o uuid;o2 uuid;fechas date[];ok boolean;n integer;p uuid;ef uuid;ed uuid;r record;msg text;s uuid;an uuid;m uuid;act uuid;claves text[];v1 uuid;v2 uuid;c4 uuid;c2 uuid;
 begin
   select id into a from public.perfiles where activo and rol::text='admin' limit 1;
   select id into corp from public.perfiles where activo and rol::text='corporativo' limit 1;
@@ -181,5 +181,20 @@ begin
   -- Corporativo sí ve la vista unificada.
   if not exists(select 1 from public.cumplimiento_en_rango('2027-03-01','2027-03-15','2027-03-08') cr where cr.referencia_id=s) then raise exception 'FALLÓ: corporativo no ve el calendario';end if;
   perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
+
+  -- 21. Ventana de avisos = lo que muestran las pantallas: 12 meses atrás; compromisos, 3 meses.
+  v1:=public.guardar_obligacion(null,0,jsonb_build_object('tipo','licencia','nombre','Licencia de hace 13 meses','sucursal_id',f.sucursal_id,'frecuencia','anual','inicio','2026-02-01','fin','2026-02-28','con_pago','false'));
+  v2:=public.guardar_obligacion(null,0,jsonb_build_object('tipo','licencia','nombre','Licencia de hace 11 meses','sucursal_id',f.sucursal_id,'frecuencia','anual','inicio','2026-04-01','fin','2026-04-30','con_pago','false'));
+  c4:=public.guardar_compromiso(null,0,jsonb_build_object('sucursal_id',f.sucursal_id,'concepto','fumigacion','descripcion','','proveedor_id',f.proveedor_id,'monto_estimado','1200','forma_pago','transferencia','unidad','mes','cada','1','dia_mes','10','inicio','2026-11-10','fin','2026-11-30','requiere_servicio','true'));
+  c2:=public.guardar_compromiso(null,0,jsonb_build_object('sucursal_id',f.sucursal_id,'concepto','fumigacion','descripcion','','proveedor_id',f.proveedor_id,'monto_estimado','1200','forma_pago','transferencia','unidad','mes','cada','1','dia_mes','10','inicio','2027-01-10','fin','2027-01-31','requiere_servicio','true'));
+  if exists(select 1 from public.avisos_cumplimiento('2027-03-08','correo') x where x.referencia_id=v1) then raise exception 'FALLÓ: aviso de hace más de 12 meses';end if;
+  if not exists(select 1 from public.avisos_cumplimiento('2027-03-08','correo') x where x.referencia_id=v2 and x.tipo_aviso='vencida') then raise exception 'FALLÓ: aviso de hace 11 meses';end if;
+  if exists(select 1 from public.avisos_cumplimiento('2027-03-08','correo') x where x.referencia_id=c4) then raise exception 'FALLÓ: aviso de compromiso de hace 4 meses';end if;
+  if not exists(select 1 from public.avisos_cumplimiento('2027-03-08','correo') x where x.referencia_id=c2 and x.tipo_aviso='vencida') then raise exception 'FALLÓ: aviso de compromiso de hace 2 meses';end if;
+
+  -- 22. Una factura en una fecha de cumplimiento no se liga a un compromiso.
+  perform public.ligar_factura_cumplimiento(p,'2027-01-10',3,f.id);
+  begin perform public.ligar_factura_compromiso(c2,'2027-01-10',0,f.id);ok:=true;exception when others then ok:=false;msg:=sqlerrm;end;
+  if ok or msg not like '%ya está ligada%' then raise exception 'FALLÓ: factura de cumplimiento ligada a compromiso: %',msg;end if;
   raise exception 'PRUEBAS OK';
 end $$;

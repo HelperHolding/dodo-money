@@ -10,11 +10,11 @@ const tipoTexto = (f: FilaCumplimiento) => f.origen === "obligacion" ? TIPOS[f.t
 
 /** Calendario mensual de todo lo que hay que cumplir. Las cumplidas se pintan en su fecha real; lo demás, en su vencimiento. */
 export function CalendarioCumplimiento({ filas, hoy, inicial, ambitos }: {
-  filas: FilaCumplimiento[]; hoy: string; inicial: { origen: string; estado: FiltroEstado; ambito: string }; ambitos: { valor: string; nombre: string }[];
+  filas: FilaCumplimiento[]; hoy: string; inicial: { origen: string; estado: FiltroEstado; ambito: string; tipo?: string }; ambitos: { valor: string; nombre: string }[];
 }) {
   const [mes, setMes] = useState(mesDe(hoy));
   const [dia, setDia] = useState<string | null>(null);
-  const [filtro, setFiltro] = useState(inicial);
+  const [filtro, setFiltro] = useState({ ...inicial, tipo: inicial.tipo ?? "" });
   const periodo = `${mes.anio}-${String(mes.mes).padStart(2, "0")}`;
   const titulo = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(mes.anio, mes.mes - 1, 1)));
   const filtradas = filtrarFilas(filas, filtro);
@@ -28,6 +28,7 @@ export function CalendarioCumplimiento({ filas, hoy, inicial, ambitos }: {
       <button className="boton boton-secundario" type="button" onClick={() => { setMes(mesDe(hoy)); setDia(hoy); }}>Hoy</button>
       <button className="boton boton-secundario" type="button" onClick={() => setDia(null)} aria-pressed={!dia}>Ver todo el mes</button>
       <label className="campo">Origen<select value={filtro.origen} onChange={(e) => cambiar("origen", e.target.value)}><option value="">Todos</option>{Object.entries(ORIGENES).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></label>
+      <label className="campo">Tipo de obligación<select value={filtro.tipo} onChange={(e) => cambiar("tipo", e.target.value)}><option value="">Todos</option>{Object.entries(TIPOS).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></label>
       <label className="campo">Estado<select value={filtro.estado} onChange={(e) => cambiar("estado", e.target.value)}>{Object.entries(FILTROS_ESTADO).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></label>
       {ambitos.length > 0 && <label className="campo">Sucursal o razón social<select value={filtro.ambito} onChange={(e) => cambiar("ambito", e.target.value)}><option value="">Todas</option>{ambitos.map((a) => <option key={a.valor} value={a.valor}>{a.nombre}</option>)}</select></label>}
     </div>

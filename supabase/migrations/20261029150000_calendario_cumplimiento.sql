@@ -14,7 +14,7 @@ create table public.cumplimiento_obligaciones (
  sucursal_id uuid references public.sucursales(id),
  razon_social_rfc text references public.razones_sociales(rfc),
  frecuencia text not null check(frecuencia in ('semanal','quincenal','mensual','bimestral','anual')),
- inicio date not null, fin date,
+ inicio date not null check(inicio>='2000-01-01'), fin date,
  con_pago boolean not null default false,
  proveedor_id uuid references public.proveedores(id),
  monto_estimado numeric(16,2) check(monto_estimado>0 and monto_estimado<1e12),
@@ -272,6 +272,38 @@ create trigger cumplimiento_sustitucion after update of sustituido_por on public
  for each row when (new.sustituido_por is not null and old.sustituido_por is distinct from new.sustituido_por)
  execute function public.cumplimiento_sigue_sustitucion();
 
+-- Una factura va a una sola fecha, sea de compromiso o de cumplimiento: los compromisos también revisan cumplimiento_fechas.
+-- Mismo cuerpo que en 20261028180000_compromisos_recurrentes.sql (create or replace conserva los permisos).
+create or replace function public.ligar_factura_compromiso(p_compromiso uuid,p_vence date,p_revision integer,p_factura uuid) returns void
+language plpgsql security definer set search_path='' as $$
+declare c public.compromisos;r public.compromiso_fechas;n public.compromiso_fechas;f public.facturas;
+begin
+ perform public.exigir_admin_compras();
+ select * into c from public.compromisos where id=p_compromiso for update;
+ if not found then raise exception 'Compromiso inexistente.';end if;
+ r:=public.fila_fecha_compromiso(p_compromiso,p_vence);
+ if r.revision is distinct from p_revision then raise exception 'La fecha cambió. Recarga antes de guardar.';end if;
+ if p_factura is not null then
+  if r.omitida_motivo is not null then raise exception 'La fecha está omitida. Quita la omisión antes de ligar la factura.';end if;
+  select * into f from public.facturas where id=p_factura for update;
+  if not found or f.tipo<>'ingreso' or f.estado='cancelada' then raise exception 'Elige una factura vigente.';end if;
+  if f.proveedor_id<>c.proveedor_id or f.sucursal_id is distinct from c.sucursal_id then raise exception 'La factura debe ser del mismo proveedor y sucursal del compromiso.';end if;
+  if exists(select 1 from public.compromiso_fechas where factura_id=p_factura and id<>r.id) or exists(select 1 from public.cumplimiento_fechas where factura_id=p_factura) then
+   raise exception 'Esa factura ya está ligada a otra fecha.';end if;
+ end if;
+ update public.compromiso_fechas set factura_id=p_factura,revision=revision+1 where id=r.id returning * into n;
+ insert into public.compromiso_historial(compromiso_id,evento,anterior,nuevo,usuario_id) values(p_compromiso,case when p_factura is null then 'Factura quitada' else 'Factura ligada' end,to_jsonb(r),to_jsonb(n),auth.uid());
+end $$;
+
+create or replace function public.compromiso_sigue_sustitucion() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ update public.compromiso_fechas set factura_id=new.sustituido_por,revision=revision+1
+  where factura_id=new.id and not exists(select 1 from public.compromiso_fechas x where x.factura_id=new.sustituido_por)
+   and not exists(select 1 from public.cumplimiento_fechas x where x.factura_id=new.sustituido_por);
+ return new;
+end $$;
+
 revoke all on function public.fila_fecha_cumplimiento(uuid,date),public.cumplimiento_sigue_sustitucion() from public,anon,authenticated;
 revoke all on function public.preparar_evidencia_cumplimiento(uuid,uuid,date,text,text,text,integer,text),public.confirmar_evidencia_cumplimiento(uuid),
  public.cerrar_fecha_cumplimiento(uuid,date,integer,date,text),public.omitir_fecha_cumplimiento(uuid,date,integer,text),public.ligar_factura_cumplimiento(uuid,date,integer,uuid) from public,anon;
@@ -340,7 +372,8 @@ begin
 end $$;
 
 -- Lo que toca avisar hoy por un canal: vencidas y cumplidas sin factura cada día; por vencer solo en los días de
--- anticipación de su frecuencia. Excluye lo ya entregado por ese canal hoy. Ventana: 2 años atrás, 61 días adelante.
+-- anticipación de su frecuencia. Excluye lo ya entregado por ese canal hoy. Ventana: lo que muestran las pantallas, 12 meses
+-- atrás (calendario) y 3 meses para compromisos (su ficha), hasta 61 días adelante (el aviso anual más lejano es a 60).
 create function public.avisos_cumplimiento(p_hoy date,p_canal text)
 returns table(clave text,origen text,referencia_id uuid,titulo text,detalle text,ambito text,vence date,tipo_aviso text,dias integer,ruta text)
 language plpgsql stable set search_path='' as $$
@@ -351,10 +384,10 @@ begin
  return query
  select x.clave,x.origen,x.referencia_id,x.titulo,x.detalle,x.ambito,x.vence,x.tipo_aviso,x.dias,x.ruta from (
   select concat_ws(':',r.origen,r.referencia_id,r.vence,t.tipo_aviso,p_hoy) clave,r.origen,r.referencia_id,r.titulo,r.detalle,r.ambito,r.vence,t.tipo_aviso,(r.vence-p_hoy) dias,r.ruta
-  from public.cumplimiento_en_rango(p_hoy-730,p_hoy+61,p_hoy) r
+  from public.cumplimiento_en_rango((p_hoy-interval '12 months')::date,p_hoy+61,p_hoy) r
   cross join lateral (select case when r.estado='vencida' then 'vencida' when r.estado='cumplida_sin_factura' then 'sin_factura'
    when r.estado='por_vencer' and (r.vence-p_hoy)=any(public.dias_aviso_cumplimiento(coalesce(r.frecuencia,'mensual'))) then 'por_vencer' end) t(tipo_aviso)
-  where t.tipo_aviso is not null) x
+  where t.tipo_aviso is not null and (r.origen<>'compromiso' or r.vence>=(p_hoy-interval '3 months')::date)) x
  where not exists(select 1 from public.cumplimiento_avisos_enviados e where e.clave=x.clave and e.canal=p_canal)
  order by case x.tipo_aviso when 'vencida' then 0 when 'por_vencer' then 1 else 2 end,x.vence,x.titulo;
 end $$;

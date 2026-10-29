@@ -131,3 +131,33 @@ test('cumplimiento: la vista unificada incluye compromisos con servicio y sus es
   assert.equal(mar.estado,'por_vencer');
  }finally{await db.close();}
 });
+
+test('cumplimiento: una factura ligada a una fecha de cumplimiento no se liga a un compromiso ni pasa a él al sustituir',async()=>{
+ const db=await montar();
+ try{
+  await db.exec(ADMIN);
+  const {rows:[{id:o}]}=await db.query(`select public.guardar_obligacion(null,0,'{"tipo":"seguro","nombre":"Póliza","sucursal_id":"00000000-0000-0000-0000-0000000000e1","frecuencia":"anual","inicio":"2027-01-10","con_pago":"true","proveedor_id":"00000000-0000-0000-0000-0000000000b1"}'::jsonb) id`);
+  await db.exec(`select public.ligar_factura_cumplimiento('${o}','2027-01-10',0,'00000000-0000-0000-0000-0000000000f1')`);
+  const {rows:[{id:c}]}=await db.query(`select public.guardar_compromiso(null,0,'{"sucursal_id":"00000000-0000-0000-0000-0000000000e1","concepto":"fumigacion","descripcion":"","proveedor_id":"00000000-0000-0000-0000-0000000000b1","monto_estimado":"1200","forma_pago":"transferencia","unidad":"mes","cada":"1","dia_mes":"10","inicio":"2027-01-10","fin":"","requiere_servicio":"true"}'::jsonb) id`);
+  await assert.rejects(db.exec(`select public.ligar_factura_compromiso('${c}','2027-01-10',0,'00000000-0000-0000-0000-0000000000f1')`),/ya está ligada/);
+  // El compromiso tiene f3; si f3 se sustituye por f1 (ya en cumplimiento), la liga del compromiso se queda en f3.
+  await db.exec(`select public.ligar_factura_compromiso('${c}','2027-01-10',0,'00000000-0000-0000-0000-0000000000f3')`);
+  await db.exec(`update facturas set sustituido_por='00000000-0000-0000-0000-0000000000f1' where id='00000000-0000-0000-0000-0000000000f3'`);
+  assert.equal((await db.query(`select factura_id from compromiso_fechas where compromiso_id='${c}'`)).rows[0].factura_id,'00000000-0000-0000-0000-0000000000f3');
+  assert.equal((await db.query(`select count(*)::int n from cumplimiento_fechas where factura_id='00000000-0000-0000-0000-0000000000f1'`)).rows[0].n,1);
+ }finally{await db.close();}
+});
+
+test('cumplimiento: los avisos miran 12 meses atrás y los compromisos solo 3',async()=>{
+ const db=await montar();
+ try{
+  await db.exec(ADMIN);
+  const ob=async(nombre,inicio,fin)=>(await db.query(`select public.guardar_obligacion(null,0,$1::jsonb) id`,[JSON.stringify({tipo:'licencia',nombre,sucursal_id:'00000000-0000-0000-0000-0000000000e1',frecuencia:'anual',inicio,fin,con_pago:'false'})])).rows[0].id;
+  const co=async(inicio,fin)=>(await db.query(`select public.guardar_compromiso(null,0,$1::jsonb) id`,[JSON.stringify({sucursal_id:'00000000-0000-0000-0000-0000000000e1',concepto:'fumigacion',descripcion:'',proveedor_id:'00000000-0000-0000-0000-0000000000b1',monto_estimado:'1200',forma_pago:'transferencia',unidad:'mes',cada:'1',dia_mes:'10',inicio,fin,requiere_servicio:'true'})])).rows[0].id;
+  const vieja=await ob('Licencia de hace 13 meses','2026-02-01','2026-02-28'),reciente=await ob('Licencia de hace 11 meses','2026-04-01','2026-04-30');
+  const c4=await co('2026-11-10','2026-11-30'),c2=await co('2027-01-10','2027-01-31');
+  const ids=(await db.query(`select referencia_id from public.avisos_cumplimiento('2027-03-08','correo') where tipo_aviso='vencida'`)).rows.map(r=>r.referencia_id);
+  assert.ok(!ids.includes(vieja),'obligación de hace 13 meses');assert.ok(ids.includes(reciente),'obligación de hace 11 meses');
+  assert.ok(!ids.includes(c4),'compromiso de hace 4 meses');assert.ok(ids.includes(c2),'compromiso de hace 2 meses');
+ }finally{await db.close();}
+});

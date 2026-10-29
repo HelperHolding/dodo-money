@@ -14,7 +14,11 @@ export function TarjetaFecha({ f, obligacion, hoy, edita, conPago, facturas, evi
   const fotos = evidencias.filter((e) => e.clase === "foto").length, documentos = evidencias.length - fotos;
   const cumplida = f.estado === "cumplida" || f.estado === "cumplida_sin_factura", omitida = f.estado === "omitida";
   const ocultos = <><input type="hidden" name="obligacion_id" value={obligacion} /><input type="hidden" name="vence" value={f.vence} /><input type="hidden" name="revision" value={f.revision} /></>;
-  const selectorFactura = <label className="campo">Factura del proveedor<select name="factura_id" defaultValue=""><option value="">{cumplida ? "Ninguna (quitar)" : "Después"}</option>{facturas.map((x) => <option key={x.id} value={x.id}>{x.nombre} · {pesos(x.saldo)}</option>)}</select></label>;
+  const opciones = facturas.map((x) => <option key={x.id} value={x.id}>{x.nombre} · {pesos(x.saldo)}</option>);
+  // Al cerrar, vacío es "después". Al cambiar en una cumplida, no hay opción por defecto: quitar la factura es explícito.
+  const selectorFactura = cumplida
+    ? <label className="campo">Factura del proveedor<select name="factura_id" defaultValue="" required><option value="" disabled>Elige…</option>{f.factura_id && <option value="quitar">Quitar la factura</option>}{opciones}</select></label>
+    : <label className="campo">Factura del proveedor<select name="factura_id" defaultValue=""><option value="">Después</option>{opciones}</select></label>;
   return (
     <article id={`fecha-${f.vence}`} className="tarjeta" data-alerta={f.estado === "vencida" || f.estado === "cumplida_sin_factura" ? "si" : undefined}>
       <div className="tarjeta-encabezado"><div><h3>Vence {fechaTexto(f.vence)}</h3>{cumplida && <p>Cumplida el {fechaTexto(f.fecha)}</p>}</div>

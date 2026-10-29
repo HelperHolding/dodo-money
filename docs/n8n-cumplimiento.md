@@ -5,6 +5,8 @@ Cada día a las 8:00 (Ciudad de México) n8n pregunta al portal qué avisar y lo
 ## Qué avisa
 - **Vencidas** y **cumplidas sin factura**: todos los días hasta resolverse.
 - **Por vencer**: semanal y quincenal 2 días antes y el día; mensual y bimestral 7, 2 y el día; anual 60, 30, 7 y el día. Mantenimientos como mensual.
+- Hasta dónde mira atrás: lo mismo que muestran las pantallas, 12 meses (el calendario) y 3 meses para compromisos fijos (su ficha). Algo vencido hace más ya no se avisa.
+- El correo lista hasta 200 avisos (vencidas, luego por vencer, luego sin factura) y cierra con "… y N más en el portal"; el mensaje de Chat se corta a unos 3800 caracteres. Solo se confirma lo que se mostró: lo demás sale al día siguiente.
 
 ## Configuración (una vez)
 1. Vercel → Environment Variables: `CUMPLIMIENTO_API_KEY` (cadena larga aleatoria). La cuenta `REPORTE_CUENTA_EMAIL` debe tener rol **admin** en Usuarios y sucursales.

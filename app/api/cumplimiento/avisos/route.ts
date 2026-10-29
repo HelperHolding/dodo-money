@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { agruparAvisos, type AvisoCumplimiento } from "@/lib/cumplimiento";
-import { hoyMX } from "@/lib/formato";
+import { hoyCalendarioMX } from "@/lib/formato";
 import { conCuentaAutomatizacion } from "../cuenta";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   return conCuentaAutomatizacion(req, async (supabase) => {
     const canal = req.nextUrl.searchParams.get("canal");
     if (canal !== "correo" && canal !== "chat") return NextResponse.json({ error: "Indica canal=correo o canal=chat." }, { status: 400 });
-    const hoy = hoyMX(), base = (process.env.APP_URL ?? req.nextUrl.origin).replace(/\/$/, "");
+    const hoy = hoyCalendarioMX(), base = (process.env.APP_URL || req.nextUrl.origin).replace(/\/$/, "");
     const [avisos, correos] = await Promise.all([
       supabase.rpc("avisos_cumplimiento", { p_hoy: hoy, p_canal: canal }),
       supabase.rpc("correos_avisos_cumplimiento"),

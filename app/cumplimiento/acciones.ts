@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { leerObligacion } from "@/lib/cumplimiento";
+import { facturaElegida, leerObligacion } from "@/lib/cumplimiento";
 import { MAX_ADJUNTO, validarAdjunto } from "@/lib/compras/adjuntos";
 import { clienteAdmin, volver } from "../compras/servidor";
 
@@ -42,9 +42,11 @@ export async function cerrarFecha(fd: FormData) {
 
 export async function ligarFactura(fd: FormData) {
   const supabase = await clienteAdmin(rutaDe(fd));
-  const { error } = await supabase.rpc("ligar_factura_cumplimiento", { ...base(fd), p_factura: texto(fd, "factura_id") || null });
+  const elegida = facturaElegida(texto(fd, "factura_id"));
+  if ("error" in elegida) return aFecha(fd, "error", elegida.error);
+  const { error } = await supabase.rpc("ligar_factura_cumplimiento", { ...base(fd), p_factura: elegida.factura });
   if (error) return aFecha(fd, "error", error.message);
-  hecho(fd, texto(fd, "factura_id") ? "Factura ligada." : "Factura quitada de la fecha.");
+  hecho(fd, elegida.factura ? "Factura ligada." : "Factura quitada de la fecha.");
 }
 
 export async function omitirFecha(fd: FormData) {

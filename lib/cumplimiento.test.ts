@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { agruparAvisos, ambitoDe, contarAlertas, filtrarFilas, leerEntregados, leerObligacion, llaveValida, textoFrecuencia, ventanaAlertas, ventanaCalendario, type FilaCumplimiento } from "./cumplimiento.ts";
+import { agruparAvisos, ambitoDe, contarAlertas, facturaElegida, filtrarFilas, leerEntregados, leerObligacion, llaveValida, textoFrecuencia, ventanaAlertas, ventanaCalendario, type FilaCumplimiento } from "./cumplimiento.ts";
 
 const fila = (x: Partial<FilaCumplimiento>): FilaCumplimiento => ({
   origen: "obligacion", referencia_id: "o1", fecha_id: null, revision: 0, titulo: "Licencia", detalle: "", tipo: "licencia",
@@ -28,13 +28,14 @@ test("filtros: origen, ámbito y estado; 'vigentes' oculta omitidas; 'sin_eviden
 });
 
 test("contarAlertas: vencidas, por vencer, sin factura y sin evidencia", () => {
-  assert.deepEqual(contarAlertas([fila({ estado: "vencida" }), fila({ estado: "por_vencer" }), fila({ estado: "cumplida_sin_factura" }), fila({ estado: "cumplida", falta_evidencia: true }), fila({ estado: "omitida" })]),
+  assert.deepEqual(contarAlertas([fila({ estado: "vencida" }), fila({ estado: "por_vencer" }), fila({ estado: "cumplida_sin_factura" }), fila({ estado: "cumplida", falta_evidencia: true }), fila({ estado: "omitida" })], "2027-03-08"),
     { vencidas: 1, porVencer: 1, sinFactura: 1, sinEvidencia: 1 });
 });
 
 test("ventanas: el calendario y las alertas caben en 800 días", () => {
   assert.deepEqual(ventanaCalendario("2027-03-31"), { desde: "2026-03-31", hasta: "2028-04-30" });
-  assert.deepEqual(ventanaAlertas("2027-03-08"), { desde: "2025-03-08", hasta: "2027-05-08" });
+  assert.deepEqual(ventanaAlertas("2027-03-08"), { desde: "2026-03-08", hasta: "2027-05-08" });
+  assert.deepEqual(ventanaAlertas("2028-02-29"), { desde: "2027-02-28", hasta: "2028-04-30" });
 });
 
 test("leerObligacion: valida y arma los datos de guardar_obligacion", () => {
@@ -67,4 +68,24 @@ test("endpoints: llave y cuerpo de entregados", () => {
   assert.deepEqual(leerEntregados({ canal: "correo", claves: [] }), { error: "Envía de 1 a 500 claves." });
   assert.deepEqual(leerEntregados({ canal: "correo", claves: ["obligacion:x"] }), { error: "Clave de aviso inválida." });
   assert.deepEqual(leerEntregados("texto"), { error: "Cuerpo inválido." });
+});
+
+test("contarAlertas: compromisos vencidos hace más de 3 meses no cuentan; obligaciones sí", () => {
+  const filas = [fila({ origen: "compromiso", estado: "vencida", vence: "2026-12-07" }), fila({ origen: "compromiso", estado: "vencida", vence: "2026-12-08" }),
+    fila({ origen: "compromiso", estado: "cumplida_sin_factura", vence: "2026-11-10", falta_evidencia: true }), fila({ estado: "vencida", vence: "2026-04-01" })];
+  assert.deepEqual(contarAlertas(filas, "2027-03-08"), { vencidas: 2, porVencer: 0, sinFactura: 0, sinEvidencia: 0 });
+});
+
+test("filtros: el tipo deja solo obligaciones de ese tipo", () => {
+  const filas = [fila({}), fila({ referencia_id: "o2", tipo: "seguro" }), fila({ origen: "mantenimiento", referencia_id: "m1", tipo: "preventivo" }), fila({ origen: "compromiso", referencia_id: "c1", tipo: "fumigacion" })];
+  assert.deepEqual(filtrarFilas(filas, { origen: "", estado: "todos", ambito: "", tipo: "seguro" }).map((f) => f.referencia_id), ["o2"]);
+  assert.deepEqual(filtrarFilas(filas, { origen: "", estado: "todos", ambito: "", tipo: "" }).length, 4);
+  assert.deepEqual(filtrarFilas(filas, { origen: "", estado: "todos", ambito: "" }).length, 4);
+});
+
+test("facturaElegida: 'quitar' desliga, vacío es error y un id se liga", () => {
+  assert.deepEqual(facturaElegida("quitar"), { factura: null });
+  assert.deepEqual(facturaElegida(""), { error: "Elige una factura o «Quitar la factura»." });
+  assert.deepEqual(facturaElegida("  "), { error: "Elige una factura o «Quitar la factura»." });
+  assert.deepEqual(facturaElegida("f1"), { factura: "f1" });
 });

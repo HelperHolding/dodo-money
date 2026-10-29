@@ -17,7 +17,7 @@ export async function leerFilas(supabase: SupabaseClient, desde: string, hasta: 
 /** Contadores de la franja de alertas (inicio y calendario), en la misma ventana que los avisos de n8n. */
 export async function leerAlertas(supabase: SupabaseClient, hoy: string): Promise<Alertas> {
   const { desde, hasta } = ventanaAlertas(hoy);
-  return contarAlertas(await leerFilas(supabase, desde, hasta, hoy));
+  return contarAlertas(await leerFilas(supabase, desde, hasta, hoy), hoy);
 }
 
 export async function leerObligaciones(supabase: SupabaseClient, id?: string): Promise<ObligacionConNombres[]> {

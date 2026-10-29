@@ -26,13 +26,37 @@ test('n8n cumplimiento: confirmar solo tras enviar, canales independientes y men
  assert.deepEqual(entrantes('Avisos por correo'),['Cada mañana (correo)']);
  assert.deepEqual(entrantes('Avisos por chat'),['Cada mañana (chat)']);
  const code=wf.nodes.find(n=>n.name==='Armar mensaje').parameters.jsCode;
- const av=(t,i)=>({clave:`${t}:${i}`,titulo:`Titulo largo de prueba numero ${i} `+'x'.repeat(60),ambito:'Sucursal',dias:-3,tipo_aviso:t,url:`https://app.test/c/${i}`});
- const payload={hoy:'2026-10-29',avisos:{vencida:Array.from({length:60},(_,i)=>av('vencida',i)),por_vencer:[av('por_vencer',1)],sin_factura:[]}};
+ // 3 grupos × 15 títulos muy largos: el corte por largo (3800) actúa antes del tope de 15 por grupo.
+ const av=(t,i)=>({clave:`${t}:${i}`,titulo:`Titulo largo de prueba numero ${i} `+'x'.repeat(220),ambito:'Sucursal',dias:-3,tipo_aviso:t,url:`https://app.test/c/${t}/${i}`});
+ const lista=t=>Array.from({length:15},(_,i)=>av(t,i));
+ const payload={hoy:'2026-10-29',avisos:{vencida:lista('vencida'),por_vencer:lista('por_vencer'),sin_factura:lista('sin_factura')}};
  const {text,claves}=new Function('$input',code)({first:()=>({json:payload})})[0].json;
  assert.ok(text.length<=3800,`largo ${text.length}`);
- assert.ok(claves.length>0&&claves.length<61);
- const todas=[...payload.avisos.vencida,...payload.avisos.por_vencer];
- const mostradas=todas.filter(a=>text.includes(a.url)).map(a=>a.clave);
+ assert.ok(claves.length>0&&claves.length<15,`el largo corta antes del tope por grupo (${claves.length})`);
+ const todas=[...payload.avisos.vencida,...payload.avisos.por_vencer,...payload.avisos.sin_factura];
+ // La liga va como <url|título>: el "|" evita que /1 coincida con /10.
+ const mostradas=todas.filter(a=>text.includes(`<${a.url}|`)).map(a=>a.clave);
  assert.deepEqual([...claves].sort(),mostradas.sort());
- assert.match(text,/… y \d+ más en el portal/);
+ assert.match(text,new RegExp(`… y ${45-claves.length} más en el portal`));
 });
+
+test('n8n cumplimiento: el correo muestra y confirma 200 avisos como máximo, en orden',()=>{
+ const wf=leer('docs/n8n/cumplimiento-avisos.json');
+ const code=wf.nodes.find(n=>n.name==='Armar correo').parameters.jsCode;
+ const av=(t,i)=>({clave:`${t}:${i}`,titulo:`Aviso ${t} ${i}`,ambito:'Sucursal',detalle:'',vence:'2026-10-01',dias:-3,tipo_aviso:t,ruta:`/cumplimiento/${t}-${i}#fecha-2026-10-01`,url:`https://app.test/cumplimiento/${t}-${i}#fecha-2026-10-01`});
+ const lista=(t,n)=>Array.from({length:n},(_,i)=>av(t,i));
+ const correr=avisos=>new Function('$input',code)({first:()=>({json:{hoy:'2026-10-29',destinatarios:['a@b.mx'],avisos}})})[0].json;
+ const {html,claves}=correr({vencida:lista('vencida',150),por_vencer:lista('por_vencer',300),sin_factura:lista('sin_factura',150)});
+ assert.equal(claves.length,200);
+ assert.deepEqual(claves.slice(0,150),lista('vencida',150).map(a=>a.clave),'primero las vencidas');
+ assert.ok(claves.slice(150).every(c=>c.startsWith('por_vencer:')),'luego por vencer');
+ const todas=[...lista('vencida',150),...lista('por_vencer',300),...lista('sin_factura',150)];
+ // La url completa con su comilla de cierre: /1#… no coincide con /10#….
+ const mostradas=todas.filter(a=>html.includes(`href="${a.url}"`)).map(a=>a.clave);
+ assert.deepEqual(mostradas,claves);
+ for(const a of todas.filter(a=>claves.includes(a.clave))) assert.ok(html.includes(`>${a.titulo}</a>`),a.titulo);
+ assert.ok(html.includes('… y 400 más en el <a href="https://app.test/cumplimiento">portal</a>'));
+ const pocos=correr({vencida:lista('vencida',2),por_vencer:[],sin_factura:lista('sin_factura',1)});
+ assert.deepEqual(pocos.claves,['vencida:0','vencida:1','sin_factura:0']);assert.ok(!pocos.html.includes('más en el'));
+});
+

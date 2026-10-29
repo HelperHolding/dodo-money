@@ -53,18 +53,12 @@ export const FILTROS_ESTADO: Record<FiltroEstado, string> = {
   cumplida_sin_factura: "Cumplidas sin factura", sin_evidencia: "Sin evidencia", cumplida: "Cumplidas", todos: "Todas, incluidas omitidas",
 };
 
-export function filtrarFilas(filas: FilaCumplimiento[], f: { origen: string; estado: FiltroEstado; ambito: string }): FilaCumplimiento[] {
-  return filas.filter((x) => (!f.origen || x.origen === f.origen) && (!f.ambito || ambitoDe(x) === f.ambito) && (
+/** `tipo` (opcional) solo aplica a obligaciones: con un tipo elegido, se muestran solo las obligaciones de ese tipo. */
+export function filtrarFilas(filas: FilaCumplimiento[], f: { origen: string; estado: FiltroEstado; ambito: string; tipo?: string }): FilaCumplimiento[] {
+  const tipo = f.tipo ?? "";
+  return filas.filter((x) => (!f.origen || x.origen === f.origen) && (!tipo || (x.origen === "obligacion" && x.tipo === tipo)) && (!f.ambito || ambitoDe(x) === f.ambito) && (
     f.estado === "todos" ? true : f.estado === "vigentes" ? x.estado !== "omitida" : f.estado === "sin_evidencia" ? x.falta_evidencia : x.estado === f.estado));
 }
-
-export type Alertas = { vencidas: number; porVencer: number; sinFactura: number; sinEvidencia: number };
-export const contarAlertas = (filas: readonly FilaCumplimiento[]): Alertas => ({
-  vencidas: filas.filter((f) => f.estado === "vencida").length,
-  porVencer: filas.filter((f) => f.estado === "por_vencer").length,
-  sinFactura: filas.filter((f) => f.estado === "cumplida_sin_factura").length,
-  sinEvidencia: filas.filter((f) => f.falta_evidencia).length,
-});
 
 /** Mismo día `n` meses antes o después; si ese mes es más corto, su último día. */
 function moverMeses(f: string, n: number): string {
@@ -75,8 +69,29 @@ function moverMeses(f: string, n: number): string {
 const sumarDias = (f: string, n: number) => { const d = new Date(`${f}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 /** Lo que muestra el calendario: un año atrás y 13 meses adelante (cabe en el máximo de 800 días de la consulta). */
 export const ventanaCalendario = (hoy: string) => ({ desde: moverMeses(hoy, -12), hasta: moverMeses(hoy, 13) });
-/** La misma ventana que usa `avisos_cumplimiento`: dos años atrás y 61 días adelante (el aviso anual más lejano es a 60). */
-export const ventanaAlertas = (hoy: string) => ({ desde: sumarDias(hoy, -730), hasta: sumarDias(hoy, 61) });
+/** La misma ventana que usa `avisos_cumplimiento`: 12 meses atrás (lo que muestra el calendario) y 61 días adelante
+ * (el aviso anual más lejano es a 60). Los compromisos solo cuentan 3 meses atrás, lo que muestra su ficha. */
+export const ventanaAlertas = (hoy: string) => ({ desde: moverMeses(hoy, -12), hasta: sumarDias(hoy, 61) });
+
+export type Alertas = { vencidas: number; porVencer: number; sinFactura: number; sinEvidencia: number };
+/** Contadores de la franja. Ignora compromisos que vencieron hace más de 3 meses, como `avisos_cumplimiento`. */
+export const contarAlertas = (todas: readonly FilaCumplimiento[], hoy: string): Alertas => {
+  const corte = moverMeses(hoy, -3), filas = todas.filter((f) => f.origen !== "compromiso" || f.vence >= corte);
+  return {
+    vencidas: filas.filter((f) => f.estado === "vencida").length,
+    porVencer: filas.filter((f) => f.estado === "por_vencer").length,
+    sinFactura: filas.filter((f) => f.estado === "cumplida_sin_factura").length,
+    sinEvidencia: filas.filter((f) => f.falta_evidencia).length,
+  };
+};
+
+/** Valor del selector al cambiar la factura de una fecha cumplida: un id, o "quitar" para desligarla. Vacío es error. */
+export function facturaElegida(v: string): { factura: string | null } | { error: string } {
+  const x = v.trim();
+  if (x === "quitar") return { factura: null };
+  if (!x) return { error: "Elige una factura o «Quitar la factura»." };
+  return { factura: x };
+}
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

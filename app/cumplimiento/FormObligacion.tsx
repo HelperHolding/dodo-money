@@ -39,7 +39,7 @@ export function FormObligacion({ o, ambitos, proveedores, hoy }: {
           </select>
           {fijo && <input type="hidden" name="frecuencia" value={frecuencia} />}
         </label>
-        <label className="campo">Primera fecha (inicio)<input type="date" name="inicio" value={inicio} onChange={(e) => setInicio(e.target.value)} required readOnly={fijo} /><small>{inicio ? textoFrecuencia(frecuencia, inicio) : ""}</small></label>
+        <label className="campo">Primera fecha (inicio)<input type="date" name="inicio" value={inicio} onChange={(e) => setInicio(e.target.value)} required readOnly={fijo} /><small>{inicio ? textoFrecuencia(frecuencia, inicio) : ""}</small>{!fijo && <small>Usa la próxima fecha que vence; las fechas pasadas aparecerán como vencidas.</small>}</label>
         <label className="campo">Fin (opcional)<input type="date" name="fin" defaultValue={o?.fin ?? ""} min={inicio} /></label>
         <label className="campo">¿Lleva pago?
           <select name="con_pago" value={pago ? "si" : "no"} onChange={(e) => setPago(e.target.value === "si")}>
