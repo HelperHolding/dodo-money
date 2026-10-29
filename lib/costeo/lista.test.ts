@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {filtrarCosteo,agruparCosteo,margenFila,type FilaCosteo} from './lista.ts';
 // @ts-expect-error Extensión explícita para las pruebas con Node strip-types.
 import {margenConComision} from './margenes.ts';
-const base:FilaCosteo={id:1,nombre:'Pizza Álamo',categoria:'Pizzas',tamano:'Grande',costo:40,desde:'2026-10-01',fuente:null,nota:null,pos:116,rappi:232,rappiFecha:'2026-10-08',bom:true,costoBOM:40,insumos:['Queso mozzarella']};
+const base:FilaCosteo={id:1,nombre:'Pizza Álamo',categoria:'Pizzas',tamano:'Grande',costo:40,desde:'2026-10-01',fuente:null,nota:null,pos:116,rappi:232,rappiFecha:'2026-10-08',rappiOficial:false,bom:true,costoBOM:40,insumos:['Queso mozzarella']};
 
 test('costeo: aproximación en producto e insumo, códigos literales y orden por columna',()=>{
  const filas=[{...base,id:2,nombre:'Pizza Alano',costo:20},base];

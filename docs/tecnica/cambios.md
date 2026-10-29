@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-29 · Lista oficial de precios Rappi · 20261029120000 · pendiente de Supabase
+
+Tabla `precios_rappi` con vigencia por producto y función `cargar_precios_rappi` (solo admin), que liga cada renglón del menú a productos del catálogo por nombre exacto normalizado y devuelve los que no encontró. Costeo y calculadoras usan la lista vigente y, sin ella, el último precio observado; el título del precio dice cuál es. Carga inicial `supabase/cargas/precios_rappi_menu_final_3.sql` desde "MENU DODO FINAL (3).xlsx" (hoja Sheet3): pizzas 30/35 cm a Mediano/Grande en masa tradicional y delgada, snacks, postres, bebidas y dips. No carga los siete combos propios de Rappi. Los costos siguen saliendo del BOM.
+
 ## 2026-10-23 · Fotos en manuales · 20261023120000 · pendiente de Supabase
 
 Administración agrega y retira fotos numeradas en cada manual de Conocimiento. Bucket privado con la misma audiencia que el manual; borradores y puestos excluidos no ven las fotos. Reducción a JPG en el navegador para fotos del celular. Retiro lógico con historial. Detalle en fotos-manuales.md.
