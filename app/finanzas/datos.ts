@@ -168,6 +168,8 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       rappi: resumenCanalPL(diasRappi, productosRappi, costeo(renglonesRappi).total.costo),
     };
     canales.rappi.neta=centavos(canales.rappi.neta-historicoCubierto.reduce((t,d)=>t+d.total-d.iva,0)+efecto.ventaNeta);
+    // Con reporte financiero la neta ya no sale de los días: la bruta sin IVA no es confiable (Pendiente).
+    if(fin.length||historicoCubierto.length||efecto.ventaNeta!==0)canales.rappi.brutaSinIva=null;
     if(fin.length){const diasFuera=datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&!fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta));canales.rappi.bruta=centavos(diasFuera.reduce((t,o)=>t+Number(o.bruto),0)+fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta).reduce((t,m)=>t+m.bruta,0));}
     const renglones = [...renglonesDodo, ...renglonesRappi];
     const c = costeo(renglones);
@@ -360,7 +362,7 @@ export async function plAsesores(supabase: SupabaseClient, p: Periodo, sucursalI
   const d = await datosPL(supabase, p);
   const vista = vistaPL(d, sucursalId);
   let formato: FormatoAsesores | null = null, error: string | null = null;
-  try { formato = formatoAsesores(vista.entrada, vista.filas); } catch (e) { error = e instanceof Error ? e.message : String(e); }
+  try { formato = formatoAsesores(vista.entrada, vista.filas); } catch (e) { console.error(e); error = e instanceof Error ? e.message : String(e); }
   const de = (clave: string) => (vista.suc ? d.detalle.get(`${vista.suc.id}|${clave}`) ?? [] : []);
   /** "comisiones_cobro" son las comisiones anotadas en "otros"; "otros" aquí ya no las incluye. */
   const detalleDe = (origen: readonly string[]): Detalle => origen.flatMap((clave) =>

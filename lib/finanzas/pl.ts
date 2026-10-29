@@ -38,7 +38,8 @@ export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "v
   { clave: "ebitda", nombre: "EBITDA", tipo: "total" },
 ];
 
-export type CanalPL = { bruta: number | null; neta: number; alimento: number };
+/** `bruta` lleva IVA; `brutaSinIva` la quita con la proporción (total − iva)/total de cada día. */
+export type CanalPL = { bruta: number | null; brutaSinIva: number | null; neta: number; alimento: number };
 
 /** La venta bruta exige que el detalle por producto cubra el total de cada día. */
 export function resumenCanalPL(
@@ -54,6 +55,8 @@ export function resumenCanalPL(
   const completo = dias.every(d => (detalle.has(d.fecha) || Number(d.total) === 0) && (Math.abs(Number(d.total) - (detalle.get(d.fecha)?.cobrada ?? 0)) <= 1 || d.conciliada === true));
   return {
     bruta: completo ? centavos(dias.reduce((t, d) => t + (detalle.get(d.fecha)?.bruta ?? 0), 0)) : null,
+    brutaSinIva: completo ? centavos(dias.reduce((t, d) => Number(d.total) === 0 ? t
+      : t + (detalle.get(d.fecha)?.bruta ?? 0) * (Number(d.total) - Number(d.iva)) / Number(d.total), 0)) : null,
     neta: centavos(dias.reduce((t, d) => t + Number(d.total) - Number(d.iva), 0)), alimento,
   };
 }
@@ -76,7 +79,7 @@ export type EntradaPL = {
 };
 
 export const entradaVacia = (): EntradaPL => ({
-  canales: { dodo: { bruta: 0, neta: 0, alimento: 0 }, rappi: { bruta: 0, neta: 0, alimento: 0 } },
+  canales: { dodo: { bruta: 0, brutaSinIva: 0, neta: 0, alimento: 0 }, rappi: { bruta: 0, brutaSinIva: 0, neta: 0, alimento: 0 } },
   ventaNeta: 0, descuentos: 0, alimento: 0, merma: null, mermaPendiente: false, nomina: { cocina: 0, gerencia: 0 }, gastos: {}, sinCuenta: 0,
   mermaProductos:null,mermaInsumos:null,mermaProductosPendiente:false,mermaInsumosPendiente:false,
   agregadores: 0, comisionesCobro: 0, faltantes: 0, regalias: 0, oficina: 0, memos: { insumos: 0, inversiones: 0 },
@@ -92,6 +95,7 @@ export function sumarEntradas(entradas: readonly EntradaPL[]): EntradaPL {
     for (const canal of ["dodo", "rappi"] as const) {
       const a = s.canales[canal], b = e.canales[canal];
       a.bruta = a.bruta === null || b.bruta === null ? null : centavos(a.bruta + b.bruta);
+      a.brutaSinIva = a.brutaSinIva === null || b.brutaSinIva === null ? null : centavos(a.brutaSinIva + b.brutaSinIva);
       a.neta = centavos(a.neta + b.neta); a.alimento = centavos(a.alimento + b.alimento);
     }
     s.ventaNeta += e.ventaNeta; s.descuentos += e.descuentos; s.alimento += e.alimento;

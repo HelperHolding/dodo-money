@@ -143,13 +143,13 @@ test("P&L por fuente: bruto con IVA, neto sin IVA y costo sin doble resta", () =
   assert.equal(f.get("ebitda")!.monto, 210);
   assert.equal(f.get("margen_bruto")!.monto, 210);
   const suma = sumarEntradas([e, e]);
-  assert.deepEqual(suma.canales.rappi, { bruta: 600, neta: 400, alimento: 120 });
+  assert.deepEqual(suma.canales.rappi, { bruta: 600, brutaSinIva: 517.24, neta: 400, alimento: 120 });
 });
 
 test("Venta bruta incompleta: no se inventa; el consolidado conserva sin dato", () => {
   const dodo = resumenCanalPL([{ fecha: "2026-10-01", total: 116, iva: 16 }], [], 0);
-  assert.deepEqual(dodo, { bruta: null, neta: 100, alimento: 0 });
-  const e = { ...entradaVacia(), canales: { dodo, rappi: { bruta: 300, neta: 200, alimento: 60 } } };
+  assert.deepEqual(dodo, { bruta: null, brutaSinIva: null, neta: 100, alimento: 0 });
+  const e = { ...entradaVacia(), canales: { dodo, rappi: { bruta: 300, brutaSinIva: 258.62, neta: 200, alimento: 60 } } };
   const suma = sumarEntradas([entradaVacia(), e]);
   assert.equal(suma.canales.dodo.bruta, null);
   const filas = calcularPL(suma, [], { ventaNeta: 0, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } });
@@ -160,6 +160,21 @@ test("Venta bruta incompleta: no se inventa; el consolidado conserva sin dato", 
     [{ fecha: "a", importe: 90, importe_sin_descuento: 100 }, { fecha: "b", importe: 110, importe_sin_descuento: 120 }], 0).bruta, null);
 });
 
+
+test("brutaSinIva: bruta del día por (total − iva)/total; sin detalle completo queda sin dato", () => {
+  const canal = resumenCanalPL([{ fecha: "2026-10-01", total: 116, iva: 16 }],
+    [{ fecha: "2026-10-01", importe: 116, importe_sin_descuento: 140 }], 0);
+  assert.equal(canal.bruta, 140);
+  assert.equal(canal.brutaSinIva, 120.69);
+  assert.equal(resumenCanalPL([{ fecha: "2026-10-01", total: 116, iva: 16 }], [], 0).brutaSinIva, null);
+  assert.equal(resumenCanalPL([{ fecha: "2026-10-01", total: 0, iva: 0 }], [], 0).brutaSinIva, 0);
+  assert.deepEqual(entradaVacia().canales.dodo, { bruta: 0, brutaSinIva: 0, neta: 0, alimento: 0 });
+  const e = { ...entradaVacia(), canales: { dodo: canal, rappi: { bruta: 300, brutaSinIva: null, neta: 200, alimento: 60 } } };
+  const suma = sumarEntradas([e, e]);
+  assert.equal(suma.canales.dodo.brutaSinIva, 241.38);
+  assert.equal(suma.canales.rappi.brutaSinIva, null);
+  assert.equal(suma.canales.rappi.bruta, 600);
+});
 
 test("bruta: tolerancia de $1 y diferencia histórica justificada con productos",()=>{
  const dias=[{fecha:"2026-10-01",total:100,iva:16}];
