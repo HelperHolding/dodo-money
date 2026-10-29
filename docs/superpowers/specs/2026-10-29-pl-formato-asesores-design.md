@@ -30,7 +30,7 @@ estructura de la plantilla, en pantalla y en Excel.
 | Tema | Decisión |
 |---|---|
 | Ubicación | Pestaña nueva; Por cuentas, Contra meta y Comparativo no cambian |
-| Cálculo | Ninguno nuevo: capa de presentación sobre `EntradaPL` (función pura, con pruebas) |
+| Cálculo | Ninguno nuevo salvo la venta bruta sin IVA por canal (`CanalPL.brutaSinIva`): capa de presentación sobre `EntradaPL` (función pura, con pruebas) |
 | Debajo de EBITDA | D&A, EBIT, Intereses, Utilidad antes de impuestos, ISR y Utilidad neta se muestran como **Pendiente** (sin fuente todavía) |
 | Comisión Rappi | Arriba de Utilidad bruta, como en la plantilla |
 | Base del % | **Ventas brutas**, como en la plantilla (las demás pestañas usan venta neta); el encabezado lo indica |
@@ -42,11 +42,11 @@ estructura de la plantilla, en pantalla y en Excel.
 
 | Sección | Renglón | Fuente (`EntradaPL` / `calcularPL`) |
 |---|---|---|
-| Ventas | Ventas Dine-In | `canales.dodo.bruta` |
-| | Ventas brutas Rappi | `canales.rappi.bruta` |
+| Ventas | Ventas Dine-In | `canales.dodo.brutaSinIva` |
+| | Ventas brutas Rappi | `canales.rappi.brutaSinIva` |
 | | **Ventas brutas** | suma |
-| | Descuentos Dine-In | `canales.dodo.bruta − canales.dodo.neta` |
-| | Descuentos Rappi | `canales.rappi.bruta − canales.rappi.neta` |
+| | Descuentos Dine-In | `canales.dodo.brutaSinIva − canales.dodo.neta` |
+| | Descuentos Rappi | `canales.rappi.brutaSinIva − canales.rappi.neta` |
 | | **Total descuentos** | suma |
 | | Rappi · ingresos fuera de base / excedente DAR | `rappiFueraBase`, `rappiExcedente` (solo si ≠ 0) |
 | | **Ventas netas** | renglón `venta_neta` + los dos anteriores |
@@ -69,12 +69,25 @@ estructura de la plantilla, en pantalla y en Excel.
 
 Columnas: **Monto** y **% de ventas brutas**. Renglones con monto cero (fuera de los de la plantilla) no se muestran.
 
+`brutaSinIva` es la venta bruta **sin IVA**: `CanalPL.bruta` (Σ `importe_sin_descuento`) lleva IVA, y la neta no; por eso
+`resumenCanalPL` calcula aparte, por día, `bruta del día × (total − iva) / total` (un día con total 0 aporta 0), y
+`brutaSinIva` es `null` cuando `bruta` lo es. `bruta` no cambia de significado (lo usan las demás pestañas). Los descuentos
+son `brutaSinIva − neta`. Ventas Dine-In y Ventas brutas Rappi no despliegan "De dónde sale": su detalle era la venta neta.
+
 ## 4. Casos límite
 
-- **Venta bruta desconocida** (`bruta === null`, el detalle por producto no cubre el día): Ventas brutas y descuentos de
-  ese canal se muestran como Pendiente; el % pasa a calcularse sobre **ventas netas** y el encabezado y un aviso lo dicen.
+- **Venta bruta desconocida** (`brutaSinIva === null`, el detalle por producto no cubre el día): Ventas brutas y
+  descuentos de ese canal se muestran como Pendiente; el % pasa a calcularse sobre **ventas netas** y el encabezado y un
+  aviso lo dicen.
+- **Rappi con reporte financiero**: cuando la venta neta de Rappi se ajusta o reemplaza con el reporte financiero, la
+  bruta sin IVA de Rappi no es confiable: `brutaSinIva` queda en `null` (Ventas brutas Rappi y Descuentos Rappi en
+  Pendiente) y la base del % pasa a **ventas netas**.
 - **Merma pendiente**: se muestra como Pendiente pero suma 0 en Utilidad bruta, igual que `calcularPL`, para que los
   totales coincidan con Contra meta.
+- **Totales provisionales**: si la merma o Rappi están pendientes, Utilidad bruta, Total gastos sucursal, EBITDA 4-Wall
+  y EBITDA conservan su monto pero se marcan provisionales ("Provisional: hay montos pendientes" en pantalla, sufijo
+  "(provisional)" en Excel); con Rappi pendiente también Ventas netas y Comisión Rappi.
+- **Avisos en el Excel**: la hoja incluye al final, una por fila, los avisos del formato y los de la página.
 - **Periodo sin días cerrados**: el mismo estado vacío que las otras pestañas.
 - **Comprobación**: si Utilidad bruta − Total gastos sucursal no coincide con `ebitda_tienda` (o EBITDA con `ebitda`)
   al centavo, la función lanza error en pruebas y en pantalla se muestra un aviso en vez de cifras inconsistentes.
