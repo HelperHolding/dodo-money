@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decimal, diaYNumero, fechaMX, fechaTexto, hoyCalendarioMX, hoyMX, numeroCorto, pesosCortos, pesosRedondos, porcentaje, rangoDiaMX } from "./formato.ts";
+import { decimal, diaYNumero, fechaConAnio, fechaMX, fechaTexto, hoyCalendarioMX, hoyMX, numeroCorto, pesosCortos, pesosRedondos, porcentaje, rangoDiaMX } from "./formato.ts";
 
 test("decimal acepta punto o coma", () => {
   assert.equal(decimal("0,5"), 0.5);
@@ -38,6 +38,11 @@ test("fechaTexto muestra día de la semana, día y mes", () => {
   assert.match(t, /^vie/);
   assert.match(t, /25/);
   assert.match(t, /sep/);
+});
+
+test("fechaConAnio agrega el año para fechas que cruzan de un año a otro", () => {
+  assert.equal(fechaConAnio("2026-10-29"), "jue 29 de oct de 2026");
+  assert.equal(fechaConAnio("2027-10-29"), "vie 29 de oct de 2027");
 });
 
 test("porcentaje", () => {
