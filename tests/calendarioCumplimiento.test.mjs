@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
-const load=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8').replace(/^FEFF/,'');
+const load=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8').replace(/^﻿/,'');
 const compromisos=load('supabase/migrations/20261028180000_compromisos_recurrentes.sql');
 const retenciones=load('supabase/migrations/20261029120000_compromisos_retenciones.sql');
 const migracion=load('supabase/migrations/20261029150000_calendario_cumplimiento.sql');
