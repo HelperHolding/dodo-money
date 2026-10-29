@@ -81,6 +81,7 @@ begin
  select * into previa from public.banca_conciliaciones where id=p_solicitud;
  if found then
   if previa.creado_por<>auth.uid() or previa.solicitud is distinct from sol then raise exception 'La solicitud ya se utilizó con otros datos.';end if;
+  if previa.anulada_en is not null then raise exception 'Esa conciliación ya fue anulada; vuelve a cargar la página para conciliar de nuevo.';end if;
   return previa.id;
  end if;
  if (select count(distinct x) from unnest(p_movimientos) x)<>array_length(p_movimientos,1) then raise exception 'Hay movimientos repetidos en la solicitud.';end if;

@@ -53,7 +53,12 @@ export const MAX_DIAS_ARCHIVO = 92;
 export const ARCHIVO_MUY_GRANDE = "El archivo es muy grande para guardarlo de una vez; expórtalo e impórtalo por semanas.";
 
 /** Mensaje para el admin cuando falla el guardado: si Supabase cortó por tiempo, qué hacer; si no, el error tal cual. */
-export const mensajeAlGuardar = (mensaje: string) => (/statement timeout/i.test(mensaje) ? ARCHIVO_MUY_GRANDE : mensaje);
+export const DIA_CONCILIADO = "Ese día ya está conciliado en Banca → Conciliación. Anula esa conciliación antes de reemplazar sus ventas.";
+export const mensajeAlGuardar = (mensaje: string) => (
+  /statement timeout/i.test(mensaje) ? ARCHIVO_MUY_GRANDE
+    : /banca_conciliacion_documentos/i.test(mensaje) && /foreign key|23503/i.test(mensaje) ? DIA_CONCILIADO
+    : mensaje
+);
 
 const COLUMNAS_PEDIDOS = [
   "OrderId", "Store", "Date", "Time", "Price", "PriceWithoutDiscount", "ProductsCount", "PaymentType", "Type",

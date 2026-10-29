@@ -23,6 +23,7 @@ export async function Banregio({db,cuentas,edita,q}:{db:SupabaseClient;cuentas:C
   type Movimiento={id:string;fecha:string;descripcion:string;referencia:string;cargo:number;abono:number;saldo:number;sucursales:{nombre:string}|null;importacion_id:string};
   type Importacion={id:string;archivo:string;periodo_desde:string;periodo_hasta:string;primera_fecha:string;ultima_fecha:string;saldo_final:number;nuevos:number;repetidos:number;creado_en:string};
   let movimientos:Movimiento[]=[],historial:Importacion[]=[],total=0;
+  let conciliados=new Set<string>();
   if(cuenta){
     let consulta=db.from("banca_movimientos").select("id,fecha,descripcion,referencia,cargo,abono,saldo,importacion_id,sucursales(nombre)",{count:"exact"}).eq("cuenta_id",cuenta.id);
     if(desde) consulta=consulta.gte("fecha",desde);
@@ -34,6 +35,11 @@ export async function Banregio({db,cuentas,edita,q}:{db:SupabaseClient;cuentas:C
     ]);
     if(mov.error||imp.error) throw Error("No se pudieron consultar los movimientos o el historial bancario.");
     movimientos=mov.data??[];historial=imp.data??[];total=mov.count??0;
+    if(movimientos.length){
+      const {data:con,error:errCon}=await db.from("banca_conciliacion_movimientos").select("movimiento_id").eq("activa",true).in("movimiento_id",movimientos.map(m=>m.id)).returns<{movimiento_id:string}[]>();
+      if(errCon) throw Error("No se pudo consultar el estado de conciliación.");
+      conciliados=new Set((con??[]).map(c=>c.movimiento_id));
+    }
   }
   const url=(p:number)=>`/banca?${new URLSearchParams({vista:"banregio",cuenta:cuenta?.id??"",...(desde?{desde}:{}),...(hasta?{hasta}:{}),...(buscar?{q:buscar}:{}),pagina:String(p)})}`;
   return <section className={styles.panel}>
@@ -46,7 +52,7 @@ export async function Banregio({db,cuentas,edita,q}:{db:SupabaseClient;cuentas:C
       <label>Buscar en descripción<input type="search" name="q" defaultValue={buscar} placeholder="Proveedor, plataforma o concepto" maxLength={100}/></label><button className="boton boton-secundario">Filtrar</button>
     </form>
     {desde&&hasta&&desde>hasta?<p role="alert" className="aviso aviso-error">La fecha inicial debe ser anterior a la final.</p>:null}
-    <div className={styles.tabla}><table><caption>{total} movimientos · {cuenta?.razon_social??"Banregio"}</caption><thead><tr>{["Fecha","Sucursal","Descripción / referencia","Cargo","Abono","Saldo después del movimiento","Estado","Fuente"].map(t=><th scope="col" key={t}>{t}</th>)}</tr></thead><tbody>{movimientos.map(m=><tr key={m.id}><td>{fechaTexto(m.fecha)}</td><td>{m.sucursales?.nombre??"Sin asignar"}</td><td className={styles.descripcion}>{m.descripcion}<br/><small>{m.referencia}</small></td><td>{Number(m.cargo)?pesos(Number(m.cargo)):"—"}</td><td>{Number(m.abono)?pesos(Number(m.abono)):"—"}</td><td>{pesos(Number(m.saldo))}</td><td><span className={styles.estado}>Sin conciliar</span></td><td><a href={`/banca/importaciones/${m.importacion_id}/archivo`}>Excel original</a></td></tr>)}{!movimientos.length&&<tr><td colSpan={8}><div className={styles.vacio}><h3>{cuentas.length?"No hay movimientos con estos filtros":"Todavía no hay reportes de Banregio"}</h3><p>{cuentas.length?"Cambia las fechas o el texto de búsqueda.":"El Excel se valida antes de guardar. Los PDF se utilizan para cotejar el reporte."}</p></div></td></tr>}</tbody></table></div>
+    <div className={styles.tabla}><table><caption>{total} movimientos · {cuenta?.razon_social??"Banregio"}</caption><thead><tr>{["Fecha","Sucursal","Descripción / referencia","Cargo","Abono","Saldo después del movimiento","Estado","Fuente"].map(t=><th scope="col" key={t}>{t}</th>)}</tr></thead><tbody>{movimientos.map(m=><tr key={m.id}><td>{fechaTexto(m.fecha)}</td><td>{m.sucursales?.nombre??"Sin asignar"}</td><td className={styles.descripcion}>{m.descripcion}<br/><small>{m.referencia}</small></td><td>{Number(m.cargo)?pesos(Number(m.cargo)):"—"}</td><td>{Number(m.abono)?pesos(Number(m.abono)):"—"}</td><td>{pesos(Number(m.saldo))}</td><td><span className={styles.estado}>{conciliados.has(m.id)?"Conciliado":"Sin conciliar"}</span></td><td><a href={`/banca/importaciones/${m.importacion_id}/archivo`}>Excel original</a></td></tr>)}{!movimientos.length&&<tr><td colSpan={8}><div className={styles.vacio}><h3>{cuentas.length?"No hay movimientos con estos filtros":"Todavía no hay reportes de Banregio"}</h3><p>{cuentas.length?"Cambia las fechas o el texto de búsqueda.":"El Excel se valida antes de guardar. Los PDF se utilizan para cotejar el reporte."}</p></div></td></tr>}</tbody></table></div>
     {total>50&&<nav className="acciones" aria-label="Páginas de movimientos">{pagina>1&&<Link href={url(pagina-1)}>← Anterior</Link>}<span>Página {pagina} de {Math.ceil(total/50)}</span>{pagina*50<total&&<Link href={url(pagina+1)}>Siguiente →</Link>}</nav>}
     <p className={styles.nota}>El saldo de cada fila conserva el orden del archivo original. Importar no genera ventas, gastos, pagos ni traslados. Las asociaciones se registran en la pestaña Conciliación.</p>
     <details className={styles.detalle}><summary>Historial de importaciones · últimas 20</summary><div className={styles.tabla}><table><thead><tr>{["Archivo","Periodo solicitado","Movimientos incluidos","Nuevos / repetidos","Saldo final","Original"].map(t=><th key={t} scope="col">{t}</th>)}</tr></thead><tbody>{historial.map(i=><tr key={i.id}><td>{i.archivo}</td><td>{fechaTexto(i.periodo_desde)} a {fechaTexto(i.periodo_hasta)}</td><td>{fechaTexto(i.primera_fecha)} a {fechaTexto(i.ultima_fecha)}</td><td>{i.nuevos} / {i.repetidos}</td><td>{pesos(Number(i.saldo_final))}</td><td><a href={`/banca/importaciones/${i.id}/archivo`}>Descargar Excel</a></td></tr>)}</tbody></table></div></details>

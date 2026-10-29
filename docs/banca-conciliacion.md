@@ -14,6 +14,8 @@ Solo administración concilia y anula. Administración y corporativo consultan.
 - **Nómina:** cargos de la dispersión, opcionalmente con la nómina real del mes.
 - **Sin documento:** con concepto y nota obligatoria (comisiones bancarias, IMSS, préstamos, traspasos…).
 
+Un día de venta conciliado no se puede reemplazar desde Ventas → Importar hasta anular su conciliación.
+
 Un movimiento, un pago, un día de venta y un paidlot pertenecen a lo más a una conciliación activa. Los montos y la diferencia los calcula la base; una diferencia distinta de cero exige nota. Anular exige motivo y libera los vínculos.
 
 ## Sugerencias

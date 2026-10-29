@@ -48,3 +48,14 @@ test('conciliación bancaria: solo lectura para la app y RPC solo para autentica
   assert.equal((await db.query(`select has_function_privilege('authenticated','conciliar_banca(uuid,uuid[],text,text,jsonb,text)','execute') ok`)).rows[0].ok,true);
  }finally{await db.close();}
 });
+
+test('conciliación bancaria: corporativo puede leer Compras pero no conciliar ni anular',async()=>{
+ const db=await nueva();
+ try{
+  await db.query("select set_config('request.jwt.claims','{\"sub\":\"00000000-0000-0000-0000-0000000000c1\",\"role\":\"authenticated\"}',false)");
+  const m='00000000-0000-0000-0000-000000000001';
+  await assert.rejects(db.query("select public.conciliar_banca(gen_random_uuid(),array[$1::uuid],'sin_documento','comisiones_bancarias','[]'::jsonb,'x')",[m]),/Solo administración/);
+  await assert.rejects(db.query("select public.anular_conciliacion($1::uuid,'motivo de prueba')",[m]),/Solo administración/);
+  assert.equal((await db.query('select public.ve_compras() ok')).rows[0].ok,true);
+ }finally{await db.close();}
+});

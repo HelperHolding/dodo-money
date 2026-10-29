@@ -2,7 +2,7 @@
 -- Usa un admin activo, una razón social con un día de venta con tarjeta y un pago por transferencia ya registrados; crea una cuenta y movimientos de prueba.
 do $$
 declare a uuid; empresa text; vd record; pg record; rp record; c uuid; imp uuid:=gen_random_uuid();
- m1 uuid; m2 uuid; m3 uuid; m4 uuid; m5 uuid; m6 uuid; m7 uuid; m8 uuid; m9 uuid; m10 uuid; k1 uuid:=gen_random_uuid(); k uuid; kp uuid; ok boolean; x public.banca_conciliaciones;
+ m1 uuid; m2 uuid; m3 uuid; m4 uuid; m5 uuid; m6 uuid; m7 uuid; m8 uuid; m9 uuid; m10 uuid; k1 uuid:=gen_random_uuid(); k uuid; kp uuid; sk uuid:=gen_random_uuid(); ok boolean; x public.banca_conciliaciones;
  dv jsonb; dp jsonb; f date;
 begin
  select p.id into a from public.perfiles p where p.activo and p.rol::text='admin' and not p.debe_cambiar_contrasena limit 1;
@@ -75,7 +75,7 @@ begin
  perform public.conciliar_banca(gen_random_uuid(),array[m6],'sin_documento','prestamo_recibido','[]','Préstamo de prueba');
 
  -- 7. Pago a proveedor exacto; el pago no se puede vincular dos veces.
- kp:=public.conciliar_banca(gen_random_uuid(),array[m4],'pago_proveedor','proveedores',dp,'');
+ kp:=public.conciliar_banca(sk,array[m4],'pago_proveedor','proveedores',dp,'');
  select * into x from public.banca_conciliaciones where id=kp;
  if x.monto_documentos<>-pg.monto or x.diferencia<>0 then raise exception 'FALLÓ: pago a proveedor % %',x.monto_documentos,x.diferencia;end if;
  ok:=false; begin perform public.conciliar_banca(gen_random_uuid(),array[m7],'pago_proveedor','proveedores',dp,'x'); exception when others then ok:=sqlerrm like '%ya está conciliado%'; end;
@@ -91,6 +91,8 @@ begin
  perform public.anular_conciliacion(kp,'Prueba de anulación');
  if exists(select 1 from public.banca_conciliacion_movimientos where conciliacion_id=kp and activa) or exists(select 1 from public.banca_conciliacion_documentos where conciliacion_id=kp and activa) then raise exception 'FALLÓ: la anulación no liberó vínculos';end if;
  if not exists(select 1 from public.banca_por_conciliar where id=m4) or exists(select 1 from public.banca_por_conciliar where id=m1) then raise exception 'FALLÓ: vista de movimientos por conciliar';end if;
+ ok:=false; begin perform public.conciliar_banca(sk,array[m4],'pago_proveedor','proveedores',dp,''); exception when others then ok:=sqlerrm like 'Esa conciliación ya fue anulada%'; end;
+ if not ok then raise exception 'FALLÓ: la repetición de una solicitud anulada no avisó';end if;
  ok:=false; begin perform public.anular_conciliacion(kp,'Otra vez'); exception when others then ok:=sqlerrm like '%ya está anulada%'; end;
  if not ok then raise exception 'FALLÓ: anuló dos veces';end if;
 

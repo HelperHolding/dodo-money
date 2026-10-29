@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { leerHojas, type Hoja } from "./xlsx.ts";
-import { ARCHIVO_MUY_GRANDE, extraerDatosBrutos, HOJAS_NO_COINCIDEN, mensajeAlGuardar, NO_ES_DATOS_BRUTOS, SIN_PEDIDOS } from "./datosBrutos.ts";
+import { ARCHIVO_MUY_GRANDE, DIA_CONCILIADO, extraerDatosBrutos, HOJAS_NO_COINCIDEN, mensajeAlGuardar, NO_ES_DATOS_BRUTOS, SIN_PEDIDOS } from "./datosBrutos.ts";
 import { canales, combos, cuentaComoVenta, diaSemana, ivaDe, personalYCancelados, resumirDias, tiempos, tiposDesglose, ventaPorHora } from "./pedidos.ts";
 
 const leer = (n: string) => leerHojas(readFileSync(new URL(`./__fixtures__/${n}`, import.meta.url)));
@@ -164,4 +164,10 @@ test("mensajeAlGuardar: si Supabase corta por tiempo, pide importar por semanas;
   assert.equal(mensajeAlGuardar("canceling statement due to statement timeout"), ARCHIVO_MUY_GRANDE);
   assert.match(ARCHIVO_MUY_GRANDE, /por semanas/);
   assert.equal(mensajeAlGuardar("Estos días ya se importaron: 2026-09-25."), "Estos días ya se importaron: 2026-09-25.");
+});
+
+test("mensajeAlGuardar: un día conciliado en Banca no se reemplaza y avisa cómo liberarlo", () => {
+  assert.equal(mensajeAlGuardar('update or delete on table "ventas_dia" violates foreign key constraint "banca_conciliacion_documentos_ventas_dia_id_fkey" on table "banca_conciliacion_documentos"'), DIA_CONCILIADO);
+  assert.match(DIA_CONCILIADO, /Anula esa conciliación/);
+  assert.equal(mensajeAlGuardar('violates foreign key constraint "otra_fkey"'), 'violates foreign key constraint "otra_fkey"');
 });

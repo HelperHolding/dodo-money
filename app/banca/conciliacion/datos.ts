@@ -17,7 +17,7 @@ export async function leerConciliacion(db: SupabaseClient, cuenta: { id: string;
   const falla = (que: string) => { throw Error(`No se pudo consultar ${que}. Verifica que la migración de conciliación esté instalada.`); };
   const [pend, links, rss, lotes] = await Promise.all([
     leerTodo<Fila>((a, b) => db.from("banca_por_conciliar").select("id,fecha,fila_origen,descripcion,referencia,cargo,abono").eq("cuenta_id", cuenta.id)
-      .gte("fecha", desde).lte("fecha", hasta).order("fecha").order("fila_origen").range(a, b).returns<Fila[]>()),
+      .gte("fecha", desde).lte("fecha", hasta).order("fecha").order("fila_origen").order("id").range(a, b).returns<Fila[]>()),
     leerTodo<{ conciliacion_id: string; banca_movimientos: Fila & { cuenta_id: string } }>((a, b) => db.from("banca_conciliacion_movimientos")
       .select("conciliacion_id,banca_movimientos!inner(id,fecha,fila_origen,descripcion,referencia,cargo,abono,cuenta_id)").eq("activa", true)
       .eq("banca_movimientos.cuenta_id", cuenta.id).gte("banca_movimientos.fecha", desde).lte("banca_movimientos.fecha", hasta)
