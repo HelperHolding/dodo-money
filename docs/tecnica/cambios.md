@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-29 · Precio POS desde Dodo IS
+
+El precio POS de costeo, ficha y calculadoras sale del último cobro en tienda registrado por Dodo IS (precio de lista sin descuento, últimos 60 días); el Excel del BOM queda solo como respaldo para productos sin ventas y para el periférico. Productos sin receta, como bebidas y dips, ya tienen precio POS. Sin migración.
+
 ## 2026-10-29 · Costeo con comisiones por canal
 
 Costeo con el formato de The Coffee: margen bruto, comisión, margen con comisión y utilidad por canal en la ficha; la lista y las calculadoras muestran POS después de la comisión de terminal. POS = tasa NetPay (Amex/internacional en su parte) × parte de la venta fuera de Rappi cobrada con tarjeta en los últimos 30 días. Rappi sigue con `rappi_pct` sobre el precio con IVA; la gracia de tres meses se quita registrando 18 % desde la fecha real en Finanzas → Parámetros, lo que también aplica al P&L. La ficha usa la lista oficial Rappi vigente. Sin migración.

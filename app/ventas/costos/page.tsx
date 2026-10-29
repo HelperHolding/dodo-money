@@ -1,7 +1,7 @@
 import ListaCosteo from "./ListaCosteo";
 import {BusquedaUrl} from "@/components/BusquedaUrl";
 import {catalogoCosteo} from "./catalogo";
-import {ultimosPreciosCosteo} from "./precios";
+import {ultimosPreciosCosteo,preciosPOSDodo} from "./precios";
 import {comisionRappiVigente,comisionPOSVigente} from "./comision";
 import type {FiltroCosteo,FilaCosteo} from "@/lib/costeo/lista";
 import Link from "next/link";
@@ -33,7 +33,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
   const esLista = vista !== "tarjetas";
 
   // Todas las páginas: con cada recarga de costos la tabla crece y Supabase corta en 1000 sin avisar.
-  const [productos, costos, correcciones,preciosRappi,comisionRappi,comisionPOS] = await Promise.all([
+  const [productos, costos, correcciones,preciosRappi,comisionRappi,comisionPOS,preciosPOS] = await Promise.all([
     leerTodo<Producto>((desde, hasta) => supabase.from("productos_venta").select("dodo_id, nombre, categoria, tamano")
       .order("nombre").order("dodo_id").range(desde, hasta).returns<Producto[]>()),
     leerTodo<Costo>((desde, hasta) => supabase.from("costos_producto").select("id, dodo_id, costo, vigente_desde, fuente, nota")
@@ -43,6 +43,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
     ultimosPreciosCosteo(supabase,hoy),
     comisionRappiVigente(supabase,hoy),
     comisionPOSVigente(supabase,hoy),
+    preciosPOSDodo(supabase,hoy),
   ]);
   const correccionesDe = new Map<string, Correccion[]>();
   for (const k of correcciones) correccionesDe.set(k.costo_id, [...(correccionesDe.get(k.costo_id) ?? []), k]);
@@ -56,7 +57,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
     .map((c) => ({ categoria: c, productos: visibles.filter((p) => p.categoria === c) }))
     .filter((g) => g.productos.length > 0);
 
-  const filas:FilaCosteo[]=productos.map(p=>{const c=vigente(p),r=recetas.find(r=>r.dodo_id===p.dodo_id),precio=preciosRappi.get(p.dodo_id);return {id:p.dodo_id,nombre:p.nombre,categoria:p.categoria?NOMBRE_CATEGORIA[p.categoria]:"Sin categoría",tamano:p.tamano?TAMANO[p.tamano]:"Sin tamaño",costo:c?Number(c.costo):null,desde:c?.vigente_desde??null,fuente:c?.fuente??null,nota:c?.nota??null,pos:r?.receta.precioVenta??null,rappi:precio?.precio??null,rappiFecha:precio?.fecha??null,rappiOficial:precio?.oficial??false,bom:!!r,costoBOM:r?.costo===null||!r?null:v?.periferico&&r.receta.precioVenta===null?null:Math.round((Number(r.costo)+(v?.periferico?Number(r.receta.precioVenta)*.01:0))*100)/100,insumos:r?.receta.materiales.map(m=>m.nombre)??[]};});
+  const filas:FilaCosteo[]=productos.map(p=>{const c=vigente(p),r=recetas.find(r=>r.dodo_id===p.dodo_id),precio=preciosRappi.get(p.dodo_id),dodo=preciosPOS.get(p.dodo_id);return {id:p.dodo_id,nombre:p.nombre,categoria:p.categoria?NOMBRE_CATEGORIA[p.categoria]:"Sin categoría",tamano:p.tamano?TAMANO[p.tamano]:"Sin tamaño",costo:c?Number(c.costo):null,desde:c?.vigente_desde??null,fuente:c?.fuente??null,nota:c?.nota??null,pos:dodo?.precio??r?.receta.precioVenta??null,posFecha:dodo?.fecha??null,posDodo:!!dodo,rappi:precio?.precio??null,rappiFecha:precio?.fecha??null,rappiOficial:precio?.oficial??false,bom:!!r,costoBOM:r?.costo===null||!r?null:v?.periferico&&r.receta.precioVenta===null?null:Math.round((Number(r.costo)+(v?.periferico?Number(r.receta.precioVenta)*.01:0))*100)/100,insumos:r?.receta.materiales.map(m=>m.nombre)??[]};});
 
   return (
     <>
