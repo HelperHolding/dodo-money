@@ -83,8 +83,9 @@ export function calcularFlujo(movs: readonly MovimientoFlujo[], previos: readonl
   let inicial = 0, final = 0;
   for (const id of new Set([...previos.map((p) => p.cuentaId), ...orden.map((m) => m.cuentaId)])) {
     const ms = orden.filter((m) => m.cuentaId === id);
-    if (ms.length) { inicial += ms[0].saldo - ms[0].abono + ms[0].cargo; final += ms[ms.length - 1].saldo; }
-    else { const p = previos.find((x) => x.cuentaId === id); if (p) { inicial += p.saldo; final += p.saldo; } }
+    const p = previos.find((x) => x.cuentaId === id);
+    if (ms.length) { inicial += p ? p.saldo : ms[0].saldo - ms[0].abono + ms[0].cargo; final += ms[ms.length - 1].saldo; }
+    else if (p) { inicial += p.saldo; final += p.saldo; }
   }
   inicial = c(inicial); final = c(final);
   const totales: Record<string, number> = {
@@ -100,6 +101,13 @@ export function calcularFlujo(movs: readonly MovimientoFlujo[], previos: readonl
     porConciliar: { n: orden.filter((m) => !m.conciliacion).length, entradas: monto("por_conciliar_entradas"), salidas: monto("por_conciliar_salidas") },
     ultimaFecha: orden.length ? orden[orden.length - 1].fecha : null,
   };
+}
+
+/** Copia del flujo con otros saldos inicial y final (p. ej. el total del año: inicial del primer mes, final del último). */
+export function conSaldos(f: Flujo, inicial: number, final: number): Flujo {
+  const neto = f.renglones.find((r) => r.clave === "flujo_neto")?.monto ?? 0;
+  const monto = (k: string, m: number) => (k === "saldo_inicial" ? inicial : k === "saldo_final" ? final : m);
+  return { ...f, renglones: f.renglones.map((r) => ({ ...r, monto: monto(r.clave, r.monto) })), saldoInicial: inicial, saldoFinal: final, diferencia: c(final - (inicial + neto)) };
 }
 
 /** Un flujo por periodo consecutivo; el saldo de cada cuenta se arrastra al siguiente. */

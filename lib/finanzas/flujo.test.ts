@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { calcularFlujo, flujoPorMes, visibles, type Flujo, type MovimientoFlujo } from "./flujo.ts";
+import { calcularFlujo, conSaldos, flujoPorMes, visibles, type Flujo, type MovimientoFlujo } from "./flujo.ts";
 
 let fila = 0;
 const mov = (fecha: string, cargo: number, abono: number, saldo: number, tipo: string | null = null, concepto = "", cuentaId = "c1"): MovimientoFlujo =>
@@ -68,6 +68,20 @@ test("hueco en los saldos del banco: se reporta la diferencia", () => {
   const f = calcularFlujo([mov("2026-10-01", 0, 100, 1100), mov("2026-10-02", 50, 0, 900)]);
   assert.deepEqual([f.saldoInicial, f.saldoFinal], [1000, 900]);
   assert.equal(f.diferencia, -150);
+});
+
+test("hueco al inicio del periodo: el saldo previo manda y la diferencia lo expone", () => {
+  const f = calcularFlujo([mov("2026-10-05", 0, 100, 1600)], [{ cuentaId: "c1", saldo: 1000 }]);
+  assert.deepEqual([f.saldoInicial, f.saldoFinal, f.diferencia], [1000, 1600, 500]);
+});
+
+test("conSaldos: reemplaza saldo inicial y final y recalcula la diferencia", () => {
+  const f = calcularFlujo([mov("2026-10-05", 0, 100, 1600)], [{ cuentaId: "c1", saldo: 1000 }]);
+  const g = conSaldos(f, 1000, 1100);
+  assert.deepEqual([g.saldoInicial, g.saldoFinal, g.diferencia], [1000, 1100, 0]);
+  assert.equal(de(g, "saldo_inicial").monto, 1000);
+  assert.equal(de(g, "saldo_final").monto, 1100);
+  assert.equal(de(f, "saldo_final").monto, 1600);
 });
 
 test("sin ingresos no hay porcentaje; sin movimientos todo en cero", () => {

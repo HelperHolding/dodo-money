@@ -24,17 +24,22 @@ export default async function PaginaFlujo({ searchParams }: { searchParams: Prom
   const filtro = new URLSearchParams({ mes, ...(rfc ? { rfc } : {}) });
   const pestana = (activa: boolean, vista: string, texto: string) =>
     <Link aria-current={activa ? "page" : undefined} href={`/finanzas/flujo?${new URLSearchParams({ ...Object.fromEntries(filtro), vista })}`}>{texto}</Link>;
-  const hasta = f.ultimaFecha && f.ultimaFecha < d.mes.hasta ? f.ultimaFecha : null;
+  // Cobertura: la cuenta más atrasada del filtro (null = sin movimientos) marca hasta dónde llega el flujo.
+  const ultimas = cuentas.filter((x) => !rfc || x.rfc === rfc).map((x) => x.ultima_fecha);
+  const cobertura = ultimas.some((u) => u === null) ? null : ultimas.reduce<string>((a, u) => (u! < a ? u! : a), ultimas[0]!);
+  const nota = cobertura === null || cobertura < d.mes.desde ? "sin movimientos importados en el mes" : cobertura < d.mes.hasta ? `movimientos hasta el ${fechaTexto(cobertura)}` : null;
+  const alcance = comparativo ? d.total.flujo : f;
+  const desde = comparativo ? d.columnas[0].desde : d.mes.desde;
   const avisos = [
-    f.porConciliar.n > 0 && <>{f.porConciliar.n} {f.porConciliar.n === 1 ? "movimiento" : "movimientos"} por conciliar en el mes ({pesos(f.porConciliar.entradas)} de entradas, {pesos(-f.porConciliar.salidas)} de salidas). <Link href={`/banca?${new URLSearchParams({ vista: "conciliacion", desde: d.mes.desde, hasta: d.mes.hasta })}`}>Conciliar en Banca →</Link></>,
-    f.diferencia !== 0 && <>El saldo final del banco difiere del calculado en {pesos(f.diferencia)}: hay huecos en los reportes importados.</>,
-  ].filter(Boolean);
+    alcance.porConciliar.n > 0 && { clase: "aviso-info", texto: <>{alcance.porConciliar.n} {alcance.porConciliar.n === 1 ? "movimiento" : "movimientos"} por conciliar {comparativo ? "en el año" : "en el mes"} ({pesos(alcance.porConciliar.entradas)} de entradas, {pesos(-alcance.porConciliar.salidas)} de salidas). <Link href={`/banca?${new URLSearchParams({ vista: "conciliacion", desde, hasta: d.mes.hasta })}`}>Conciliar en Banca →</Link></> },
+    alcance.diferencia !== 0 && { clase: "aviso-error", texto: <>El saldo final del banco difiere del calculado en {pesos(alcance.diferencia)}: hay huecos en los reportes importados.</> },
+  ].filter((a) => a !== false);
 
   return (
     <div className="panel-admin">
       <EncabezadoPagina
         titulo={<>Flujo de efectivo · {rfc ? empresas.find(([r]) => r === rfc)?.[1] : "Todas las razones sociales"}</>}
-        descripcion={<>{comparativo ? `Comparativo ${mes.slice(0, 4)}` : d.mes.etiqueta}{hasta && !comparativo && ` · movimientos hasta el ${fechaTexto(hasta)}`}. Cifras reales del banco según la conciliación; % sobre ingresos operativos.</>}
+        descripcion={<>{comparativo ? `Comparativo ${mes.slice(0, 4)}` : d.mes.etiqueta}{nota && ` · ${nota}`}. Cifras reales del banco según la conciliación; % sobre ingresos operativos.</>}
         acciones={<a className="boton boton-secundario boton-compacto" href={`/reporte/flujo/excel?${filtro}`} download><Icono nombre="descargar" />Excel</a>}
       />
       <div className="barra-filtros">
@@ -52,7 +57,7 @@ export default async function PaginaFlujo({ searchParams }: { searchParams: Prom
         </form>
       </div>
       {cuentas.length === 0 ? <EstadoVacio icono="banco" titulo="Todavía no hay movimientos bancarios" descripcion="Importa un reporte de Banregio en Banca para ver el flujo." /> : <>
-        {avisos.map((a, i) => <p key={i} role="status" className="aviso">{a}</p>)}
+        {avisos.map((a, i) => <p key={i} role="status" className={`aviso ${a.clase}`}>{a.texto}</p>)}
         {comparativo ? <TablaFlujoComparativo columnas={d.columnas} total={d.total} mostrar={d.mostrarComparativo} /> : <TablaFlujo flujo={f} mostrar={d.mostrarMes} />}
       </>}
     </div>

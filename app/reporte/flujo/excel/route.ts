@@ -5,6 +5,7 @@ import { puedeVerFinanzas } from "@/lib/roles";
 import { SECCIONES_FLUJO } from "@/lib/finanzas/flujo";
 import { hojaFlujo, hojaFlujoComparativo } from "@/lib/finanzas/excelFlujo";
 import { escribirXlsx } from "@/lib/xlsx-escribir";
+import { leerCuentasBanca } from "@/app/banca/Banregio";
 import { cargarFlujo } from "@/app/finanzas/flujo/datos";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +17,10 @@ export async function GET(request: Request) {
   const hoy = hoyMX();
   const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(q.get("mes") ?? "") && q.get("mes")! <= hoy.slice(0, 7) ? q.get("mes")! : hoy.slice(0, 7);
   const rfc = /^[A-ZÑ&]{3,4}\d{6}[A-Z\d]{3}$/.test(q.get("rfc") ?? "") ? q.get("rfc")! : null;
-  const d = await cargarFlujo(supabase, rfc, mes, hoy);
+  const [d, cuentas] = await Promise.all([cargarFlujo(supabase, rfc, mes, hoy), leerCuentasBanca(supabase)]);
   const ahora = new Date().toISOString();
   const generado = `${perfil.nombre} · ${fechaMX(ahora)} ${hora(ahora)}`;
-  const titulo = rfc ?? "Todas las razones sociales";
+  const titulo = rfc ? cuentas.find((c) => c.rfc === rfc)?.razon_social ?? rfc : "Todas las razones sociales";
   const archivo = escribirXlsx([
     ...hojaFlujo({ titulo, periodo: d.mes.etiqueta, generado, flujo: d.mes.flujo, secciones: SECCIONES_FLUJO, mostrar: d.mostrarMes }),
     ...hojaFlujoComparativo({ titulo, periodo: mes.slice(0, 4), generado, columnas: d.columnas, total: d.total, secciones: SECCIONES_FLUJO, mostrar: d.mostrarComparativo }),

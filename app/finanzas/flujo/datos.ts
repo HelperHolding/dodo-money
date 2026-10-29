@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { finDeMes } from "@/lib/finanzas/pl";
 import { periodoMes } from "@/lib/finanzas/periodo";
-import { calcularFlujo, flujoPorMes, visibles, type MovimientoFlujo, type SaldoPrevio } from "@/lib/finanzas/flujo";
+import { calcularFlujo, conSaldos, flujoPorMes, visibles, type MovimientoFlujo, type SaldoPrevio } from "@/lib/finanzas/flujo";
 
 type Fila = { id: string; cuenta_id: string; fecha: string; fila_origen: number; cargo: number; abono: number; saldo: number };
 type Vinculo = { movimiento_id: string; banca_conciliaciones: { tipo: string; concepto: string } };
@@ -51,8 +51,8 @@ export async function cargarFlujo(db: SupabaseClient, rfc: string | null, mes: s
   for (let m = inicio; m <= mes; m = siguienteMes(m)) meses.push(m);
   const rangos = meses.map((m) => ({ etiqueta: periodoMes(m, hoy).titulo, desde: `${m}-01`, hasta: finDeMes(m) }));
   const flujos = flujoPorMes(movimientos, previos, rangos);
-  const columnas = rangos.map((r, i) => ({ etiqueta: r.etiqueta, flujo: flujos[i] }));
-  const total = { etiqueta: "Total", flujo: calcularFlujo(movimientos.filter((x) => x.fecha >= rangos[0].desde), previos) };
+  const columnas = rangos.map((r, i) => ({ etiqueta: r.etiqueta, desde: r.desde, flujo: flujos[i] }));
+  const total = { etiqueta: "Total", flujo: conSaldos(calcularFlujo(movimientos.filter((x) => x.fecha >= rangos[0].desde), previos), flujos[0].saldoInicial, flujos[flujos.length - 1].saldoFinal) };
   const ultimo = rangos[rangos.length - 1];
   return {
     mes: { ...ultimo, flujo: flujos[flujos.length - 1] }, columnas, total,
