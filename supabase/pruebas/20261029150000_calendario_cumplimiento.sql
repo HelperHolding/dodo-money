@@ -1,6 +1,6 @@
 -- Ejecutar completo después de 20261029150000_calendario_cumplimiento.sql. PRUEBAS OK revierte los datos mediante un ERROR intencional.
 do $$
-declare a uuid;corp uuid;f record;o uuid;o2 uuid;fechas date[];ok boolean;n integer;p uuid;ef uuid;ed uuid;r record;
+declare a uuid;corp uuid;f record;o uuid;o2 uuid;fechas date[];ok boolean;n integer;p uuid;ef uuid;ed uuid;r record;msg text;
 begin
   select id into a from public.perfiles where activo and rol::text='admin' limit 1;
   select id into corp from public.perfiles where activo and rol::text='corporativo' limit 1;
@@ -72,8 +72,8 @@ begin
   -- 10. Obligación con pago, mensual desde el 10 de enero de 2027.
   p:=public.guardar_obligacion(null,0,jsonb_build_object('tipo','seguro','nombre','Póliza de responsabilidad','sucursal_id',f.sucursal_id,'frecuencia','mensual','inicio','2027-01-10','con_pago','true','proveedor_id',f.proveedor_id));
   -- Cerrar sin evidencia: rechazado. Fecha que no sale de la regla: rechazada.
-  begin perform public.cerrar_fecha_cumplimiento(p,'2027-01-10',0,'2027-01-10','Póliza renovada');ok:=true;exception when others then ok:=false;end;
-  if ok then raise exception 'FALLÓ: cierre sin evidencia';end if;
+  begin perform public.cerrar_fecha_cumplimiento(p,'2027-01-10',0,'2026-01-10','Póliza renovada');ok:=true;exception when others then ok:=false;msg:=sqlerrm;end;
+  if ok or msg not like '%foto y un documento%' then raise exception 'FALLÓ: cierre sin evidencia: %',msg;end if;
   begin perform public.omitir_fecha_cumplimiento(p,'2027-01-11',0,'No corresponde');ok:=true;exception when others then ok:=false;end;
   if ok then raise exception 'FALLÓ: fecha fuera de la regla';end if;
 
@@ -85,8 +85,8 @@ begin
   begin perform public.preparar_evidencia_cumplimiento(gen_random_uuid(),p,'2027-01-10','x.exe','exe','application/octet-stream',10,repeat('c',64));ok:=true;exception when others then ok:=false;end;
   if ok then raise exception 'FALLÓ: evidencia no permitida';end if;
   update public.cumplimiento_evidencias set confirmado_en=now() where id=ef;
-  begin perform public.cerrar_fecha_cumplimiento(p,'2027-01-10',0,'2027-01-10','Póliza renovada');ok:=true;exception when others then ok:=false;end;
-  if ok then raise exception 'FALLÓ: cierre solo con foto';end if;
+  begin perform public.cerrar_fecha_cumplimiento(p,'2027-01-10',0,'2026-01-10','Póliza renovada');ok:=true;exception when others then ok:=false;msg:=sqlerrm;end;
+  if ok or msg not like '%foto y un documento%' then raise exception 'FALLÓ: cierre solo con foto: %',msg;end if;
   update public.cumplimiento_evidencias set confirmado_en=now() where id=ed;
 
   -- 12. Fecha futura y nota corta: rechazadas. Cierre correcto: cumplida, revisión 1.
