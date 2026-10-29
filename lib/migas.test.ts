@@ -42,3 +42,8 @@ test("el detalle de un turno no lleva botón genérico (la página regresa a los
 test("programar pagos queda bajo Pagos", () => {
   assert.equal(texto(migas("/compras/pagos/programar", admin)), "Compras › Pagos(/compras/pagos) › Programar pagos");
 });
+
+test("compromisos fijos quedan bajo Pagos", () => {
+  assert.equal(texto(migas("/compras/pagos/compromisos", admin)), "Compras › Pagos(/compras/pagos) › Compromisos fijos");
+  assert.equal(texto(migas("/compras/pagos/compromisos/nuevo", admin)), "Compras › Pagos(/compras/pagos) › Compromisos fijos(/compras/pagos/compromisos) › Nuevo compromiso");
+});

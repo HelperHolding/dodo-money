@@ -16,6 +16,8 @@ import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { CalendarioPagos, type FacturaDelDia } from "./CalendarioPagos";
 import { diaDePagoSugerido } from "@/lib/compras/diasPago";
+import { avisosCompromisos, filtrarPrevistos, previstosPorDia, tituloCompromiso, ventanaCompromisos } from "@/lib/compras/compromisos";
+import { leerCompromisos, leerFechas, sucursalDe } from "./compromisos/datos";
 import { diasDePago } from "../servidor";
 import { FormComplementos } from "./FormComplementos";
 
@@ -53,6 +55,15 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
 
   // Sin fecha programada, una factura se paga en su día de pago sugerido (el autorizado anterior a su vencimiento).
   const dias = await diasDePago(supabase);
+  // Compromisos fijos: lo que aún no tiene factura sale como previsto. Si la migración no está, Pagos sigue igual.
+  const [compromisos, fechasCompromiso] = await Promise.all([leerCompromisos(supabase), leerFechas(supabase, ventanaCompromisos(hoy).desde, ventanaCompromisos(hoy).hasta)])
+    .catch(() => [[], []] as [Awaited<ReturnType<typeof leerCompromisos>>, Awaited<ReturnType<typeof leerFechas>>]);
+  const compromisosVisibles = filtrarPrevistos(compromisos, { sucursal, proveedor });
+  const idsCompromiso = new Set(compromisosVisibles.map((c) => c.id));
+  const fechasVisibles = fechasCompromiso.filter((f) => idsCompromiso.has(f.compromiso_id));
+  const previstos = previstosPorDia(fechasVisibles, new Map(compromisosVisibles.map((c) => [c.id, { monto: c.monto_estimado, titulo: tituloCompromiso(c, sucursalDe(c)) }])), hoy, (v) => diaDePagoSugerido(v, hoy, dias));
+  const requiereServicio = new Map(compromisosVisibles.map((c) => [c.id, c.requiere_servicio]));
+  const avisosFijos = avisosCompromisos(fechasVisibles, (id) => requiereServicio.get(id) ?? false, hoy);
   const facturas = facturasLeidas.map((f) => ({ ...f, pago_sugerido_el: diaDePagoSugerido(f.vence_el, hoy, dias) }));
 
   // Sucursal de una factura: la de sus órdenes o, sin orden, su destino ("oficina" = sin sucursal).
@@ -139,6 +150,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
       <EncabezadoPagina titulo="Pagos" descripcion={<>Lo que hay que pagar a proveedores, por fecha. <Link href="/compras/documentos?etapa=factura&articulo=si&ultima=si">Buscar la última factura por artículo</Link></>}
         acciones={<>
           <Link className="boton boton-secundario" href="/compras/pagos/programar"><Icono nombre="calendario" />Programar pagos</Link>
+          <Link className="boton boton-secundario" href="/compras/pagos/compromisos"><Icono nombre="calendario" />Compromisos fijos</Link>
           {edita && <Link className="boton" href="/compras/pagos/nuevo"><Icono nombre="mas" />Registrar un pago</Link>}
         </>} />
       <div className="indicadores-marco"><section className="indicadores" aria-label="Resumen de pagos">
@@ -191,7 +203,9 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
         <button className="boton boton-secundario boton-compacto" type="submit">Filtrar</button>
       </form>
 
-      <CalendarioPagos key={`${desde??''}:${hasta??''}:${proveedor}:${sucursal}:${complemento??''}`} hoy={hoy} porDia={porDia} filtros={{proveedor,sucursal,complemento}} rangoInicial={rango} />
+      {(avisosFijos.vencidosSinFactura > 0 || avisosFijos.serviciosSinComprobar > 0) && <p className="aviso aviso-error">
+        <Link href="/compras/pagos/compromisos">{[avisosFijos.vencidosSinFactura ? `${avisosFijos.vencidosSinFactura} pagos fijos vencidos sin factura` : "", avisosFijos.serviciosSinComprobar ? `${avisosFijos.serviciosSinComprobar} servicios sin comprobar` : ""].filter(Boolean).join(" · ")}</Link></p>}
+      <CalendarioPagos key={`${desde??''}:${hasta??''}:${proveedor}:${sucursal}:${complemento??''}`} hoy={hoy} porDia={porDia} previstos={previstos} filtros={{proveedor,sucursal,complemento}} rangoInicial={rango} />
 
       {complemento === "si" && sinComplemento.length > 0 && (
         <Plegable id="t-sin-complemento" titulo="Falta complemento de pago" resumen={`${sinComplemento.length} facturas`} alerta>

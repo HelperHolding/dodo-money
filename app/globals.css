@@ -627,6 +627,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 }
 .calendario-dia:hover:not(:disabled) { border-color: var(--accion); }
 .calendario-dia[data-vacio] { background: transparent; }
+.calendario-dia[data-previsto="si"] .calendario-venta { text-decoration: underline dotted; }
 .calendario-dia:disabled { opacity: 0.35; cursor: not-allowed; }
 .calendario-dia[data-estado="dentro"] { background: var(--accion-suave); border-color: var(--accion-suave-borde); }
 .calendario-dia[data-estado="extremo"] { background: var(--accion); border-color: var(--accion); color: var(--accion-texto); }

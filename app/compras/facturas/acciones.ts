@@ -188,6 +188,12 @@ export async function registrarGastoManual(fd: FormData) {
     const { error: errorPeriodo } = await supabase.rpc("cambiar_periodo_factura", { p_factura: id, p_desde: periodo.desde, p_hasta: periodo.hasta });
     if (errorPeriodo) aviso = ` El periodo no se guardó (${errorPeriodo.message}); corrígelo aquí.`;
   }
+  // Capturado desde un compromiso fijo: se liga a su fecha para que deje de contarse como previsto.
+  const compromiso = texto(fd, "compromiso_id");
+  if (compromiso) {
+    const { error: errorLiga } = await supabase.rpc("ligar_factura_compromiso", { p_compromiso: compromiso, p_vence: texto(fd, "compromiso_vence"), p_revision: Number(texto(fd, "compromiso_revision") || 0), p_factura: id });
+    aviso += errorLiga ? ` No se ligó al compromiso (${errorLiga.message}); lígalo desde Compromisos fijos.` : " Quedó ligado al compromiso.";
+  }
   revalidatePath("/compras", "layout");
   volver(`/compras/facturas/${id}`, "ok", `Gasto sin CFDI registrado.${aviso} Cuando llegue el CFDI, súbelo y elige qué gasto sustituye.`);
 }
