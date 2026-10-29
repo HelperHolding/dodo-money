@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ventanaCompromisos, avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "./compromisos.ts";
+import { calcularGasto } from "./gastoManual.ts";
+import { impuestosDe, ventanaCompromisos, avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "./compromisos.ts";
 
 const fecha = (x: Partial<FechaCompromiso> = {}): FechaCompromiso => ({
   compromiso_id: "c1", vence: "2026-11-01", fecha_id: null, factura_id: null, factura_estado: null, factura_saldo: null,
@@ -65,10 +66,10 @@ test("filtros de Pagos: sucursal, proveedor y oficina", () => {
 });
 
 test("leer el formulario", () => {
-  const base: Record<string, string> = { sucursal_id: "s1", concepto: "renta", descripcion: "", proveedor_id: "p1", monto_estimado: "$45,000.50", forma_pago: "transferencia", unidad: "mes", cada: "1", dia_mes: "31", inicio: "2026-11-30", fin: "", requiere_servicio: "" };
+  const base: Record<string, string> = { sucursal_id: "s1", concepto: "renta", descripcion: "", proveedor_id: "p1", monto_estimado: "$45,000.50", forma_pago: "transferencia", unidad: "mes", cada: "1", dia_mes: "31", inicio: "2026-11-30", fin: "", requiere_servicio: "", iva: "16", ret_iva: "dos_tercios", ret_isr: "diez" };
   const leer = (x: Record<string, string>) => leerCompromiso((c) => x[c] ?? "");
-  assert.deepEqual(leer(base), { datos: { ...base, monto_estimado: "45000.50", requiere_servicio: "false" } });
-  assert.deepEqual(leer({ ...base, unidad: "semana" }), { datos: { ...base, monto_estimado: "45000.50", unidad: "semana", dia_mes: "", requiere_servicio: "false" } });
+  assert.deepEqual(leer(base), { datos: { ...base, monto_estimado: "45000.50", requiere_servicio: "false", iva: "0.16" } });
+  assert.deepEqual(leer({ ...base, unidad: "semana" }), { datos: { ...base, monto_estimado: "45000.50", unidad: "semana", dia_mes: "", requiere_servicio: "false", iva: "0.16" } });
   assert.equal((leer({ ...base, requiere_servicio: "si" }) as { datos: Record<string, string> }).datos.requiere_servicio, "true");
   assert.deepEqual(leer({ ...base, monto_estimado: "0" }), { error: "Escribe el monto estimado (mayor a cero)." });
   assert.deepEqual(leer({ ...base, concepto: "otro" }), { error: "Describe el compromiso (al menos 3 letras)." });
@@ -81,4 +82,22 @@ test("leer el formulario", () => {
 test("ventana de fechas: los últimos 3 meses (lo que el detalle deja atender) y los próximos 12", () => {
   assert.deepEqual(ventanaCompromisos("2026-10-28"), { desde: "2026-07-28", hasta: "2027-10-28" });
   assert.deepEqual(ventanaCompromisos("2026-05-31"), { desde: "2026-02-28", hasta: "2027-05-31" });
+});
+
+test("impuestos del formulario: sin IVA no hay retención de IVA; valores del catálogo", () => {
+  const base: Record<string, string> = { sucursal_id: "s1", concepto: "renta", descripcion: "", proveedor_id: "p1", monto_estimado: "40000", forma_pago: "transferencia", unidad: "mes", cada: "1", dia_mes: "1", inicio: "2026-11-01", fin: "", requiere_servicio: "", iva: "0", ret_iva: "ninguna", ret_isr: "resico" };
+  const leer = (x: Record<string, string>) => leerCompromiso((c) => x[c] ?? "");
+  assert.equal((leer(base) as { datos: Record<string, string> }).datos.iva, "0");
+  assert.deepEqual(leer({ ...base, ret_iva: "dos_tercios" }), { error: "Sin IVA no hay retención de IVA." });
+  assert.deepEqual(leer({ ...base, ret_isr: "veinte" }), { error: "Elige la retención de ISR." });
+  assert.deepEqual(leer({ ...base, iva: "8" }), { error: "Elige el IVA (16 % o 0 %)." });
+});
+
+test("renta de persona física: total a pagar con retenciones, mismo cálculo que el gasto sin CFDI", () => {
+  const c = { monto_estimado: 40000, iva: 0.16, ret_iva: "dos_tercios" as const, ret_isr: "diez" as const };
+  assert.deepEqual(impuestosDe(c), { iva: 0.16, retIva: "dos_tercios", retIsr: "diez" });
+  const t = calcularGasto([{ importe: c.monto_estimado }], impuestosDe(c));
+  assert.deepEqual({ iva: t.iva, retIva: t.retencion_iva, retIsr: t.retencion_isr, total: t.total }, { iva: 6400, retIva: 4266.67, retIsr: 4000, total: 38133.33 });
+  // Un compromiso sin impuestos (los de antes de la migración) paga su monto tal cual.
+  assert.equal(calcularGasto([{ importe: 1200.5 }], impuestosDe({ iva: 0, ret_iva: "ninguna", ret_isr: "ninguna" })).total, 1200.5);
 });
