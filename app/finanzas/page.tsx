@@ -3,7 +3,8 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyMX } from "@/lib/formato";
 import { elegirPeriodo, etiquetaSemana, paramsPeriodo, semanasDesde } from "@/lib/finanzas/periodo";
 import { INICIO_FECHA, INICIO_PL } from "@/lib/finanzas/pl";
-import { comparativoPL, plConHistoria } from "./datos";
+import { comparativoPL, plAsesores, plConHistoria } from "./datos";
+import { TablaAsesores } from "./TablaAsesores";
 import { TablaComparativo } from "./TablaComparativo";
 import TablaCuentas from "./TablaCuentas";
 import { cuentasPL } from "./cuentasDatos";
@@ -21,16 +22,18 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
   const { supabase } = await obtenerPerfil();
   const hoy = hoyMX();
   const p = elegirPeriodo(q, hoy, INICIO_FECHA);
+  const asesores = q.vista === "asesores";
   const cuentas = !q.vista || q.vista === "cuentas";
   const contable = cuentas ? await cuentasPL(supabase,p,q.sucursal) : null;
   const comparativo = q.vista === "comparativo";
-  const meta = comparativo || cuentas ? null : await plConHistoria(supabase, p, q.sucursal);
+  const meta = comparativo || cuentas || asesores ? null : await plConHistoria(supabase, p, q.sucursal);
   const comp = comparativo ? await comparativoPL(supabase, p, q.sucursal) : null;
-  const titulo = contable?.titulo ?? meta?.titulo ?? comp?.titulo ?? "Consolidado";
-  const sucId = contable ? contable.sucursal : meta ? meta.suc?.id : comp?.suc?.id;
-  const sucursales = contable ? contable.sucursales : meta ? meta.datos.porSucursal : comp?.sucursales ?? [];
+  const ases = asesores ? await plAsesores(supabase, p, q.sucursal) : null;
+  const titulo = contable?.titulo ?? meta?.titulo ?? comp?.titulo ?? ases?.titulo ?? "Consolidado";
+  const sucId = contable ? contable.sucursal : meta ? meta.suc?.id : comp ? comp.suc?.id : ases?.suc?.id;
+  const sucursales = contable ? contable.sucursales : meta ? meta.datos.porSucursal : comp ? comp.sucursales : ases?.datos.porSucursal ?? [];
   const suc: Record<string, string> = sucId ? { sucursal: sucId } : {};
-  const vista: Record<string, string> = {vista:cuentas?"cuentas":comparativo?"comparativo":"meta"};
+  const vista: Record<string, string> = {vista:cuentas?"cuentas":comparativo?"comparativo":asesores?"asesores":"meta"};
   const filtro = new URLSearchParams({ ...paramsPeriodo(p), ...suc, ...vista }).toString();
   const enCurso = !p.vacio && p.hasta < p.finNominal;
   const pestana = (activa: boolean, href: string, texto: string) => (
@@ -46,7 +49,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         acciones={<>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/catalogo">Catálogo contable</Link>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/asignacion">Asignar cuentas</Link>
-          <Link className="boton boton-secundario boton-compacto" href={`/reporte/pl?${filtro}`} target="_blank"><Icono nombre="documento" />{cuentas?"PDF operativo":"PDF"}</Link>
+          {!asesores && <Link className="boton boton-secundario boton-compacto" href={`/reporte/pl?${filtro}`} target="_blank"><Icono nombre="documento" />{cuentas?"PDF operativo":"PDF"}</Link>}
           <a className="boton boton-secundario boton-compacto" href={`/reporte/pl/excel?${filtro}`} download><Icono nombre="descargar" />Excel</a>
         </>}
       />
@@ -57,8 +60,9 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         </nav>
         <nav className="segmentos" aria-label="Vista">
           {pestana(cuentas, `/finanzas?${new URLSearchParams({ ...paramsPeriodo(p), ...suc, vista: "cuentas" })}`, "Por cuentas")}
-          {pestana(!comparativo&&!cuentas, `/finanzas?${new URLSearchParams({ ...paramsPeriodo(p), ...suc, vista: "meta" })}`, "Contra meta")}
+          {pestana(!comparativo&&!cuentas&&!asesores, `/finanzas?${new URLSearchParams({ ...paramsPeriodo(p), ...suc, vista: "meta" })}`, "Contra meta")}
           {pestana(comparativo, `/finanzas?${new URLSearchParams({ ...paramsPeriodo(p), ...suc, vista: "comparativo" })}`, "Comparativo")}
+          {pestana(asesores, `/finanzas?${new URLSearchParams({ ...paramsPeriodo(p), ...suc, vista: "asesores" })}`, "Formato asesores")}
         </nav>
         <form className="barra-filtros" method="get" aria-label="Periodo y sucursal">
           <input type="hidden" name="periodo" value={p.tipo} />
@@ -91,7 +95,15 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
           <p><Link href="/ventas/conciliacion">Revisar diferencias y conciliaciones de Dodo IS →</Link></p>
         </details>
       </div>
-      {contable ? <>
+      {ases ? (
+        p.vacio ? <EstadoVacio icono="calendario" titulo={p.tipo === "semana" ? "La semana apenas empieza" : "El mes apenas empieza"} descripcion="Todavía no hay días cerrados. Elige un periodo anterior para ver resultados." />
+        : !ases.formato ? <AdvertenciasPL avisos={[`No se muestra el formato de asesores: ${ases.error}`]} />
+        : <>
+          <p className="nota">Estructura de la plantilla de los asesores con cifras reales. Los renglones debajo de EBITDA quedan pendientes hasta tener su fuente.</p>
+          <AdvertenciasPL avisos={[...ases.formato.avisos, ...ases.avisos]} />
+          <TablaAsesores formato={ases.formato} detalleDe={ases.detalleDe} />
+        </>
+      ) : contable ? <>
         <p className="nota">Cuentas exactas confirmadas del catálogo Helper. Los documentos pendientes y las fuentes calculadas se muestran por separado y permanecen incluidos en los totales. Insumos e inversiones se presentan en memo, fuera del resultado.</p>
         <AdvertenciasPL avisos={contable.avisos}/>
         {contable.columnas.length?<TablaCuentas filas={contable.filas} columnas={contable.columnas}/>:<EstadoVacio icono="calendario" titulo="Todavía no hay días cerrados" descripcion="Elige un periodo anterior."/>}
