@@ -8,6 +8,8 @@ import { hoyCalendarioMX, fechaTexto } from "@/lib/formato";
 import type { InicioCubre } from "@/lib/compras/proveedores";
 import { puedeEditarCompras } from "@/lib/roles";
 import { FormGastoManual } from "./FormGastoManual";
+import { CONCEPTOS, impuestosDe, type Compromiso } from "@/lib/compras/compromisos";
+import type { Impuestos } from "@/lib/compras/gastoManual";
 
 /** Gasto con proveedor que aún no tiene CFDI: prefactura, recibo o pago sin factura. */
 export default async function NuevoGastoManual({ searchParams }: { searchParams: Promise<{ error?: string; proveedor?: string; sucursal?: string; compromiso?: string; vence?: string }> }) {
@@ -15,10 +17,18 @@ export default async function NuevoGastoManual({ searchParams }: { searchParams:
   const { supabase, perfil } = await obtenerPerfil();
   if (!puedeEditarCompras(perfil.rol)) redirect("/compras/facturas");
   // Desde un compromiso fijo: proveedor y sucursal ya puestos, y al guardar se liga a esa fecha.
-  let inicial: { proveedor: string; sucursal: string; compromiso: string; vence: string; revision: number } | undefined;
+  let inicial: { proveedor: string; sucursal: string; compromiso: string; vence: string; revision: number; importe: string; descripcion: string; impuestos: Impuestos } | undefined;
   if (proveedor && sucursal && compromiso && vence) {
-    const { data } = await supabase.from("compromiso_fechas").select("revision").eq("compromiso_id", compromiso).eq("vence", vence).maybeSingle<{ revision: number }>();
-    inicial = { proveedor, sucursal, compromiso, vence, revision: data?.revision ?? 0 };
+    const [{ data }, { data: c }] = await Promise.all([
+      supabase.from("compromiso_fechas").select("revision").eq("compromiso_id", compromiso).eq("vence", vence).maybeSingle<{ revision: number }>(),
+      supabase.from("compromisos").select("concepto, descripcion, monto_estimado, iva, ret_iva, ret_isr").eq("id", compromiso)
+        .maybeSingle<Pick<Compromiso, "concepto" | "descripcion" | "monto_estimado" | "iva" | "ret_iva" | "ret_isr">>(),
+    ]);
+    // Renglón e impuestos del compromiso ("Renta octubre 2026"); solo se ajusta lo que cambió ese mes.
+    const mes = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${vence}T00:00:00Z`)).replace(" de ", " ");
+    inicial = { proveedor, sucursal, compromiso, vence, revision: data?.revision ?? 0,
+      importe: c ? String(c.monto_estimado) : "", descripcion: c ? `${c.concepto === "otro" && c.descripcion ? c.descripcion : CONCEPTOS[c.concepto]} ${mes}` : "",
+      impuestos: c ? impuestosDe(c) : { iva: 0.16, retIva: "ninguna", retIsr: "ninguna" } };
   }
   const [{ data: proveedores }, { data: sucursales }] = await Promise.all([
     supabase.from("proveedores").select("id, razon_social, nombre_comercial, sucursal_id, cuenta_pl, cubre_meses, cubre_inicio").eq("activo", true).order("razon_social")

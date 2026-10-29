@@ -18,7 +18,7 @@ type Renglon = { descripcion: string; importe: string; cuenta: string };
 /** Alta de un gasto sin CFDI: renglones con su cuenta, IVA y retenciones con el total a la vista. */
 export function FormGastoManual({ proveedores, sucursales, cuentas, hoy, razones, inicial }: {
  razones:RazonSocial[];
-  inicial?: { proveedor: string; sucursal: string; compromiso: string; vence: string; revision: number };
+  inicial?: { proveedor: string; sucursal: string; compromiso: string; vence: string; revision: number; importe: string; descripcion: string; impuestos: Impuestos };
   proveedores: Proveedor[]; sucursales: { id: string; nombre: string }[]; cuentas: { clave: string; nombre: string }[]; hoy: string;
 }) {
   const pInicial = proveedores.find((x) => x.id === inicial?.proveedor);
@@ -33,8 +33,8 @@ export function FormGastoManual({ proveedores, sucursales, cuentas, hoy, razones
     const c = periodoCubre(f, p?.cubre_meses ?? 1, p?.cubre_inicio ?? "emision");
     setCubre({ desde: c.desde.slice(0, 7), hasta: c.hasta.slice(0, 7) });
   };
-  const [renglones, setRenglones] = useState<Renglon[]>([{ descripcion: "", importe: "", cuenta: pInicial?.cuenta_pl ?? "" }]);
-  const [imp, setImp] = useState<Impuestos>({ iva: 0.16, retIva: "ninguna", retIsr: "ninguna" });
+  const [renglones, setRenglones] = useState<Renglon[]>([{ descripcion: inicial?.descripcion ?? "", importe: inicial?.importe ?? "", cuenta: pInicial?.cuenta_pl ?? "" }]);
+  const [imp, setImp] = useState<Impuestos>(inicial?.impuestos ?? { iva: 0.16, retIva: "ninguna", retIsr: "ninguna" });
   const t = calcularGasto(renglones.map((r) => ({ importe: Number(r.importe.replace(/[$,\s]/g, "")) || 0 })), imp);
   const cambiarRenglon = (i: number, campo: keyof Renglon, valor: string) =>
     setRenglones((rs) => rs.map((r, j) => (j === i ? { ...r, [campo]: valor } : r)));
