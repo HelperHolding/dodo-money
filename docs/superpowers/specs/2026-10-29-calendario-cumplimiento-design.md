@@ -80,7 +80,8 @@ queda *cumplida sin factura* y sigue alertando hasta que se liga la factura del 
     (obligación, compromiso o ficha del activo).
   - Botón "Nueva obligación" solo para admin.
 - **Nueva / editar obligación (`/cumplimiento/nueva`, `/cumplimiento/[id]/editar`)**: formulario con tipo,
-  pertenencia, frecuencia (texto de ayuda con las próximas 3 fechas), con pago, proveedor y monto.
+  pertenencia, frecuencia (texto de ayuda con la regla; las próximas fechas se ven en el detalle al guardar, calculadas
+  por SQL para no duplicar la regla en TypeScript), con pago, proveedor y monto.
 - **Detalle (`/cumplimiento/[id]`)**: regla, próximas fechas, fechas trabajadas y historial. Por fecha: cerrar
   (foto + PDF + nota, factura opcional), omitir, ligar factura después, ver evidencia.
 - **Activos:** la pestaña "Calendario de mantenimiento" pasa a ser un enlace a `/cumplimiento?origen=mantenimiento`;
