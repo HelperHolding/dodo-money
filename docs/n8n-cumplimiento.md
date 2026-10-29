@@ -11,7 +11,8 @@ Cada día a las 8:00 (Ciudad de México) n8n pregunta al portal qué avisar y lo
 2. Google Chat → espacio del equipo → *Apps e integraciones* → *Webhooks* → crear "Cumplimiento" y copiar la URL.
 3. n8n → *Variables*: `PORTAL_URL` (ej. `https://dodo-money-j31t.vercel.app`, sin `/` final), `GCHAT_WEBHOOK_URL` (la URL del paso 2), `CORREO_REMITENTE`.
 4. n8n → *Credentials*: *Header Auth* llamada `Portal cumplimiento` con nombre `x-api-key` y el valor de `CUMPLIMIENTO_API_KEY`; *SMTP* llamada `Correo avisos` con la cuenta remitente.
-5. Importar `docs/n8n/cumplimiento-avisos-error.json` y luego `docs/n8n/cumplimiento-avisos.json`. En *Settings* del segundo, elegir el primero como *Error workflow*. Activar ambos.
+   Las variables (`$vars`) requieren una n8n con *Variables* (planes de pago). En la edición Community, cambia `$vars.` por `$env.` en los nodos y define `PORTAL_URL`, `GCHAT_WEBHOOK_URL` y `CORREO_REMITENTE` como variables de entorno de la instancia de n8n.
+5. Importar `docs/n8n/cumplimiento-avisos-error.json` y luego `docs/n8n/cumplimiento-avisos.json`. En *Settings* del segundo, elegir el primero como *Error workflow*. Las credenciales no viajan en el JSON: tras importar, vuelve a elegir `Portal cumplimiento` en los nodos HTTP del portal y `Correo avisos` en *Enviar correo*. Activar ambos. El flujo tiene dos disparadores (correo y chat) para que un fallo en un canal no detenga al otro.
 
 ## Probar
 - `curl -H "x-api-key: …" "$PORTAL_URL/api/cumplimiento/avisos?canal=correo"` debe responder `{hoy, destinatarios, total, avisos}`.

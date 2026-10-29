@@ -2,7 +2,9 @@
   "name": "cumplimiento-avisos",
   "settings": { "timezone": "America/Mexico_City", "executionOrder": "v1", "errorWorkflow": "" },
   "nodes": [
-    { "id": "1", "name": "Cada mañana", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [0, 200],
+    { "id": "1", "name": "Cada mañana (correo)", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [0, 100],
+      "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 8 * * *" }] } } },
+    { "id": "12", "name": "Cada mañana (chat)", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [0, 320],
       "parameters": { "rule": { "interval": [{ "field": "cronExpression", "expression": "0 8 * * *" }] } } },
     { "id": "2", "name": "Avisos por correo", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [240, 100],
       "parameters": { "method": "GET", "url": "={{ $vars.PORTAL_URL }}/api/cumplimiento/avisos?canal=correo", "authentication": "genericCredentialType", "genericAuthType": "httpHeaderAuth", "options": { "timeout": 30000 } },
@@ -26,7 +28,7 @@
       "parameters": { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "combinator": "and",
         "conditions": [{ "leftValue": "={{ $json.total }}", "rightValue": 0, "operator": { "type": "number", "operation": "gt" } }] } } },
     { "id": "9", "name": "Armar mensaje", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [720, 320],
-      "parameters": { "jsCode": "const d = $input.first().json;\nconst linea = (a) => `• <${a.url}|${a.titulo}> · ${a.ambito ?? ''} · ${a.tipo_aviso === 'vencida' ? `vencida hace ${-a.dias} día(s)` : a.tipo_aviso === 'sin_factura' ? 'falta factura' : a.dias === 0 ? 'vence hoy' : `vence en ${a.dias} día(s)`}`;\nconst bloque = (t, l) => l.length ? `*${t} (${l.length})*\\n` + l.slice(0, 15).map(linea).join('\\n') + (l.length > 15 ? `\\n… y ${l.length - 15} más en el portal` : '') : '';\nconst text = [`*Cumplimiento ${d.hoy}*`, bloque('Vencidas', d.avisos.vencida), bloque('Por vencer', d.avisos.por_vencer), bloque('Cumplidas sin factura', d.avisos.sin_factura)].filter(Boolean).join('\\n\\n');\nconst claves = [...d.avisos.vencida, ...d.avisos.por_vencer, ...d.avisos.sin_factura].map((a) => a.clave);\nreturn [{ json: { text, claves } }];" } },
+      "parameters": { "jsCode": "const d = $input.first().json;\nconst LIMITE = 3800;\nconst linea = (a) => `• <${a.url}|${a.titulo}> · ${a.ambito ?? ''} · ${a.tipo_aviso === 'vencida' ? `vencida hace ${-a.dias} día(s)` : a.tipo_aviso === 'sin_factura' ? 'falta factura' : a.dias === 0 ? 'vence hoy' : `vence en ${a.dias} día(s)`}`;\nconst grupos = [['Vencidas', d.avisos.vencida], ['Por vencer', d.avisos.por_vencer], ['Cumplidas sin factura', d.avisos.sin_factura]];\nlet text = `*Cumplimiento ${d.hoy}*`;\nconst claves = [];\nlet omitidos = 0;\nfor (const [titulo, lista] of grupos) {\n  if (!lista.length) continue;\n  let bloque = `\\n\\n*${titulo} (${lista.length})*`;\n  let incluidos = 0;\n  for (const a of lista.slice(0, 15)) {\n    const ln = '\\n' + linea(a);\n    if (text.length + bloque.length + ln.length > LIMITE - 60) break;\n    bloque += ln;\n    claves.push(a.clave);\n    incluidos++;\n  }\n  omitidos += lista.length - incluidos;\n  if (incluidos > 0) text += bloque;\n}\nif (omitidos > 0) text += `\\n\\n… y ${omitidos} más en el portal`;\nreturn [{ json: { text, claves } }];" } },
     { "id": "10", "name": "Enviar a Google Chat", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [960, 320],
       "parameters": { "method": "POST", "url": "={{ $vars.GCHAT_WEBHOOK_URL }}", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ text: $json.text }) }}", "options": {} } },
     { "id": "11", "name": "Confirmar chat", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [1200, 320],
@@ -35,7 +37,8 @@
       "credentials": { "httpHeaderAuth": { "name": "Portal cumplimiento" } } }
   ],
   "connections": {
-    "Cada mañana": { "main": [[{ "node": "Avisos por correo", "type": "main", "index": 0 }, { "node": "Avisos por chat", "type": "main", "index": 0 }]] },
+    "Cada mañana (correo)": { "main": [[{ "node": "Avisos por correo", "type": "main", "index": 0 }]] },
+    "Cada mañana (chat)": { "main": [[{ "node": "Avisos por chat", "type": "main", "index": 0 }]] },
     "Avisos por correo": { "main": [[{ "node": "¿Hay avisos por correo?", "type": "main", "index": 0 }]] },
     "¿Hay avisos por correo?": { "main": [[{ "node": "Armar correo", "type": "main", "index": 0 }], []] },
     "Armar correo": { "main": [[{ "node": "Enviar correo", "type": "main", "index": 0 }]] },
