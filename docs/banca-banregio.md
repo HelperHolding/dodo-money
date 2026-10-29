@@ -2,7 +2,7 @@
 
 ## Alcance
 
-La carga incorpora reportes documentales de cuenta de cheques en MXN. No crea pagos de facturas, ventas, gastos, asientos de P&L ni salidas de caja o bóveda. Las asociaciones de conciliación quedan para una entrega posterior.
+La carga incorpora reportes documentales de cuenta de cheques en MXN. No crea pagos de facturas, ventas, gastos, asientos de P&L ni salidas de caja o bóveda. La conciliación se documenta en `docs/banca-conciliacion.md`.
 
 Solo administración importa. Administración y corporativo pueden consultar movimientos y descargar el Excel original. Gerentes, encargados, operación y usuarios anónimos no tienen acceso a Banca.
 

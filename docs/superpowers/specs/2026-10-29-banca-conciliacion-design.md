@@ -93,7 +93,7 @@ sugerencia trae movimientos, tipo, documentos propuestos, concepto sugerido, dif
 
 El Excel de Banregio recorta la descripción a ~60 caracteres; las reglas leen descripción y referencia.
 
-Las reglas leen la descripción original conservada por la importación. Un movimiento ya conciliado no se sugiere.
+Las reglas leen la descripción y la referencia conservadas por la importación. Un movimiento ya conciliado no se sugiere.
 
 ## 5. Pantalla (Banca → Conciliación)
 
