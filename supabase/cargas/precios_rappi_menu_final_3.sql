@@ -1,5 +1,5 @@
 -- Carga de la lista oficial de precios Rappi desde "MENU DODO FINAL (3).xlsx", hoja Sheet3 ("Precio Rappi nuevo").
--- Ejecutar después de la migración 20261029120000_precios_rappi.sql y su PRUEBAS OK.
+-- Ejecutar después de la migración 20261029130000_precios_rappi.sql y su PRUEBAS OK.
 -- Fecha de vigencia editable abajo (por omisión 2026-10-29). Volver a correrla con la misma fecha reemplaza los precios.
 -- Cada renglón se liga por nombre exacto a los productos del catálogo; pizzas a masa tradicional y delgada (T).
 -- No se cargan (7):

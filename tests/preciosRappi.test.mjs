@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
 const load=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8').replace(/^﻿/,'');
-const migracion=load('supabase/migrations/20261029120000_precios_rappi.sql');
-const pruebas=load('supabase/pruebas/20261029120000_precios_rappi.sql');
+const migracion=load('supabase/migrations/20261029130000_precios_rappi.sql');
+const pruebas=load('supabase/pruebas/20261029130000_precios_rappi.sql');
 const carga=load('supabase/cargas/precios_rappi_menu_final_3.sql');
 
 // Lo mínimo de Supabase y del catálogo de ventas que usa la migración; la prueba SQL que corre Sebastián se ejecuta completa.

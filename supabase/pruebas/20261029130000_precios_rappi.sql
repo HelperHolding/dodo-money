@@ -1,4 +1,4 @@
--- Ejecutar completo después de 20261029120000_precios_rappi.sql. PRUEBAS OK revierte los datos mediante un ERROR intencional.
+-- Ejecutar completo después de 20261029130000_precios_rappi.sql. PRUEBAS OK revierte los datos mediante un ERROR intencional.
 do $$
 declare a uuid;r jsonb;ok boolean;
 begin
