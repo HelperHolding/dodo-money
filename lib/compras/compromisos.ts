@@ -1,5 +1,6 @@
 /** Compromisos recurrentes por sucursal (renta, fumigación, basura, trampas de grasa). Fechas YYYY-MM-DD. */
 import type { FormaPago } from "./proveedores";
+import type { Impuestos } from "./gastoManual";
 
 export type Concepto = "renta" | "fumigacion" | "basura" | "trampas_grasa" | "otro";
 export const CONCEPTOS: Record<Concepto, string> = { renta: "Renta", fumigacion: "Fumigación", basura: "Recolección de basura", trampas_grasa: "Limpieza de trampas de grasa", otro: "Otro" };
@@ -10,7 +11,12 @@ export type Compromiso = {
   id: string; sucursal_id: string; concepto: Concepto; descripcion: string | null; proveedor_id: string; monto_estimado: number;
   forma_pago: FormaPago; unidad: "mes" | "semana"; cada: number; dia_mes: number | null; inicio: string; fin: string | null;
   requiere_servicio: boolean; revision: number;
+  /** Impuestos sobre `monto_estimado` (el subtotal), como en el gasto sin CFDI. */
+  iva: number; ret_iva: Impuestos["retIva"]; ret_isr: Impuestos["retIsr"];
 };
+/** Impuestos del compromiso en el formato de `calcularGasto` (gastoManual): mismo cálculo, mismos centavos. */
+export const impuestosDe = (c: { iva: number | string; ret_iva: Impuestos["retIva"]; ret_isr: Impuestos["retIsr"] }): Impuestos =>
+  ({ iva: Number(c.iva) > 0 ? 0.16 : 0, retIva: c.ret_iva, retIsr: c.ret_isr });
 /** Una fila de `compromisos_en_rango`: la fecha calculada y lo guardado de ella. */
 export type FechaCompromiso = {
   compromiso_id: string; vence: string; fecha_id: string | null; factura_id: string | null;
@@ -105,9 +111,14 @@ export function leerCompromiso(campo: (c: string) => string): { datos: Record<st
   if (unidad === "mes" && (!Number.isInteger(dia) || dia < 1 || dia > 31)) return { error: "El día del mes va del 1 al 31." };
   if (!FECHA.test(v("inicio"))) return { error: "Indica la fecha de inicio." };
   if (v("fin") && (!FECHA.test(v("fin")) || v("fin") < v("inicio"))) return { error: "El fin no puede ser antes del inicio." };
+  if (v("iva") !== "16" && v("iva") !== "0") return { error: "Elige el IVA (16 % o 0 %)." };
+  if (v("ret_iva") !== "ninguna" && v("ret_iva") !== "dos_tercios") return { error: "Elige la retención de IVA." };
+  if (v("iva") === "0" && v("ret_iva") !== "ninguna") return { error: "Sin IVA no hay retención de IVA." };
+  if (!["ninguna", "diez", "resico"].includes(v("ret_isr"))) return { error: "Elige la retención de ISR." };
   return { datos: {
     sucursal_id: v("sucursal_id"), concepto, descripcion: v("descripcion"), proveedor_id: v("proveedor_id"), monto_estimado: monto,
     forma_pago: v("forma_pago"), unidad, cada: String(cada), dia_mes: unidad === "mes" ? String(dia) : "", inicio: v("inicio"), fin: v("fin"),
     requiere_servicio: v("requiere_servicio") === "si" ? "true" : "false",
+    iva: v("iva") === "16" ? "0.16" : "0", ret_iva: v("ret_iva"), ret_isr: v("ret_isr"),
   } };
 }

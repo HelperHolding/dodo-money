@@ -5,6 +5,8 @@ import {PGlite} from '@electric-sql/pglite';
 const load=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8').replace(/^﻿/,'');
 const migracion=load('supabase/migrations/20261028180000_compromisos_recurrentes.sql');
 const pruebas=load('supabase/pruebas/20261028180000_compromisos_recurrentes.sql');
+const retenciones=load('supabase/migrations/20261029120000_compromisos_retenciones.sql');
+const pruebasRetenciones=load('supabase/pruebas/20261029120000_compromisos_retenciones.sql');
 
 // Lo mínimo de Supabase y de Compras que usa la migración; la prueba SQL que corre Sebastián se ejecuta completa.
 const BASE=`create role anon;create role authenticated;create schema auth;create schema storage;
@@ -43,5 +45,16 @@ test('compromisos recurrentes: solo lectura para la app',async()=>{
   await db.exec(migracion);
   for(const t of ['compromisos','compromiso_fechas','compromiso_historial'])
    assert.equal((await db.query(`select has_table_privilege('authenticated','${t}','insert') ok`)).rows[0].ok,false);
+ }finally{await db.close();}
+});
+
+test('compromisos: retenciones — la prueba SQL termina en PRUEBAS OK y la primera sigue pasando',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(BASE);
+  await db.exec(migracion);
+  await db.exec(retenciones);
+  await assert.rejects(db.exec(pruebasRetenciones),e=>{assert.match(e.message,/^PRUEBAS OK$/);return true;});
+  await assert.rejects(db.exec(pruebas),e=>{assert.match(e.message,/^PRUEBAS OK$/);return true;});
  }finally{await db.close();}
 });
