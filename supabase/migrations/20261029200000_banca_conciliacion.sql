@@ -98,6 +98,8 @@ begin
   if nabonos>0 or ndocs=0 or tiposdoc<>array['pago'] then raise exception 'Un pago a proveedor concilia cargos con uno o más pagos.';end if;
  elsif p_tipo='cobro_tarjeta' then
   if nabonos<>1 or ndocs=0 or tiposdoc<>array['venta_dia'] then raise exception 'Un cobro con tarjeta concilia un depósito (y sus comisiones) con días de venta.';end if;
+  if exists(select 1 from public.banca_movimientos m where m.id=any(p_movimientos) and m.cargo>0 and m.fecha<>(select m2.fecha from public.banca_movimientos m2 where m2.id=any(p_movimientos) and m2.abono>0)) then
+   raise exception 'En un cobro con tarjeta, las comisiones deben ser del mismo día que el depósito.';end if;
  elsif p_tipo='cobro_rappi' then
   if ncargos>0 or ndocs=0 or tiposdoc<>array['rappi_lote'] then raise exception 'Un cobro de Rappi concilia depósitos con paidlots.';end if;
  elsif p_tipo='nomina' then
