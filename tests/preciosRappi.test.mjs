@@ -44,11 +44,11 @@ test('carga del menú: liga pizzas por tamaño y masa, y reporta lo que no encue
   await db.exec(BASE);
   await db.exec(migracion);
   await db.exec(`insert into productos_venta(dodo_id,nombre) values(1,'Pepperoni Mediano'),(2,'Pepperoni Mediano T'),(3,'Pepperoni Grande'),(4,'Pepperoni Pequeño'),
-   (5,'Jamón y champiñones Grande'),(6,'Ranch Picante Mediano'),(7,'Papas francesas Medium'),(8,'Coca Cola 0,6 L'),(9,'Sprite 2 L'),(10,'Dip BBQ'),(11,'Boneless M')`);
+   (5,'Jamón y champiñones Grande'),(6,'Ranch Picante Mediano'),(7,'Papas francesas Medium'),(8,'Coca-Cola 0,6 L'),(9,'Sprite 2 L'),(10,'Dip BBQ Dip'),(11,'Boneless Medium'),(12,'Alitas Buffalo 10 uds')`);
   await db.exec(carga);
   const precios=Object.fromEntries((await db.query(`select p.nombre,r.precio::float precio from precios_rappi r join productos_venta p using(dodo_id)`)).rows.map(r=>[r.nombre,r.precio]));
   assert.deepEqual(precios,{'Pepperoni Mediano':159,'Pepperoni Mediano T':159,'Pepperoni Grande':189,'Jamón y champiñones Grande':239,'Ranch Picante Mediano':239,
-   'Papas francesas Medium':65,'Coca Cola 0,6 L':41,'Sprite 2 L':71,'Dip BBQ':27,'Boneless M':199});
+   'Papas francesas Medium':65,'Coca-Cola 0,6 L':41,'Sprite 2 L':71,'Dip BBQ Dip':27,'Boneless Medium':199,'Alitas Buffalo 10 uds':210});
   const sin=(await db.query(`select s from carga_precios_rappi,jsonb_array_elements_text(r->'sin_producto') s`)).rows.map(r=>r.s);
   assert.ok(sin.includes('Margherita 30 cm')&&!sin.includes('Pepperoni 30 cm'));
  }finally{await db.close();}
