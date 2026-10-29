@@ -18,10 +18,11 @@ export async function GET(request: Request) {
   const p = r.periodo;
   const enCurso = !p.vacio && p.hasta < p.finNominal;
   const periodo = `${p.titulo}${enCurso ? ` · hasta el ${p.hasta}` : ""}`;
-  if (asesores && !r.asesores!.formato)
-    return new Response(`No se generó el Excel: ${r.asesores!.error}`, { status: 409, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
-  const archivo = escribirXlsx(asesores
-    ? hojaAsesores({ titulo: r.titulo, periodo, generado, formato: r.asesores!.formato!, secciones: SECCIONES_ASESORES })
+  const ases = asesores ? r.asesores! : null;
+  if (ases && !ases.formato)
+    return new Response(`No se generó el Excel: ${ases.error}`, { status: 409, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+  const archivo = escribirXlsx(ases?.formato
+    ? hojaAsesores({ titulo: r.titulo, periodo, generado, formato: ases.formato, secciones: SECCIONES_ASESORES, avisos: ases.avisos })
     : [
       ...hojasCuentas({ ...r.cuentas!, generado }),
       ...hojaPL({

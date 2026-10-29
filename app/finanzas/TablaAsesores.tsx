@@ -15,7 +15,7 @@ export function TablaAsesores({ formato, detalleDe, conDetalle = true }: {
       <td data-label="Renglón">
         <span className="celda-pila">
           <strong>{r.nombre}</strong>
-          {r.pendiente && r.monto !== null && <small>Parcial: hay montos pendientes</small>}
+          {r.pendiente && r.monto !== null && <small>Provisional: hay montos pendientes</small>}
           {conDetalle && r.origen.length > 0 && desplegable(detalleDe(r.origen), "De dónde sale")}
         </span>
       </td>

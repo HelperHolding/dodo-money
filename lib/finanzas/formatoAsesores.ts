@@ -27,18 +27,22 @@ const c = (n: number) => Math.round(n * 100) / 100;
 export function formatoAsesores(e: EntradaPL, filas: readonly FilaPL[]): FormatoAsesores {
   const m = (k: ClaveRenglon) => filas.find((f) => f.clave === k)?.monto ?? 0;
   const { dodo, rappi } = e.canales;
-  const brutas = dodo.bruta === null || rappi.bruta === null ? null : c(dodo.bruta + rappi.bruta);
-  const descuento = (x: typeof dodo) => (x.bruta === null ? null : c(x.bruta - x.neta));
+  /** Venta bruta sin IVA: la `bruta` del canal lleva IVA y no se compara con la neta. */
+  const brutas = dodo.brutaSinIva === null || rappi.brutaSinIva === null ? null : c(dodo.brutaSinIva + rappi.brutaSinIva);
+  const descuento = (x: typeof dodo) => (x.brutaSinIva === null ? null : c(x.brutaSinIva - x.neta));
   const descDodo = descuento(dodo), descRappi = descuento(rappi);
   const totalDesc = descDodo === null || descRappi === null ? null : c(descDodo + descRappi);
   const netas = c(e.ventaNeta + (e.rappiFueraBase ?? 0) + (e.rappiExcedente ?? 0));
   const merma = e.merma;
   const utilidadBruta = c(netas - e.agregadores - e.alimento - (merma ?? 0));
+  /** Merma o Rappi pendientes: los totales llevan monto, pero provisional. */
+  const provisional = e.mermaPendiente || Boolean(e.rappiPendiente);
 
   type Sin = Omit<RenglonAsesores, "pct" | "seccion">;
   const r = (clave: string, nombre: string, monto: number | null, origen: readonly string[] = [], extra: Partial<Sin> = {}): Sin =>
     ({ clave, nombre, tipo: "renglon", monto, pendiente: monto === null, origen, ...extra });
-  const total = (clave: string, nombre: string, monto: number | null): Sin => ({ ...r(clave, nombre, monto), tipo: "total" });
+  const total = (clave: string, nombre: string, monto: number | null, pendiente = false): Sin =>
+    ({ ...r(clave, nombre, monto), tipo: "total", pendiente: monto === null || pendiente });
   /** Renglón que la plantilla no tiene: solo si trae monto. */
   const opcional = (x: Sin) => (x.monto ? [x] : []);
 
@@ -64,24 +68,24 @@ export function formatoAsesores(e: EntradaPL, filas: readonly FilaPL[]): Formato
 
   const secciones: [SeccionAsesores, Sin[]][] = [
     ["ventas", [
-      r("ventas_dinein", "Ventas Dine-In", dodo.bruta, ["venta_neta_dodo"]),
-      r("ventas_rappi", "Ventas brutas Rappi", rappi.bruta, ["venta_neta_rappi"]),
+      r("ventas_dinein", "Ventas Dine-In", dodo.brutaSinIva),
+      r("ventas_rappi", "Ventas brutas Rappi", rappi.brutaSinIva),
       total("ventas_brutas", "Ventas brutas", brutas),
       r("descuentos_dinein", "Descuentos Dine-In", descDodo),
       r("descuentos_rappi", "Descuentos Rappi", descRappi),
       total("total_descuentos", "Total descuentos", totalDesc),
       ...opcional(r("rappi_fuera_base", "Rappi · ingresos fuera de base de retención", e.rappiFueraBase ?? 0, ["rappi_fuera_base"])),
       ...opcional(r("rappi_excedente", "Rappi · excedente DAR sin IVA", e.rappiExcedente ?? 0, ["rappi_excedente"])),
-      total("ventas_netas", "Ventas netas", netas),
-      r("comision_rappi", "Comisión Rappi", e.agregadores, ["agregadores"]),
+      total("ventas_netas", "Ventas netas", netas, Boolean(e.rappiPendiente)),
+      r("comision_rappi", "Comisión Rappi", e.agregadores, ["agregadores"], { pendiente: Boolean(e.rappiPendiente) }),
     ]],
     ["cogs", [
       r("alimento", "Alimentos y empaque", e.alimento, ["alimento"]),
       r("merma", "Merma", merma === null && !e.mermaPendiente ? 0 : merma, ["merma"], { pendiente: e.mermaPendiente }),
-      total("utilidad_bruta", "Utilidad bruta", utilidadBruta),
+      total("utilidad_bruta", "Utilidad bruta", utilidadBruta, provisional),
     ]],
-    ["sucursal", [...sucursal, total("total_sucursal", "Total gastos sucursal", totalSucursal), total("ebitda_4wall", "EBITDA 4-Wall", ebitda4)]],
-    ["corporativo", [r("corporativo", "Gasto corporativo", m("oficina"), ["oficina"]), total("ebitda", "EBITDA", ebitda)]],
+    ["sucursal", [...sucursal, total("total_sucursal", "Total gastos sucursal", totalSucursal, provisional), total("ebitda_4wall", "EBITDA 4-Wall", ebitda4, provisional)]],
+    ["corporativo", [r("corporativo", "Gasto corporativo", m("oficina"), ["oficina"]), total("ebitda", "EBITDA", ebitda, provisional)]],
     ["bajo", [
       r("dya", "Depreciación y amortización", null), total("ebit", "EBIT", null),
       r("intereses", "Intereses", null), total("uai", "Utilidad antes de impuestos", null),
@@ -95,6 +99,6 @@ export function formatoAsesores(e: EntradaPL, filas: readonly FilaPL[]): Formato
   return {
     renglones: secciones.flatMap(([seccion, xs]) => xs.map((x) => ({ ...x, seccion, pct: pct(x.monto) }))),
     base: baseBruta ? "bruta" : "neta",
-    avisos: baseBruta ? [] : ["La venta bruta no está completa (falta el detalle por producto de algún día); los porcentajes se calculan sobre ventas netas."],
+    avisos: baseBruta ? [] : ["La venta bruta sin IVA no está completa (falta detalle por producto de algún día, o Rappi usa el reporte financiero); los porcentajes se calculan sobre ventas netas."],
   };
 }

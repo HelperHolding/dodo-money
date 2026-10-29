@@ -7,6 +7,8 @@ const BARRA: EstiloFila = { fondo: "7F7F7F", texto: "FFFFFF", negrita: true };
 export function hojaAsesores(r: {
   titulo: string; periodo: string; generado: string; formato: FormatoAsesores;
   secciones: readonly { clave: SeccionAsesores; nombre: string; fondo: string }[];
+  /** Avisos de la página (datos del periodo): van después de los del formato. */
+  avisos: readonly string[];
 }): HojaXlsx[] {
   const base = r.formato.base === "bruta" ? "% de ventas brutas" : "% de ventas netas";
   const filas: Celda[][] = [
@@ -22,10 +24,10 @@ export function hojaAsesores(r: {
     filas.push([s.nombre.toUpperCase()]);
     for (const x of r.formato.renglones.filter((y) => y.seccion === s.clave)) {
       if (x.tipo === "total") estilos[filas.length] = BARRA;
-      filas.push([x.nombre, x.monto === null ? "Pendiente" : { valor: x.monto, formato: "contable" }, x.pct === null ? null : { valor: x.pct, formato: "porcentaje" }]);
+      filas.push([x.pendiente && x.monto !== null ? `${x.nombre} (provisional)` : x.nombre, x.monto === null ? "Pendiente" : { valor: x.monto, formato: "contable" }, x.pct === null ? null : { valor: x.pct, formato: "porcentaje" }]);
     }
     filas.push([]);
   }
-  for (const a of r.formato.avisos) filas.push([a]);
+  for (const a of [...r.formato.avisos, ...r.avisos]) filas.push([a]);
   return [{ nombre: "P&L asesores", filas, negritas: [0, 4], estilos, anchos: [40, 18, 18] }];
 }

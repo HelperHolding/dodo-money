@@ -44,8 +44,10 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
     <div className="panel-admin">
       <EncabezadoPagina
         titulo={<>P&L · {titulo}</>}
-        descripcion={<>{comp ? comp.periodoTitulo : <>{p.titulo}{enCurso && ` · hasta el ${fechaTexto(p.hasta)}`}</>}. Venta neta sin IVA, después de descuentos; criterio devengado.
-          {meta && " Meta: PL Base del modelo de Dodo."}{meta && !meta.suc && " Elige una sucursal para ver de dónde sale cada renglón."}</>}
+        descripcion={<>{comp ? comp.periodoTitulo : <>{p.titulo}{enCurso && ` · hasta el ${fechaTexto(p.hasta)}`}</>}.{ases
+            ? " Ventas brutas y netas sin IVA; % sobre ventas brutas (o netas si la bruta no está completa); criterio devengado."
+            : " Venta neta sin IVA, después de descuentos; criterio devengado."}
+          {meta && " Meta: PL Base del modelo de Dodo."}{((meta && !meta.suc) || (ases && !ases.suc)) && " Elige una sucursal para ver de dónde sale cada renglón."}</>}
         acciones={<>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/catalogo">Catálogo contable</Link>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/asignacion">Asignar cuentas</Link>
@@ -89,7 +91,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         </form>
         <details className="nota-plegable">
           <summary><Icono nombre="info" />Cómo leer este P&L</summary>
-          <p>El desglose Dodo IS / POS y Rappi corresponde a la fuente de importación. Los subtotales por fuente ya están incluidos en los totales. Los porcentajes son sobre la venta neta total.</p>
+          <p>El desglose Dodo IS / POS y Rappi corresponde a la fuente de importación. Los subtotales por fuente ya están incluidos en los totales. {ases ? "En Formato asesores, los porcentajes son sobre ventas brutas sin IVA (o netas si la bruta no está completa)." : "Los porcentajes son sobre la venta neta total."}</p>
           <p>Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los costos desconocidos quedan pendientes.</p>
           {p.tipo === "semana" && <p>Lo que se registra por mes (nómina, renta, servicios, facturas, oficina) se reparte por días; si llega una factura de ese mes, la semana se ajusta.</p>}
           <p><Link href="/ventas/conciliacion">Revisar diferencias y conciliaciones de Dodo IS →</Link></p>

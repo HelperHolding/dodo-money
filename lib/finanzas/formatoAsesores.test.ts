@@ -6,7 +6,10 @@ import { calcularPL, entradaVacia, sumarEntradas, type EntradaPL } from "./pl.ts
 const ctx = (v: number) => ({ ventaNeta: v, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } });
 const E: EntradaPL = {
   ...entradaVacia(),
-  canales: { dodo: { bruta: 90000, neta: 85000, alimento: 26000 }, rappi: { bruta: 20000, neta: 15000, alimento: 5000 } },
+  canales: {
+    dodo: { bruta: 104400, brutaSinIva: 90000, neta: 85000, alimento: 26000 },
+    rappi: { bruta: 23200, brutaSinIva: 20000, neta: 15000, alimento: 5000 },
+  },
   ventaNeta: 100000, descuentos: 10000, alimento: 31000, merma: 2000,
   nomina: { cocina: 20000, gerencia: 8000 },
   gastos: { renta: 9000, servicios: 4500, marketing: 3000, mantenimiento: 1000, marketing_agregadores: 600, otros: 500 },
@@ -74,14 +77,41 @@ test("Rappi fuera de base y excedente se suman a ventas netas y cuadran con EBIT
 });
 
 test("venta bruta desconocida: brutas y descuentos del canal en Pendiente, % sobre netas y aviso", () => {
-  const f = formato({ ...E, canales: { ...E.canales, rappi: { bruta: null, neta: 15000, alimento: 5000 } } });
+  const f = formato({ ...E, canales: { ...E.canales, rappi: { bruta: 23200, brutaSinIva: null, neta: 15000, alimento: 5000 } } });
   assert.equal(de(f, "ventas_rappi").monto, null);
   assert.equal(de(f, "ventas_brutas").monto, null);
   assert.equal(de(f, "descuentos_rappi").monto, null);
   assert.equal(de(f, "descuentos_dinein").monto, 5000);
   assert.equal(f.base, "neta");
   assert.equal(de(f, "ventas_netas").pct, 1);
-  assert.match(f.avisos.join(" "), /ventas netas/);
+  assert.deepEqual(f.avisos, ["La venta bruta sin IVA no está completa (falta detalle por producto de algún día, o Rappi usa el reporte financiero); los porcentajes se calculan sobre ventas netas."]);
+});
+
+test("ventas brutas por canal sin detalle de origen: el detalle era la venta neta", () => {
+  const f = formato(E);
+  assert.deepEqual(de(f, "ventas_dinein").origen, []);
+  assert.deepEqual(de(f, "ventas_rappi").origen, []);
+});
+
+test("merma pendiente: totales provisionales conservan el monto", () => {
+  const f = formato({ ...E, merma: 140, mermaPendiente: true });
+  for (const k of ["utilidad_bruta", "total_sucursal", "ebitda_4wall", "ebitda"]) {
+    assert.equal(de(f, k).pendiente, true, k);
+    assert.notEqual(de(f, k).monto, null, k);
+  }
+  assert.equal(de(f, "utilidad_bruta").monto, 100000 - 3000 - 31000 - 140);
+  assert.equal(de(f, "ventas_netas").pendiente, false);
+  assert.equal(de(f, "comision_rappi").pendiente, false);
+  assert.equal(de(formato(E), "ebitda").pendiente, false);
+});
+
+test("Rappi pendiente: ventas netas, comisión y totales provisionales", () => {
+  const f = formato({ ...E, rappiPendiente: true });
+  for (const k of ["ventas_netas", "comision_rappi", "utilidad_bruta", "total_sucursal", "ebitda_4wall", "ebitda"]) {
+    assert.equal(de(f, k).pendiente, true, k);
+    assert.notEqual(de(f, k).monto, null, k);
+  }
+  assert.equal(de(f, "ventas_netas").monto, 100000);
 });
 
 test("merma: pendiente sin monto muestra Pendiente; parcial conserva el monto marcado", () => {
