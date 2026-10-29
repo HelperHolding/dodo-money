@@ -277,4 +277,114 @@ revoke all on function public.preparar_evidencia_cumplimiento(uuid,uuid,date,tex
  public.cerrar_fecha_cumplimiento(uuid,date,integer,date,text),public.omitir_fecha_cumplimiento(uuid,date,integer,text),public.ligar_factura_cumplimiento(uuid,date,integer,uuid) from public,anon;
 grant execute on function public.preparar_evidencia_cumplimiento(uuid,uuid,date,text,text,text,integer,text),public.confirmar_evidencia_cumplimiento(uuid),
  public.cerrar_fecha_cumplimiento(uuid,date,integer,date,text),public.omitir_fecha_cumplimiento(uuid,date,integer,text),public.ligar_factura_cumplimiento(uuid,date,integer,uuid) to authenticated;
+-- Lo que leen el calendario, las alertas y los avisos: los tres orígenes con un estado común.
+-- Compromisos: solo los que comprueban servicio (fumigación, basura, trampas); la renta se queda en Pagos.
+create function public.cumplimiento_en_rango(p_desde date,p_hasta date,p_hoy date)
+returns table(origen text,referencia_id uuid,fecha_id uuid,revision integer,titulo text,detalle text,tipo text,sucursal_id uuid,razon_social_rfc text,ambito text,
+ vence date,fecha date,frecuencia text,estado text,falta_evidencia boolean,falta_factura boolean,factura_id uuid,ruta text)
+language plpgsql stable set search_path='' as $$
+#variable_conflict use_column
+begin
+ if p_desde is null or p_hasta is null or p_hoy is null or p_hasta<p_desde or p_hasta-p_desde>800 then raise exception 'Rango de fechas inválido.';end if;
+ return query
+ select 'obligacion'::text,o.id,f.id,coalesce(f.revision,0),o.nombre,coalesce(o.autoridad,''),o.tipo,o.sucursal_id,o.razon_social_rfc,coalesce(s.nombre,rs.razon_social),
+  v.d,case when f.estado='cumplida' then f.cumplida_fecha else v.d end,o.frecuencia,
+  case when f.estado='omitida' then 'omitida'
+   when f.estado='cumplida' and o.con_pago and (f.factura_id is null or fs.estado::text='cancelada') then 'cumplida_sin_factura'
+   when f.estado='cumplida' then 'cumplida'
+   when v.d<p_hoy then 'vencida'
+   when v.d-p_hoy<=(public.dias_aviso_cumplimiento(o.frecuencia))[1] then 'por_vencer'
+   else 'pendiente' end,
+  false,
+  o.con_pago and coalesce(f.estado,'pendiente')<>'omitida' and (f.factura_id is null or fs.estado::text='cancelada'),
+  f.factura_id,'/cumplimiento/'||o.id||'#fecha-'||v.d
+ from public.cumplimiento_obligaciones o
+ cross join lateral public.fechas_cumplimiento(o.id,p_desde,p_hasta) v(d)
+ left join public.cumplimiento_fechas f on f.obligacion_id=o.id and f.vence=v.d
+ left join public.facturas_saldo fs on fs.id=f.factura_id
+ left join public.sucursales s on s.id=o.sucursal_id
+ left join public.razones_sociales rs on rs.rfc=o.razon_social_rfc
+ union all
+ select 'compromiso',c.id,r.fecha_id,r.revision,
+  case when c.concepto='otro' and c.descripcion is not null then c.descripcion
+   else case c.concepto when 'fumigacion' then 'Fumigación' when 'basura' then 'Recolección de basura' when 'trampas_grasa' then 'Limpieza de trampas de grasa' when 'renta' then 'Renta' else 'Otro' end end,
+  'Compromiso fijo',c.concepto,c.sucursal_id,null::text,s.nombre,r.vence,
+  case when r.servicio='realizado' then r.servicio_fecha else r.vence end,q.frecuencia,
+  case when r.omitida_motivo is not null or r.servicio='no_realizado' then 'omitida'
+   when r.servicio='realizado' and (r.factura_id is null or r.factura_estado='cancelada') then 'cumplida_sin_factura'
+   when r.servicio='realizado' then 'cumplida'
+   when r.vence<p_hoy then 'vencida'
+   when r.vence-p_hoy<=(public.dias_aviso_cumplimiento(q.frecuencia))[1] then 'por_vencer'
+   else 'pendiente' end,
+  r.servicio='realizado' and not exists(select 1 from public.compromiso_evidencias e where e.fecha_id=r.fecha_id and e.confirmado_en is not null),
+  r.omitida_motivo is null and r.servicio<>'no_realizado' and (r.factura_id is null or r.factura_estado='cancelada'),
+  r.factura_id,'/compras/pagos/compromisos/'||c.id||'#fecha-'||r.vence
+ from public.compromisos_en_rango(p_desde,p_hasta) r
+ join public.compromisos c on c.id=r.compromiso_id
+ cross join lateral (select case when c.unidad='semana' then case when c.cada=1 then 'semanal' else 'quincenal' end
+  when c.cada=1 then 'mensual' when c.cada<12 then 'bimestral' else 'anual' end) q(frecuencia)
+ left join public.sucursales s on s.id=c.sucursal_id
+ where c.requiere_servicio
+ union all
+ select 'mantenimiento',m.id,null::uuid,m.revision,a.nombre,m.tarea,m.tipo,a.sucursal_id,null::text,s.nombre,m.programado,
+  case when m.estado='completado' then m.realizado else m.programado end,null::text,
+  case when m.estado='anulado' then 'omitida' when m.estado='completado' then 'cumplida'
+   when m.programado<p_hoy then 'vencida'
+   when m.programado-p_hoy<=(public.dias_aviso_cumplimiento('mensual'))[1] then 'por_vencer'
+   else 'pendiente' end,
+  false,false,null::uuid,'/activos/'||a.id||'#servicio-'||m.id
+ from public.activo_mantenimientos m
+ join public.activos a on a.id=m.activo_id
+ left join public.sucursales s on s.id=a.sucursal_id
+ where (case when m.estado='completado' then m.realizado else m.programado end) between p_desde and p_hasta;
+end $$;
+
+-- Lo que toca avisar hoy por un canal: vencidas y cumplidas sin factura cada día; por vencer solo en los días de
+-- anticipación de su frecuencia. Excluye lo ya entregado por ese canal hoy. Ventana: 2 años atrás, 61 días adelante.
+create function public.avisos_cumplimiento(p_hoy date,p_canal text)
+returns table(clave text,origen text,referencia_id uuid,titulo text,detalle text,ambito text,vence date,tipo_aviso text,dias integer,ruta text)
+language plpgsql stable set search_path='' as $$
+#variable_conflict use_column
+begin
+ perform public.exigir_admin_compras();
+ if p_hoy is null or p_canal is null or p_canal not in ('correo','chat') then raise exception 'Datos inválidos.';end if;
+ return query
+ select x.clave,x.origen,x.referencia_id,x.titulo,x.detalle,x.ambito,x.vence,x.tipo_aviso,x.dias,x.ruta from (
+  select concat_ws(':',r.origen,r.referencia_id,r.vence,t.tipo_aviso,p_hoy) clave,r.origen,r.referencia_id,r.titulo,r.detalle,r.ambito,r.vence,t.tipo_aviso,(r.vence-p_hoy) dias,r.ruta
+  from public.cumplimiento_en_rango(p_hoy-730,p_hoy+61,p_hoy) r
+  cross join lateral (select case when r.estado='vencida' then 'vencida' when r.estado='cumplida_sin_factura' then 'sin_factura'
+   when r.estado='por_vencer' and (r.vence-p_hoy)=any(public.dias_aviso_cumplimiento(coalesce(r.frecuencia,'mensual'))) then 'por_vencer' end) t(tipo_aviso)
+  where t.tipo_aviso is not null) x
+ where not exists(select 1 from public.cumplimiento_avisos_enviados e where e.clave=x.clave and e.canal=p_canal)
+ order by case x.tipo_aviso when 'vencida' then 0 when 'por_vencer' then 1 else 2 end,x.vence,x.titulo;
+end $$;
+
+create function public.registrar_avisos_cumplimiento(p_claves text[],p_canal text) returns integer
+language plpgsql security definer set search_path='' as $$
+declare n integer;
+begin
+ perform public.exigir_admin_compras();
+ if p_canal is null or p_canal not in ('correo','chat') then raise exception 'Canal inválido.';end if;
+ if p_claves is null or cardinality(p_claves) not between 1 and 500 then raise exception 'Envía de 1 a 500 claves.';end if;
+ if exists(select 1 from unnest(p_claves) c where c is null or c!~'^(obligacion|compromiso|mantenimiento):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9]{4}-[0-9]{2}-[0-9]{2}:(vencida|por_vencer|sin_factura):[0-9]{4}-[0-9]{2}-[0-9]{2}$') then
+  raise exception 'Clave de aviso inválida.';end if;
+ insert into public.cumplimiento_avisos_enviados(clave,canal,origen,referencia_id,vence,tipo_aviso,enviado_el,usuario_id)
+ select distinct c,p_canal,split_part(c,':',1),split_part(c,':',2)::uuid,split_part(c,':',3)::date,split_part(c,':',4),split_part(c,':',5)::date,auth.uid()
+ from unnest(p_claves) c
+ on conflict(clave,canal) do nothing;
+ get diagnostics n=row_count;
+ return n;
+end $$;
+
+-- Correos de los administradores activos (viven en auth.users; la app no los lee directo).
+create function public.correos_avisos_cumplimiento() returns setof text
+language plpgsql security definer set search_path='' as $$
+begin
+ perform public.exigir_admin_compras();
+ return query select u.email::text from auth.users u join public.perfiles p on p.id=u.id
+  where p.activo and p.rol::text='admin' and u.email is not null order by 1;
+end $$;
+
+revoke all on function public.cumplimiento_en_rango(date,date,date),public.avisos_cumplimiento(date,text),public.registrar_avisos_cumplimiento(text[],text),public.correos_avisos_cumplimiento() from public,anon;
+grant execute on function public.cumplimiento_en_rango(date,date,date),public.avisos_cumplimiento(date,text),public.registrar_avisos_cumplimiento(text[],text),public.correos_avisos_cumplimiento() to authenticated;
 commit;

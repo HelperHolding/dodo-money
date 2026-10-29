@@ -103,3 +103,11 @@ test('cumplimiento: la factura de una obligación de razón social debe ser de e
   await db.exec(`select public.ligar_factura_cumplimiento('${o}','2027-03-31',0,'00000000-0000-0000-0000-0000000000f1')`);
  }finally{await db.close();}
 });
+
+test('cumplimiento: correos de avisos solo de admins activos',async()=>{
+ const db=await montar();
+ try{
+  await db.exec(ADMIN);
+  assert.deepEqual((await db.query(`select c from public.correos_avisos_cumplimiento() c`)).rows.map(r=>r.c),['julio@ejemplo.mx']);
+ }finally{await db.close();}
+});

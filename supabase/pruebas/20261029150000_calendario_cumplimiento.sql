@@ -1,6 +1,6 @@
 -- Ejecutar completo después de 20261029150000_calendario_cumplimiento.sql. PRUEBAS OK revierte los datos mediante un ERROR intencional.
 do $$
-declare a uuid;corp uuid;f record;o uuid;o2 uuid;fechas date[];ok boolean;n integer;p uuid;ef uuid;ed uuid;r record;msg text;
+declare a uuid;corp uuid;f record;o uuid;o2 uuid;fechas date[];ok boolean;n integer;p uuid;ef uuid;ed uuid;r record;msg text;s uuid;an uuid;m uuid;act uuid;claves text[];
 begin
   select id into a from public.perfiles where activo and rol::text='admin' limit 1;
   select id into corp from public.perfiles where activo and rol::text='corporativo' limit 1;
@@ -127,5 +127,59 @@ begin
   if ok then raise exception 'FALLÓ: fin antes de fecha trabajada';end if;
   begin perform public.guardar_obligacion(p,1,jsonb_build_object('tipo','seguro','nombre','Póliza de responsabilidad','sucursal_id',f.sucursal_id,'frecuencia','mensual','inicio','2027-01-10','con_pago','false'));ok:=true;exception when others then ok:=false;end;
   if ok then raise exception 'FALLÓ: sin pago con factura ligada';end if;
+  -- 16. Vista unificada con hoy = 8 de marzo de 2027. Semanal desde el lunes 1: vencida, por vencer (hoy) y pendiente.
+  s:=public.guardar_obligacion(null,0,jsonb_build_object('tipo','extintores','nombre','Bitácora de extintores','sucursal_id',f.sucursal_id,'frecuencia','semanal','inicio','2027-03-01','con_pago','false'));
+  an:=public.guardar_obligacion(null,0,jsonb_build_object('tipo','seguro','nombre','Seguro de local','razon_social_rfc',f.rfc_receptor,'frecuencia','anual','inicio','2027-05-07','con_pago','true','proveedor_id',f.proveedor_id));
+  select array_agg(cr.estado order by r.vence) into claves from public.cumplimiento_en_rango('2027-03-01','2027-03-15','2027-03-08') cr where cr.referencia_id=s;
+  if claves is distinct from array['vencida','por_vencer','pendiente'] then raise exception 'FALLÓ: estados semanal %',claves;end if;
+  if (select cr.estado from public.cumplimiento_en_rango('2027-05-01','2027-05-31','2027-03-08') cr where cr.referencia_id=an)<>'por_vencer' then raise exception 'FALLÓ: anual a 60 días';end if;
+  if (select cr.ambito from public.cumplimiento_en_rango('2027-05-01','2027-05-31','2027-03-08') cr where cr.referencia_id=an) is distinct from (select razon_social from public.razones_sociales where rfc=f.rfc_receptor) then raise exception 'FALLÓ: ámbito de razón social';end if;
+  -- La póliza cumplida en enero sin factura vigente queda como cumplida_sin_factura al quitar la factura.
+  perform public.ligar_factura_cumplimiento(p,'2027-01-10',2,null);
+  if (select cr.estado from public.cumplimiento_en_rango('2027-01-01','2027-01-31','2027-03-08') cr where cr.referencia_id=p)<>'cumplida_sin_factura' then raise exception 'FALLÓ: cumplida sin factura';end if;
+  if (select cr.fecha from public.cumplimiento_en_rango('2027-01-01','2027-01-31','2027-03-08') cr where cr.referencia_id=p)<>'2026-01-10' then raise exception 'FALLÓ: fecha real de cumplida';end if;
+  begin perform public.cumplimiento_en_rango('2027-01-01','2030-01-01','2027-03-08');ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: rango demasiado largo';end if;
+
+  -- 17. Mantenimiento pendiente del 1 de marzo: sale como vencido con su liga a la ficha.
+  select id into act from public.activos limit 1;
+  if act is not null then
+   insert into public.activo_mantenimientos(activo_id,tipo,tarea,programado) values(act,'preventivo','Limpieza de campana','2027-03-01') returning id into m;
+   if not exists(select 1 from public.cumplimiento_en_rango('2027-03-01','2027-03-31','2027-03-08') cr where cr.origen='mantenimiento' and cr.referencia_id=m and cr.estado='vencida' and cr.ruta='/activos/'||act||'#servicio-'||m) then raise exception 'FALLÓ: mantenimiento en la vista';end if;
+  end if;
+
+  -- 18. Avisos del día: vencida (1 mar), hoy (8 mar, 0 días), anual a 60 días; no el 15 de marzo.
+  select array_agg(x.tipo_aviso||':'||x.dias order by x.vence) into claves from public.avisos_cumplimiento('2027-03-08','correo') x where x.referencia_id in (s,an);
+  if claves is distinct from array['vencida:-7','por_vencer:0','por_vencer:60'] then raise exception 'FALLÓ: avisos %',claves;end if;
+  -- El día 9 la anual (59 días) no se avisa; el día 6 de abril (30 días) sí.
+  if exists(select 1 from public.avisos_cumplimiento('2027-03-09','correo') x where x.referencia_id=an) then raise exception 'FALLÓ: aviso fuera de anticipación';end if;
+  if not exists(select 1 from public.avisos_cumplimiento('2027-04-07','correo') x where x.referencia_id=an and x.dias=30) then raise exception 'FALLÓ: aviso a 30 días';end if;
+  -- Cumplida sin factura: aviso diario.
+  if not exists(select 1 from public.avisos_cumplimiento('2027-03-08','correo') x where x.referencia_id=p and x.tipo_aviso='sin_factura') then raise exception 'FALLÓ: aviso sin factura';end if;
+
+  -- 19. Registrar entregados: idempotente y por canal.
+  select array_agg(x.clave) into claves from public.avisos_cumplimiento('2027-03-08','correo') x where x.referencia_id in (s,an);
+  if public.registrar_avisos_cumplimiento(claves,'correo')<>3 then raise exception 'FALLÓ: registrar';end if;
+  if public.registrar_avisos_cumplimiento(claves,'correo')<>0 then raise exception 'FALLÓ: registrar dos veces';end if;
+  if exists(select 1 from public.avisos_cumplimiento('2027-03-08','correo') x where x.referencia_id in (s,an)) then raise exception 'FALLÓ: aviso repetido por correo';end if;
+  if (select count(*) from public.avisos_cumplimiento('2027-03-08','chat') x where x.referencia_id in (s,an))<>3 then raise exception 'FALLÓ: chat debe seguir pendiente';end if;
+  -- Claves mal formadas o canal inválido: rechazo completo.
+  begin perform public.registrar_avisos_cumplimiento(array['obligacion:x:2027-03-08:vencida:2027-03-08'],'correo');ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: clave mal formada';end if;
+  begin perform public.registrar_avisos_cumplimiento(claves,'whatsapp');ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: canal inválido';end if;
+  begin perform public.registrar_avisos_cumplimiento(array_fill('x'::text,array[501]),'chat');ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: demasiadas claves';end if;
+
+  -- 20. Correos: solo admins activos. Corporativo no consulta avisos ni correos.
+  if not exists(select 1 from public.correos_avisos_cumplimiento()) then raise exception 'FALLÓ: sin correos de admins';end if;
+  perform set_config('request.jwt.claims',json_build_object('sub',corp,'role','authenticated')::text,true);
+  begin perform public.avisos_cumplimiento('2027-03-08','correo');ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: corporativo consultó avisos';end if;
+  begin perform public.correos_avisos_cumplimiento();ok:=true;exception when others then ok:=false;end;
+  if ok then raise exception 'FALLÓ: corporativo consultó correos';end if;
+  -- Corporativo sí ve la vista unificada.
+  if not exists(select 1 from public.cumplimiento_en_rango('2027-03-01','2027-03-15','2027-03-08') cr where cr.referencia_id=s) then raise exception 'FALLÓ: corporativo no ve el calendario';end if;
+  perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
   raise exception 'PRUEBAS OK';
 end $$;
