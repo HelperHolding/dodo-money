@@ -28,6 +28,7 @@ test('costeo lista: cero es costo válido; sin datos no equivale a cero',()=>{
  const filas=[base,{...base,id:2,costo:0},{...base,id:3,costo:null,pos:null,rappi:null}];
  assert.equal(filtrarCosteo(filas,{rapido:'sin-costo'})[0].id,3);
  assert.equal(filtrarCosteo(filas,{rapido:'sin-rappi'}).length,1);
+ assert.deepEqual(filtrarCosteo([...filas,{...base,id:4,rappiOficial:true}],{rapido:'lista-rappi'}).map(p=>p.id),[4]);
  assert.equal(filtrarCosteo(filas,{min:'0'}).length,2);
  assert.equal(filtrarCosteo(filas,{orden:'costo',direccion:'desc'}).at(-1)?.id,3);
  assert.equal(filtrarCosteo(filas,{rapido:'diferencia'}).length,1);
