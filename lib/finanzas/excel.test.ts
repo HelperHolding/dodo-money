@@ -61,7 +61,7 @@ test("hojaPL: un costo fijo sin capturar dice 'Sin capturar' en la diferencia", 
 
 test("Excel P&L y comparativo excluyen venta bruta y conservan ventas netas y costos por fuente", () => {
   const entrada = { ...entradaVacia(), ventaNeta: 300, alimento: 90,
-    canales: { dodo: { bruta: 140, neta: 100, alimento: 30 }, rappi: { bruta: 300, neta: 200, alimento: 60 } } };
+    canales: { dodo: { bruta: 140, brutaSinIva: 120.69, neta: 100, alimento: 30 }, rappi: { bruta: 300, brutaSinIva: 258.62, neta: 200, alimento: 60 } } };
   const filas = calcularPL(entrada, [], ctx(300));
   const [meta] = hojaPL({ titulo: "Sucursal", periodo: "Octubre", generado: "S", entrada, filas, anterior: null,
     acumulado: new Map(), columnas: { anterior: "Anterior", acumulado: "Acumulado" } }, PRESENTACION);

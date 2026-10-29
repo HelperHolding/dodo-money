@@ -7,10 +7,10 @@ import { SECCIONES } from "@/lib/finanzas/secciones";
 import { Importe } from "./Importe";
 import { referenciaHelper } from '@/lib/finanzas/catalogoHelper';
 
-type Detalle = { texto: string; monto: number; href?: string; nota?: string }[];
+export type Detalle = { texto: string; monto: number; href?: string; nota?: string }[];
 const NOMBRE_MEMO = { insumos: NOMBRE_CUENTA.insumos, inversiones: NOMBRE_CUENTA.inversiones } as const;
 
-const desplegable = (items: Detalle, rotulo: string) =>
+export const desplegable = (items: Detalle, rotulo: string) =>
   items.length > 0 && (
     <details className="pl-origen">
       <summary className="saldo-nota">{rotulo} ({items.length})</summary>

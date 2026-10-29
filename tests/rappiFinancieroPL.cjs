@@ -14,12 +14,12 @@ async function escenario({conflicto=false,importeCfdi=12.62,sinReporte=false}={}
  const {datosPL}=cargar('app/finanzas/datos.ts',mocks);return datosPL(db,{desde:'2026-10-02',hasta:'2026-10-02'});
 }
 test('integración P&L: reemplaza el ingreso histórico una vez, conserva costo y evita duplicar CFDI',async()=>{
- const d=await escenario(),e=d.porSucursal[0].entrada;assert.equal(e.ventaNeta,90);assert.equal(e.canales.rappi.neta,90);assert.equal(e.alimento,20);assert.equal(e.agregadores,10.88);assert.equal(e.sinCuenta,0);assert.equal(e.regalias,9);assert.equal(e.descuentos,11.6);
+ const d=await escenario(),e=d.porSucursal[0].entrada;assert.equal(e.ventaNeta,90);assert.equal(e.canales.rappi.neta,90);assert.equal(e.alimento,20);assert.equal(e.agregadores,10.88);assert.equal(e.sinCuenta,0);assert.equal(e.regalias,9);assert.equal(e.descuentos,11.6);assert.equal(e.canales.rappi.brutaSinIva,null);assert.equal(e.canales.rappi.bruta,116);
  assert.equal(d.detalle.get('s|venta_neta_rappi').reduce((s,x)=>s+x.monto,0),90);
 });
 test('integración P&L: no aplica el financiero con fuente Dodo IS duplicada ni CFDI discordante',async()=>{
  for(const opciones of [{conflicto:true},{importeCfdi:99}]){const d=await escenario(opciones);assert.match(d.porSucursal[0].avisos.join(' '),/pendiente:/);assert.notEqual(d.porSucursal[0].entrada.ventaNeta,90);}
 });
 test('integración P&L: sin reporte conserva venta, tasa y facturas anteriores',async()=>{
- const d=await escenario({sinReporte:true}),e=d.porSucursal[0].entrada;assert.equal(e.ventaNeta,100);assert.equal(e.agregadores,20.88);assert.equal(e.sinCuenta,10.88);assert.equal(e.regalias,10);assert.equal(e.descuentos,0);
+ const d=await escenario({sinReporte:true}),e=d.porSucursal[0].entrada;assert.equal(e.ventaNeta,100);assert.equal(e.agregadores,20.88);assert.equal(e.sinCuenta,10.88);assert.equal(e.regalias,10);assert.equal(e.descuentos,0);assert.notEqual(e.canales.rappi.brutaSinIva,null);
 });
