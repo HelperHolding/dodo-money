@@ -106,6 +106,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const {data:razon}=await supabase.from("razones_sociales").select("razon_social").eq("rfc",f.rfc_receptor).maybeSingle<{razon_social:string}>();
   const firmar = async (ruta: string | null) => (ruta ? (await supabase.storage.from("facturas").createSignedUrl(ruta, 3600)).data?.signedUrl ?? null : null);
   const [urlXml, urlPdf] = await Promise.all([firmar(f.xml_ruta), firmar(f.pdf_ruta)]);
+  // Compromiso fijo al que ya está ligada (si hay): en lugar de "Hacer compromiso", el enlace a ese compromiso.
+  const { data: compromisoLigado } = await supabase.from("compromiso_fechas").select("compromiso_id").eq("factura_id", id).maybeSingle<{ compromiso_id: string }>();
   const { data: cancelacion } = await supabase.from("factura_cancelaciones").select("motivo, creado_en, ordenes, perfiles!usuario_id(nombre)").eq("factura_id", id).maybeSingle<{motivo:string;creado_en:string;ordenes:string[];perfiles:{nombre:string}|null}>();
   const [auditoria,programaciones,notas] = await Promise.all([
    supabase.from("facturas").select("creado_en,revisada_en,revision_nota,cancelada_en,motivo_cancelacion,creador:perfiles!creado_por(nombre),revisor:perfiles!revisada_por(nombre),cancelador:perfiles!cancelada_por(nombre)").eq("id",id).maybeSingle<{creado_en:string;revisada_en:string|null;revision_nota:string|null;cancelada_en:string|null;motivo_cancelacion:string|null;creador:{nombre:string}|null;revisor:{nombre:string}|null;cancelador:{nombre:string}|null}>(),
@@ -208,6 +210,8 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       )}
 </details>}
         {edita && f.tipo === "ingreso" && Number(f.saldo) > 0 && <Link className="boton" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}
+        {compromisoLigado ? <Link className="boton boton-secundario" href={`/compras/pagos/compromisos/${compromisoLigado.compromiso_id}`}>Ver su compromiso fijo</Link>
+          : edita && f.tipo === "ingreso" && f.sucursal_id && <Link className="boton boton-secundario" href={`/compras/pagos/compromisos/nuevo?factura=${f.id}`}>Hacer compromiso</Link>}
         {urlPdf && <a className="boton boton-secundario" href={urlPdf} target="_blank" rel="noreferrer">{f.origen === "manual" ? "Ver adjunto" : "Ver PDF"}</a>}
         {urlXml && <a className="boton boton-secundario" href={urlXml} target="_blank" rel="noreferrer">Ver XML</a>}
       {edita && (          <details>

@@ -17,6 +17,23 @@ export type Compromiso = {
 /** Impuestos del compromiso en el formato de `calcularGasto` (gastoManual): mismo cálculo, mismos centavos. */
 export const impuestosDe = (c: { iva: number | string; ret_iva: Impuestos["retIva"]; ret_isr: Impuestos["retIsr"] }): Impuestos =>
   ({ iva: Number(c.iva) > 0 ? 0.16 : 0, retIva: c.ret_iva, retIsr: c.ret_isr });
+/** Datos iniciales de un compromiso a partir de una factura ya registrada (botón "Hacer compromiso"): mensual desde su
+ * vencimiento, con su subtotal y los impuestos que retuvo. El concepto se adivina por la descripción. */
+export function compromisoDesdeFactura(
+  f: { proveedor_id: string; sucursal_id: string; subtotal: number; descuento: number; iva: number; retencion_iva: number; retencion_isr: number; vence_el: string },
+  descripcion: string,
+): Pick<Compromiso, "sucursal_id" | "proveedor_id" | "concepto" | "descripcion" | "monto_estimado" | "iva" | "ret_iva" | "ret_isr" | "unidad" | "cada" | "dia_mes" | "inicio"> {
+  const base = Math.round((Number(f.subtotal) - Number(f.descuento)) * 100) / 100;
+  const texto = descripcion.trim(), plano = texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const concepto: Concepto = /renta|arrendamiento/.test(plano) ? "renta" : /fumiga/.test(plano) ? "fumigacion" : /trampa/.test(plano) ? "trampas_grasa" : /basura/.test(plano) ? "basura" : "otro";
+  // ISR: 10 % (arrendamiento, honorarios) o 1.25 % (RESICO); lo que quede en medio se toma por la tasa más cercana.
+  const isr = Number(f.retencion_isr) > 0 ? (Number(f.retencion_isr) / base > 0.05 ? "diez" : "resico") : "ninguna";
+  return {
+    sucursal_id: f.sucursal_id, proveedor_id: f.proveedor_id, concepto, descripcion: concepto === "otro" ? texto.slice(0, 300) : "", monto_estimado: base,
+    iva: Number(f.iva) > 0 ? 0.16 : 0, ret_iva: Number(f.iva) > 0 && Number(f.retencion_iva) > 0 ? "dos_tercios" : "ninguna", ret_isr: isr,
+    unidad: "mes", cada: 1, dia_mes: Number(f.vence_el.slice(8)), inicio: f.vence_el,
+  };
+}
 /** Una fila de `compromisos_en_rango`: la fecha calculada y lo guardado de ella. */
 export type FechaCompromiso = {
   compromiso_id: string; vence: string; fecha_id: string | null; factura_id: string | null;
