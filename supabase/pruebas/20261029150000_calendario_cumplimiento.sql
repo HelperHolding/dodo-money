@@ -130,7 +130,7 @@ begin
   -- 16. Vista unificada con hoy = 8 de marzo de 2027. Semanal desde el lunes 1: vencida, por vencer (hoy) y pendiente.
   s:=public.guardar_obligacion(null,0,jsonb_build_object('tipo','extintores','nombre','Bitácora de extintores','sucursal_id',f.sucursal_id,'frecuencia','semanal','inicio','2027-03-01','con_pago','false'));
   an:=public.guardar_obligacion(null,0,jsonb_build_object('tipo','seguro','nombre','Seguro de local','razon_social_rfc',f.rfc_receptor,'frecuencia','anual','inicio','2027-05-07','con_pago','true','proveedor_id',f.proveedor_id));
-  select array_agg(cr.estado order by r.vence) into claves from public.cumplimiento_en_rango('2027-03-01','2027-03-15','2027-03-08') cr where cr.referencia_id=s;
+  select array_agg(cr.estado order by cr.vence) into claves from public.cumplimiento_en_rango('2027-03-01','2027-03-15','2027-03-08') cr where cr.referencia_id=s;
   if claves is distinct from array['vencida','por_vencer','pendiente'] then raise exception 'FALLÓ: estados semanal %',claves;end if;
   if (select cr.estado from public.cumplimiento_en_rango('2027-05-01','2027-05-31','2027-03-08') cr where cr.referencia_id=an)<>'por_vencer' then raise exception 'FALLÓ: anual a 60 días';end if;
   if (select cr.ambito from public.cumplimiento_en_rango('2027-05-01','2027-05-31','2027-03-08') cr where cr.referencia_id=an) is distinct from (select razon_social from public.razones_sociales where rfc=f.rfc_receptor) then raise exception 'FALLÓ: ámbito de razón social';end if;

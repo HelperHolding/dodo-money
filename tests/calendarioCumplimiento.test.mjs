@@ -111,3 +111,23 @@ test('cumplimiento: correos de avisos solo de admins activos',async()=>{
   assert.deepEqual((await db.query(`select c from public.correos_avisos_cumplimiento() c`)).rows.map(r=>r.c),['julio@ejemplo.mx']);
  }finally{await db.close();}
 });
+
+test('cumplimiento: la vista unificada incluye compromisos con servicio y sus estados',async()=>{
+ const db=await montar();
+ try{
+  await db.exec(ADMIN);
+  const {rows:[{id}]}=await db.query(`select public.guardar_compromiso(null,0,'{"sucursal_id":"00000000-0000-0000-0000-0000000000e1","concepto":"fumigacion","descripcion":"","proveedor_id":"00000000-0000-0000-0000-0000000000b1","monto_estimado":"1200","forma_pago":"transferencia","unidad":"mes","cada":"1","dia_mes":"10","inicio":"2027-01-10","fin":"","requiere_servicio":"true"}'::jsonb) id`);
+  await db.exec(`select public.comprobar_servicio_compromiso('${id}','2027-01-10',0,'realizado','2026-01-10','Servicio completo')`);
+  await db.exec(`select public.comprobar_servicio_compromiso('${id}','2027-02-10',0,'no_realizado',null,'No se presentó')`);
+  const {rows}=await db.query(`select * from public.cumplimiento_en_rango('2027-01-01','2027-03-31','2027-03-08') where origen='compromiso' and referencia_id='${id}' order by vence`);
+  assert.equal(rows.length,3);
+  const [ene,feb,mar]=rows;
+  assert.equal(ene.estado,'cumplida_sin_factura');
+  assert.equal(ene.falta_evidencia,true);
+  assert.equal(ene.frecuencia,'mensual');
+  assert.equal(ene.titulo,'Fumigación');
+  assert.equal(ene.ruta,`/compras/pagos/compromisos/${id}#fecha-2027-01-10`);
+  assert.equal(feb.estado,'omitida');
+  assert.equal(mar.estado,'por_vencer');
+ }finally{await db.close();}
+});
