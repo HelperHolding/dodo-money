@@ -13,6 +13,7 @@ import {
   type ContextoMeta, type EntradaPL, type FilaPL, type Meta,
 } from "@/lib/finanzas/pl";
 import type { ColumnaPL } from "@/lib/finanzas/excel";
+import { formatoAsesores, type FormatoAsesores } from "@/lib/finanzas/formatoAsesores";
 import { prorratear } from "@/lib/finanzas/prorrateo";
 import { costearProductos, costeo, type Categoria, type Costo, type VentaDia, type VentaProducto } from "@/lib/ventas/calculos";
 import { leerTodo } from "@/lib/ventas/paginar";
@@ -30,6 +31,9 @@ const de = <T extends Fila>(filas: readonly T[], id: string | null) => filas.fil
 const centavos = (n: number) => Math.round(n * 100) / 100;
 /** Renglón del P&L donde cae una cuenta (memo e "insumos/inversiones" no son renglón: van al memo). */
 const renglonDe = (cuenta: string | null) => (cuenta && cuenta !== "insumos" && cuenta !== "inversiones" ? cuenta : cuenta ? `memo_${cuenta}` : "otros");
+/** Textos con que se anotan las comisiones de cobro en el detalle de "Otros"; el formato de asesores las separa por estos textos. */
+const TEXTO_COBRO = { dlocal: "Comisión dLocal (pagos en la app, sin Rappi)", netpay: "Comisión NetPay (terminal, sin Rappi)" } as const;
+const esComisionCobro = (texto: string) => texto === TEXTO_COBRO.dlocal || texto === TEXTO_COBRO.netpay;
 
 export type SucursalPL = { id: string; nombre: string; entrada: EntradaPL; ctx: ContextoMeta; metas: Meta[]; avisos: string[] };
 export type DatosPeriodo = {
@@ -222,8 +226,8 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     const regaliasPeriodo = regalias([...diasVenta.filter((d,i)=>i<diasSuc.length||!fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta)),...[...basesFin].map(([fecha,base])=>({fecha,total:base,iva:0,tarjeta:0,en_linea:0,agregador:{total:0,tarjeta:0,en_linea:0}}))], vigente);
     anotar(s.id, "regalias", `Venta neta ${pesos(ventaNeta)} × regalías vigentes`, regaliasPeriodo);
     const cobro = comisionesCobro(diasVenta, vigente);
-    anotar(s.id, "otros", "Comisión dLocal (pagos en la app, sin Rappi)", cobro.dlocal);
-    anotar(s.id, "otros", "Comisión NetPay (terminal, sin Rappi)", cobro.netpay);
+    anotar(s.id, "otros", TEXTO_COBRO.dlocal, cobro.dlocal);
+    anotar(s.id, "otros", TEXTO_COBRO.netpay, cobro.netpay);
     // Neto: un sobrante compensa un faltante del mismo periodo.
     const faltantes = faltantesDe([
       ...arqueos.filter((a) => a.turnos.sucursal_id === s.id).map((a) => Number(a.diferencia)),
@@ -349,6 +353,21 @@ export async function plConHistoria(supabase: SupabaseClient, p: Periodo, sucurs
     detalleDe: (renglon: string) => (vista.suc ? d.detalle.get(`${vista.suc.id}|${renglon}`) ?? [] : []),
     memoDetalle: (cuenta: "insumos" | "inversiones") => (vista.suc ? d.detalle.get(`${vista.suc.id}|memo_${cuenta}`) ?? [] : []),
   };
+}
+
+/** Pestaña "Formato asesores": el mismo P&L del periodo con la estructura de la plantilla; sin metas ni comparaciones. */
+export async function plAsesores(supabase: SupabaseClient, p: Periodo, sucursalId: string | undefined) {
+  const d = await datosPL(supabase, p);
+  const vista = vistaPL(d, sucursalId);
+  let formato: FormatoAsesores | null = null, error: string | null = null;
+  try { formato = formatoAsesores(vista.entrada, vista.filas); } catch (e) { error = e instanceof Error ? e.message : String(e); }
+  const de = (clave: string) => (vista.suc ? d.detalle.get(`${vista.suc.id}|${clave}`) ?? [] : []);
+  /** "comisiones_cobro" son las comisiones anotadas en "otros"; "otros" aquí ya no las incluye. */
+  const detalleDe = (origen: readonly string[]): Detalle => origen.flatMap((clave) =>
+    clave === "comisiones_cobro" ? de("otros").filter((x) => esComisionCobro(x.texto))
+      : clave === "otros" ? de("otros").filter((x) => !esComisionCobro(x.texto))
+      : de(clave));
+  return { datos: d, ...vista, formato, error, detalleDe };
 }
 
 /** Vista comparativa: cada columna es un periodo (mes o semana) cargado en paralelo; el total es su suma. Sin metas. */
