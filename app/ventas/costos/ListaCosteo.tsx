@@ -4,7 +4,7 @@ import Link from "next/link";
 import {pesos,fechaTexto} from "@/lib/formato";
 import {filtrarCosteo,agruparCosteo,type FilaCosteo,type FiltroCosteo} from "@/lib/costeo/lista";
 import {margenProducto,margenConComision} from "@/lib/costeo/margenes";
-const RAPIDOS={"":"Todos","sin-costo":"Sin costo","sin-categoria":"Sin categoría","sin-rappi":"Sin precio Rappi","margen-bajo":"Margen bajo",diferencia:"Costo distinto al BOM"};
+const RAPIDOS={"":"Todos","sin-costo":"Sin costo","sin-categoria":"Sin categoría","lista-rappi":"Lista Rappi","sin-rappi":"Sin precio Rappi","margen-bajo":"Margen bajo",diferencia:"Costo distinto al BOM"};
 const pct=(n:number)=>`${n.toLocaleString("es-MX",{maximumFractionDigits:1})} %`;
 /** Margen y su importe por venta: verde si cumple el umbral, ámbar si no, rojo si pierde. "—" si falta precio o costo. */
 function Margen({m,umbral,detalle}:{m:{margenPct:number;utilidad:number}|null;umbral:number;detalle?:string}){

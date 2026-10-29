@@ -1,6 +1,6 @@
 # Lista interactiva de costeo
 
-La vista predeterminada permite buscar por palabras, código e insumos del BOM vigente sin acentos; filtra inmediatamente sin consultas por pulsación. Incluye categoría, tamaño y rangos inclusivos de costo, precios POS/Rappi y margen. Filtros rápidos: sin costo, sin categoría, sin precio Rappi, margen bajo y diferencia contra BOM. Umbral inicial de margen bajo: 60 %, editable, no es una meta guardada.
+La vista predeterminada permite buscar por palabras, código e insumos del BOM vigente sin acentos; filtra inmediatamente sin consultas por pulsación. Incluye categoría, tamaño y rangos inclusivos de costo, precios POS/Rappi y margen. Filtros rápidos: sin costo, sin categoría, lista Rappi (solo productos con precio de la lista oficial vigente), sin precio Rappi, margen bajo y diferencia contra BOM. Umbral inicial de margen bajo: 60 %, editable, no es una meta guardada.
 
 Agrupaciones desplegables por categoría, tamaño, BOM y costo. Encabezados ordenan ascendente/descendente; datos pendientes al final, costo cero válido. Conserva enlaces a ficha, calculadora y origen cerrado. Vista de tarjetas mantiene los formularios de edición anteriores.
 
