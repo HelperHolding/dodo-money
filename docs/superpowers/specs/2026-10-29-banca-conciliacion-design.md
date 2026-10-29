@@ -47,7 +47,7 @@ facturas, ventas, caja ni saldos.
 | `tipo` | Movimientos | Documentos |
 |---|---|---|
 | `pago_proveedor` | cargos | 1+ `pago` (no anulados, forma transferencia) |
-| `cobro_tarjeta` | 1 abono NetPay + sus cargos de comisión/IVA del mismo día | 1–7 `venta_dia` de días contiguos |
+| `cobro_tarjeta` | 1 abono NetPay + sus cargos de comisión/IVA del mismo día | `venta_dia` de hasta 7 días distintos, en un lapso de hasta 7 días, anteriores al depósito |
 | `cobro_rappi` | abonos | 1+ `rappi_lote` de reportes no sustituidos |
 | `nomina` | cargos | opcional `nomina_mes` |
 | `sin_documento` | cualquiera | ninguno; `nota` obligatoria |
@@ -72,7 +72,7 @@ subproyecto 3, documentada aquí).
 - `monto_movimientos` = Σ abonos − Σ cargos de los movimientos.
 - `monto_documentos`: pagos → Σ `pagos.monto` (negativo); `cobro_tarjeta` → Σ `ventas_dia.tarjeta`; Rappi → Σ neto
   del paidlot desde `reporte.movimientos` del reporte; nómina y sin documento → null.
-- `cobro_tarjeta` compara `monto_documentos` contra **abono + cargos** (bruto antes de comisión).
+- `cobro_tarjeta` compara `monto_documentos` contra **el abono** (NetPay deposita la venta bruta y cobra comisión e IVA aparte el mismo día).
 - `diferencia` = movimientos (o bruto) − documentos; distinta de 0 exige `nota`.
 
 ## 4. Sugerencias
@@ -82,7 +82,7 @@ sugerencia trae movimientos, tipo, documentos propuestos, concepto sugerido, dif
 
 | Movimiento | Regla | Concepto sugerido |
 |---|---|---|
-| Abono "NET PAY … VTAS" | Agrupa los cargos "DOMI: COM VTAS" e "IVA COM VTAS" del mismo día. Bruto = abono + cargos. Días candidatos: contiguos desde el día siguiente al último día cubierto por el depósito anterior hasta el día anterior al depósito; elige la ventana (1–4 días, que termina en D−1) con menor diferencia contra Σ `tarjeta` | `cobranza_tarjeta` |
+| Abono "NET PAY … VTAS" | Agrupa los cargos "DOMI: COM VTAS" e "IVA COM VTAS" del mismo día. Se compara el abono (venta bruta) contra Σ `tarjeta`. Días candidatos: no usados por otro depósito, de 1 a 4 días antes del depósito; elige la ventana (1–4 días, que termina en D−1) con menor diferencia contra Σ `tarjeta` | `cobranza_tarjeta` |
 | Abono "TECNOLOGIAS RAPPI" | Paidlot no conciliado cuyo neto = monto (±0.01). Abono ≤ $1 de validación → `sin_documento` | `cobranza_rappi` / `otros_operacion` |
 | Cargo SPEI a CLABE de proveedor | Pago no anulado, transferencia, no vinculado, mismo monto, fecha ±5 días, `proveedores.clabe` = CLABE del concepto | Desde `cuenta_pl` de las facturas del pago (por monto mayor): insumos/alimento → `proveedores`; renta → `renta`; servicios → `servicios`; marketing → `marketing`; inversiones → `capex`; otro → `proveedores` |
 | Cargos SPEI con NOMINA o Q## | Lote del mismo día | `nomina` |
