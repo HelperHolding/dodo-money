@@ -21,7 +21,7 @@ export async function leerConciliacion(db: SupabaseClient, cuenta: { id: string;
     leerTodo<{ conciliacion_id: string; banca_movimientos: Fila & { cuenta_id: string } }>((a, b) => db.from("banca_conciliacion_movimientos")
       .select("conciliacion_id,banca_movimientos!inner(id,fecha,fila_origen,descripcion,referencia,cargo,abono,cuenta_id)").eq("activa", true)
       .eq("banca_movimientos.cuenta_id", cuenta.id).gte("banca_movimientos.fecha", desde).lte("banca_movimientos.fecha", hasta)
-      .order("conciliacion_id").range(a, b).returns<{ conciliacion_id: string; banca_movimientos: Fila & { cuenta_id: string } }[]>()),
+      .order("conciliacion_id").order("movimiento_id").range(a, b).returns<{ conciliacion_id: string; banca_movimientos: Fila & { cuenta_id: string } }[]>()),
     db.from("razon_social_sucursales").select("sucursal_id").eq("rfc", cuenta.rfc).returns<{ sucursal_id: string }[]>(),
     db.from("rappi_fin_importaciones").select("id,reporte").eq("rfc", cuenta.rfc).is("sustituida_en", null).returns<{ id: string; reporte: { movimientos?: { lote: string | null; neto: number }[] } }[]>(),
   ]);

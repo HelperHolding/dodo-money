@@ -18,6 +18,7 @@ const volver = (fd: FormData, aviso: { ok?: string; error?: string }): never => 
   revalidatePath("/banca");
   redirect(`/banca?${p}`);
 };
+const leerDocumentos = (s: string): unknown => { try { return JSON.parse(s || "[]"); } catch { throw Error("Revisa los datos de la conciliación."); } };
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : "No se pudo conciliar.");
 
 async function admin() {
@@ -34,7 +35,7 @@ export async function conciliarMovimientos(fd: FormData) {
     const solicitud = texto(fd, "solicitud"), movimientos = texto(fd, "movimientos").split(",").filter(Boolean);
     const tipo = texto(fd, "tipo"), concepto = texto(fd, "concepto"), nota = texto(fd, "nota"), pago = texto(fd, "pago");
     // El formulario manual de pago manda el pago elegido en `pago`; las sugerencias mandan `documentos` ya armados.
-    const documentos = tipo === "pago_proveedor" && UUID.test(pago) && !texto(fd, "documentos") ? [{ tipo: "pago", id: pago }] : JSON.parse(texto(fd, "documentos") || "[]");
+    const documentos = tipo === "pago_proveedor" && UUID.test(pago) && !texto(fd, "documentos") ? [{ tipo: "pago", id: pago }] : leerDocumentos(texto(fd, "documentos"));
     if (!UUID.test(solicitud) || !movimientos.length || movimientos.length > 200 || !movimientos.every((m) => UUID.test(m))
       || !(TIPOS as readonly string[]).includes(tipo) || !CONCEPTOS.some((c) => c.clave === concepto) || !Array.isArray(documentos) || documentos.length > 200 || nota.length > 1000)
       throw Error("Revisa los datos de la conciliación.");
