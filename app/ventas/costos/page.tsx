@@ -55,7 +55,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
     .map((c) => ({ categoria: c, productos: visibles.filter((p) => p.categoria === c) }))
     .filter((g) => g.productos.length > 0);
 
-  const filas:FilaCosteo[]=productos.map(p=>{const c=vigente(p),r=recetas.find(r=>r.dodo_id===p.dodo_id),precio=preciosRappi.get(p.dodo_id);return {id:p.dodo_id,nombre:p.nombre,categoria:p.categoria?NOMBRE_CATEGORIA[p.categoria]:"Sin categoría",tamano:p.tamano?TAMANO[p.tamano]:"Sin tamaño",costo:c?Number(c.costo):null,desde:c?.vigente_desde??null,fuente:c?.fuente??null,nota:c?.nota??null,pos:r?.receta.precioVenta??null,rappi:precio?.precio??null,rappiFecha:precio?.fecha??null,bom:!!r,costoBOM:r?.costo===null||!r?null:v?.periferico&&r.receta.precioVenta===null?null:Math.round((Number(r.costo)+(v?.periferico?Number(r.receta.precioVenta)*.01:0))*100)/100,insumos:r?.receta.materiales.map(m=>m.nombre)??[]};});
+  const filas:FilaCosteo[]=productos.map(p=>{const c=vigente(p),r=recetas.find(r=>r.dodo_id===p.dodo_id),precio=preciosRappi.get(p.dodo_id);return {id:p.dodo_id,nombre:p.nombre,categoria:p.categoria?NOMBRE_CATEGORIA[p.categoria]:"Sin categoría",tamano:p.tamano?TAMANO[p.tamano]:"Sin tamaño",costo:c?Number(c.costo):null,desde:c?.vigente_desde??null,fuente:c?.fuente??null,nota:c?.nota??null,pos:r?.receta.precioVenta??null,rappi:precio?.precio??null,rappiFecha:precio?.fecha??null,rappiOficial:precio?.oficial??false,bom:!!r,costoBOM:r?.costo===null||!r?null:v?.periferico&&r.receta.precioVenta===null?null:Math.round((Number(r.costo)+(v?.periferico?Number(r.receta.precioVenta)*.01:0))*100)/100,insumos:r?.receta.materiales.map(m=>m.nombre)??[]};});
 
   return (
     <>

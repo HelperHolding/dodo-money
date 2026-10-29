@@ -2,7 +2,7 @@
 import {buscarAproximado} from '../busquedaAproximada.ts';
 // @ts-expect-error Extensión explícita para las pruebas con Node strip-types.
 import {margenProducto,margenConComision} from "./margenes.ts";
-export type FilaCosteo={id:number;nombre:string;categoria:string;tamano:string;costo:number|null;desde:string|null;fuente:string|null;nota:string|null;pos:number|null;rappi:number|null;rappiFecha:string|null;bom:boolean;costoBOM:number|null;insumos:string[]};
+export type FilaCosteo={id:number;nombre:string;categoria:string;tamano:string;costo:number|null;desde:string|null;fuente:string|null;nota:string|null;pos:number|null;rappi:number|null;rappiFecha:string|null;rappiOficial:boolean;bom:boolean;costoBOM:number|null;insumos:string[]};
 export type FiltroCosteo={q?:string;categoria?:string;tamano?:string;rapido?:string;canal?:string;umbral?:string;agrupar?:string;orden?:string;direccion?:string;min?:string;max?:string;posMin?:string;posMax?:string;rappiMin?:string;rappiMax?:string;margenMin?:string;margenMax?:string};
 /** canal: "pos" (default), "rappi" (bruto) o "rappi-comision" (después de la comisión Rappi vigente, en %). */
 export const margenFila=(p:FilaCosteo,canal?:string,comisionRappi:number|null=0)=>(canal==="rappi-comision"?(comisionRappi===null?null:margenConComision(p.rappi,p.costo,comisionRappi)):margenProducto(canal==="rappi"?p.rappi:p.pos,p.costo))?.margenPct??null;
