@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-29 · Calculadora de promociones y combos como The Coffee
+
+Calculadoras → Promociones y combos reúne en una pestaña los modos Precio Rappi, Un producto y Combo de varios productos, igual que la calculadora de The Coffee (HelperHolding/theCoffeeCosteo). Cada escenario compara POS y Rappi al mismo precio y descuento: margen bruto y margen con comisión con su importe por venta. El canal de referencia usa la comisión y base capturadas; el otro, su comisión vigente sobre el cobro con IVA. El combo suma costos y precios del canal de referencia y muestra el ahorro del cliente. La pestaña Combo anterior se retira; `?calculadora=combo` abre el modo combo. Sin migración.
+
 ## 2026-10-29 · Precio POS desde Dodo IS
 
 El precio POS de costeo, ficha y calculadoras sale del último cobro en tienda registrado por Dodo IS (precio de lista sin descuento, últimos 60 días); el Excel del BOM queda solo como respaldo para productos sin ventas y para el periférico. Productos sin receta, como bebidas y dips, ya tienen precio POS. Sin migración.

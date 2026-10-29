@@ -13,3 +13,7 @@ export function simularPromocion(e:EscenarioPromo){
  const precioEquilibrio=equilibrio>0?ceilCent((costo+e.extra)/equilibrio/(1-e.descuento/100)):null;
  return {cobro,neto,costo,comision,bruto,margenBruto:bruto/neto*100,contribucion,margen:contribucion/neto*100,precioObjetivo,precioEquilibrio};
 }
+/** La misma promoción en cada canal, como The Coffee: el canal de referencia usa la comisión y la base capturadas; los demás, su comisión vigente sobre el cobro con IVA. null si el canal no tiene comisión. */
+export function compararCanales<C extends string>(e:EscenarioPromo,canales:readonly {id:C;comision:number|null}[],referencia:C|null){
+ return canales.map(c=>({id:c.id,r:c.id===referencia?simularPromocion(e):c.comision===null?null:simularPromocion({...e,comision:c.comision,baseComision:"con-iva"})}));
+}

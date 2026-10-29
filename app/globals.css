@@ -1108,6 +1108,16 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .calculo-cifra { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin:0 0 12px; }
 .calculo-cifra .costeo-chip { font-size:1.1rem; padding:4px 12px; }
 .calculo-cifra strong { font-size:1.5rem; }
+/* Calculadora de promociones (formato The Coffee): modos, tarjetas por canal y resumen del combo. */
+.promo-modos { flex-wrap:wrap; margin:0 0 16px; }
+.promo-canales { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:0 0 12px; }
+.promo-canales > div { background:var(--blanco); border:1px solid var(--linea); border-radius:var(--r-md); padding:14px; }
+.promo-canales dt { font-size:.75rem; color:var(--tinta-suave); }
+.promo-canales dd { margin:8px 0 0; }
+.promo-canales strong { display:block; font-size:1.5rem; font-variant-numeric:tabular-nums; }
+.promo-canales small { font-variant-numeric:tabular-nums; }
+.combo-linea .campo small { display:block; margin-top:4px; color:var(--tinta-suave); font-size:.75rem; }
+.combo-resumen { margin:16px 0 0; padding-top:12px; border-top:1px solid var(--linea); }
 .combo-lineas { border:1px solid var(--linea); border-radius:var(--r-md); padding:14px 16px 16px; margin:0 0 16px; }
 .combo-lineas legend { font-weight:700; padding:0 6px; }
 .combo-linea { display:grid; grid-template-columns:minmax(0,1fr) 7rem auto; gap:12px; align-items:end; }
