@@ -16,8 +16,15 @@ export async function guardarCompromiso(fd: FormData) {
   if ("error" in r) return volver(ruta, "error", r.error);
   const { data, error } = await supabase.rpc("guardar_compromiso", { p_id: id || null, p_revision: Number(texto(fd, "revision") || 0), p_datos: r.datos });
   if (error) return volver(ruta, "error", error.message);
-  revalidatePath("/compras/pagos", "layout");
-  volver(`/compras/pagos/compromisos/${data}`, "ok", "Compromiso guardado.");
+  // Desde una factura: queda ligada a la primera fecha. Si no se puede, el compromiso ya está guardado y se avisa.
+  let aviso = "";
+  const factura = texto(fd, "factura_id");
+  if (!id && factura) {
+    const { error: errorLiga } = await supabase.rpc("ligar_factura_compromiso", { p_compromiso: data, p_vence: r.datos.inicio, p_revision: 0, p_factura: factura });
+    aviso = errorLiga ? ` No se ligó la factura (${errorLiga.message}); lígala desde su fecha.` : " La factura quedó ligada a la primera fecha.";
+  }
+  revalidatePath("/compras", "layout");
+  volver(`/compras/pagos/compromisos/${data}`, "ok", `Compromiso guardado.${aviso}`);
 }
 
 const rutaDe = (fd: FormData) => `/compras/pagos/compromisos/${texto(fd, "compromiso_id")}`;
