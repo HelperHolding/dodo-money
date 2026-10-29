@@ -4,11 +4,11 @@ import { readFileSync } from "node:fs";
 import { CONCEPTOS, TIPOS, clabeDestino, conceptoDeCuenta, documentosRpc, sugerirConciliaciones, type Documentos, type MovimientoBanco } from "./conciliacion.ts";
 
 let fila = 0;
-const mov = (id: string, fecha: string, descripcion: string, cargo: number, abono: number): MovimientoBanco => ({ id, fecha, fila: ++fila, descripcion, cargo, abono });
+const mov = (id: string, fecha: string, descripcion: string, cargo: number, abono: number, referencia = "_"): MovimientoBanco => ({ id, fecha, fila: ++fila, descripcion, referencia, cargo, abono });
 const NETPAY = "AAAAA01 SPEI. BANORTE. 072000000000000001. NET PAY SAPI DE C. VTAS";
 const COM = "DOMI:     COM VTAS  1234567 DODO PIZZA 1-12345 - NET PAY SA";
 const IVA = "DOMI:     IVA COM VTAS  1234567 DODO PIZZA 1-1 - NET PAY SA";
-const RAPPI = "BBBBB02 SPEI. CITI MEXICO. 124000000000000002. TECNOLOGIAS R";
+const RAPPI = "BBBBB02 SPEI. CITI MEXICO. 124000000000000002. TECNOLO";
 const SPEI = (clabe: string, nombre: string) => `CCCCC03 SPEI. BANAMEX. ${clabe}. ${nombre}. 058-07/10/2026`;
 const vacio: Documentos = { pagos: [], ventas: [], lotesRappi: [] };
 
@@ -117,7 +117,7 @@ test("reglas de texto sin documento", () => {
     mov("c", "2026-09-30", "Comisión Administración - renta", 320, 0),
     mov("d", "2026-10-09", "(BE) Pago servicio: PAGO SUA/SIPARE", 7690.96, 0),
     mov("e", "2026-10-14", "(BE) Traspaso a cuenta: 058000000000000006. C000000", 796.77, 0),
-    mov("f", "2026-09-15", "(NB) Recepcion de cuenta: 000000000001. PRESTAMO EMPRESA", 0, 99999),
+    mov("f", "2026-09-15", "(NB) Recepcion de cuenta: 000000000001. PRE", 0, 99999, "_PRESTAMO EMPRESA"),
     mov("g", "2026-10-20", "MOVIMIENTO DESCONOCIDO", 50, 0),
   ], vacio);
   assert.deepEqual(s.map((x) => [x.movimientos[0], x.tipo, x.concepto]), [
@@ -125,6 +125,20 @@ test("reglas de texto sin documento", () => {
     ["c", "sin_documento", "comisiones_bancarias"], ["d", "sin_documento", "imss_impuestos"], ["e", "sin_documento", "traspaso_interno"],
   ]);
   assert.ok(s.every((x) => x.nota.length > 0 && !x.exacta));
+});
+
+test("nómina: el SPEI truncado del Excel no trae NOMINA y queda sin sugerencia", () => {
+  assert.deepEqual(sugerirConciliaciones([mov("n", "2026-09-30", "ABUYC65 SPEI. BBVA MEXICO. 012000000000000004. PERSONA UNO", 6111.6, 0)], vacio), []);
+});
+
+test("comisión NetPay sin depósito el mismo día → comisiones_cobro sin documento", () => {
+  const s = sugerirConciliaciones([mov("c", "2026-10-06", COM, 41.48, 0)], vacio);
+  assert.deepEqual(s.map((x) => [x.tipo, x.concepto, x.documentos.length]), [["sin_documento", "comisiones_cobro", 0]]);
+});
+
+test("un abono con texto DOMI COM nunca se trata como depósito NetPay", () => {
+  const s = sugerirConciliaciones([mov("c", "2026-10-06", COM, 0, 41.48)], { ...vacio, ventas: [{ id: "v", fecha: "2026-10-05", tarjeta: 41.48 }] });
+  assert.deepEqual(s, []);
 });
 
 test("conceptoDeCuenta y documentosRpc", () => {

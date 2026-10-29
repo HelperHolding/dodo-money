@@ -73,7 +73,7 @@ subproyecto 3, documentada aquí).
 - `monto_documentos`: pagos → Σ `pagos.monto` (negativo); `cobro_tarjeta` → Σ `ventas_dia.tarjeta`; Rappi → Σ neto
   del paidlot desde `reporte.movimientos` del reporte; nómina y sin documento → null.
 - `cobro_tarjeta` compara `monto_documentos` contra **el abono** (NetPay deposita la venta bruta y cobra comisión e IVA aparte el mismo día).
-- `diferencia` = movimientos (o bruto) − documentos; distinta de 0 exige `nota`.
+- `diferencia` = movimientos − documentos (en `cobro_tarjeta`: Σ abonos − Σ `tarjeta`); distinta de 0 exige `nota`.
 
 ## 4. Sugerencias
 
@@ -90,6 +90,8 @@ sugerencia trae movimientos, tipo, documentos propuestos, concepto sugerido, dif
 | "PAGO SUA/SIPARE" | Sin documento | `imss_impuestos` |
 | "Traspaso a cuenta" | Sin documento | `traspaso_interno` |
 | Abono "PRESTAMO" | Sin documento | `prestamo_recibido` |
+
+El Excel de Banregio recorta la descripción a ~60 caracteres; las reglas leen descripción y referencia.
 
 Las reglas leen la descripción original conservada por la importación. Un movimiento ya conciliado no se sugiere.
 

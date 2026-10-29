@@ -26,7 +26,8 @@ export type Concepto = (typeof CONCEPTOS)[number]["clave"];
 export const TIPOS = ["pago_proveedor", "cobro_tarjeta", "cobro_rappi", "nomina", "sin_documento"] as const;
 export type TipoConciliacion = (typeof TIPOS)[number];
 
-export type MovimientoBanco = { id: string; fecha: string; fila: number; descripcion: string; cargo: number; abono: number };
+/** El Excel de Banregio recorta la descripción a ~60 caracteres; parte de la información vive en la referencia, así que las reglas leen descripción y referencia (`textoDe`). CLABE: solo descripción. */
+export type MovimientoBanco = { id: string; fecha: string; fila: number; descripcion: string; referencia: string; cargo: number; abono: number };
 export type PagoCandidato = { id: string; fecha: string; monto: number; clabe: string | null; proveedor: string; cuenta: CuentaPl | null };
 export type VentaTarjeta = { id: string; fecha: string; tarjeta: number };
 export type LoteRappi = { importacionId: string; lote: string; neto: number };
@@ -51,10 +52,11 @@ const sumarDias = (f: string, n: number) => new Date((dia(f) + n) * 864e5).toISO
 
 /** CLABE destino de un SPEI, en el formato del Excel ("SPEI. BANCO. CLABE.") o del PDF ("SPEI, BANCO, CLABE,"). */
 export const clabeDestino = (descripcion: string) => descripcion.match(/SPEI[.,]\s*[^.,]+[.,]\s*(\d{18})[.,]/i)?.[1] ?? null;
-const esNetPay = (m: MovimientoBanco) => m.abono > 0 && /NET PAY/i.test(m.descripcion) && !/DOMI:/i.test(m.descripcion);
-const esComisionNetPay = (m: MovimientoBanco) => m.cargo > 0 && /DOMI:.*COM VTAS/i.test(m.descripcion);
-const esRappi = (m: MovimientoBanco) => m.abono > 0 && /TECNOLOGIAS R/i.test(m.descripcion);
-const esNomina = (m: MovimientoBanco) => m.cargo > 0 && /SPEI/i.test(m.descripcion) && /N[OÓ]MINA|\bQ\d{1,2}\b/i.test(m.descripcion);
+const textoDe = (m: MovimientoBanco) => `${m.descripcion} ${m.referencia}`;
+const esNetPay = (m: MovimientoBanco) => m.abono > 0 && /NET PAY/i.test(textoDe(m)) && !/DOMI:/i.test(textoDe(m));
+const esComisionNetPay = (m: MovimientoBanco) => m.cargo > 0 && /DOMI:.*COM VTAS/i.test(textoDe(m));
+const esRappi = (m: MovimientoBanco) => m.abono > 0 && /TECNOLO/i.test(textoDe(m));
+const esNomina = (m: MovimientoBanco) => m.cargo > 0 && /SPEI/i.test(textoDe(m)) && /N[OÓ]MINA|\bQ\d{1,2}\b/i.test(textoDe(m));
 
 export const conceptoDeCuenta = (cuenta: CuentaPl | null): Concepto =>
   cuenta === "renta" ? "renta" : cuenta === "servicios" ? "servicios"
@@ -141,7 +143,7 @@ export function sugerirConciliaciones(movs: readonly MovimientoBanco[], docs: Do
   for (const m of orden) {
     if (usados.has(m.id)) continue;
     const lado = m.cargo > 0 ? "cargo" : "abono";
-    const r = REGLAS_TEXTO.find((x) => (x.lado === "ambos" || x.lado === lado) && x.patron.test(m.descripcion));
+    const r = REGLAS_TEXTO.find((x) => (x.lado === "ambos" || x.lado === lado) && x.patron.test(textoDe(m)));
     if (r) agregar({ tipo: "sin_documento", movimientos: [m.id], documentos: [], concepto: r.concepto, diferencia: null, nota: r.nota });
     else if (esComisionNetPay(m)) agregar({ tipo: "sin_documento", movimientos: [m.id], documentos: [], concepto: "comisiones_cobro", diferencia: null, nota: "Comisión NetPay sin depósito sugerido el mismo día." });
   }
