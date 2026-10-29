@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-29 · Precio POS sin comida de personal
+
+El precio POS de costeo solo toma cobros de mostrador, kiosco, app y sitio. La comida de personal sincronizada por la API (origen Pizzeria, guardada como venta en tienda) ponía precios internos, por ejemplo Alitas Buffalo a $139 en lugar de $185. Sin migración.
+
 ## 2026-10-29 · Calculadora de promociones y combos como The Coffee
 
 Calculadoras → Promociones y combos reúne en una pestaña los modos Precio Rappi, Un producto y Combo de varios productos, igual que la calculadora de The Coffee (HelperHolding/theCoffeeCosteo). Cada escenario compara POS y Rappi al mismo precio y descuento: margen bruto y margen con comisión con su importe por venta. El canal de referencia usa la comisión y base capturadas; el otro, su comisión vigente sobre el cobro con IVA. El combo suma costos y precios del canal de referencia y muestra el ahorro del cliente. La pestaña Combo anterior se retira; `?calculadora=combo` abre el modo combo. Sin migración.
