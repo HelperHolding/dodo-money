@@ -17,7 +17,7 @@ import { leerTodo } from "@/lib/ventas/paginar";
 import { CalendarioPagos, type FacturaDelDia } from "./CalendarioPagos";
 import { diaDePagoSugerido } from "@/lib/compras/diasPago";
 import { avisosCompromisos, filtrarPrevistos, previstosPorDia, tituloCompromiso, ventanaCompromisos } from "@/lib/compras/compromisos";
-import { leerCompromisos, leerFechas, sucursalDe } from "./compromisos/datos";
+import { importesDe, leerCompromisos, leerFechas, sucursalDe } from "./compromisos/datos";
 import { diasDePago } from "../servidor";
 import { FormComplementos } from "./FormComplementos";
 
@@ -61,7 +61,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const compromisosVisibles = filtrarPrevistos(compromisos, { sucursal, proveedor });
   const idsCompromiso = new Set(compromisosVisibles.map((c) => c.id));
   const fechasVisibles = fechasCompromiso.filter((f) => idsCompromiso.has(f.compromiso_id));
-  const previstos = previstosPorDia(fechasVisibles, new Map(compromisosVisibles.map((c) => [c.id, { monto: c.monto_estimado, titulo: tituloCompromiso(c, sucursalDe(c)) }])), hoy, (v) => diaDePagoSugerido(v, hoy, dias));
+  const previstos = previstosPorDia(fechasVisibles, new Map(compromisosVisibles.map((c) => [c.id, { monto: importesDe(c).total, titulo: tituloCompromiso(c, sucursalDe(c)) }])), hoy, (v) => diaDePagoSugerido(v, hoy, dias));
   const requiereServicio = new Map(compromisosVisibles.map((c) => [c.id, c.requiere_servicio]));
   const avisosFijos = avisosCompromisos(fechasVisibles, (id) => requiereServicio.get(id) ?? false, hoy);
   const facturas = facturasLeidas.map((f) => ({ ...f, pago_sugerido_el: diaDePagoSugerido(f.vence_el, hoy, dias) }));

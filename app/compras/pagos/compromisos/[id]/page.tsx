@@ -10,7 +10,7 @@ import { NOMBRE_FORMA_PAGO } from "@/lib/compras/proveedores";
 import { diaDePagoSugerido } from "@/lib/compras/diasPago";
 import { textoFrecuencia, tituloCompromiso, ventanaCompromisos } from "@/lib/compras/compromisos";
 import { diasDePago } from "../../../servidor";
-import { leerCompromisos, leerFechas, proveedorDe, sucursalDe } from "../datos";
+import { importesDe, leerCompromisos, leerFechas, proveedorDe, sucursalDe } from "../datos";
 import { TarjetaFecha } from "./FechaCompromiso";
 
 export default async function DetalleCompromiso({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> }) {
@@ -36,10 +36,11 @@ export default async function DetalleCompromiso({ params, searchParams }: { para
   const edita = puedeEditarCompras(perfil.rol), sucursal = sucursalDe(c);
   const nuevaFactura = (vence: string) => `/compras/facturas/nueva?${new URLSearchParams({ proveedor: c.proveedor_id, sucursal: c.sucursal_id, compromiso: c.id, vence })}`;
   return <>
-    <EncabezadoPagina titulo={tituloCompromiso(c, sucursal)} descripcion={`${proveedorDe(c)} · ${pesos(c.monto_estimado)} · ${textoFrecuencia(c)}`}
+    <EncabezadoPagina titulo={tituloCompromiso(c, sucursal)} descripcion={`${proveedorDe(c)} · ${pesos(importesDe(c).total)} a pagar · ${textoFrecuencia(c)}`}
       acciones={edita && <Link className="boton boton-secundario" href={`/compras/pagos/compromisos/${id}/editar`}>Editar o ponerle fin</Link>} />
     <Aviso ok={ok} error={error} />
     <section className="seccion"><dl className="tarjeta-datos">
+      <dt>Importes</dt><dd>Subtotal {pesos(importesDe(c).subtotal)}{importesDe(c).iva ? ` + IVA ${pesos(importesDe(c).iva)}` : ""}{importesDe(c).retencion_iva ? ` − ret. IVA ${pesos(importesDe(c).retencion_iva)}` : ""}{importesDe(c).retencion_isr ? ` − ret. ISR ${pesos(importesDe(c).retencion_isr)}` : ""} = <strong>{pesos(importesDe(c).total)}</strong></dd>
       <dt>Forma de pago prevista</dt><dd>{NOMBRE_FORMA_PAGO[c.forma_pago]}</dd>
       <dt>Vigencia</dt><dd>Desde {fechaTexto(c.inicio)}{c.fin ? ` hasta ${fechaTexto(c.fin)}` : ", sin fecha de fin"}</dd>
       <dt>Servicio</dt><dd>{c.requiere_servicio ? "Se comprueba cada fecha" : "No lleva comprobación"}</dd>

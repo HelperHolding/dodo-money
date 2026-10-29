@@ -7,7 +7,7 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { puedeEditarCompras } from "@/lib/roles";
 import { ventanaCompromisos, CONCEPTOS, ESTADO_PAGO, avisosCompromisos, estadoPago, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "@/lib/compras/compromisos";
-import { leerCompromisos, leerFechas, proveedorDe, sucursalDe, type CompromisoConNombres } from "./datos";
+import { importesDe, leerCompromisos, leerFechas, proveedorDe, sucursalDe, type CompromisoConNombres } from "./datos";
 
 export default async function Compromisos({ searchParams }: { searchParams: Promise<{ sucursal?: string; concepto?: string; ok?: string; error?: string }> }) {
   const { sucursal = "", concepto = "", ok, error } = await searchParams;
@@ -41,8 +41,9 @@ export default async function Compromisos({ searchParams }: { searchParams: Prom
           const proxima = propias.find((f) => f.vence >= hoy && estadoPago(f, hoy) !== "omitida");
           const alerta = propias.some((f) => estadoPago(f, hoy) === "vencido" || servicioSinComprobar(f, c.requiere_servicio, hoy));
           return <article key={c.id} className="tarjeta" data-alerta={alerta ? "si" : undefined}>
-            <div className="tarjeta-encabezado"><div><h3><Link href={`/compras/pagos/compromisos/${c.id}`}>{tituloCompromiso(c, g.nombre)}</Link></h3><p>{proveedorDe(c)}</p></div><strong>{pesos(c.monto_estimado)}</strong></div>
+            <div className="tarjeta-encabezado"><div><h3><Link href={`/compras/pagos/compromisos/${c.id}`}>{tituloCompromiso(c, g.nombre)}</Link></h3><p>{proveedorDe(c)}</p></div><strong>{pesos(importesDe(c).total)}</strong></div>
             <dl className="tarjeta-datos">
+              {importesDe(c).retenciones > 0 && <><dt>Retenciones</dt><dd>{pesos(importesDe(c).retenciones)} por enterar · subtotal {pesos(c.monto_estimado)}</dd></>}
               <dt>Frecuencia</dt><dd>{textoFrecuencia(c)}{c.fin ? ` · hasta ${fechaTexto(c.fin)}` : ""}</dd>
               <dt>Próxima</dt><dd>{proxima ? <>{fechaTexto(proxima.vence)} · <span className="insignia" data-tono={ESTADO_PAGO[estadoPago(proxima, hoy)].tono}>{ESTADO_PAGO[estadoPago(proxima, hoy)].texto}</span></> : "Sin fechas próximas"}</dd>
             </dl>
