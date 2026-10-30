@@ -4,7 +4,7 @@ const CANALES=new Set(["mostrador","kiosco","app","sitio"]);
 export function ultimosPreciosPOS(lineas:readonly LineaPrecioPOS[],hoy:string){
  const resultado=new Map<number,{precio:number;fecha:string}>();
  // Rappi (agregador) tiene su propia lista; la comida de personal y los cancelados no son precio de venta.
- // La API de Dodo IS trae la comida de personal como venta en tienda con origen "Pizzeria" (otro): solo cuentan los canales de cliente.
+ // Solo canales de cliente: Datos brutos marca la comida de personal con origen "Pizzeria" (otro); la API de ventas no la trae.
  const validas=lineas.filter(l=>!l.pedidos.agregador&&l.pedidos.tipo!=="personal"&&CANALES.has(l.pedidos.origen)&&l.pedidos.estado==="entregado"&&l.pedidos.fecha<=hoy&&Number(l.precio_sin_descuento)>0);
  for(const l of validas.sort((a,b)=>b.pedidos.fecha.localeCompare(a.pedidos.fecha)||b.pedidos.hora.localeCompare(a.pedidos.hora)))
   if(!resultado.has(l.dodo_id))resultado.set(l.dodo_id,{precio:Number(l.precio_sin_descuento),fecha:l.pedidos.fecha});
