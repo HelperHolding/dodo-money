@@ -7,7 +7,7 @@ import {sumarDias} from "@/lib/finanzas/periodo";
 /** Precio POS de lista desde las ventas de Dodo IS (sincronización o Datos brutos) de los últimos 60 días; un producto sin cobro en ese periodo no aparece. */
 export async function preciosPOSDodo(supabase:SupabaseClient,hoy:string,id?:number){
  const lineas=await leerTodo<LineaPrecioPOS>((a,b)=>{
-  let q=supabase.from("pedido_productos").select("dodo_id,precio_sin_descuento,pedidos!inner(fecha,hora,agregador,tipo,estado)").gte("pedidos.fecha",sumarDias(hoy,-59)).lte("pedidos.fecha",hoy).is("pedidos.agregador",null).eq("pedidos.estado","entregado");
+  let q=supabase.from("pedido_productos").select("dodo_id,precio_sin_descuento,pedidos!inner(fecha,hora,agregador,tipo,estado,origen)").gte("pedidos.fecha",sumarDias(hoy,-59)).lte("pedidos.fecha",hoy).is("pedidos.agregador",null).eq("pedidos.estado","entregado");
   if(id!==undefined)q=q.eq("dodo_id",id);
   return q.order("pedido_id").order("renglon").range(a,b).returns<LineaPrecioPOS[]>();
  });
