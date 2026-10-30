@@ -1,6 +1,10 @@
 # Registro de cambios
 
-## 2026-10-30 · Reporte financiero de Rappi con la razón principal · 20261030120000 · pendiente de Supabase
+## 2026-10-30 · Corrección: cierre Rappi del 2 al 21/10 con HELPER · corrida en Supabase
+
+`supabase/correcciones/2026-10-30_rappi_fin_razon_helper.sql`: el cierre `Rappi_DODO_Cierre_Octubre_2026.xlsx` de Dodo La Calma quedó con COMERCIALIZADORA MASTER SITRU; sus dos CFDI de comisión (GDL-20-1160226 y GDL-20-1162552) y el aliado del reporte son HELPER COMERCIALIZADORA MASTER (HCM260306B93). Se cambió solo la razón social de esa importación, anotada en su motivo, para que el reporte del 2 al 29/10 la sustituya con HELPER. Ensayo LISTO PARA GUARDAR y COMMIT confirmados por Sebastián.
+
+## 2026-10-30 · Reporte financiero de Rappi con la razón principal · 20261030120000 · corrida en Supabase
 
 La importación del reporte financiero de Rappi acepta la razón social principal ("Todas / Oficina") para cualquier sucursal, igual que Compras (`razon_admite_sucursal`). Antes exigía una liga explícita en `razon_social_sucursales`, que la principal no tiene, y rechazaba HELPER COMERCIALIZADORA MASTER con Dodo La Calma. Otras razones siguen requiriendo su sucursal ligada. La función solo cambia esa validación; la app aplica la misma regla. Prueba SQL en PGlite.
 
