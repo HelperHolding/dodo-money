@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-30 · Rentabilidad Rappi
+
+Reporte mensual del canal Rappi por producto: descuento que paga la tienda, comisión real del reporte financiero (o `rappi_pct`), regalías, costo, utilidad y margen contra un mínimo de 45 % editable; precio mínimo de lista con el descuento real, comparación con mostrador y descuentos por orden. El canal resta compensaciones y cancelaciones. Detalle en rentabilidad-rappi.md. Sin migración.
+
 ## 2026-10-29 · Precio POS sin comida de personal
 
 El precio POS de costeo solo toma cobros de mostrador, kiosco, app y sitio. Protege contra precios internos de la comida de personal (origen Pizzeria), como Alitas Buffalo a $139 en lugar de $185. Corrección: la API de ventas no trae comida de personal (verificado del 20 al 29/10), así que la venta y el P&L de los días sincronizados no la incluyen; esos días tampoco la reportan aparte. Sin migración.

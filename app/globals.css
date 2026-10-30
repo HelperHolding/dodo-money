@@ -1118,6 +1118,10 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .promo-canales small { font-variant-numeric:tabular-nums; }
 .combo-linea .campo small { display:block; margin-top:4px; color:var(--tinta-suave); font-size:.75rem; }
 .combo-resumen { margin:16px 0 0; padding-top:12px; border-top:1px solid var(--linea); }
+/* Rentabilidad Rappi: resumen del canal en dos columnas con importes a la derecha. */
+.rentabilidad-resumen { grid-template-columns:minmax(0,1fr) auto; max-width:640px; }
+.rentabilidad-resumen dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; }
+.barra-filtros .campo { margin:0; }
 .combo-lineas { border:1px solid var(--linea); border-radius:var(--r-md); padding:14px 16px 16px; margin:0 0 16px; }
 .combo-lineas legend { font-weight:700; padding:0 6px; }
 .combo-linea { display:grid; grid-template-columns:minmax(0,1fr) 7rem auto; gap:12px; align-items:end; }
