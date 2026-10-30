@@ -7,7 +7,8 @@
 export type OrdenRentabilidad={rappi_id:string;fecha:string;estado:string;bruto:number;descuento_restaurante:number;rappi_lineas:{producto_id:number;nombre:string;cantidad:number;importe:number}[]};
 export type EntradaRentabilidad={
  ordenes:readonly OrdenRentabilidad[];
- productoDe:(productoId:number)=>{dodo_id:number;nombre:string}|null;
+ /** Producto Rappi ligado: dodo_id solo si es un producto del catálogo; piezas, lo que lleva por unidad (uno o varios productos). */
+ productoDe:(productoId:number)=>{dodo_id:number|null;nombre:string;piezas:readonly Pieza[]}|null;
  costoDe:(dodoId:number,fecha:string)=>number|null;
  posDe:(dodoId:number)=>number|null;
  /** % de comisión Rappi vigente en la fecha, sobre lo cobrado con IVA. */
@@ -18,6 +19,7 @@ export type EntradaRentabilidad={
  /** Compensaciones y cancelaciones cobradas del periodo, en pesos positivos. */
  ajustes:{compensaciones:number;cancelaciones:number};
 };
+export type Pieza={dodo_id:number;cantidad:number};
 type Suma={piezas:number;lista:number;descuento:number;cobrado:number;neto:number;comision:number;regalias:number;costo:number};
 export type FilaRentabilidad=Suma&{clave:string;dodo_id:number|null;nombre:string;costoUnitario:number|null;utilidad:number|null;margen:number|null;descuentoPct:number;precioLista:number;precioMinimo:number|null;pos:number|null;utilidadPOS:number|null;utilidadPieza:number|null};
 const red=(n:number)=>Math.round(n*100)/100;
@@ -32,7 +34,9 @@ export function precioMinimoRappi(costo:number,descuentoPct:number,e:{comisionPc
 /** Utilidad por pieza vendida en mostrador al precio POS: terminal sobre el cobro con IVA y regalías sobre la venta sin IVA. */
 export const utilidadPOS=(precio:number,costo:number,e:{terminalPct:number;regaliasPct:number;iva?:number})=>{const neto=precio/(1+(e.iva??16)/100);return neto*(1-e.regaliasPct/100)-precio*e.terminalPct/100-costo;};
 export function rentabilidadRappi(e:EntradaRentabilidad){
- const iva=1+(e.iva??16)/100,porProducto=new Map<string,Suma&{dodo_id:number|null;nombre:string;sinCosto:boolean;costos:number[]}>();
+ const iva=1+(e.iva??16)/100,porProducto=new Map<string,Suma&{dodo_id:number|null;nombre:string;piezasDe:readonly Pieza[];sinCosto:boolean;costos:number[]}>();
+ // Costo o precio POS de una unidad: suma de sus piezas por cantidad; null si falta el de alguna.
+ const sumaPiezas=(piezas:readonly Pieza[],valor:(d:number)=>number|null)=>{if(!piezas.length)return null;let t=0;for(const p of piezas){const v=valor(p.dodo_id);if(v===null)return null;t+=v*p.cantidad;}return t;};
  const promos=new Map<number,{descuento:number;ordenes:number;lista:number}>();
  let ordenes=0,conReal=0;const comisionPeriodo:number[]=[];
  const pesoCobrado=(o:OrdenRentabilidad)=>Number(o.bruto)-Number(o.descuento_restaurante);
@@ -43,9 +47,9 @@ export function rentabilidadRappi(e:EntradaRentabilidad){
   const d=red(Number(o.descuento_restaurante));const p=promos.get(d)??{descuento:0,ordenes:0,lista:0};p.descuento+=d;p.ordenes++;p.lista+=Number(o.bruto);promos.set(d,p);
   for(const l of o.rappi_lineas){
    const importe=Number(l.importe),descuento=Number(o.descuento_restaurante)*importe/Number(o.bruto),cobrado=importe-descuento,neto=cobrado/iva;
-   const prod=e.productoDe(Number(l.producto_id)),clave=prod?`p${prod.dodo_id}`:`r${l.producto_id}`;
-   const costoUnit=prod?e.costoDe(prod.dodo_id,o.fecha):null;
-   const f=porProducto.get(clave)??{...vacia(),dodo_id:prod?.dodo_id??null,nombre:prod?.nombre??l.nombre,sinCosto:false,costos:[]};
+   const prod=e.productoDe(Number(l.producto_id)),clave=prod?.dodo_id!=null?`p${prod.dodo_id}`:`r${l.producto_id}`;
+   const costoUnit=prod?sumaPiezas(prod.piezas,d=>e.costoDe(d,o.fecha)):null;
+   const f=porProducto.get(clave)??{...vacia(),dodo_id:prod?.dodo_id??null,nombre:prod?.nombre??l.nombre,piezasDe:prod?.piezas??[],sinCosto:false,costos:[]};
    sumar(f,{piezas:Number(l.cantidad),lista:importe,descuento,cobrado,neto,comision:cobradoOrden>0?comisionOrden*cobrado/cobradoOrden:0,regalias:neto*e.regaliasPct/100,costo:(costoUnit??0)*Number(l.cantidad)});
    if(costoUnit===null)f.sinCosto=true;else f.costos.push(costoUnit);
    porProducto.set(clave,f);
@@ -53,7 +57,7 @@ export function rentabilidadRappi(e:EntradaRentabilidad){
  }
  const filas:FilaRentabilidad[]=[...porProducto].map(([clave,f])=>{
   const costoUnitario=f.sinCosto||!f.costos.length?null:f.costo/f.piezas,descuentoPct=f.lista?f.descuento/f.lista*100:0,precioLista=f.piezas?f.lista/f.piezas:0;
-  const utilidad=f.sinCosto?null:f.neto-f.comision-f.regalias-f.costo,pos=f.dodo_id===null?null:e.posDe(f.dodo_id);
+  const utilidad=f.sinCosto?null:f.neto-f.comision-f.regalias-f.costo,pos=sumaPiezas(f.piezasDe,e.posDe);
   // Comisión efectiva del producto (real o estimada) sobre lo cobrado, para que el precio mínimo use lo que de verdad cobra Rappi.
   const comisionPct=f.cobrado?f.comision/f.cobrado*100:0;
   return {clave,dodo_id:f.dodo_id,nombre:f.nombre,piezas:f.piezas,lista:red(f.lista),descuento:red(f.descuento),cobrado:red(f.cobrado),neto:red(f.neto),comision:red(f.comision),regalias:red(f.regalias),costo:red(f.costo),

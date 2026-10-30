@@ -8,7 +8,7 @@ Ventas → Costos → Rentabilidad Rappi (`/ventas/costos/rappi`, admin y corpor
 - Comisión: la cobrada por orden en los reportes financieros de Banca → Rappi (columna "Uso y alquiler de plataforma Rappi", sin su IVA). Órdenes sin reporte: `rappi_pct` vigente en la fecha sobre lo cobrado con IVA.
 - Compensaciones y cancelaciones cobradas: reportes financieros del mes, a nivel canal.
 - Regalías: `regalias_pct` vigente; sin parámetro, 3.5 % indicado por la dirección, con aviso.
-- Costo: costo vigente del producto en la fecha de la orden. POS: precio de Dodo IS (respaldo Excel del BOM) y comisión de terminal estimada.
+- Costo: costo vigente del producto en la fecha de la orden. Un producto de Rappi con piezas (`rappi_producto_piezas`, pizza + extras o combo) cuesta la suma de sus piezas por cantidad y su precio en mostrador es la suma de sus precios POS; si falta el de una pieza queda sin costo. POS: precio de Dodo IS (respaldo Excel del BOM) y comisión de terminal estimada.
 
 ## Cálculo
 
