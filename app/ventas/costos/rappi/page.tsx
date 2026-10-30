@@ -21,7 +21,7 @@ export default async function RentabilidadRappi({searchParams}:{searchParams:Pro
  const mes=q.mes&&/^\d{4}-(0[1-9]|1[0-2])$/.test(q.mes)?q.mes:hoy.slice(0,7);
  const desde=`${mes}-01`,finMes=new Date(Date.UTC(Number(mes.slice(0,4)),Number(mes.slice(5,7)),0)).toISOString().slice(0,10),hasta=finMes<hoy?finMes:hoy;
  const meta=q.meta?.trim()&&Number.isFinite(Number(q.meta))&&Number(q.meta)>=0&&Number(q.meta)<100?Number(q.meta):META_INICIAL;
- const [{ordenes,catalogo},productos,costos,params,financieros,preciosPOS,terminal]=await Promise.all([
+ const [{ordenes,catalogo},productos,costos,params,financieros,preciosPOS,terminal,piezas]=await Promise.all([
   cargarRappi(supabase,null,desde,hasta),
   leerTodo<{dodo_id:number;nombre:string}>((a,b)=>supabase.from("productos_venta").select("dodo_id,nombre").order("dodo_id").range(a,b)),
   leerTodo<{dodo_id:number;costo:number;vigente_desde:string}>((a,b)=>supabase.from("costos_producto").select("dodo_id,costo,vigente_desde").lte("vigente_desde",hasta).order("dodo_id").order("vigente_desde",{ascending:false}).range(a,b)),
@@ -29,8 +29,10 @@ export default async function RentabilidadRappi({searchParams}:{searchParams:Pro
   leerFinancierosRappi(supabase),
   preciosPOSDodo(supabase,hoy),
   comisionPOSVigente(supabase,hoy),
+  leerTodo<{rappi_producto_id:number;dodo_id:number;cantidad:number}>((a,b)=>supabase.from("rappi_producto_piezas").select("rappi_producto_id,dodo_id,cantidad").order("rappi_producto_id").order("dodo_id").range(a,b)),
  ]);
- const sku=new Map(catalogo.map(c=>[Number(c.id),c.dodo_id])),nombres=new Map(productos.map(p=>[p.dodo_id,p.nombre]));
+ const sku=new Map(catalogo.map(c=>[Number(c.id),c])),nombres=new Map(productos.map(p=>[p.dodo_id,p.nombre]));
+ const piezasDe=new Map<number,{dodo_id:number;cantidad:number}[]>();for(const p of piezas)piezasDe.set(Number(p.rappi_producto_id),[...(piezasDe.get(Number(p.rappi_producto_id))??[]),{dodo_id:p.dodo_id,cantidad:Number(p.cantidad)}]);
  const costosDe=new Map<number,typeof costos>();for(const c of costos)costosDe.set(c.dodo_id,[...(costosDe.get(c.dodo_id)??[]),c]);
  const regaliasParametro=valorVigente(params,"regalias_pct",hoy)*100,regalias=regaliasParametro>0?regaliasParametro:REGALIAS_INDICADAS;
  // Reporte financiero: comisión cobrada por orden (sin el IVA de la comisión) y compensaciones/cancelaciones del periodo.
@@ -39,7 +41,8 @@ export default async function RentabilidadRappi({searchParams}:{searchParams:Pro
  const ajustes={compensaciones:-movimientos.reduce((s,m)=>s+Number(m.compensacion),0),cancelaciones:-movimientos.reduce((s,m)=>s+Number(m.cancelacion),0)};
  const r=rentabilidadRappi({
   ordenes,comisionReal,ajustes,regaliasPct:regalias,terminalPct:terminal?.pct??0,metaPct:meta,
-  productoDe:id=>{const d=sku.get(id);return d==null?null:{dodo_id:d,nombre:nombres.get(d)??`Producto ${d}`};},
+  // Las piezas (pizza + extras o combo) mandan sobre el vínculo simple, como en guardar_piezas_rappi.
+  productoDe:id=>{const c=sku.get(id),p=piezasDe.get(id);if(p?.length)return {dodo_id:p.length===1&&p[0].cantidad===1?p[0].dodo_id:null,nombre:c?.nombre??`Producto Rappi ${id}`,piezas:p};const d=c?.dodo_id;return d==null?null:{dodo_id:d,nombre:nombres.get(d)??`Producto ${d}`,piezas:[{dodo_id:d,cantidad:1}]};},
   costoDe:(d,fecha)=>{const c=costoVigente(costosDe.get(d)??[],fecha);return c?Number(c.costo):null;},
   posDe:d=>preciosPOS.get(d)?.precio??recetas.find(x=>x.dodo_id===d)?.receta.precioVenta??null,
   comisionPct:fecha=>valorVigente(params,"rappi_pct",fecha)*100,

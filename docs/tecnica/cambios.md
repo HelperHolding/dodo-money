@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-30 · Productos Rappi con varias piezas · 20261030150000 · pendiente de Supabase
+
+Ventas → Rappi permite ligar un producto de Rappi a varias piezas del catálogo con su cantidad (pizza + dip, refresco o rolls, o combos como Plan Dúo, Solo Dodo y Completo y Dulce) mediante `guardar_piezas_rappi` (solo admin); las piezas mandan sobre el vínculo simple, que se limpia. Rentabilidad Rappi suma el costo y el precio POS de las piezas. El P&L sigue costeando Rappi con el vínculo simple: las piezas aún no entran a su costo de venta. Prueba SQL en PGlite.
+
 ## 2026-10-30 · Corrección: cierre Rappi del 2 al 21/10 con HELPER · corrida en Supabase
 
 `supabase/correcciones/2026-10-30_rappi_fin_razon_helper.sql`: el cierre `Rappi_DODO_Cierre_Octubre_2026.xlsx` de Dodo La Calma quedó con COMERCIALIZADORA MASTER SITRU; sus dos CFDI de comisión (GDL-20-1160226 y GDL-20-1162552) y el aliado del reporte son HELPER COMERCIALIZADORA MASTER (HCM260306B93). Se cambió solo la razón social de esa importación, anotada en su motivo, para que el reporte del 2 al 29/10 la sustituya con HELPER. Ensayo LISTO PARA GUARDAR y COMMIT confirmados por Sebastián.

@@ -1122,6 +1122,10 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .rentabilidad-resumen { grid-template-columns:minmax(0,1fr) auto; max-width:640px; }
 .rentabilidad-resumen dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; }
 .barra-filtros .campo { margin:0; }
+/* Ventas → Rappi: vínculo simple o por piezas de cada producto. */
+.rappi-vinculo { border-bottom:1px solid var(--linea); padding:12px 0; }
+.rappi-vinculo > details > summary { cursor:pointer; font-size:.9rem; font-weight:700; }
+.rappi-piezas { margin-top:12px; }
 .combo-lineas { border:1px solid var(--linea); border-radius:var(--r-md); padding:14px 16px 16px; margin:0 0 16px; }
 .combo-lineas legend { font-weight:700; padding:0 6px; }
 .combo-linea { display:grid; grid-template-columns:minmax(0,1fr) 7rem auto; gap:12px; align-items:end; }
