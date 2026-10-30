@@ -14,8 +14,9 @@ async function preparar(fd:FormData){
  if(Math.abs(resumen.diferenciaBases)>.02)throw Error('Las bases de retención por IVA e ISR no coinciden. Revisa el reporte antes de aplicarlo al P&L.');
  const sucursal=String(fd.get('sucursal')??''),rfc=String(fd.get('rfc')??''),motivo=String(fd.get('motivo')??'').trim();
  if(motivo.length<12||motivo.length>1000)throw Error('Explica el motivo de la importación o corrección, de 12 a 1,000 caracteres.');
- const {data:empresa,error:e}=await supabase.from('razones_sociales').select('rfc,razon_social,activa,razon_social_sucursales(sucursal_id)').eq('rfc',rfc).single();
- if(e||!empresa?.activa||!empresa.razon_social_sucursales.some((s:{sucursal_id:string})=>s.sucursal_id===sucursal))throw Error('Selecciona una sucursal asociada a la razón social.');
+ const {data:empresa,error:e}=await supabase.from('razones_sociales').select('rfc,razon_social,activa,principal,razon_social_sucursales(sucursal_id)').eq('rfc',rfc).single();
+ // Igual que Compras (razon_admite_sucursal): la razón principal vale para cualquier sucursal.
+ if(e||!empresa?.activa||!(empresa.principal||empresa.razon_social_sucursales.some((s:{sucursal_id:string})=>s.sucursal_id===sucursal)))throw Error('Selecciona una sucursal asociada a la razón social.');
  const {data:previos,error}=await supabase.from('rappi_fin_importaciones').select('id,desde,hasta,rfc').eq('sucursal_id',sucursal).is('sustituida_en',null).lte('desde',reporte.hasta).gte('hasta',reporte.desde).order('id');
  if(error)throw Error('No se pudo consultar el historial financiero. Revisa la migración de Rappi financiero.');
  if(previos?.some(p=>p.desde<reporte.desde||p.hasta>reporte.hasta||p.rfc!==rfc))throw Error('El nuevo reporte debe cubrir completos los reportes que sustituye, con la misma razón social.');

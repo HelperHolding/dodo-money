@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-30 · Reporte financiero de Rappi con la razón principal · 20261030120000 · pendiente de Supabase
+
+La importación del reporte financiero de Rappi acepta la razón social principal ("Todas / Oficina") para cualquier sucursal, igual que Compras (`razon_admite_sucursal`). Antes exigía una liga explícita en `razon_social_sucursales`, que la principal no tiene, y rechazaba HELPER COMERCIALIZADORA MASTER con Dodo La Calma. Otras razones siguen requiriendo su sucursal ligada. La función solo cambia esa validación; la app aplica la misma regla. Prueba SQL en PGlite.
+
 ## 2026-10-30 · Reporte financiero de Rappi sin recalcular
 
 Banca → Rappi acepta el Excel tal como lo exporta Rappi: si toda la columna Valor Neto (BL) viene en 0 porque sus fórmulas no se han calculado, usa el neto calculado por concepto; si alguna fila trae su valor, todas deben cuadrar. Varias compensaciones de una misma orden (un renglón por producto compensado) se suman en un movimiento; deben compartir fecha y paidlot. Las órdenes repetidas se siguen rechazando. Sin migración.
