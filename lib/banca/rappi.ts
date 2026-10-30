@@ -24,7 +24,7 @@ export function leerFinancieroRappi(hojas:readonly Hoja[],hoy:string):ReporteRap
  originales.forEach(col);Object.values(CAMPOS).forEach(col);
  const conocidas=new Set(Object.values(CAMPOS).map(col));
  const num=(c:string,f:number)=>{const v=h.celdas.get(c+f);if(v===undefined||v==='')return 0;if(typeof v!=='number'||!Number.isFinite(v)||Math.abs(v)>=1e12||Math.abs(v-red(v,6))>1e-8)throw Error(`Importe financiero inválido, ${c}${f}.`);return v;};
- const movimientos:MovimientoRappi[]=[],claves=new Set<string>();
+ const movimientos:MovimientoRappi[]=[],claves=new Set<string>(),netos:{fila:number;neto:number}[]=[];
  for(const fila of [...filas].sort((a,b)=>a-b)){
   const txt=(n:string)=>String(h.celdas.get(col(n)+fila)??'').trim();
   if(!txt('ID de la órden')){if([...h.celdas].some(([ref,v])=>ref.endsWith(String(fila))&&v!==''))throw Error(`Fila financiera sin ID: ${fila}.`);continue;}
@@ -36,11 +36,17 @@ export function leerFinancieroRappi(hojas:readonly Hoja[],hoy:string):ReporteRap
   const m={fila,fecha,orden,tienda,lote,tipo,estado,...Object.fromEntries(Object.entries(CAMPOS).map(([k,n])=>[k,num(col(n),fila)]))} as MovimientoRappi;
   if(m.bruta<0||m.aliado>0||m.dar>0||m.comision>0||m.ivaComision>0||m.creditoDar<0||m.creditoDarIva<0||m.retencionIva>0||m.retencionIsr>0||m.bruta+m.aliado+m.dar<-.005||Math.abs(m.dar+m.creditoDar+m.creditoDarIva)>.005)throw Error(`Signos o créditos DAR no cuadran en la fila ${fila}.`);
   if(tipo==='COMPENSACIÓN'&&Object.keys(CAMPOS).some(k=>k!=='compensacion'&&m[k as keyof typeof CAMPOS]!==0))throw Error(`La compensación ${fila} contiene otros conceptos.`);
-  const clave=`${tipo}|${orden}`;if(claves.has(clave))throw Error('Movimiento financiero repetido: '+clave);claves.add(clave);
-  m.neto=red(Object.keys(CAMPOS).reduce((s,k)=>s+m[k as keyof typeof CAMPOS],0),6);
-  const neto=h.celdas.get('BL'+fila);if(typeof neto!=='number'||Math.abs(neto-m.neto)>.005)throw Error(`El neto no cuadra o falta el valor calculado de BL${fila}. Guarda el Excel recalculado.`);
+  m.neto=red(Object.keys(CAMPOS).reduce((s,k)=>s+m[k as keyof typeof CAMPOS],0),6);netos.push({fila,neto:m.neto});
+  const clave=`${tipo}|${orden}`;
+  // Una orden puede tener varias compensaciones (un renglón por producto compensado): se suman en un solo movimiento.
+  const previa=tipo==='COMPENSACIÓN'?movimientos.find(x=>x.tipo===tipo&&x.orden===orden):undefined;
+  if(previa){if(previa.fecha!==fecha||previa.lote!==lote)throw Error('Compensaciones de una misma orden con distinta fecha o paidlot: '+orden);previa.compensacion=red(previa.compensacion+m.compensacion,6);previa.neto=red(previa.neto+m.neto,6);continue;}
+  if(claves.has(clave))throw Error('Movimiento financiero repetido: '+clave);claves.add(clave);
   movimientos.push(m);
  }
+ // Rappi exporta "Valor Neto" como fórmula sin calcular (todo BL en 0): entonces vale el neto calculado aquí, ya validado concepto por concepto.
+ const sinCalcular=netos.every(n=>h.celdas.get('BL'+n.fila)===0)&&netos.some(n=>Math.abs(n.neto)>.005);
+ if(!sinCalcular)for(const n of netos){const neto=h.celdas.get('BL'+n.fila);if(typeof neto!=='number'||Math.abs(neto-n.neto)>.005)throw Error(`El neto no cuadra o falta el valor calculado de BL${n.fila}. Guarda el Excel recalculado.`);}
  if(!movimientos.length||movimientos.length>5000||new Set(movimientos.map(m=>m.tienda)).size!==1)throw Error('Usa un reporte de una sola tienda, con hasta 5,000 movimientos.');
  const fechas=movimientos.map(m=>m.fecha).sort();
  const facturas=hojas.find(h=>h.nombre==='Facturas de comisión');

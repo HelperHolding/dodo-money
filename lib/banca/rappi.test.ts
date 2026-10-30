@@ -31,6 +31,21 @@ test('importación: rechaza nuevo cargo no soportado, neto ausente, DAR roto y e
  for(const [campo,valor]of [['AF3',10],['BL3',99],['AT3',10],['I3','nuevo_estado'],['A3','vie. 31 feb. 2026']] as const){const h=hoja();(h.celdas as Map<string,string|number>).set(campo,valor);assert.throws(()=>leerFinancieroRappi([h],'2026-10-22'));}
  const h=hoja();(h.celdas as Map<string,string|number>).delete('BL3');assert.throws(()=>leerFinancieroRappi([h],'2026-10-22'),/neto/);
 });
+test('importación: acepta el Excel como lo exporta Rappi, con Valor Neto sin calcular (todo BL en 0)',()=>{
+ const h=hoja(),c=h.celdas as Map<string,string|number>;c.set('BL3',0);
+ assert.equal(leerFinancieroRappi([h],'2026-10-22').movimientos[0].neto,90.255274);
+ // Si alguna fila sí trae su neto calculado, todas deben cuadrar.
+ for(const [k,v]of [...c])if(k.endsWith('3'))c.set(k.slice(0,-1)+'4',v);c.set('B4',99999002);c.set('BL4',90.255274);
+ assert.throws(()=>leerFinancieroRappi([h],'2026-10-22'),/BL3/);
+});
+test('importación: varias compensaciones de una orden se suman en un movimiento',()=>{
+ const h=hoja(),c=h.celdas as Map<string,string|number>;c.set('BL3',0);
+ // Orden 99999005 con dos productos compensados ($198.55 y $119.15), como en el reporte de octubre.
+ for(const [fila,monto]of [[4,-198.55],[5,-119.15]] as const){for(const [k,v]of [...c])if(/^[A-Z]+3$/.test(k))c.set(k.slice(0,-1)+fila,0);c.set('A'+fila,'dom. 25 oct. 2026, 7:29:05 p. m.');c.set('B'+fila,99999005);c.set('C'+fila,99999100);c.set('D'+fila,99999000);c.set('I'+fila,'');c.set('P'+fila,'COMPENSACIÓN');c.set('AA'+fila,monto);}
+ const r=leerFinancieroRappi([h],'2026-10-30'),comp=r.movimientos.filter(m=>m.tipo==='COMPENSACIÓN');
+ assert.equal(comp.length,1);assert.equal(comp[0].compensacion,-317.7);assert.equal(comp[0].neto,-317.7);
+ c.set('C5',99999101);assert.throws(()=>leerFinancieroRappi([h],'2026-10-30'),/misma orden/);
+});
 test('importación: rechaza movimientos duplicados, sin tienda y futuros',()=>{
  const h=hoja(),c=h.celdas as Map<string,string|number>;for(const [k,v]of [...c])if(k.endsWith('3'))c.set(k.slice(0,-1)+'4',v);assert.throws(()=>leerFinancieroRappi([h],'2026-10-22'),/repetido/);
  const otra=hoja();(otra.celdas as Map<string,string|number>).set('D3','');assert.throws(()=>leerFinancieroRappi([otra],'2026-10-22'));assert.throws(()=>leerFinancieroRappi([hoja()],'2026-10-01'));
