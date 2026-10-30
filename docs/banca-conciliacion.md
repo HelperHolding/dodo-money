@@ -20,7 +20,7 @@ Un movimiento, un pago, un día de venta y un paidlot pertenecen a lo más a una
 
 ## Sugerencias
 
-La app sugiere y admin confirma; "Confirmar exactas" solo confirma las que tienen documento y diferencia cero. Las reglas están en `lib/banca/conciliacion.ts`. El Excel de Banregio recorta la descripción a unos 60 caracteres; por eso las reglas leen descripción y referencia, y la nómina se marca a mano con el botón Nómina cuando el texto no la identifica.
+La app sugiere y admin confirma; "Confirmar exactas" solo confirma las que tienen documento y diferencia cero. Las reglas están en `lib/banca/conciliacion.ts`. Las reglas leen la descripción y la referencia (algunos datos, como el de un préstamo, vienen en la referencia). Cuando el texto no identifica una dispersión de nómina, se marca a mano con el botón Nómina.
 
 ## Activación
 

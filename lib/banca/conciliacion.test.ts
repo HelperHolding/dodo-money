@@ -127,7 +127,7 @@ test("reglas de texto sin documento", () => {
   assert.ok(s.every((x) => x.nota.length > 0 && !x.exacta));
 });
 
-test("nómina: el SPEI truncado del Excel no trae NOMINA y queda sin sugerencia", () => {
+test("nómina: un SPEI sin NOMINA ni Q## queda sin sugerencia", () => {
   assert.deepEqual(sugerirConciliaciones([mov("n", "2026-09-30", "ABUYC65 SPEI. BBVA MEXICO. 012000000000000004. PERSONA UNO", 6111.6, 0)], vacio), []);
 });
 
