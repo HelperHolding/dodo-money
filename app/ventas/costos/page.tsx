@@ -69,7 +69,7 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
         </p>
       </div>
       <Aviso ok={ok} error={error} />
-      <div className="acciones orden-acciones-encabezado"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link><Link className="boton boton-secundario" href="/ventas/costos/calculadora">Calculadoras</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>
+      <div className="acciones orden-acciones-encabezado"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link><Link className="boton boton-secundario" href="/ventas/costos/calculadora">Calculadoras</Link><Link className="boton boton-secundario" href="/ventas/costos/rappi">Rentabilidad Rappi</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>
       {esLista?<ListaCosteo filas={filas} comisionRappi={comisionRappi} comisionPOS={comisionPOS} inicial={{...params,ver:undefined,vista:undefined,ok:undefined,error:undefined,rapido:params.rapido??filtro} as FiltroCosteo}/>:<>      <nav className="acciones" aria-label="Filtros">
         <Link className="boton boton-secundario" href={`/ventas/costos?vista=${esLista?"lista":"tarjetas"}&q=${encodeURIComponent(q??"")}`} aria-current={!filtro ? "page" : undefined}>Todos</Link>
         {(Object.keys(FILTROS) as Filtro[]).map((f) => (
