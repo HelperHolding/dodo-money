@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-10-30 · Reporte financiero de Rappi sin recalcular
+
+Banca → Rappi acepta el Excel tal como lo exporta Rappi: si toda la columna Valor Neto (BL) viene en 0 porque sus fórmulas no se han calculado, usa el neto calculado por concepto; si alguna fila trae su valor, todas deben cuadrar. Varias compensaciones de una misma orden (un renglón por producto compensado) se suman en un movimiento; deben compartir fecha y paidlot. Las órdenes repetidas se siguen rechazando. Sin migración.
+
 ## 2026-10-30 · Rentabilidad Rappi
 
 Reporte mensual del canal Rappi por producto: descuento que paga la tienda, comisión real del reporte financiero (o `rappi_pct`), regalías, costo, utilidad y margen contra un mínimo de 45 % editable; precio mínimo de lista con el descuento real, comparación con mostrador y descuentos por orden. El canal resta compensaciones y cancelaciones. Detalle en rentabilidad-rappi.md. Sin migración.
