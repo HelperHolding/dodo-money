@@ -2,7 +2,7 @@
 
 ## 2026-10-29 · Precio POS sin comida de personal
 
-El precio POS de costeo solo toma cobros de mostrador, kiosco, app y sitio. La comida de personal sincronizada por la API (origen Pizzeria, guardada como venta en tienda) ponía precios internos, por ejemplo Alitas Buffalo a $139 en lugar de $185. Sin migración.
+El precio POS de costeo solo toma cobros de mostrador, kiosco, app y sitio. Protege contra precios internos de la comida de personal (origen Pizzeria), como Alitas Buffalo a $139 en lugar de $185. Corrección: la API de ventas no trae comida de personal (verificado del 20 al 29/10), así que la venta y el P&L de los días sincronizados no la incluyen; esos días tampoco la reportan aparte. Sin migración.
 
 ## 2026-10-29 · Calculadora de promociones y combos como The Coffee
 

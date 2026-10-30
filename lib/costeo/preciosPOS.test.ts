@@ -14,8 +14,8 @@ test('precio POS: ignora Rappi, personal, cancelados, cortesías y fechas futura
  assert.deepEqual(p.get(88),{precio:229,fecha:'2026-10-01'});
  assert.equal(ultimosPreciosPOS([],'2026-10-29').size,0);
 });
-test('precio POS: la comida de personal de la API (en tienda, origen Pizzeria = otro) no cuenta',()=>{
- // Alitas: 185 en kiosco el 25/10; el 26/10 la API trae a un empleado pagando 139 como venta en tienda.
+test('precio POS: un cobro con origen fuera de los canales de cliente (Pizzeria = otro) no cuenta',()=>{
+ // Alitas: 185 en kiosco el 25/10; el 26/10 un empleado paga 139 con origen Pizzeria.
  const p=ultimosPreciosPOS([linea(208,185,'2026-10-25','12:00:00',{origen:'kiosco'}),linea(208,139,'2026-10-26','12:00:00',{origen:'otro'})],'2026-10-29');
  assert.deepEqual(p.get(208),{precio:185,fecha:'2026-10-25'});
 });
