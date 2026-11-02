@@ -8,6 +8,10 @@ import { Icono, type NombreIcono } from "@/components/Icono";
 import { InterruptorLuz } from "@/components/InterruptorLuz";
 import { enlaceActivo, enlacesDelMenu, grupoAbierto, type Enlace, type Menu } from "@/lib/roles";
 
+/** Texto para lectores de pantalla del contador del menú. */
+const etiquetaContador = ({ n, urgente }: { n: number; urgente: boolean }) =>
+  `${n} ${n === 1 ? "pendiente" : "pendientes"}${urgente ? ", con vencidas" : ""}`;
+
 /** Icono de cada grupo del menú (por título; un grupo nuevo sin icono se muestra sin él). */
 const ICONO_GRUPO: Record<string, NombreIcono> = {
   Sucursal: "tienda", Efectivo: "cartera", Ventas: "grafica", Compras: "carrito", Finanzas: "banco",
@@ -78,7 +82,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
               <ul>
                 {g.enlaces.map((e) => (
                   <li key={e.href}>
-                    <Link className="lateral-enlace" href={e.href} aria-current={marcar(e.href)}>{e.texto}{e.contador && <span className="contador-menu" data-urgente={e.contador.urgente || undefined} aria-label={`${e.contador.n} pendientes${e.contador.urgente ? ", con vencidas" : ""}`}>{e.contador.n}</span>}</Link>
+                    <Link className="lateral-enlace" href={e.href} aria-current={marcar(e.href)}>{e.texto}{e.contador && <span className="contador-menu" data-urgente={e.contador.urgente || undefined} aria-label={etiquetaContador(e.contador)}>{e.contador.n}</span>}</Link>
                   </li>
                 ))}
               </ul>

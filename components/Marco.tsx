@@ -19,7 +19,7 @@ export async function Marco({ perfil, titulo, detalle, aviso, children }: {
   children: React.ReactNode;
 }) {
   const base = menuLateral(perfil.rol);
-  const { abiertas, vencidas } = await contarMisTareas(await crearClienteServidor()).catch(() => ({ abiertas: 0, vencidas: 0 }));
+  const { abiertas, vencidas } = await (async () => contarMisTareas(await crearClienteServidor()))().catch(() => ({ abiertas: 0, vencidas: 0 }));
   const menu = !abiertas ? base : { ...base, grupos: base.grupos.map((g) => ({ ...g, enlaces: g.enlaces.map((e) =>
     e.href === "/tareas" ? { ...e, contador: { n: abiertas, urgente: vencidas > 0 } } : e) })) };
   return (

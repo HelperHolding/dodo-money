@@ -23,6 +23,9 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   const { ok, error,ventas_mes,ventas_sucursal } = await searchParams;
   const { supabase, perfil, sucursal, turno, cajas, soloLectura } = await obtenerContexto();
 
+  const hoy = hoyCalendarioMX();
+  // Tus pendientes: arranca junto con las demás lecturas; si la RPC falta, el inicio se muestra sin el bloque.
+  const tareasLeidas = leerTareas(supabase).catch(() => []);
   const [{ data: saldos }, { data: pendientes }, { data: nombres }] = await Promise.all([
     supabase.from("saldos_cajas").select("tipo, nombre, saldo").eq("sucursal_id", sucursal.id)
       .returns<{ tipo: string; nombre: string; saldo: number }[]>(),
@@ -31,9 +34,8 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
     supabase.from("perfiles").select("id, nombre").returns<{ id: string; nombre: string }[]>(),
   ]);
   // Cumplimiento: si la consulta falla (migración pendiente), el inicio se muestra sin la franja.
-  const alertasCumplimiento = puedeVerCompras(perfil.rol) ? await leerAlertas(supabase, hoyCalendarioMX()).catch(() => null) : null;
-  // Tus pendientes: si la RPC falta, el inicio se muestra sin el bloque.
-  const misTareas = ordenPendientes((await leerTareas(supabase).catch(() => [])).filter((t) => t.asignado_a === perfil.id && abierta(t.estado)), hoyCalendarioMX()).slice(0, 3);
+  const alertasCumplimiento = puedeVerCompras(perfil.rol) ? await leerAlertas(supabase, hoy).catch(() => null) : null;
+  const misTareas = ordenPendientes((await tareasLeidas).filter((t) => t.asignado_a === perfil.id && abierta(t.estado)), hoy).slice(0, 3);
   const { data: porRecibir } = puedeRecibirCompras(perfil.rol) ? await supabase.rpc("ordenes_por_recibir") : { data: [] };
   const ordenesPorRecibir = new Set(((porRecibir ?? []) as { orden_id: string; cantidad: number; recibido: number }[])
     .filter((r) => avanceRenglon(Number(r.cantidad), Number(r.recibido)) !== "completa").map((r) => r.orden_id)).size;
@@ -69,7 +71,6 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   const saldo = (tipo: string) => saldos?.find((s) => s.tipo === tipo)?.saldo ?? 0;
   const cambios = saldo("cambios");
 
-  const hoy = hoyCalendarioMX();
   /** Frescura de cada fuente, solo para el color del chip: al día (≤2 días), atrasada (≤7) o vieja. */
   const frescura = (f: { fecha?: string; error: boolean }) => {
     if (f.error || !f.fecha) return "peligro";
@@ -93,7 +94,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       {alertasCumplimiento && <FranjaAlertas alertas={alertasCumplimiento} />}
       {misTareas.length > 0 && <section className="seccion">
         <h2>Tus pendientes <Link href="/tareas">Ver todas</Link></h2>
-        <div className="tarjetas">{misTareas.map((t) => <TarjetaTarea key={t.id} t={t} hoy={hoyCalendarioMX()} rol={perfil.rol} />)}</div>
+        <div className="tarjetas">{misTareas.map((t) => <TarjetaTarea key={t.id} t={t} hoy={hoy} rol={perfil.rol} />)}</div>
       </section>}
 
       {(porConfirmar > 0 || ordenesPorRecibir > 0 || (!turno && puedeAbrirTurno(perfil.rol))) && (
