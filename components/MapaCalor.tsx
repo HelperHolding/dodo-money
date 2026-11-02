@@ -20,6 +20,7 @@ export function MapaCalor({ celdas, horaMin, horaMax }: { celdas: readonly Celda
 
   return (
     <div className="mapa-calor">
+      <span className="mapa-calor-escala" aria-hidden="true">Menos<i /><i /><i /><i />Más</span>
       <p className="barras-v-detalle" aria-live="polite">
         {elegida ? detalle(elegida) : "Sin ventas"}
         {elegida && elegida === pico && <span className="saldo-nota"> · hora pico</span>}
@@ -37,7 +38,7 @@ export function MapaCalor({ celdas, horaMin, horaMax }: { celdas: readonly Celda
                 <button key={h} type="button" role="gridcell" className="mapa-calor-celda" disabled={!c}
                   aria-pressed={c !== undefined && c === elegida}
                   aria-label={c ? detalle(c) : `${nombre} ${h} h · sin ventas`}
-                  style={c ? { background: `color-mix(in srgb, var(--accion) ${intensidad}%, var(--blanco))` } : undefined}
+                  style={c ? { background: `color-mix(in srgb, var(--accion) ${intensidad}%, var(--campo))` } : undefined}
                   onClick={() => c && setElegida(c)} onMouseEnter={() => c && setElegida(c)} />
               );
             })}
