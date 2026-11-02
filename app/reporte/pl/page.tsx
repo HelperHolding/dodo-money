@@ -15,19 +15,17 @@ export default async function ReportePLPdf({ searchParams }: { searchParams: Pro
   const enCurso = !p.vacio && p.hasta < p.finNominal;
   const vacio = <p className="vacio">Todavía no hay días cerrados en este periodo.</p>;
   return (
-    <main className="pagina">
-      {comparativo && <style>{"@page { size: landscape; }"}</style>}
+    <main className={comparativo ? "pagina" : "pagina reporte-pl"}>
+      <style>{comparativo ? "@page { size: landscape; }" : "@page { size: letter portrait; margin: 10mm; }"}</style>
       <EncabezadoReporte titulo={comparativo ? "P&L comparativo" : "P&L"} sucursal={r.titulo}
-        detalle={`${r.comp ? r.comp.periodoTitulo : `${p.titulo}${enCurso ? ` · hasta el ${fechaTexto(p.hasta)}` : ""}`} · venta neta sin IVA, después de descuentos; criterio devengado`}
+        detalle={r.comp ? `${r.comp.periodoTitulo} · venta neta sin IVA, después de descuentos; criterio devengado` : `${p.titulo}${enCurso ? ` · hasta el ${fechaTexto(p.hasta)}` : ""}`}
         generadoPor={r.generadoPor} />
-      <p className="saldo-nota">Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los importes parciales muestran un resultado provisional.</p>
       {r.comp ? (
-        r.comp.columnas.length ? <TablaComparativo columnas={r.comp.columnas} total={r.comp.total} /> : vacio
-      ) : r.meta && (p.vacio ? vacio : (
         <>
-          <TablaPL r={r.meta} columnas={r.meta.columnas} conDetalle={false} />
+          <p className="saldo-nota">Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los importes parciales muestran un resultado provisional.</p>
+          {r.comp.columnas.length ? <TablaComparativo columnas={r.comp.columnas} total={r.comp.total} /> : vacio}
         </>
-      ))}
+      ) : r.meta && (p.vacio ? vacio : <TablaPL r={r.meta} columnas={r.meta.columnas} impresa />)}
     </main>
   );
 }

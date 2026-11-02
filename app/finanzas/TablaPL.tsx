@@ -27,16 +27,18 @@ export const desplegable = (items: Detalle, rotulo: string) =>
   );
 
 /** P&L contra meta como estado de resultados: secciones con color, subtotales en barra y montos contables. */
-export function TablaPL({ r, columnas, conDetalle = true }: {
+export function TablaPL({ r, columnas, impresa = false }: {
   r: {
     filas: FilaPL[]; entrada: EntradaPL; anterior: ReadonlyMap<string, number | null> | null; acumulado: ReadonlyMap<string, number | null>;
     detalleDe: (renglon: string) => Detalle; memoDetalle: (cuenta: "insumos" | "inversiones") => Detalle;
   };
   /** Encabezados de las comparaciones (mes o semana). */
   columnas: Columnas;
-  /** En el PDF no se despliega de dónde sale cada renglón. */
-  conDetalle?: boolean;
+  /** PDF: sin referencias contables ni de dónde sale cada renglón, un valor por celda y siempre como tabla (cabe en una hoja). */
+  impresa?: boolean;
 }) {
+  const conDetalle = !impresa;
+  const nombre = (texto: string) => (impresa ? texto : <strong>{texto}</strong>);
   const de = new Map(r.filas.map((f) => [f.clave, f]));
   const pctDe = (m: ReadonlyMap<string, number | null> | null, clave: string) => (m ? porcentaje(m.get(clave) ?? null) : "—");
 
@@ -47,12 +49,12 @@ export function TablaPL({ r, columnas, conDetalle = true }: {
     return (
       <tr key={f.clave} className={total ? "pl-total" : f.tipo === "detalle" ? "pl-desglose" : undefined}>
         <td data-label="Renglón">
-          <span className="celda-pila"><strong>{f.nombre}</strong>{referenciaHelper(f.clave)&&<small>Referencia contable: {referenciaHelper(f.clave)}</small>}{conDetalle && desplegable(r.detalleDe(f.clave), "De dónde sale")}</span>
+          <span className="celda-pila">{nombre(f.nombre)}{conDetalle && referenciaHelper(f.clave)&&<small>Referencia contable: {referenciaHelper(f.clave)}</small>}{conDetalle && desplegable(r.detalleDe(f.clave), "De dónde sale")}</span>
         </td>
         <td data-label="Real" className="monto"><Importe n={f.monto} /></td>
         <td data-label="%" className="monto">{porcentaje(f.pct)}</td>
         <td data-label="Meta" className="monto">
-          {f.metaFija ? <><Importe n={f.meta} /><small className="pl-pct">{porcentaje(f.metaPct)}</small></> : porcentaje(f.metaPct)}
+          {f.metaFija ? <><Importe n={f.meta} />{conDetalle && <small className="pl-pct">{porcentaje(f.metaPct)}</small>}</> : porcentaje(f.metaPct)}
         </td>
         <td data-label="Diferencia" className={`monto${pasa || falta || f.sinCapturar ? " celda-alerta" : ""}`}>
           {f.sinCapturar ? "Sin capturar" : f.diferencia === null ? "—" : <Importe n={f.diferencia} />}
@@ -62,9 +64,9 @@ export function TablaPL({ r, columnas, conDetalle = true }: {
       </tr>
     );
   };
-  const informativo = (clave: string, nombre: string, monto: number, items: Detalle) => (
+  const informativo = (clave: string, texto: string, monto: number, items: Detalle) => (
     <tr key={clave} className="pl-informativo">
-      <td data-label="Renglón"><span className="celda-pila"><strong>{nombre}</strong>{conDetalle && desplegable(items, "Facturas")}</span></td>
+      <td data-label="Renglón"><span className="celda-pila">{nombre(texto)}{conDetalle && desplegable(items, "Facturas")}</span></td>
       <td data-label="Real" className="monto"><Importe n={monto} /></td>
       <td data-label="" colSpan={5} />
     </tr>
@@ -73,7 +75,7 @@ export function TablaPL({ r, columnas, conDetalle = true }: {
   return (
     <section className="seccion">
       <div className="tabla-contenedor">
-        <table className="tabla tabla-tarjetas tabla-pl">
+        <table className={impresa ? "tabla tabla-pl tabla-pl-impresa" : "tabla tabla-tarjetas tabla-pl"}>
           <thead>
             <tr>
               <th>Renglón</th><th className="monto">Real</th><th className="monto">%</th><th className="monto" title="En pesos para los costos fijos; en % de la venta para los demás">Meta</th><th className="monto">Dif.</th>
