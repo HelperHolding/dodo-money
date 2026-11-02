@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { rutaSinSesion } from "@/lib/rutasPublicas";
+import { COOKIES_SESION } from "@/lib/seguridad";
 
 const URL_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const LLAVE_SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -39,6 +40,7 @@ export async function actualizarSesion(request: NextRequest) {
   let supabase;
   try {
     supabase = createServerClient(URL_SUPABASE, LLAVE_SUPABASE, {
+      cookieOptions: COOKIES_SESION,
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll: (lista: { name: string; value: string; options: CookieOptions }[]) => {
