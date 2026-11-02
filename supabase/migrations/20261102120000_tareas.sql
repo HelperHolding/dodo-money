@@ -21,7 +21,9 @@ create table public.tareas (
  regla text,
  orden_id uuid references public.ordenes_compra(id),
  factura_id uuid references public.facturas(id),
- ventas_dia_id uuid references public.ventas_dia(id),
+ -- El día de venta se liga por su clave natural: una reimportación borra y recrea la fila de ventas_dia con otro id.
+ ventas_sucursal_id uuid references public.sucursales(id),
+ ventas_fecha date,
  apertura_proyecto_id uuid references public.apertura_proyectos(id),
  apertura_item_id uuid references public.apertura_items(id),
  -- Texto del documento al crear la tarea: el asignado lo lee aunque no pueda abrir el documento.
@@ -31,8 +33,9 @@ create table public.tareas (
  creada_en timestamptz not null default now(),
  actualizada_en timestamptz not null default now(),
  cerrada_en timestamptz,
- constraint tareas_un_documento check(num_nonnulls(orden_id,factura_id,ventas_dia_id,apertura_proyecto_id,apertura_item_id)<=1),
- check((num_nonnulls(orden_id,factura_id,ventas_dia_id,apertura_proyecto_id,apertura_item_id)=1)=(documento_texto is not null)),
+ constraint tareas_un_documento check(num_nonnulls(orden_id,factura_id,ventas_fecha,apertura_proyecto_id,apertura_item_id)<=1),
+ check((ventas_sucursal_id is null)=(ventas_fecha is null)),
+ check((num_nonnulls(orden_id,factura_id,ventas_fecha,apertura_proyecto_id,apertura_item_id)=1)=(documento_texto is not null)),
  check((estado in ('hecho','cancelada'))=(cerrada_en is not null)),
  check(estado<>'cancelada' or length(trim(coalesce(motivo_cierre,'')))>=5),
  check((origen='manual')=(creado_por is not null)),
@@ -42,7 +45,7 @@ create index tareas_asignado_abiertas on public.tareas(asignado_a) where estado 
 create index tareas_sucursal_estado on public.tareas(sucursal_id,estado);
 create index tareas_orden on public.tareas(orden_id) where orden_id is not null;
 create index tareas_factura on public.tareas(factura_id) where factura_id is not null;
-create index tareas_ventas_dia on public.tareas(ventas_dia_id) where ventas_dia_id is not null;
+create index tareas_ventas_dia on public.tareas(ventas_sucursal_id,ventas_fecha) where ventas_fecha is not null;
 create index tareas_apertura_proyecto on public.tareas(apertura_proyecto_id) where apertura_proyecto_id is not null;
 create index tareas_apertura_item on public.tareas(apertura_item_id) where apertura_item_id is not null;
 
@@ -110,7 +113,7 @@ language sql stable security definer set search_path='' as $$
   or p_asignado=auth.uid() or p_creador=auth.uid()
   or (public.mi_rol()::text='gerente' and p_sucursal=public.mi_sucursal())
   or (public.mi_rol()::text='encargado' and p_sucursal=public.mi_sucursal()
-      and exists(select 1 from public.perfiles x where x.id=p_asignado and x.rol::text='operacion'))),false)
+      and exists(select 1 from public.perfiles x where x.id=p_asignado and x.rol::text='operacion' and x.sucursal_id=public.mi_sucursal()))),false)
 $$;
 
 -- Ligar exige ver el documento: compras y aperturas son de oficina (admin); el gerente, días de venta de su sucursal.
@@ -153,6 +156,14 @@ begin
  return query select d.texto,d.sucursal_id,d.ruta,d.anulado;
 end $$;
 
+-- true si el texto es una fecha AAAA-MM-DD que existe en el calendario.
+create function public.es_fecha_iso(p text) returns boolean
+language plpgsql immutable set search_path='' as $$
+begin
+ return p ~ '^\d{4}-\d{2}-\d{2}$' and to_char(p::date,'YYYY-MM-DD')=p;
+exception when others then return false;
+end $$;
+
 -- Valida los datos comunes de alta y edición; devuelve el mensaje de error o null.
 create function public.error_datos_tarea(p_datos jsonb,p_permitidas text[]) returns text
 language sql immutable set search_path='' as $$
@@ -161,14 +172,16 @@ language sql immutable set search_path='' as $$
   when length(trim(coalesce(p_datos->>'titulo',''))) not between 3 and 200 then 'El título debe tener de 3 a 200 caracteres.'
   when length(coalesce(p_datos->>'descripcion',''))>4000 then 'La descripción es demasiado larga (máximo 4000 caracteres).'
   when coalesce(nullif(p_datos->>'prioridad',''),'media') not in ('alta','media','baja') then 'Prioridad inválida.'
-  when coalesce(p_datos->>'vence','')<>'' and p_datos->>'vence' !~ '^\d{4}-\d{2}-\d{2}$' then 'La fecha de vencimiento no es válida.'
+  when coalesce(p_datos->>'vence','')<>'' and not public.es_fecha_iso(p_datos->>'vence') then 'La fecha de vencimiento no es válida.'
+  when coalesce(p_datos->>'documento_id','')<>'' and p_datos->>'documento_id' !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then 'El documento ligado está incompleto.'
+  when coalesce(p_datos->>'sucursal_id','')<>'' and p_datos->>'sucursal_id' !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then 'Sucursal inválida.'
   when coalesce(p_datos->>'asignado_a','') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then 'Esa persona no puede recibir esta tarea.'
  end
 $$;
 
 create function public.crear_tarea(p_datos jsonb) returns bigint
 language plpgsql security definer set search_path='' as $$
-declare r text:=public.mi_rol()::text;tipo text;doc uuid;d record;txt text;s uuid;asignado uuid;n bigint;msg text;
+declare r text:=public.mi_rol()::text;tipo text;doc uuid;d record;vs uuid;vf date;txt text;s uuid;asignado uuid;n bigint;msg text;
 begin
  if r is null then raise exception 'Tu usuario no está activo.';end if;
  if r='corporativo' then raise exception 'Corporativo solo puede consultar.';end if;
@@ -184,16 +197,19 @@ begin
   if not found then raise exception 'El documento no existe.';end if;
   if not public.puede_ligar_documento(tipo,d.sucursal_id) then raise exception 'No puedes ligar tareas a este documento.';end if;
   s:=d.sucursal_id;txt:=d.texto;
- elsif r='admin' then s:=nullif(p_datos->>'sucursal_id','')::uuid;
+  if tipo='ventas_dia' then select v.sucursal_id,v.fecha into vs,vf from public.ventas_dia v where v.id=doc;end if;
+ elsif r='admin' then
+  s:=nullif(p_datos->>'sucursal_id','')::uuid;
+  if s is not null and not exists(select 1 from public.sucursales x where x.id=s) then raise exception 'Sucursal inválida.';end if;
  else s:=public.mi_sucursal();
  end if;
  asignado:=(p_datos->>'asignado_a')::uuid;
  if not exists(select 1 from public.personas_asignables(s) x where x.id=asignado) then raise exception 'Esa persona no puede recibir esta tarea.';end if;
  insert into public.tareas(titulo,descripcion,prioridad,vence,asignado_a,creado_por,sucursal_id,
-   orden_id,factura_id,ventas_dia_id,apertura_proyecto_id,apertura_item_id,documento_texto)
+   orden_id,factura_id,ventas_sucursal_id,ventas_fecha,apertura_proyecto_id,apertura_item_id,documento_texto)
  values(trim(p_datos->>'titulo'),nullif(trim(coalesce(p_datos->>'descripcion','')),''),coalesce(nullif(p_datos->>'prioridad',''),'media')::public.prioridad_tarea,
    nullif(p_datos->>'vence','')::date,asignado,auth.uid(),s,
-   case when tipo='orden' then doc end,case when tipo='factura' then doc end,case when tipo='ventas_dia' then doc end,
+   case when tipo='orden' then doc end,case when tipo='factura' then doc end,vs,vf,
    case when tipo='apertura_proyecto' then doc end,case when tipo='apertura_item' then doc end,txt)
  returning numero into n;
  return n;
@@ -216,9 +232,9 @@ language sql stable security definer set search_path='' as $$
  left join public.perfiles c on c.id=t.creado_por
  left join public.sucursales s on s.id=t.sucursal_id
  cross join lateral (select case when t.orden_id is not null then 'orden' when t.factura_id is not null then 'factura'
-   when t.ventas_dia_id is not null then 'ventas_dia' when t.apertura_proyecto_id is not null then 'apertura_proyecto'
+   when t.ventas_fecha is not null then 'ventas_dia' when t.apertura_proyecto_id is not null then 'apertura_proyecto'
    when t.apertura_item_id is not null then 'apertura_item' end tipo,
-   coalesce(t.orden_id,t.factura_id,t.ventas_dia_id,t.apertura_proyecto_id,t.apertura_item_id) doc) x
+   coalesce(t.orden_id,t.factura_id,(select v.id from public.ventas_dia v where v.sucursal_id=t.ventas_sucursal_id and v.fecha=t.ventas_fecha),t.apertura_proyecto_id,t.apertura_item_id) doc) x
  left join lateral public.documento_tarea(x.tipo,x.doc) d on true
  where public.puede_ver_tarea(t.asignado_a,t.creado_por,t.sucursal_id)
   and (p_numero is null or t.numero=p_numero)
@@ -235,7 +251,8 @@ $$;
 
 -- (Task 3 agrega aquí mover_tarea, actualizar_tarea, comentar_tarea e hilo_tarea.)
 
-revoke all on function public.registrar_historial_tarea(),public.documento_tarea(text,uuid),public.puede_ligar_documento(text,uuid),
+revoke all on sequence public.tareas_numero from public,anon,authenticated;
+revoke all on function public.es_fecha_iso(text),public.registrar_historial_tarea(),public.documento_tarea(text,uuid),public.puede_ligar_documento(text,uuid),
  public.error_datos_tarea(jsonb,text[]) from public,anon,authenticated;
 revoke all on function public.puede_ver_tarea(uuid,uuid,uuid),public.personas_asignables(uuid),public.documento_para_tarea(text,uuid),
  public.crear_tarea(jsonb),public.tareas_visibles(bigint,uuid),public.contar_mis_tareas() from public,anon;

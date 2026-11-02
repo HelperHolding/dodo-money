@@ -183,3 +183,45 @@ test('tareas: la prueba SQL de Sebastián termina en PRUEBAS OK',{skip:!existsSy
   await assert.rejects(db.exec(load('supabase/pruebas/20261102120000_tareas.sql')),e=>{assert.match(e.message,/^PRUEBAS OK$/);return true;});
  }finally{await db.close();}
 });
+
+test('tareas: reimportar el día de venta no se topa con la tarea ligada',async()=>{
+ const db=await nueva();
+ try{
+  await crear(db,U.admin,{titulo:'Revisar día',asignado_a:U.gerente,documento_tipo:'ventas_dia',documento_id:'00000000-0000-0000-0000-0000000000a5'});
+  const antes=(await visibles(db,U.admin))[0];
+  await db.exec(`delete from ventas_dia where id='00000000-0000-0000-0000-0000000000a5';insert into ventas_dia values('00000000-0000-0000-0000-0000000000b5','${S.z}','2026-11-01')`);
+  const [t]=await visibles(db,U.admin);
+  assert.equal(t.documento_texto,antes.documento_texto);
+  await como(db,U.admin);
+  const r=(await db.query(`select documento_id,documento_tipo from public.tareas_visibles(null,'00000000-0000-0000-0000-0000000000b5')`)).rows;
+  assert.deepEqual(r,[{documento_id:'00000000-0000-0000-0000-0000000000b5',documento_tipo:'ventas_dia'}]);
+  // Si el día ya no existe, la tarea sigue visible con su texto guardado y sin documento vivo.
+  await db.exec(`delete from ventas_dia where id='00000000-0000-0000-0000-0000000000b5'`);
+  const [u]=await visibles(db,U.admin);
+  assert.equal(u.documento_texto,antes.documento_texto);assert.equal(u.documento_ruta,null);
+ }finally{await db.close();}
+});
+
+test('tareas: entradas mal formadas dan mensajes en español',async()=>{
+ const db=await nueva();
+ try{
+  const ok={titulo:'Algo',asignado_a:U.ana};
+  await rechaza(crear(db,U.admin,{...ok,vence:'2026-02-30'}),/La fecha de vencimiento no es válida/);
+  await rechaza(crear(db,U.admin,{...ok,vence:'mañana'}),/La fecha de vencimiento no es válida/);
+  await rechaza(crear(db,U.admin,{...ok,documento_tipo:'factura',documento_id:'no-es-uuid'}),/El documento ligado está incompleto/);
+  await rechaza(crear(db,U.admin,{...ok,sucursal_id:'xyz'}),/Sucursal inválida/);
+  await rechaza(crear(db,U.admin,{...ok,sucursal_id:'00000000-0000-0000-0000-0000000000e9'}),/Sucursal inválida/);
+  await crear(db,U.admin,{...ok,vence:'2028-02-29'});
+ }finally{await db.close();}
+});
+
+test('tareas: el encargado no ve tareas de operación de otra sucursal; nadie toca la secuencia',async()=>{
+ const db=await nueva();
+ try{
+  await db.exec(`insert into public.tareas(titulo,asignado_a,creado_por,sucursal_id) values('Cruzada','${U.luis}','${U.admin}','${S.z}')`);
+  assert.deepEqual((await visibles(db,U.encargado)).map(x=>x.titulo),[]);
+  await como(db,U.ana);await db.exec('set role authenticated');
+  await rechaza(db.query(`select nextval('public.tareas_numero')`),/permission denied/);
+  await db.exec('reset role');
+ }finally{await db.close();}
+});
