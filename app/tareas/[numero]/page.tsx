@@ -4,7 +4,7 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { obtenerPerfil } from "@/lib/contexto";
-import { fechaTexto, hora } from "@/lib/formato";
+import { fechaMX, fechaTexto, hora } from "@/lib/formato";
 import {
   ESTADOS, PRIORIDADES, abierta, administra, clave, numeroDeClave, pideComentario, puedeAbrirDocumento, siguientes, textoCambio,
   type EstadoTarea, type Prioridad, type Quien,
@@ -39,7 +39,7 @@ export default async function DetalleTarea({ params, searchParams }: { params: P
     <section className="seccion">
       <dl className="tarjeta-datos">
         <dt>Asignada a</dt><dd>{t.asignado}{!t.asignado_activo && " · asignado inactivo"}</dd>
-        <dt>Creada por</dt><dd>{t.creador ?? "Sistema"} · {fechaTexto(t.creada_en.slice(0, 10))}</dd>
+        <dt>Creada por</dt><dd>{t.creador ?? "Sistema"} · {fechaTexto(fechaMX(t.creada_en))}</dd>
         <dt>Vence</dt><dd>{t.vence ? fechaTexto(t.vence) : "Sin fecha"}</dd>
         {t.documento_texto && <><dt>Documento</dt><dd>{abrir ? <Link href={t.documento_ruta!}>{t.documento_texto}</Link> : t.documento_texto}{t.documento_anulado && " · documento anulado"}</dd></>}
         {t.descripcion && <><dt>Descripción</dt><dd className="texto-saltos">{t.descripcion}</dd></>}
@@ -73,7 +73,7 @@ export default async function DetalleTarea({ params, searchParams }: { params: P
       <ol className="hilo-tarea">
         {hilo.map((e, i) => <li key={i} data-tipo={e.tipo}>
           <strong>{e.autor ?? "Sistema"}</strong> {e.tipo === "comentario" ? <span className="texto-saltos">{e.texto}</span> : textoCambio(e)}
-          <small> · {fechaTexto(e.fecha.slice(0, 10))} {hora(e.fecha)}</small>
+          <small> · {fechaTexto(fechaMX(e.fecha))} {hora(e.fecha)}</small>
         </li>)}
       </ol>
       {perfil.rol !== "corporativo" && <form action={comentarTarea} className="formulario">

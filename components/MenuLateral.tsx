@@ -82,7 +82,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
               <ul>
                 {g.enlaces.map((e) => (
                   <li key={e.href}>
-                    <Link className="lateral-enlace" href={e.href} aria-current={marcar(e.href)}>{e.texto}{e.contador && <span className="contador-menu" data-urgente={e.contador.urgente || undefined} aria-label={etiquetaContador(e.contador)}>{e.contador.n}</span>}</Link>
+                    <Link className="lateral-enlace" href={e.href} aria-current={marcar(e.href)}>{e.texto}{e.contador && <span className="contador-menu" data-urgente={e.contador.urgente || undefined}><span aria-hidden="true">{e.contador.n}</span><span className="solo-lector">{etiquetaContador(e.contador)}</span></span>}</Link>
                   </li>
                 ))}
               </ul>

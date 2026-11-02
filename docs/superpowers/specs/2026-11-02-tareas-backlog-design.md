@@ -25,10 +25,10 @@ historial deja quién hizo qué y cuándo. La factura muestra sus tareas abierta
 |---|---|
 | Dónde vive | Dentro de DODO MX; sin Jira/Linear externos |
 | Quién recibe tareas | Todos los puestos activos: admin, gerente, encargado y operación. Corporativo solo consulta |
-| Liga con documentos | Columnas FK opcionales por tipo de documento, a lo más una por tarea (`num_nonnulls(...) <= 1`) |
+| Liga con documentos | Columnas FK opcionales por tipo de documento, a lo más una por tarea (`num_nonnulls(...) <= 1`); el día de venta se liga por su clave natural (`ventas_sucursal_id` + `ventas_fecha`) |
 | Documentos ligables (fase 1) | `ordenes_compra`, `facturas`, `ventas_dia`, `apertura_proyectos`, `apertura_items`. Tareas sin documento también valen |
 | Estados | `por_hacer` → `en_curso` → `en_revision` → `hecho`; `cancelada` desde cualquiera abierto |
-| Cierre | Solo quien creó la tarea o un admin pasa `en_revision` → `hecho` o la regresa a `en_curso` |
+| Cierre | Pasa `en_revision` → `hecho` o la regresa a `en_curso`: quien creó la tarea, un admin o el gerente de la sucursal, salvo que el gerente sea el asignado (entonces solo quien la creó o un admin) |
 | Avisos | Solo dentro de la app (contador en el menú, bloque en Inicio). Sin correo ni WhatsApp |
 | `responsable` de aperturas | Se queda como texto libre; la tarea ligada es la que asigna a un usuario real |
 | Fases | Fase 1: módulo manual completo. Fase 2: tareas automáticas. PR separados |
@@ -53,7 +53,7 @@ historial deja quién hizo qué y cuándo. La factura muestra sus tareas abierta
 | `regla` | text → `tarea_reglas(clave)` | solo en automáticas (fase 2) |
 | `orden_id` | uuid → `ordenes_compra` | |
 | `factura_id` | uuid → `facturas` | |
-| `ventas_dia_id` | uuid → `ventas_dia` | |
+| `ventas_sucursal_id`, `ventas_fecha` | uuid → `sucursales`, date | día de venta por clave natural, la de `ventas_dia (sucursal_id, fecha)`. Sin FK a `ventas_dia`: una reimportación borra y recrea esa fila con otro id y no debe toparse con la tarea |
 | `apertura_proyecto_id` | uuid → `apertura_proyectos` | |
 | `apertura_item_id` | uuid → `apertura_items` | |
 | `documento_texto` | text | texto del documento al crear (p. ej. «Factura A-1234 · Proveedor»): el asignado lo lee aunque no pueda abrir el documento |
@@ -62,7 +62,7 @@ historial deja quién hizo qué y cuándo. La factura muestra sus tareas abierta
 | `creada_en`, `actualizada_en`, `cerrada_en` | timestamptz | `cerrada_en` se llena al pasar a `hecho` o `cancelada` |
 
 Restricciones:
-- `check (num_nonnulls(orden_id, factura_id, ventas_dia_id, apertura_proyecto_id, apertura_item_id) <= 1)`.
+- `check (num_nonnulls(orden_id, factura_id, ventas_fecha, apertura_proyecto_id, apertura_item_id) <= 1)`.
 - `check ((estado in ('hecho','cancelada')) = (cerrada_en is not null))`.
 - `check (estado <> 'cancelada' or length(trim(motivo_cierre)) >= 5)`.
 - FK con `on delete restrict`: los documentos se anulan, no se borran.
@@ -73,12 +73,12 @@ Restricciones:
 
 ### `tarea_comentarios`
 
-`id`, `tarea_id` → `tareas` (cascade), `autor` → `perfiles`, `texto` (1–4000), `creado_en`. Solo inserción: sin
+`id`, `tarea_id` → `tareas` (cascade), `autor_id` → `perfiles`, `texto` (1–4000), `fecha`. Solo inserción: sin
 update ni delete para nadie.
 
 ### `tarea_historial`
 
-`id`, `tarea_id`, `usuario` (null = sistema), `campo`, `antes`, `despues`, `en`. Lo llena un trigger `after
+`id`, `tarea_id`, `usuario_id` (null = sistema), `campo`, `antes`, `despues`, `fecha`. Lo llena un trigger `after
 insert or update` en `tareas` por cada campo que cambió (`estado`, `prioridad`, `vence`, `asignado_a`, `titulo`,
 `descripcion`), más un registro `creada` al insertar. Nadie escribe directo.
 
@@ -91,7 +91,7 @@ Toda escritura pasa por funciones `security definer` (`crear_tarea`, `actualizar
 |---|---|---|---|
 | Admin | Todas | A cualquier usuario activo | Cualquier transición, incluida cerrar |
 | Corporativo | Todas | — | — |
-| Gerente | Las de su sucursal, las suyas y las que creó | A usuarios activos de su sucursal | Cualquier transición en tareas de su sucursal |
+| Gerente | Las de su sucursal, las suyas y las que creó | A usuarios activos de su sucursal | Cualquier transición en tareas de su sucursal, salvo las asignadas a él que no creó (cierra quien las pidió) |
 | Encargado | Las suyas, las que creó y las asignadas a operación de su sucursal | A encargados y operación de su sucursal | Las suyas (hasta `en_revision`) y las que creó (incluido cerrar) |
 | Operación | Solo las asignadas a él | — | Las suyas, de `por_hacer` hasta `en_revision` |
 
@@ -105,7 +105,7 @@ Reglas de las funciones:
   salen en listas y tablero durante 30 días; por número o desde su documento, siempre.
 - Transiciones válidas: `por_hacer→en_curso`, `en_curso→en_revision`, `por_hacer→en_revision`,
   `en_revision→hecho`, `en_revision→en_curso` (regresar, exige comentario), `* abierta → cancelada` (exige motivo).
-  `en_revision→hecho` y `en_revision→en_curso` solo para el creador, el gerente de la sucursal o admin.
+  `en_revision→hecho` y `en_revision→en_curso` solo para el creador, admin o el gerente de la sucursal (no si él es el asignado).
 - Si el asignado es el creador, puede cerrar su propia tarea.
 - Comentar: cualquiera que vea la tarea, excepto corporativo.
 - Reasignar a alguien que no podría ver la tarea se rechaza.
@@ -175,7 +175,7 @@ esquema de `main`.
 
 - Toda validación vive en las funciones SQL; la UI solo traduce el mensaje de la excepción a `Aviso`.
 - Transición inválida, asignado no elegible, documento no visible y texto demasiado largo tienen mensajes propios.
-- Concurrencia: `mover_tarea` recibe el estado que la pantalla vio y rechaza si cambió («La tarea cambió, recarga»).
+- Concurrencia: `mover_tarea` y `actualizar_tarea` reciben la `revision` que la pantalla vio y rechazan si cambió («La tarea cambió, recarga»).
 
 ## 8. Pruebas
 

@@ -41,7 +41,8 @@ export function TableroTareas({ tareas, pasos, volverA, hoy }: { tareas: Tarea[]
               <p className="tarea-cabecera"><Link href={`/tareas/${t.numero}`} className="tarea-clave">{clave(t.numero)}</Link>
                 <span className="insignia" data-tono={TONO_PRIORIDAD[t.prioridad]}>{PRIORIDADES[t.prioridad]}</span></p>
               <h3><Link href={`/tareas/${t.numero}`}>{t.titulo}</Link></h3>
-              <p className="tarea-datos"><span>{t.asignado}</span><span>{t.sucursal ?? "Oficina"}</span>{t.vence && <span>{vencida(t, hoy) ? "Venció" : "Vence"} {fechaTexto(t.vence)}</span>}</p>
+              <p className="tarea-datos"><span>{t.asignado}{!t.asignado_activo && <> · <strong>asignado inactivo</strong></>}</span><span>{t.sucursal ?? "Oficina"}</span>{t.vence && <span>{vencida(t, hoy) ? "Venció" : "Vence"} {fechaTexto(t.vence)}</span>}</p>
+              {t.documento_texto && t.documento_anulado && <p className="tarea-documento"><span className="insignia" data-tono="peligro">documento anulado</span></p>}
               {directos(t).length > 0 && (
                 <label className="tarea-mover">Mover a{" "}
                   <select defaultValue="" onChange={(e) => e.target.value && enviar(t, e.target.value as EstadoTarea)}>

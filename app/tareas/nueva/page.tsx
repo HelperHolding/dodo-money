@@ -26,6 +26,7 @@ export default async function NuevaTarea({ searchParams }: { searchParams: Promi
   return <>
     <EncabezadoPagina titulo="Nueva tarea" descripcion={doc ? <>{DOCUMENTOS[tipo!]} · {doc.texto}</> : undefined} />
     <Aviso error={p.error} />
+    {doc?.anulado && <p className="aviso aviso-error">Este documento está anulado o cancelado.</p>}
     {admin && !doc && <form className="barra-filtros" method="get" aria-label="Sucursal de la tarea">
       <label htmlFor="sucursal">Sucursal</label>
       <select id="sucursal" name="sucursal" defaultValue={p.sucursal ?? "oficina"}>
