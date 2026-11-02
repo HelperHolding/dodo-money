@@ -11,6 +11,8 @@ Las donas cuentan conceptos, no unidades: pendientes, en curso/pedidos, recibido
 
 El roadmap calcula avance de actividades por etapa. Bloqueos y atrasos incluyen todos sus conceptos aplicables. Los colores llevan texto: rojo bloqueo, ámbar atraso, verde actividades completadas, azul en curso y gris pendiente. Las fechas corresponden a la ventana capturada de actividades; no se inventan fechas ni responsables.
 
-La página admite `grupo`, `etapa` y `tipo`, además de sus filtros anteriores. `vista=alertas` abre los registros que requieren atención. Los indicadores permanecen calculados sobre el proyecto completo al filtrar una lista.
+Equipo y compras agrupa por `categoria` (pestañas del plano, `CATEGORIAS` en `lib/aperturas.ts`): cada tarjeta muestra conceptos instalados o verificados entre aplicables y filtra la lista. Las categorías marcadas como obra no entran a Recepción ni a la dona de equipo; sus enlaces usan `ambito=equipo`.
+
+La página admite `grupo`, `etapa`, `tipo`, `cat` y `ambito`, además de sus filtros anteriores. `vista=alertas` abre los registros que requieren atención. Los indicadores permanecen calculados sobre el proyecto completo al filtrar una lista.
 
 Verificación: pruebas en `lib/aperturas.test.ts` cubren bases de los porcentajes, exclusiones, recepción parcial/excedentes, fechas y alertas únicas. Revisión visual local del componente real con datos de ejemplo en escritorio y celular; sin modificar producción.
