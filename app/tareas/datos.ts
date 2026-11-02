@@ -3,6 +3,11 @@ import type { EntradaHilo, Tarea, TipoDocumento } from "@/lib/tareas";
 
 export type Persona = { id: string; nombre: string; rol: string };
 
+/** Solo los mensajes propios de la base (P0001, en español) llegan al usuario; el resto se oculta. */
+export function mensajeDe(error: { code?: string; message: string }): string {
+  return error.code === "P0001" ? error.message : "No se pudo completar la operación. Intenta de nuevo.";
+}
+
 export async function leerTareas(supabase: SupabaseClient, o: { numero?: number; documento?: string } = {}): Promise<Tarea[]> {
   const { data, error } = await supabase.rpc("tareas_visibles", { p_numero: o.numero ?? null, p_documento: o.documento ?? null });
   if (error) throw new Error(error.message);
@@ -30,7 +35,7 @@ export async function contarMisTareas(supabase: SupabaseClient): Promise<{ abier
 
 export async function leerDocumento(supabase: SupabaseClient, tipo: TipoDocumento, id: string) {
   const { data, error } = await supabase.rpc("documento_para_tarea", { p_tipo: tipo, p_id: id });
-  if (error) return { error: error.message };
+  if (error) return { error: mensajeDe(error) };
   const d = (data as { texto: string; sucursal_id: string | null; ruta: string; anulado: boolean }[] | null)?.[0];
   return d ?? { error: "El documento no existe." };
 }
