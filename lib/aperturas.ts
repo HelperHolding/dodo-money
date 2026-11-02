@@ -60,3 +60,35 @@ export function indicadoresApertura(items:ItemApertura[],hoy:string) {
  const bloqueados=aplicables.filter(i=>i.estado==='bloqueado');
  return {actividades,equipo,terminadas,avance:actividades.length?Math.round(terminadas/actividades.length*100):null,unidades,recibidas,recepcion:unidades?Math.round(recibidas/unidades*100):null,sinCantidad:equipo.length-conCantidad.length,porValidar:aplicables.filter(i=>['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar').length,atrasados,bloqueados,alertas:aplicables.filter(i=>i.estado==='bloqueado'||atrasados.includes(i))};
 }
+
+// Vista checklist: cuatro módulos por etapa. Primero los resúmenes por grupo (equipo por categoría, validaciones técnicas) y después cada actividad.
+export const MODULOS_CHECKLIST = [
+ {clave:'proyecto',nombre:'Proyecto y permisos',etapas:['P1','P2','P3'],equipo:null},
+ {clave:'compras',nombre:'Equipo y compras',etapas:['P4'],equipo:'compra'},
+ {clave:'obra',nombre:'Obra',etapas:['P5'],equipo:'obra'},
+ {clave:'apertura',nombre:'Preparación y apertura',etapas:['P6','P7'],equipo:null},
+] as const;
+export type MarcaChecklist = 'listo'|'curso'|'bloqueado'|'pendiente';
+export type LineaChecklist = {clave:string;nombre:string;marca:MarcaChecklist;listos:number;total:number;destino:{item:string}|{vista:string;etapa?:string;cat?:string}};
+const marcaItem = (i:ItemApertura):MarcaChecklist => i.estado==='completado'||i.estado==='verificado'||(i.tipo==='equipo'&&i.estado==='instalado')?'listo':i.estado==='bloqueado'?'bloqueado':['pendiente','por_validar','por_cotizar'].includes(i.estado)?'pendiente':'curso';
+const marcaGrupo = (de:ItemApertura[]):MarcaChecklist => {const m=de.map(marcaItem);return m.every(x=>x==='listo')?'listo':m.includes('bloqueado')?'bloqueado':m.some(x=>x!=='pendiente')?'curso':'pendiente';};
+export function checklistApertura(items:ItemApertura[]) {
+ // Misma base que los indicadores: sin no aplica, y el equipo y las referencias por validar quedan fuera.
+ const aplicables=items.filter(i=>i.estado!=='no_aplica'&&!(['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar'));
+ const modulos=MODULOS_CHECKLIST.map(m=>{
+  const etapas:readonly string[]=m.etapas,lineas:LineaChecklist[]=[];
+  const tecnico=aplicables.filter(i=>i.tipo==='tecnico'&&etapas.includes(i.etapa));
+  if(tecnico.length)lineas.push({clave:'tecnico',nombre:'Validaciones técnicas',marca:marcaGrupo(tecnico),listos:tecnico.filter(i=>marcaItem(i)==='listo').length,total:tecnico.length,destino:{vista:'tecnico',etapa:etapas.length===1?etapas[0]:undefined}});
+  if(m.equipo)for(const c of [...Object.keys(CATEGORIAS) as CategoriaApertura[],null]){
+   if((c===null?false:CATEGORIAS[c].obra)!==(m.equipo==='obra'))continue;
+   const de=aplicables.filter(i=>(i.tipo==='equipo'||(i.tipo==='referencia'&&i.categoria!==null))&&i.categoria===c);
+   if(de.length)lineas.push({clave:c??'sin',nombre:c?CATEGORIAS[c].nombre:'Equipo sin categoría',marca:marcaGrupo(de),listos:de.filter(i=>marcaItem(i)==='listo').length,total:de.length,destino:{vista:'compras',cat:c??'sin'}});
+  }
+  for(const i of aplicables.filter(i=>i.tipo==='actividad'&&etapas.includes(i.etapa)))lineas.push({clave:i.id,nombre:i.nombre,marca:marcaItem(i),listos:marcaItem(i)==='listo'?1:0,total:1,destino:{item:i.id}});
+  const listos=lineas.reduce((s,l)=>s+l.listos,0),total=lineas.reduce((s,l)=>s+l.total,0);
+  return {clave:m.clave,nombre:m.nombre,etapas:m.etapas,lineas,listos,total,porcentaje:total?Math.round(listos/total*100):null};
+ });
+ // El general promedia los módulos para que las cientos de piezas de compras no tapen al resto.
+ const conAvance=modulos.filter(m=>m.porcentaje!==null);
+ return {modulos,general:conAvance.length?Math.round(conAvance.reduce((s,m)=>s+(m.porcentaje??0),0)/conAvance.length):null};
+}

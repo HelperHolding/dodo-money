@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-02 · Aperturas: vista Checklist
+
+Nueva vista `?vista=checklist` en el proyecto de apertura, con el formato del checklist de The Coffee (602): avance general y una tarjeta por módulo con su porcentaje y casillas. Módulos: Proyecto y permisos (P1–P3), Equipo y compras (P4 y categorías de equipo), Obra (P5 y categorías de obra) y Preparación y apertura (P6–P7). Las categorías y las validaciones técnicas se resumen en una línea ("30 de 94") que abre su lista; las actividades van una por línea. Listo es actividad completada o equipo instalado o verificado; no aplica y equipo por validar quedan fuera. El general promedia los módulos. Sin migración; prueba en `lib/aperturas.test.ts` y revisión visual local con los datos de las cargas de dodo-2 en escritorio y celular.
+
 ## 2026-11-02 · Aperturas: equipo por categoría del plano · 20261102120000 · pendiente de Supabase
 
 El equipo de apertura lleva `categoria`, una por pestaña de especificaciones del plano (`equipo.xlsx`, 01 a 17). La migración categoriza lo ya cargado de dodo-2 desde `original.grupo` (equipo de cocina 88, mobiliario 11, cámara fría 1) y deja `actualizar_apertura_item` y `agregar_apertura_item` aceptar categoría solo en equipo y compras, con historial. `supabase/cargas/equipo_categorias_dodo_2.sql` agrega 67 conceptos de las pestañas 04 a 17 (`ESP-*`, por cotizar) y categoriza el equipo del presupuesto del 13/10 por su pestaña de origen. Los contactos salen del resumen de la pestaña 11 (37 piezas), no del detalle de la 09; de la 12 solo entra la bocina del salón, porque amplificadores, bocina de notificaciones y router ya vienen del presupuesto (PRE26-HQ-086 a 090). Busca la apertura por "dodo-2" dentro del nombre de la sucursal (hoy "Dodo Lopez Mateos (Dodo-2)"). Repetible: no toca lo ya cargado.
