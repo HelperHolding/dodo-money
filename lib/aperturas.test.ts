@@ -79,3 +79,15 @@ test('checklist: el cambio rápido pide lo mismo que la base y conserva lo captu
  assert.deepEqual(datosCambioEstado(i,{estado:'completado',evidencia:'Listo en obra',notas:'',cantidad:'9'}),{estado:'completado',responsable:'Julio',inicio:'2026-11-01',fin:'2026-11-05',cantidad:'',recibido:'0',precio:'',evidencia:'Listo en obra',notas:'',orden_id:'o1',factura_id:''});
  assert.equal(datosCambioEstado(item({cantidad:2,recibido:0,precio:150}),{estado:'recibido',evidencia:'',notas:'',cantidad:'2',recibido:'2'}).recibido,'2');
 });
+import {aItemChecklist,fusionarItems} from './aperturas.ts';
+test('checklist en vivo: gana la revisión más nueva y los números de Realtime se normalizan',()=>{
+ const a=aItemChecklist({...item({id:'x',revision:2,estado:'pedido'}),original:{unidad:'m²'}});
+ assert.deepEqual([a.cantidad,a.recibido,a.unidad,a.revision],[2,0,'m²',2]);
+ const desdeRealtime=aItemChecklist({...item({id:'x',estado:'recibido'}),cantidad:'2' as unknown as number,recibido:'2' as unknown as number,revision:'3' as unknown as number,original:null});
+ assert.deepEqual([desdeRealtime.cantidad,desdeRealtime.recibido,desdeRealtime.revision,desdeRealtime.unidad],[2,2,3,null]);
+ const base={x:a};
+ assert.equal(fusionarItems(base,[{...a,estado:'cotizado',revision:1}]),base);
+ assert.equal(fusionarItems(base,[a]),base);
+ const nuevo=fusionarItems(base,[desdeRealtime,{...a,id:'y',revision:1}]);
+ assert.deepEqual([nuevo.x.estado,nuevo.y.id,Object.keys(nuevo).length],['recibido','y',2]);
+});
