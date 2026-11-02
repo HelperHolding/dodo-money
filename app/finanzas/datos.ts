@@ -5,6 +5,8 @@ import { leerConciliaciones } from "@/app/ventas/conciliacion/datos";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { comisionesCobro, comisionRappi, regalias, type DiaVenta, type Vigente } from "@/lib/finanzas/comisiones";
 import { enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "@/lib/finanzas/gastos";
+import { documentosDuplicados } from "@/lib/finanzas/duplicados";
+import { NOMBRE_CUENTA, type CuentaPl } from "@/lib/finanzas/cuentas";
 import { conceptosNomina, realDelMes, costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Puesto, type NominaReal } from "@/lib/finanzas/nomina";
 import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
 import { acumuladoDe, anteriorDe, columnasComparativo, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
@@ -76,13 +78,13 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const reales = res[4].data ?? [];
   const metas = res[5].data ?? [];
 
-  type FacturaPL = Fila & { id: string;
+  type FacturaPL = Fila & { id: string; proveedor_id: string | null;
     uuid:string|null;uuid_manual:string|null;rfc_receptor:string;total:number;tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
     nombre_emisor: string; fecha_emision: string; cubre_desde: string; cubre_hasta: string; creado_en: string; origen: "cfdi" | "manual"; factura_conceptos: { id: number; descripcion: string; importe: number; cuenta_pl: string | null }[];
   };
   const [facturasLeidas, cajaChica, cierres, arqueos, dias, desglose, ventas, catalogo, costos, datosRappi] = await Promise.all([
     desde > hasta ? Promise.resolve([] as FacturaPL[]) : leerTodo<FacturaPL>((d, h) => supabase.from("facturas")
-      .select("id, sucursal_id, uuid, uuid_manual, rfc_receptor, total, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(id, descripcion, importe, cuenta_pl)")
+      .select("id, sucursal_id, proveedor_id, uuid, uuid_manual, rfc_receptor, total, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(id, descripcion, importe, cuenta_pl)")
       .lte("cubre_desde", hasta).gte("cubre_hasta", desde).order("id").range(d, h).returns<FacturaPL[]>()),
     leerTodo<Fila & { id:string; proveedor:string|null; uuid_cfdi:string|null; fecha: string; concepto: string; monto: number; cuenta_pl: string | null; informativo: boolean }>((d, h) => supabase.from("gastos_caja_chica")
       .select("id, sucursal_id, proveedor, uuid_cfdi, fecha, concepto, monto, cuenta_pl, informativo").is("anulado_en",null).gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h)
@@ -134,6 +136,11 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     })), hasta);
     return t.n ? [`${t.n} ${t.n === 1 ? "recibo llegó" : "recibos llegaron"} después del cierre del mes: ${pesos(t.monto)}.`] : [];
   };
+  /** "Posible duplicado en Renta: …" — varios documentos vigentes del mismo proveedor y cuenta cubren el periodo. */
+  const avisoDuplicados = (lista: typeof facturas) => documentosDuplicados(lista.map((x) => ({
+    id: x.id, proveedorId: x.proveedor_id, proveedor: x.nombre_emisor, estado: x.estado, tipo: x.tipo, cuentas: partesFactura(x).map((p) => p.cuenta),
+    documento: `${x.origen === "manual" ? "gasto sin CFDI " : ""}${x.serie ? `${x.serie}-` : ""}${x.folio ?? x.uuid ?? x.uuid_manual ?? x.id.slice(0, 8)}`,
+  }))).map((g) => `Posible duplicado en ${NOMBRE_CUENTA[g.cuenta as CuentaPl] ?? g.cuenta}: ${g.proveedor} tiene ${g.documentos.length} documentos vigentes que cubren este periodo (${g.documentos.join(", ")}). Revisa si una prefactura ya tiene su CFDI (sustitúyela) o si alguno corresponde a otro periodo.`);
   const vigente: Vigente = (clave, f) => valorVigente(params, clave, f);
   const agregadorDe = new Map(desglose.map((x) => [x.ventas_dia_id, x]));
   const detalle = new Map<string, Detalle>();
@@ -270,6 +277,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     const sinCuenta = facturasSuc.filter((x) => partesFactura(x).some((p) => !p.cuenta)).length;
     if (sinCuenta) avisos.push(`${sinCuenta} facturas sin cuenta del P&L (van a Otros).`);
     avisos.push(...avisoTardias(facturasSuc));
+    avisos.push(...avisoDuplicados(facturasSuc));
     if (fraccionTotal > 0 && !nomina.plantilla.cocina && !nomina.plantilla.gerencia) avisos.push("Sin plantilla de nómina para este periodo.");
     return {
       id: s.id, nombre: s.nombre, entrada, ctx: { ventaNeta, ventaRappi, plantilla: nomina.plantilla },
@@ -284,6 +292,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const avisosOficina = [
     ...(sinCuentaOf ? [`Oficina central: ${sinCuentaOf} facturas sin sucursal ni cuenta del P&L (se reparten como gasto de oficina).`] : []),
     ...avisoTardias(facturasOf).map((a) => `Oficina central: ${a}`),
+    ...avisoDuplicados(facturasOf).map((a) => `Oficina central: ${a}`),
   ];
   const nOf = nominaPeriodo(puestos, ajustes, null, meses, reales);
   const oficina = centavos(Object.values(fOf.gastos).reduce((t, v) => t + v, 0) + fOf.sinCuenta + nOf.cocina + nOf.gerencia);
