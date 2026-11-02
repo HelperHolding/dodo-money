@@ -249,14 +249,101 @@ language sql stable security definer set search_path='' as $$
  from public.tareas where asignado_a=auth.uid() and public.mi_rol() is not null and estado not in ('hecho','cancelada')
 $$;
 
--- (Task 3 agrega aquí mover_tarea, actualizar_tarea, comentar_tarea e hilo_tarea.)
+-- Lee la tarea para escribir: activa, visible y en la revisión que vio la pantalla.
+create function public.tarea_para_escribir(p_numero bigint,p_revision integer) returns public.tareas
+language plpgsql security definer set search_path='' as $$
+declare t public.tareas;
+begin
+ if public.mi_rol() is null then raise exception 'Tu usuario no está activo.';end if;
+ if public.mi_rol()::text='corporativo' then raise exception 'Corporativo solo puede consultar.';end if;
+ select * into t from public.tareas where numero=p_numero for update;
+ if not found or not public.puede_ver_tarea(t.asignado_a,t.creado_por,t.sucursal_id) then raise exception 'Tarea no encontrada.';end if;
+ if p_revision is not null and t.revision<>p_revision then raise exception 'La tarea cambió mientras la veías. Recarga e intenta de nuevo.';end if;
+ return t;
+end $$;
+
+-- Quien creó la tarea, un admin o el gerente de su sucursal.
+create function public.administra_tarea(t public.tareas) returns boolean
+language sql stable security definer set search_path='' as $$
+ select coalesce(public.mi_rol()::text='admin' or t.creado_por=auth.uid()
+  or (public.mi_rol()::text='gerente' and t.sucursal_id=public.mi_sucursal()),false)
+$$;
+
+create function public.mover_tarea(p_numero bigint,p_revision integer,p_estado text,p_comentario text) returns void
+language plpgsql security definer set search_path='' as $$
+declare t public.tareas;paso text;manda boolean;nota text:=trim(coalesce(p_comentario,''));
+begin
+ t:=public.tarea_para_escribir(p_numero,p_revision);
+ paso:=t.estado::text||'>'||coalesce(p_estado,'');
+ manda:=public.administra_tarea(t);
+ if not ((paso in ('por_hacer>en_curso','por_hacer>en_revision','en_curso>en_revision') and (manda or t.asignado_a=auth.uid()))
+   or (manda and (paso in ('en_revision>hecho','en_revision>en_curso') or (p_estado='cancelada' and t.estado::text not in ('hecho','cancelada'))))) then
+  raise exception 'No puedes hacer ese cambio de estado.';
+ end if;
+ if paso='en_revision>en_curso' and length(nota)<5 then raise exception 'Para regresar la tarea escribe qué falta (al menos 5 caracteres).';end if;
+ if p_estado='cancelada' and length(nota)<5 then raise exception 'Escribe el motivo de la cancelación (al menos 5 caracteres).';end if;
+ if length(nota)>4000 then raise exception 'El comentario es demasiado largo (máximo 4000 caracteres).';end if;
+ update public.tareas set estado=p_estado::public.estado_tarea,revision=revision+1,actualizada_en=now(),
+  cerrada_en=case when p_estado in ('hecho','cancelada') then now() end,
+  motivo_cierre=case when p_estado='cancelada' then nota else motivo_cierre end
+ where id=t.id;
+ if nota<>'' then insert into public.tarea_comentarios(tarea_id,autor_id,texto) values(t.id,auth.uid(),nota);end if;
+end $$;
+
+create function public.actualizar_tarea(p_numero bigint,p_revision integer,p_datos jsonb) returns void
+language plpgsql security definer set search_path='' as $$
+declare t public.tareas;msg text;
+begin
+ t:=public.tarea_para_escribir(p_numero,p_revision);
+ if not public.administra_tarea(t) then raise exception 'Solo quien creó la tarea, su gerente o un admin pueden editarla.';end if;
+ if t.estado::text in ('hecho','cancelada') then raise exception 'La tarea ya está cerrada.';end if;
+ msg:=public.error_datos_tarea(p_datos,array['titulo','descripcion','prioridad','vence','asignado_a']);
+ if msg is not null then raise exception '%',msg;end if;
+ if (p_datos->>'asignado_a')::uuid<>t.asignado_a
+   and not exists(select 1 from public.personas_asignables(t.sucursal_id) x where x.id=(p_datos->>'asignado_a')::uuid) then
+  raise exception 'Esa persona no puede recibir esta tarea.';
+ end if;
+ update public.tareas set titulo=trim(p_datos->>'titulo'),descripcion=nullif(trim(coalesce(p_datos->>'descripcion','')),''),
+  prioridad=coalesce(nullif(p_datos->>'prioridad',''),'media')::public.prioridad_tarea,vence=nullif(p_datos->>'vence','')::date,
+  asignado_a=(p_datos->>'asignado_a')::uuid,revision=revision+1,actualizada_en=now()
+ where id=t.id;
+end $$;
+
+create function public.comentar_tarea(p_numero bigint,p_texto text) returns void
+language plpgsql security definer set search_path='' as $$
+declare t public.tareas;
+begin
+ t:=public.tarea_para_escribir(p_numero,null);
+ if length(trim(coalesce(p_texto,'')))=0 then raise exception 'Escribe un comentario.';end if;
+ if length(trim(p_texto))>4000 then raise exception 'El comentario es demasiado largo (máximo 4000 caracteres).';end if;
+ insert into public.tarea_comentarios(tarea_id,autor_id,texto) values(t.id,auth.uid(),trim(p_texto));
+ update public.tareas set actualizada_en=now() where id=t.id;
+end $$;
+
+-- Comentarios e historial juntos, en orden. En reasignaciones, antes/después ya vienen como nombres.
+create function public.hilo_tarea(p_numero bigint)
+returns table(tipo text,autor text,texto text,campo text,antes text,despues text,fecha timestamptz)
+language sql stable security definer set search_path='' as $$
+ with t as (select x.id from public.tareas x where x.numero=p_numero and public.puede_ver_tarea(x.asignado_a,x.creado_por,x.sucursal_id))
+ select * from (
+  select 'comentario'::text tipo,p.nombre autor,c.texto,null::text campo,null::text antes,null::text despues,c.fecha
+  from public.tarea_comentarios c join t on t.id=c.tarea_id join public.perfiles p on p.id=c.autor_id
+  union all
+  select 'cambio',p.nombre,null,h.campo,
+   case when h.campo='asignado_a' then (select y.nombre from public.perfiles y where y.id=h.antes::uuid) else h.antes end,
+   case when h.campo='asignado_a' then (select y.nombre from public.perfiles y where y.id=h.despues::uuid) else h.despues end,h.fecha
+  from public.tarea_historial h join t on t.id=h.tarea_id left join public.perfiles p on p.id=h.usuario_id
+ ) u order by 7,1 desc
+$$;
 
 revoke all on sequence public.tareas_numero from public,anon,authenticated;
 revoke all on function public.es_fecha_iso(text),public.registrar_historial_tarea(),public.documento_tarea(text,uuid),public.puede_ligar_documento(text,uuid),
- public.error_datos_tarea(jsonb,text[]) from public,anon,authenticated;
+ public.error_datos_tarea(jsonb,text[]),public.tarea_para_escribir(bigint,integer),public.administra_tarea(public.tareas) from public,anon,authenticated;
 revoke all on function public.puede_ver_tarea(uuid,uuid,uuid),public.personas_asignables(uuid),public.documento_para_tarea(text,uuid),
- public.crear_tarea(jsonb),public.tareas_visibles(bigint,uuid),public.contar_mis_tareas() from public,anon;
+ public.crear_tarea(jsonb),public.tareas_visibles(bigint,uuid),public.contar_mis_tareas(),
+ public.mover_tarea(bigint,integer,text,text),public.actualizar_tarea(bigint,integer,jsonb),public.comentar_tarea(bigint,text),public.hilo_tarea(bigint) from public,anon;
 -- puede_ver_tarea también la necesita la RLS, que corre como el usuario.
 grant execute on function public.puede_ver_tarea(uuid,uuid,uuid),public.personas_asignables(uuid),public.documento_para_tarea(text,uuid),
- public.crear_tarea(jsonb),public.tareas_visibles(bigint,uuid),public.contar_mis_tareas() to authenticated;
+ public.crear_tarea(jsonb),public.tareas_visibles(bigint,uuid),public.contar_mis_tareas(),
+ public.mover_tarea(bigint,integer,text,text),public.actualizar_tarea(bigint,integer,jsonb),public.comentar_tarea(bigint,text),public.hilo_tarea(bigint) to authenticated;
 commit;

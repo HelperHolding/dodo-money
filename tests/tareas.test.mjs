@@ -176,6 +176,123 @@ test('tareas: a lo más un documento por tarea',async()=>{
  }finally{await db.close();}
 });
 
+const mover=async(db,id,n,estado,comentario='')=>{await como(db,id);
+ const rev=(await db.query('select revision from public.tareas where numero=$1',[n])).rows[0].revision;
+ await db.query('select public.mover_tarea($1,$2,$3,$4)',[n,rev,estado,comentario]);};
+const estado=async(db,n)=>(await db.query('select estado::text e,cerrada_en is not null cerrada from public.tareas where numero=$1',[n])).rows[0];
+
+test('tareas: el asignado lleva a revisión; quien creó aprueba o regresa',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.admin,{titulo:'Subir remisión',asignado_a:U.ana,sucursal_id:S.z});
+  await mover(db,U.ana,n,'en_curso');
+  await rechaza(mover(db,U.ana,n,'hecho'),/No puedes hacer ese cambio de estado/);
+  await mover(db,U.ana,n,'en_revision');
+  await rechaza(mover(db,U.ana,n,'en_curso','me equivoqué'),/No puedes hacer ese cambio de estado/);
+  await rechaza(mover(db,U.admin,n,'en_curso'),/Para regresar la tarea escribe qué falta/);
+  await mover(db,U.admin,n,'en_curso','Falta la firma del proveedor');
+  await mover(db,U.ana,n,'en_revision');
+  await mover(db,U.admin,n,'hecho');
+  assert.deepEqual(await estado(db,n),{e:'hecho',cerrada:true});
+  await rechaza(mover(db,U.admin,n,'en_curso','reabrir'),/No puedes hacer ese cambio de estado/);
+ }finally{await db.close();}
+});
+
+test('tareas: el gerente cierra lo de su sucursal; el encargado lo que creó; corporativo nada',async()=>{
+ const db=await nueva();
+ try{
+  const a=await crear(db,U.admin,{titulo:'De oficina para Ana',asignado_a:U.ana,sucursal_id:S.z});
+  await mover(db,U.ana,a,'en_revision');
+  await mover(db,U.gerente,a,'hecho');
+  const b=await crear(db,U.encargado,{titulo:'Del encargado',asignado_a:U.ana});
+  await mover(db,U.ana,b,'en_revision');
+  await mover(db,U.encargado,b,'hecho');
+  const c=await crear(db,U.gerente,{titulo:'Del gerente para Ana',asignado_a:U.ana});
+  await mover(db,U.ana,c,'en_revision');
+  await rechaza(mover(db,U.encargado,c,'hecho'),/No puedes hacer ese cambio de estado/);
+  await rechaza(mover(db,U.corp,c,'hecho'),/Corporativo solo puede consultar/);
+  await rechaza(mover(db,U.luis,c,'hecho'),/Tarea no encontrada/);
+ }finally{await db.close();}
+});
+
+test('tareas: cancelar exige motivo y lo guarda',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.admin,{titulo:'Duplicada',asignado_a:U.ana,sucursal_id:S.z});
+  await rechaza(mover(db,U.admin,n,'cancelada','x'),/Escribe el motivo de la cancelación/);
+  await rechaza(mover(db,U.ana,n,'cancelada','No me toca a mí'),/No puedes hacer ese cambio de estado/);
+  await mover(db,U.admin,n,'cancelada','Duplicada de DODO-1');
+  assert.deepEqual(await estado(db,n),{e:'cancelada',cerrada:true});
+  assert.equal((await db.query('select motivo_cierre from public.tareas where numero=$1',[n])).rows[0].motivo_cierre,'Duplicada de DODO-1');
+ }finally{await db.close();}
+});
+
+test('tareas: revisión vieja se rechaza sin pisar el cambio',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.admin,{titulo:'Concurrente',asignado_a:U.ana,sucursal_id:S.z});
+  await como(db,U.ana);
+  await db.query('select public.mover_tarea($1,1,$2,$3)',[n,'en_curso','']);
+  await como(db,U.admin);
+  await rechaza(db.query('select public.mover_tarea($1,1,$2,$3)',[n,'cancelada','Ya no aplica']),/La tarea cambió mientras la veías/);
+  assert.equal((await estado(db,n)).e,'en_curso');
+ }finally{await db.close();}
+});
+
+test('tareas: usuario dado de baja no mueve; sus tareas quedan marcadas',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.admin,{titulo:'Para Ana',asignado_a:U.ana,sucursal_id:S.z});
+  await db.exec(`update perfiles set activo=false where id='${U.ana}'`);
+  await rechaza(mover(db,U.ana,n,'en_curso'),/Tu usuario no está activo/);
+  assert.equal((await visibles(db,U.admin))[0].asignado_activo,false);
+ }finally{await db.close();}
+});
+
+test('tareas: editar y reasignar; el asignado no edita',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.gerente,{titulo:'Revisar cámara',asignado_a:U.ana,prioridad:'baja'});
+  const editar=async(id,datos)=>{await como(db,id);const rev=(await db.query('select revision from public.tareas where numero=$1',[n])).rows[0].revision;
+   await db.query('select public.actualizar_tarea($1,$2,$3::jsonb)',[n,rev,JSON.stringify(datos)]);};
+  await rechaza(editar(U.ana,{titulo:'Otra',asignado_a:U.ana}),/Solo quien creó la tarea/);
+  await rechaza(editar(U.gerente,{titulo:'Revisar cámara',asignado_a:U.luis}),/Esa persona no puede recibir esta tarea/);
+  await editar(U.gerente,{titulo:'Revisar cámara fría',descripcion:'Temperatura',prioridad:'alta',vence:'2026-11-04',asignado_a:U.encargado});
+  const [t]=await visibles(db,U.gerente);
+  assert.equal(t.titulo,'Revisar cámara fría');assert.equal(t.asignado,'Encargado Z');
+  assert.deepEqual((await visibles(db,U.ana)),[]);
+ }finally{await db.close();}
+});
+
+test('tareas: comentarios e hilo con historial en orden',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.admin,{titulo:'Con hilo',asignado_a:U.ana,sucursal_id:S.z});
+  await como(db,U.ana);await db.query('select public.comentar_tarea($1,$2)',[n,'Ya la estoy revisando']);
+  await rechaza((async()=>{await como(db,U.corp);await db.query('select public.comentar_tarea($1,$2)',[n,'hola']);})(),/Corporativo solo puede consultar/);
+  await rechaza((async()=>{await como(db,U.luis);await db.query('select public.comentar_tarea($1,$2)',[n,'hola']);})(),/Tarea no encontrada/);
+  await rechaza((async()=>{await como(db,U.ana);await db.query('select public.comentar_tarea($1,$2)',[n,'   ']);})(),/Escribe un comentario/);
+  await mover(db,U.ana,n,'en_revision');
+  await como(db,U.admin);
+  const hilo=(await db.query('select tipo,autor,texto,campo,antes,despues from public.hilo_tarea($1)',[n])).rows;
+  assert.deepEqual(hilo.map(h=>[h.tipo,h.autor,h.campo??h.texto]),[['cambio','Julio','creada'],['comentario','Ana (op Z)','Ya la estoy revisando'],['cambio','Ana (op Z)','estado']]);
+  assert.deepEqual([hilo[2].antes,hilo[2].despues],['por_hacer','en_revision']);
+  await como(db,U.luis);
+  assert.deepEqual((await db.query('select * from public.hilo_tarea($1)',[n])).rows,[]);
+ }finally{await db.close();}
+});
+
+test('tareas: el historial de reasignación muestra nombres',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.admin,{titulo:'Reasignar',asignado_a:U.ana,sucursal_id:S.z});
+  await como(db,U.admin);
+  await db.query('select public.actualizar_tarea($1,1,$2::jsonb)',[n,JSON.stringify({titulo:'Reasignar',asignado_a:U.gerente})]);
+  const h=(await db.query(`select antes,despues from public.hilo_tarea($1) where campo='asignado_a'`,[n])).rows[0];
+  assert.deepEqual(h,{antes:'Ana (op Z)',despues:'Gerente Z'});
+ }finally{await db.close();}
+});
+
 test('tareas: la prueba SQL de Sebastián termina en PRUEBAS OK',{skip:!existsSync(new URL('../supabase/pruebas/20261102120000_tareas.sql',import.meta.url))},async()=>{
  const db=await nueva();
  try{
