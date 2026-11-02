@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { leerHojas, type Hoja } from "./xlsx.ts";
 import { ARCHIVO_MUY_GRANDE, DIA_CONCILIADO, extraerDatosBrutos, HOJAS_NO_COINCIDEN, mensajeAlGuardar, NO_ES_DATOS_BRUTOS, SIN_PEDIDOS } from "./datosBrutos.ts";
-import { canales, combos, cuentaComoVenta, diaSemana, ivaDe, personalYCancelados, resumirDias, tiempos, tiposDesglose, ventaPorHora } from "./pedidos.ts";
+import { canales, combos, cuentaComoVenta, diaSemana, ivaDe, ivaPedido, personalYCancelados, resumirDias, tiempos, tiposDesglose, ventaPorHora } from "./pedidos.ts";
 
 const leer = (n: string) => leerHojas(readFileSync(new URL(`./__fixtures__/${n}`, import.meta.url)));
 const hojas = leer("datos-brutos-2026-09-21.xlsx");
@@ -85,6 +85,19 @@ test("semana: comidas del personal y cancelados", () => {
 test("IVA por producto redondeado", () => {
   assert.equal(ivaDe([129, 95.5]), 30.96); // 17.79 + 13.17
   assert.equal(ivaDe([]), 0);
+});
+
+test("IVA del pedido: por producto si suman lo cobrado; si no, sobre lo cobrado", () => {
+  assert.equal(ivaPedido(224.5, [129, 95.5]), 30.96); // igual que Dodo IS
+  assert.equal(ivaPedido(0, [95]), 0); // pedido en $0 con el producto a precio completo
+  assert.equal(ivaPedido(1910, [239, 159, 159, 159, 159, 159, 199, 239, 239, 239, 199]), 263.45); // descuento al pedido
+  assert.equal(ivaPedido(116, []), 16); // sin renglones
+});
+
+test("el IVA del día sale de lo cobrado aunque haya pedidos en $0 (21/09: $692 cobrados y $10,637 en productos)", () => {
+  for (const d of resumirDias(pedidos, productos)) {
+    assert.ok(Math.abs(d.resumen.iva - (d.resumen.total * 16) / 116) < 0.5, `${d.fecha}: IVA ${d.resumen.iva} de ${d.resumen.total}`);
+  }
 });
 
 test("tiposDesglose: servicio y origen", () => {

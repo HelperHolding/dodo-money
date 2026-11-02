@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { porcentaje } from "@/lib/formato";
 
-/** `serie` (1 a 4) fija el color de cada concepto: el color sigue al concepto, no a su lugar en la lista. */
-export type ParteApilada = { clave: string; etiqueta: string; valor: number; detalle?: string; serie: 1 | 2 | 3 | 4 };
+/**
+ * `serie` fija el color de cada concepto: el color sigue al concepto, no a su lugar en la lista. 1 a 4 son las series del
+ * tablero, "base" el gris neutro (lo que se resta, como un descuento) y "bien", "mal" y "aviso" los colores de estado.
+ */
+export type ParteApilada = { clave: string; etiqueta: string; valor: number; detalle?: string; serie: 1 | 2 | 3 | 4 | "base" | "bien" | "mal" | "aviso" };
 
 /**
  * Reparto al 100 % en una sola barra (separación de 2 px entre tramos) con su leyenda: concepto, importe y porcentaje
