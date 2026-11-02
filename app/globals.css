@@ -1908,3 +1908,8 @@ body { background: var(--papel-2); }
 .tarjeta-tarea h3 { margin: 0; font-size: 1rem; }
 .tarea-datos { display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; margin: 0; color: var(--neutro-texto); font-size: 0.9rem; }
 .tarea-documento { margin: 0; font-size: 0.9rem; }
+
+.acciones-tarea { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+.hilo-tarea { list-style: none; padding: 0; display: grid; gap: 0.6rem; }
+.hilo-tarea li { padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--neutro-fondo); }
+.hilo-tarea li[data-tipo="cambio"] { background: transparent; color: var(--neutro-texto); font-size: 0.9rem; }
