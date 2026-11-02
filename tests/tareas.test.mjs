@@ -215,6 +215,23 @@ test('tareas: el gerente cierra lo de su sucursal; el encargado lo que creó; co
  }finally{await db.close();}
 });
 
+test('tareas: el gerente no cierra lo que le asignaron otros; sí lo que él creó para sí mismo',async()=>{
+ const db=await nueva();
+ try{
+  const a=await crear(db,U.admin,{titulo:'De oficina para el gerente',asignado_a:U.gerente,sucursal_id:S.z});
+  await mover(db,U.gerente,a,'en_revision');
+  await rechaza(mover(db,U.gerente,a,'hecho'),/No puedes hacer ese cambio de estado/);
+  await rechaza(mover(db,U.gerente,a,'en_curso','falta algo'),/No puedes hacer ese cambio de estado/);
+  await rechaza(mover(db,U.gerente,a,'cancelada','ya no aplica'),/No puedes hacer ese cambio de estado/);
+  await mover(db,U.admin,a,'hecho');
+  assert.deepEqual(await estado(db,a),{e:'hecho',cerrada:true});
+  const b=await crear(db,U.gerente,{titulo:'Propia del gerente',asignado_a:U.gerente});
+  await mover(db,U.gerente,b,'en_revision');
+  await mover(db,U.gerente,b,'hecho');
+  assert.deepEqual(await estado(db,b),{e:'hecho',cerrada:true});
+ }finally{await db.close();}
+});
+
 test('tareas: cancelar exige motivo y lo guarda',async()=>{
  const db=await nueva();
  try{

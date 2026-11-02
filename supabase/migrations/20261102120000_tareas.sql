@@ -2,6 +2,7 @@
 -- venta, proyecto o ítem de apertura). Toda escritura pasa por funciones; puede_ver_tarea decide qué ve cada puesto
 -- y la usan la RLS y las funciones de lectura (que además devuelven nombres que la RLS de perfiles no deja ver).
 begin;
+set local lock_timeout = '5s';
 create type public.estado_tarea as enum ('por_hacer','en_curso','en_revision','hecho','cancelada');
 create type public.prioridad_tarea as enum ('alta','media','baja');
 create sequence public.tareas_numero;
@@ -266,7 +267,7 @@ end $$;
 create function public.administra_tarea(t public.tareas) returns boolean
 language sql stable security definer set search_path='' as $$
  select coalesce(public.mi_rol()::text='admin' or t.creado_por=auth.uid()
-  or (public.mi_rol()::text='gerente' and t.sucursal_id=public.mi_sucursal()),false)
+  or (public.mi_rol()::text='gerente' and t.sucursal_id=public.mi_sucursal() and t.asignado_a<>auth.uid()),false)
 $$;
 
 create function public.mover_tarea(p_numero bigint,p_revision integer,p_estado text,p_comentario text) returns void

@@ -38,6 +38,20 @@ test("transiciones: el asignado avanza hasta revisión; quien creó cierra o reg
   assert.equal(administra(t, q("op", "operacion")), false);
 });
 
+test("un gerente asignado a la tarea no la administra salvo que la haya creado", () => {
+  const propia = tarea({ estado: "en_revision", asignado_a: "g" });
+  assert.equal(administra(propia, q("g", "gerente")), false);
+  assert.deepEqual(siguientes(propia, q("g", "gerente")), []);
+  assert.equal(meTocaCerrar(propia, q("g", "gerente")), false);
+  assert.equal(administra(propia, q("g2", "gerente")), true);
+  assert.equal(administra(propia, q("otro", "admin", null)), true);
+  const suya = tarea({ estado: "en_revision", asignado_a: "g", creado_por: "g" });
+  assert.equal(administra(suya, q("g", "gerente")), true);
+  assert.deepEqual(siguientes(suya, q("g", "gerente")), ["hecho", "en_curso", "cancelada"]);
+  assert.equal(meTocaCerrar(suya, q("g", "gerente")), true);
+  assert.deepEqual(siguientes(tarea({ estado: "por_hacer", asignado_a: "g" }), q("g", "gerente")), ["en_curso", "en_revision"]);
+});
+
 test("pideComentario: regresar y cancelar exigen texto", () => {
   assert.equal(pideComentario("en_revision", "en_curso"), true);
   assert.equal(pideComentario("por_hacer", "cancelada"), true);
@@ -111,7 +125,8 @@ test("textoCambio: historial en palabras", () => {
   assert.equal(textoCambio({ ...e, campo: "estado", antes: "en_curso", despues: "en_revision" }), "la movió de En curso a En revisión");
   assert.equal(textoCambio({ ...e, campo: "asignado_a", antes: "Ana", despues: "Luis" }), "la reasignó de Ana a Luis");
   assert.equal(textoCambio({ ...e, campo: "prioridad", antes: "media", despues: "alta" }), "cambió la prioridad de Media a Alta");
-  assert.equal(textoCambio({ ...e, campo: "vence", antes: null, despues: "2026-11-06" }), "cambió el vencimiento de sin fecha a 2026-11-06");
+  assert.equal(textoCambio({ ...e, campo: "vence", antes: null, despues: "2026-11-06" }), "cambió el vencimiento de sin fecha a vie 6 de nov");
+  assert.equal(textoCambio({ ...e, campo: "vence", antes: "2026-11-06", despues: null }), "cambió el vencimiento de vie 6 de nov a sin fecha");
   assert.equal(textoCambio({ ...e, campo: "titulo", antes: "a", despues: "b" }), "cambió el título");
   assert.equal(textoCambio({ ...e, campo: "descripcion", antes: "a", despues: "b" }), "editó la descripción");
 });

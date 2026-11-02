@@ -3,11 +3,11 @@
 do $$
 declare a uuid;c uuid;g record;o uuid;f uuid;n bigint;ok boolean;k integer;t text;r text;q text;
 begin
-  select id into a from public.perfiles where activo and rol::text='admin' order by nombre limit 1;
-  select id into c from public.perfiles where activo and rol::text='corporativo' limit 1;
-  select p.id,p.sucursal_id into g from public.perfiles p where p.activo and p.rol::text='gerente' and p.sucursal_id is not null
-   and exists(select 1 from public.perfiles x where x.activo and x.rol::text='operacion' and x.sucursal_id=p.sucursal_id) limit 1;
-  select id into o from public.perfiles where activo and rol::text='operacion' and sucursal_id=g.sucursal_id limit 1;
+  select id into a from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' order by nombre limit 1;
+  select id into c from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
+  select p.id,p.sucursal_id into g from public.perfiles p where p.activo and not p.debe_cambiar_contrasena and p.rol::text='gerente' and p.sucursal_id is not null
+   and exists(select 1 from public.perfiles x where x.activo and not x.debe_cambiar_contrasena and x.rol::text='operacion' and x.sucursal_id=p.sucursal_id) limit 1;
+  select id into o from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='operacion' and sucursal_id=g.sucursal_id limit 1;
   select id into f from public.facturas where estado::text<>'cancelada' and nombre_emisor is not null and sucursal_id=g.sucursal_id limit 1;
   if a is null or c is null or g.id is null or o is null or f is null then
    raise exception 'FALTAN DATOS: admin, corporativo, gerente con operación en su sucursal y una factura vigente con emisor de esa sucursal.';

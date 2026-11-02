@@ -1,3 +1,5 @@
+// @ts-expect-error Node strip-types requiere extensión explícita.
+import { fechaTexto } from "./formato.ts";
 import type { Rol } from "./tipos";
 
 /** Estados del backlog. `hecho` y `cancelada` cierran la tarea. */
@@ -35,9 +37,9 @@ export function numeroDeClave(texto: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
-/** Quien creó la tarea, un admin o el gerente de la sucursal: edita, cierra, regresa y cancela. Espejo de mover_tarea. */
+/** Quien creó la tarea, un admin o el gerente de la sucursal (si no es quien la tiene asignada): edita, cierra, regresa y cancela. Espejo de administra_tarea. */
 export const administra = (t: Tarea, q: Quien) =>
-  q.rol === "admin" || (t.creado_por !== null && t.creado_por === q.id) || (q.rol === "gerente" && t.sucursal_id !== null && t.sucursal_id === q.sucursal_id);
+  q.rol === "admin" || (t.creado_por !== null && t.creado_por === q.id) || (q.rol === "gerente" && t.sucursal_id !== null && t.sucursal_id === q.sucursal_id && t.asignado_a !== q.id);
 
 const AVANCE: Partial<Record<EstadoTarea, EstadoTarea[]>> = { por_hacer: ["en_curso", "en_revision"], en_curso: ["en_revision"] };
 const CIERRE: Partial<Record<EstadoTarea, EstadoTarea[]>> = { en_revision: ["hecho", "en_curso"] };
@@ -101,7 +103,7 @@ export function filtrar(ts: Tarea[], f: FiltrosTablero, hoy: string): Tarea[] {
 
 /** Pestaña «En revisión (me toca cerrar)»: lo que creé, o lo de mi sucursal si soy gerente. */
 export const meTocaCerrar = (t: Tarea, q: Quien) =>
-  t.estado === "en_revision" && ((t.creado_por !== null && t.creado_por === q.id) || (q.rol === "gerente" && t.sucursal_id !== null && t.sucursal_id === q.sucursal_id));
+  t.estado === "en_revision" && ((t.creado_por !== null && t.creado_por === q.id) || (q.rol === "gerente" && t.sucursal_id !== null && t.sucursal_id === q.sucursal_id && t.asignado_a !== q.id));
 
 export type DatosTarea = {
   titulo: string; descripcion: string; prioridad: Prioridad; vence: string; asignado_a: string; sucursal_id: string;
@@ -137,7 +139,7 @@ export function textoCambio(e: EntradaHilo): string {
     case "estado": return `la movió de ${nombreDe(ESTADOS, e.antes)} a ${nombreDe(ESTADOS, e.despues)}`;
     case "asignado_a": return `la reasignó de ${e.antes ?? "nadie"} a ${e.despues ?? "nadie"}`;
     case "prioridad": return `cambió la prioridad de ${nombreDe(PRIORIDADES, e.antes)} a ${nombreDe(PRIORIDADES, e.despues)}`;
-    case "vence": return `cambió el vencimiento de ${e.antes ?? "sin fecha"} a ${e.despues ?? "sin fecha"}`;
+    case "vence": return `cambió el vencimiento de ${e.antes ? fechaTexto(e.antes) : "sin fecha"} a ${e.despues ? fechaTexto(e.despues) : "sin fecha"}`;
     case "titulo": return "cambió el título";
     case "descripcion": return "editó la descripción";
     default: return "actualizó la tarea";
