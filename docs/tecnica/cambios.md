@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-02 · Aperturas: Checklist editable y vista predeterminada
+
+El proyecto de apertura abre en el Checklist. Administración cambia el estado desde la casilla de cada concepto en una ventana emergente, sin salir de la página. Si el estado pide evidencia (completado, verificado, no aplica) o cantidades (recibido parcial, recibido, instalado, verificado), la ventana las solicita; al recibir completo propone la cantidad completa. Las categorías y las validaciones técnicas se abren para marcar cada concepto. `cambiarEstadoApertura` conserva responsable, fechas, precio, orden y factura del registro y llama a `actualizar_apertura_item` con su revisión, así que el historial y las reglas de la base no cambian. Sin migración.
+
 ## 2026-11-02 · Aperturas: vista Checklist
 
 Nueva vista `?vista=checklist` en el proyecto de apertura, con el formato del checklist de The Coffee (602): avance general y una tarjeta por módulo con su porcentaje y casillas. Módulos: Proyecto y permisos (P1–P3), Equipo y compras (P4 y categorías de equipo), Obra (P5 y categorías de obra) y Preparación y apertura (P6–P7). Las categorías y las validaciones técnicas se resumen en una línea ("30 de 94") que abre su lista; las actividades van una por línea. Listo es actividad completada o equipo instalado o verificado; no aplica y equipo por validar quedan fuera. El general promedia los módulos. Sin migración; prueba en `lib/aperturas.test.ts` y revisión visual local con los datos de las cargas de dodo-2 en escritorio y celular.

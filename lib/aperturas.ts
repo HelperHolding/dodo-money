@@ -69,8 +69,9 @@ export const MODULOS_CHECKLIST = [
  {clave:'apertura',nombre:'Preparación y apertura',etapas:['P6','P7'],equipo:null},
 ] as const;
 export type MarcaChecklist = 'listo'|'curso'|'bloqueado'|'pendiente';
-export type LineaChecklist = {clave:string;nombre:string;marca:MarcaChecklist;listos:number;total:number;destino:{item:string}|{vista:string;etapa?:string;cat?:string}};
-const marcaItem = (i:ItemApertura):MarcaChecklist => i.estado==='completado'||i.estado==='verificado'||(i.tipo==='equipo'&&i.estado==='instalado')?'listo':i.estado==='bloqueado'?'bloqueado':['pendiente','por_validar','por_cotizar'].includes(i.estado)?'pendiente':'curso';
+export const MARCAS:Record<MarcaChecklist,{texto:string;icono:string}>={listo:{texto:'Listo',icono:'✓'},curso:{texto:'En curso',icono:'◐'},bloqueado:{texto:'Bloqueado',icono:'!'},pendiente:{texto:'Pendiente',icono:''}};
+export type LineaChecklist = {clave:string;nombre:string;marca:MarcaChecklist;listos:number;total:number;destino:{item:string}|{vista:string;etapa?:string;cat?:string};hijos?:string[]};
+export const marcaItem = (i:ItemApertura):MarcaChecklist => i.estado==='completado'||i.estado==='verificado'||(i.tipo==='equipo'&&i.estado==='instalado')?'listo':i.estado==='bloqueado'?'bloqueado':['pendiente','por_validar','por_cotizar'].includes(i.estado)?'pendiente':'curso';
 const marcaGrupo = (de:ItemApertura[]):MarcaChecklist => {const m=de.map(marcaItem);return m.every(x=>x==='listo')?'listo':m.includes('bloqueado')?'bloqueado':m.some(x=>x!=='pendiente')?'curso':'pendiente';};
 export function checklistApertura(items:ItemApertura[]) {
  // Misma base que los indicadores: sin no aplica, y el equipo y las referencias por validar quedan fuera.
@@ -78,11 +79,11 @@ export function checklistApertura(items:ItemApertura[]) {
  const modulos=MODULOS_CHECKLIST.map(m=>{
   const etapas:readonly string[]=m.etapas,lineas:LineaChecklist[]=[];
   const tecnico=aplicables.filter(i=>i.tipo==='tecnico'&&etapas.includes(i.etapa));
-  if(tecnico.length)lineas.push({clave:'tecnico',nombre:'Validaciones técnicas',marca:marcaGrupo(tecnico),listos:tecnico.filter(i=>marcaItem(i)==='listo').length,total:tecnico.length,destino:{vista:'tecnico',etapa:etapas.length===1?etapas[0]:undefined}});
+  if(tecnico.length)lineas.push({clave:'tecnico',nombre:'Validaciones técnicas',marca:marcaGrupo(tecnico),listos:tecnico.filter(i=>marcaItem(i)==='listo').length,total:tecnico.length,destino:{vista:'tecnico',etapa:etapas.length===1?etapas[0]:undefined},hijos:tecnico.map(i=>i.id)});
   if(m.equipo)for(const c of [...Object.keys(CATEGORIAS) as CategoriaApertura[],null]){
    if((c===null?false:CATEGORIAS[c].obra)!==(m.equipo==='obra'))continue;
    const de=aplicables.filter(i=>(i.tipo==='equipo'||(i.tipo==='referencia'&&i.categoria!==null))&&i.categoria===c);
-   if(de.length)lineas.push({clave:c??'sin',nombre:c?CATEGORIAS[c].nombre:'Equipo sin categoría',marca:marcaGrupo(de),listos:de.filter(i=>marcaItem(i)==='listo').length,total:de.length,destino:{vista:'compras',cat:c??'sin'}});
+   if(de.length)lineas.push({clave:c??'sin',nombre:c?CATEGORIAS[c].nombre:'Equipo sin categoría',marca:marcaGrupo(de),listos:de.filter(i=>marcaItem(i)==='listo').length,total:de.length,destino:{vista:'compras',cat:c??'sin'},hijos:de.map(i=>i.id)});
   }
   for(const i of aplicables.filter(i=>i.tipo==='actividad'&&etapas.includes(i.etapa)))lineas.push({clave:i.id,nombre:i.nombre,marca:marcaItem(i),listos:marcaItem(i)==='listo'?1:0,total:1,destino:{item:i.id}});
   const listos=lineas.reduce((s,l)=>s+l.listos,0),total=lineas.reduce((s,l)=>s+l.total,0);
@@ -91,4 +92,29 @@ export function checklistApertura(items:ItemApertura[]) {
  // El general promedia los módulos para que las cientos de piezas de compras no tapen al resto.
  const conAvance=modulos.filter(m=>m.porcentaje!==null);
  return {modulos,general:conAvance.length?Math.round(conAvance.reduce((s,m)=>s+(m.porcentaje??0),0)/conAvance.length):null};
+}
+
+// Cambio rápido de estado desde el checklist. Mismas reglas que actualizar_apertura_item, para pedir en la ventana lo que falte.
+export const requisitosEstado = (tipo:ItemApertura['tipo'],estado:string) => ({
+ evidencia:['completado','verificado','no_aplica'].includes(estado),
+ cantidades:(tipo==='equipo'||tipo==='referencia')&&['recibido_parcial','recibido','instalado','verificado'].includes(estado),
+ completa:['recibido','instalado','verificado'].includes(estado),
+});
+export function validarCambioEstado(tipo:ItemApertura['tipo'],c:{estado:string;evidencia:string;cantidad:string;recibido:string}) {
+ const r=requisitosEstado(tipo,c.estado);
+ if(!estadosPara(tipo).includes(c.estado))return 'Estado inválido para este registro.';
+ if(r.evidencia&&c.evidencia.trim().length<5)return 'Registra evidencia o el motivo de no aplicar.';
+ if(!r.cantidades)return null;
+ const cantidad=Number(c.cantidad),recibido=Number(c.recibido||0);
+ if(!c.cantidad||!(cantidad>0))return 'Confirma la cantidad necesaria.';
+ if(r.completa&&recibido<cantidad)return 'Confirma la cantidad necesaria y la recepción completa.';
+ if(c.estado==='recibido_parcial'&&(recibido<=0||recibido>=cantidad))return 'La recepción parcial debe ser mayor que cero y menor a la cantidad necesaria.';
+ return null;
+}
+// Conserva todo lo capturado del registro; solo cambian estado, evidencia, notas y, en compras, cantidades.
+export function datosCambioEstado(i:ItemApertura,c:{estado:string;evidencia:string;notas:string;cantidad?:string;recibido?:string}) {
+ const v=(x:unknown)=>x===null||x===undefined?'':String(x),compra=i.tipo==='equipo'||i.tipo==='referencia';
+ return {estado:c.estado,responsable:v(i.responsable),inicio:v(i.inicio),fin:v(i.fin),
+  cantidad:compra&&c.cantidad!==undefined?c.cantidad:v(i.cantidad),recibido:compra&&c.recibido!==undefined?c.recibido:v(i.recibido),
+  precio:v(i.precio),evidencia:c.evidencia,notas:c.notas,orden_id:v(i.orden_id),factura_id:v(i.factura_id)};
 }

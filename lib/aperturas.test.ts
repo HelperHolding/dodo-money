@@ -60,6 +60,22 @@ test('checklist de apertura: módulos por etapa, equipo por categoría y general
  assert.deepEqual(obra.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['pisos','listo',2,2]]);
  assert.equal(apertura.porcentaje,null);assert.equal(c.general,Math.round((50+33+100)/3));
  assert.deepEqual(checklistApertura([]).general,null);
+ assert.deepEqual(proyecto.lineas[0].hijos,['t1','t2']);assert.equal(proyecto.lineas[1].hijos,undefined);
  const v=checklistApertura([item({tipo:'tecnico',etapa:'P7',estado:'por_validar'}),item({tipo:'tecnico',etapa:'P7',estado:'por_validar'})]).modulos[3].lineas[0];
  assert.deepEqual([v.marca,v.listos,v.total],['pendiente',0,2]);
+});
+import {datosCambioEstado,validarCambioEstado} from './aperturas.ts';
+test('checklist: el cambio rápido pide lo mismo que la base y conserva lo capturado',()=>{
+ const sin={evidencia:'',cantidad:'',recibido:''};
+ assert.equal(validarCambioEstado('actividad',{...sin,estado:'en_curso'}),null);
+ assert.equal(validarCambioEstado('actividad',{...sin,estado:'completado'}),'Registra evidencia o el motivo de no aplicar.');
+ assert.equal(validarCambioEstado('actividad',{...sin,estado:'completado',evidencia:'Contrato firmado'}),null);
+ assert.equal(validarCambioEstado('actividad',{...sin,estado:'pedido'}),'Estado inválido para este registro.');
+ assert.equal(validarCambioEstado('equipo',{...sin,estado:'recibido'}),'Confirma la cantidad necesaria.');
+ assert.equal(validarCambioEstado('equipo',{...sin,estado:'instalado',cantidad:'4',recibido:'3'}),'Confirma la cantidad necesaria y la recepción completa.');
+ assert.equal(validarCambioEstado('equipo',{...sin,estado:'recibido_parcial',cantidad:'4',recibido:'4'}),'La recepción parcial debe ser mayor que cero y menor a la cantidad necesaria.');
+ assert.equal(validarCambioEstado('equipo',{...sin,estado:'verificado',cantidad:'4',recibido:'4',evidencia:'Prueba de arranque'}),null);
+ const i=item({tipo:'actividad',responsable:'Julio',inicio:'2026-11-01',fin:'2026-11-05',cantidad:null,precio:null,orden_id:'o1'});
+ assert.deepEqual(datosCambioEstado(i,{estado:'completado',evidencia:'Listo en obra',notas:'',cantidad:'9'}),{estado:'completado',responsable:'Julio',inicio:'2026-11-01',fin:'2026-11-05',cantidad:'',recibido:'0',precio:'',evidencia:'Listo en obra',notas:'',orden_id:'o1',factura_id:''});
+ assert.equal(datosCambioEstado(item({cantidad:2,recibido:0,precio:150}),{estado:'recibido',evidencia:'',notas:'',cantidad:'2',recibido:'2'}).recibido,'2');
 });
