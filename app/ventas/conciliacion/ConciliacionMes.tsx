@@ -8,6 +8,7 @@ import { Icono } from "@/components/Icono";
 import { fechaTexto, pesos } from "@/lib/formato";
 import type { ConciliacionVenta } from "@/lib/ventas/conciliacion";
 import { anularConciliacion, guardarConciliacion } from "./acciones";
+import { ConInfo } from "@/components/ConInfo";
 
 /** vigente = tiene conciliación activa; cuadra = diferencia de $1 o menos; revisar = lo demás. Mismo criterio que antes. */
 export type EstadoDia = "vigente" | "cuadra" | "revisar";
@@ -53,7 +54,7 @@ export function ConciliacionMes({ mes, dias, autores, edita, disponible }: {
       <section className="seccion" aria-labelledby="t-tira">
         <div className="seccion-cabecera">
           <h2 id="t-tira">Día por día</h2>
-          <p className="saldo-nota">Toca un día para ver su detalle.</p>
+          <ConInfo titulo="Día por día">Toca un día para ver su detalle.</ConInfo>
         </div>
         <div className="conteos">
           <p><strong>{cuenta("cuadra")}</strong><span><span className="marca-punto" data-tono="exito" />cuadran</span></p>

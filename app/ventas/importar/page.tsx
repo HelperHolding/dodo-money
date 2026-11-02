@@ -10,7 +10,7 @@ export default async function PaginaImportar() {
   if (!puedeImportarVentas(perfil.rol)) redirect("/ventas");
   return (
     <>
-      <EncabezadoPagina titulo="Importar ventas" descripcion="Sube el archivo Datos brutos de Dodo IS: trae cada pedido del periodo, de una o varias sucursales.
+      <EncabezadoPagina titulo="Importar ventas" info="Sube el archivo Datos brutos de Dodo IS: trae cada pedido del periodo, de una o varias sucursales.
           Primero se revisa; nada se guarda hasta que presiones Guardar." />
       <p><Link className="boton boton-secundario" href="/ventas/rappi">Importar historial de Rappi</Link></p>
       <p><Link href="/ventas/conciliacion">Conciliar diferencias de días históricos →</Link></p>

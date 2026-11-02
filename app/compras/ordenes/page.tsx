@@ -55,7 +55,7 @@ export default async function Ordenes({ searchParams }: {
 
   return (
     <>
-      <EncabezadoPagina titulo="Órdenes de compra" descripcion="Cada documento empieza como cotización y, al confirmarlo, es la orden de compra que ve la sucursal."
+      <EncabezadoPagina titulo="Órdenes de compra" info="Cada documento empieza como cotización y, al confirmarlo, es la orden de compra que ve la sucursal."
         acciones={puedeEditarCompras(perfil.rol) && <Link className="boton" href="/compras/ordenes/nueva"><Icono nombre="mas" />Nueva cotización</Link>} />
       <Aviso ok={ok} error={error} />
       <form className="barra-filtros compras-listado" role="search">

@@ -38,7 +38,7 @@ export default async function Retenciones({ searchParams }: { searchParams: Prom
     for (const d of data ?? []) if (d.path && d.signedUrl) enlaces.set(d.path, d.signedUrl);
   }
   return <>
-    <EncabezadoPagina titulo="Retenciones" descripcion="IVA e ISR retenidos al pagar a proveedores. Fecha límite: el 17 del mes siguiente al pago." />
+    <EncabezadoPagina titulo="Retenciones" info="IVA e ISR retenidos al pagar a proveedores. Fecha límite: el 17 del mes siguiente al pago." />
     <Aviso ok={q.ok} error={q.error} />
     {!meses.length && <EstadoVacio icono="banco" titulo="Sin retenciones todavía" descripcion="Aquí aparecerán los meses con pagos que retienen IVA o ISR, y sus enteros al SAT." />}
     {meses.map((m) => <section className="seccion" key={m.mes}>

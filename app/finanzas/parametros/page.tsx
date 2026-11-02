@@ -24,7 +24,7 @@ export default async function Parametros({ searchParams }: { searchParams: Promi
   const claves = Object.keys(NOMBRE_PARAMETRO) as ClaveParametro[];
   return (
     <>
-      <EncabezadoPagina titulo="Parámetros y metas" descripcion="Los parámetros valen desde su fecha (no cambian meses anteriores). Las metas son por sucursal." />
+      <EncabezadoPagina titulo="Parámetros y metas" info="Los parámetros valen desde su fecha (no cambian meses anteriores). Las metas son por sucursal." />
       <Aviso ok={q.ok} error={q.error} />
       <section className="seccion">
         <h2>Parámetros</h2>

@@ -73,7 +73,7 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
   return (
     <>
       <EncabezadoPagina titulo="Salidas a corporativo"
-        descripcion="Registra una salida eligiendo sucursal y rango de cierres en Recolecciones. Después, otro admin recoge el efectivo y corporativo confirma lo recibido."
+        info="Registra una salida eligiendo sucursal y rango de cierres en Recolecciones. Después, otro admin recoge el efectivo y corporativo confirma lo recibido."
         acciones={<Link className={esAdmin ? "boton" : "boton boton-secundario"} href="/recolecciones">{esAdmin ? "Registrar salida a corporativo" : "Ver recolecciones por rango de cierres"}</Link>} />
       <Aviso ok={ok} error={error} />
 

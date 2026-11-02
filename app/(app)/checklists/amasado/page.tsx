@@ -20,7 +20,7 @@ export default async function Amasado({ searchParams }: { searchParams: Promise<
 
   return (
     <>
-      <EncabezadoPagina titulo="Amasado de masa" descripcion="Un registro por lote. La masa debe quedar entre 24 y 26 °C; si alguna temperatura sale de norma, escribe qué pasó." />
+      <EncabezadoPagina titulo="Amasado de masa" info="Un registro por lote. La masa debe quedar entre 24 y 26 °C; si alguna temperatura sale de norma, escribe qué pasó." />
       <Aviso ok={ok} error={error} />
       <section className="seccion" aria-labelledby="t-lote">
         <h2 id="t-lote">Registrar lote</h2>

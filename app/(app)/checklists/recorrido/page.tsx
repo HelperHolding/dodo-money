@@ -47,7 +47,7 @@ export default async function Recorrido({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <EncabezadoPagina titulo="Recorrido de supervisor" descripcion="Cada hora recorre la pizzería y marca cada punto. Si algo no cumple, escribe qué pasó." />
+      <EncabezadoPagina titulo="Recorrido de supervisor" info="Cada hora recorre la pizzería y marca cada punto. Si algo no cumple, escribe qué pasó." />
       <Aviso ok={ok} error={error} />
 
       <section className="seccion" aria-labelledby="t-registro">

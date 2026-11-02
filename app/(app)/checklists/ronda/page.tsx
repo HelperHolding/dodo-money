@@ -39,7 +39,7 @@ export default async function Ronda({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <>
-      <EncabezadoPagina titulo="Ronda de la hora" descripcion="Limpieza, zona caliente, caja y sala, y baño. Cada hora se puede registrar hasta 10 minutos después de que termina." />
+      <EncabezadoPagina titulo="Ronda de la hora" info="Limpieza, zona caliente, caja y sala, y baño. Cada hora se puede registrar hasta 10 minutos después de que termina." />
       <Aviso ok={ok} error={error} />
 
       <section className="seccion" aria-labelledby="t-ronda">

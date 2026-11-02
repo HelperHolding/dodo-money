@@ -1,6 +1,6 @@
 .pagina { max-width: 1600px; margin-inline: auto; }
 :global(.pagina):has(> .pagina) { max-width: none; width: 100%; padding-inline: clamp(16px,2vw,28px); }
-.aviso { display: flex; align-items: center; gap: .65rem; color: var(--tinta-2); margin-block: 0 1.5rem; width: fit-content; padding: 8px 14px; border-radius: 12px; background: var(--superficie); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.aviso { display: flex; align-items: center; gap: .65rem; color: var(--tinta-2); margin-block: 1.25rem 1.5rem; width: fit-content; padding: 8px 14px; border-radius: 12px; background: var(--superficie); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .indicadores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
 .indicador, .panel, .fuente { border: 1px solid var(--linea); border-radius: 12px; background: var(--superficie); padding: 1.4rem; backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3); }
 .indicador { border-top: 3px solid var(--accion); }

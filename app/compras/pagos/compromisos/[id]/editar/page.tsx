@@ -15,7 +15,7 @@ export default async function EditarCompromiso({ params, searchParams }: { param
   const [[c], opciones] = await Promise.all([leerCompromisos(supabase, id), leerOpciones(supabase)]);
   if (!c) notFound();
   return <>
-    <EncabezadoPagina titulo={`Editar ${tituloCompromiso(c, sucursalDe(c))}`} descripcion="Los cambios aplican a las fechas que aún no tienen factura." />
+    <EncabezadoPagina titulo={`Editar ${tituloCompromiso(c, sucursalDe(c))}`} info="Los cambios aplican a las fechas que aún no tienen factura." />
     <Aviso error={error} />
     <FormCompromiso c={c} {...opciones} hoy={hoyCalendarioMX()} />
   </>;

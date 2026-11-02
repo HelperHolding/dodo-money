@@ -11,7 +11,7 @@ export default async function Catalogos({searchParams}:{searchParams:Promise<{q?
   const lista=catalogosPara(perfil.rol).filter(c=>terminos.every(t=>normal(`${c.nombre} ${c.descripcion} ${c.gestion}`).includes(t)));
   const admin=perfil.rol==='admin';
   return <div className="panel-admin">
-    <EncabezadoPagina titulo="Catálogos" descripcion="Encuentra los datos maestros de Dodo MX y abre la pantalla para consultarlos o modificarlos."/>
+    <EncabezadoPagina titulo="Catálogos" info="Encuentra los datos maestros de Dodo MX y abre la pantalla para consultarlos o modificarlos."/>
     <form method="get" className="barra-filtros" role="search" aria-label="Buscar catálogo">
       <label>Buscar catálogo<input type="search" name="q" defaultValue={q} placeholder="Proveedores, artículos, cuentas…"/></label>
       <button className="boton boton-secundario">Buscar</button>

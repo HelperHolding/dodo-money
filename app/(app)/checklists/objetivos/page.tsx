@@ -17,7 +17,7 @@ export default async function Objetivos({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <EncabezadoPagina titulo="Objetivos del turno" descripcion="Específico (qué hacer), medible (cuánto o en cuánto tiempo), con fecha límite. Pide al empleado que lo repita para confirmar que quedó claro." />
+      <EncabezadoPagina titulo="Objetivos del turno" info="Específico (qué hacer), medible (cuánto o en cuánto tiempo), con fecha límite. Pide al empleado que lo repita para confirmar que quedó claro." />
       <Aviso ok={ok} error={error} />
       {!soloLectura && puedeSupervisar(perfil.rol) && (
         <form action={registrarObjetivo} className="seccion" aria-labelledby="t-nuevo">

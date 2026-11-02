@@ -34,7 +34,7 @@ export function ListaProveedores({filas,documentos,params,edita}:{filas:Fila[];d
 
   return (
     <>
-      <EncabezadoPagina titulo="Proveedores" descripcion="La cartera de proveedores de todas las sucursales."
+      <EncabezadoPagina titulo="Proveedores" info="La cartera de proveedores de todas las sucursales."
         acciones={edita && <Link className="boton" href="/compras/proveedores/nuevo"><Icono nombre="mas" />Nuevo proveedor</Link>} />
       <Aviso ok={ok} error={error} />
       <form className="barra-filtros proveedores-filtros compras-listado" role="search" onSubmit={e=>e.preventDefault()}>

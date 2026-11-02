@@ -31,7 +31,7 @@ export default async function Comparar({ params, searchParams }: { params: Promi
 
   return (
     <>
-      <EncabezadoPagina titulo="Comparar cotizaciones" descripcion="Mismo pedido con distintos proveedores. Al confirmar una, las demás se cancelan solas." />
+      <EncabezadoPagina titulo="Comparar cotizaciones" info="Mismo pedido con distintos proveedores. Al confirmar una, las demás se cancelan solas." />
       <Aviso ok={ok} error={error} />
       <div className="tarjetas">
         {(ordenes ?? []).map((o) => (

@@ -14,7 +14,7 @@ export default async function CargarExcel() {
   if (!puedeEditarCompras(perfil.rol)) redirect("/compras");
   return (
     <>
-      <EncabezadoPagina titulo="Cargar desde Excel" descripcion="Primera fila: encabezados. Un registro por renglón. Si algún renglón tiene un error, no se guarda ninguno y te decimos cuál corregir." />
+      <EncabezadoPagina titulo="Cargar desde Excel" info="Primera fila: encabezados. Un registro por renglón. Si algún renglón tiene un error, no se guarda ninguno y te decimos cuál corregir." />
 
       <section className="seccion">
         <h2>Proveedores</h2>

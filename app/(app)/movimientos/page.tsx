@@ -28,7 +28,7 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <EncabezadoPagina titulo="Movimientos entre cajas" descripcion="Cada vez que el efectivo pasa de una caja a otra se registra aquí. Quien lo recibe lo confirma con su propio usuario." />
+      <EncabezadoPagina titulo="Movimientos entre cajas" info="Cada vez que el efectivo pasa de una caja a otra se registra aquí. Quien lo recibe lo confirma con su propio usuario." />
       <Aviso ok={ok} error={error} />
       {!soloLectura && <FormMovimiento limiteRetiro={Number(sucursal.limite_retiro)} fondoCajon={Number(sucursal.fondo_caja_venta)}
         boveda={boveda} />}

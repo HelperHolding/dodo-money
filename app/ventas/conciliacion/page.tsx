@@ -37,7 +37,7 @@ export default async function Conciliacion({searchParams}:{searchParams:Promise<
    total:Number(d.total),efectivo:Number(d.efectivo),tarjeta:Number(d.tarjeta),en_linea:Number(d.en_linea),
    importe:s?s.importe:null,bruta:s?s.bruta:null,diferencia,estado:activa?"vigente":Math.abs(diferencia)<=1?"cuadra":"revisar",activa,historial};
  });
- return <><EncabezadoPagina titulo="Conciliación con Dodo IS" descripcion="Compara la venta diaria con los productos vendidos, corrige formas de pago y justifica lo que no cuadra. La importación original se conserva."
+ return <><EncabezadoPagina titulo="Conciliación con Dodo IS" info="Compara la venta diaria con los productos vendidos, corrige formas de pago y justifica lo que no cuadra. La importación original se conserva."
    acciones={<Link className="boton boton-secundario" href="/ventas">Ver ventas</Link>}/>
   <Aviso ok={q.ok} error={q.error}/>
   {!conciliaciones.disponible&&<p className="aviso aviso-error">Falta aplicar la migración 0034_conciliacion_ventas.sql en Supabase.</p>}

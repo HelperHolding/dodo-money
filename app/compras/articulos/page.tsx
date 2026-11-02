@@ -73,7 +73,7 @@ export default async function Articulos({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <EncabezadoPagina titulo="Artículos" descripcion="Lo que se compra, con el último precio de cada proveedor. Los precios se llenan solos al confirmar órdenes de compra." />
+      <EncabezadoPagina titulo="Artículos" info="Lo que se compra, con el último precio de cada proveedor. Los precios se llenan solos al confirmar órdenes de compra." />
       <Aviso ok={ok} error={error} />
       {edita && (
         <details className="seccion">
