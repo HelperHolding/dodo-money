@@ -274,6 +274,8 @@ language plpgsql security definer set search_path='' as $$
 declare t public.tareas;paso text;manda boolean;nota text:=trim(coalesce(p_comentario,''));
 begin
  t:=public.tarea_para_escribir(p_numero,p_revision);
+ if p_revision is null then raise exception 'La tarea cambió mientras la veías. Recarga e intenta de nuevo.';end if;
+ if p_estado is null or p_estado not in ('por_hacer','en_curso','en_revision','hecho','cancelada') then raise exception 'No puedes hacer ese cambio de estado.';end if;
  paso:=t.estado::text||'>'||coalesce(p_estado,'');
  manda:=public.administra_tarea(t);
  if not ((paso in ('por_hacer>en_curso','por_hacer>en_revision','en_curso>en_revision') and (manda or t.asignado_a=auth.uid()))
@@ -283,6 +285,7 @@ begin
  if paso='en_revision>en_curso' and length(nota)<5 then raise exception 'Para regresar la tarea escribe qué falta (al menos 5 caracteres).';end if;
  if p_estado='cancelada' and length(nota)<5 then raise exception 'Escribe el motivo de la cancelación (al menos 5 caracteres).';end if;
  if length(nota)>4000 then raise exception 'El comentario es demasiado largo (máximo 4000 caracteres).';end if;
+ if p_estado='cancelada' and length(nota)>1000 then raise exception 'El motivo de cancelación es demasiado largo (máximo 1000 caracteres).';end if;
  update public.tareas set estado=p_estado::public.estado_tarea,revision=revision+1,actualizada_en=now(),
   cerrada_en=case when p_estado in ('hecho','cancelada') then now() end,
   motivo_cierre=case when p_estado='cancelada' then nota else motivo_cierre end
@@ -290,11 +293,13 @@ begin
  if nota<>'' then insert into public.tarea_comentarios(tarea_id,autor_id,texto) values(t.id,auth.uid(),nota);end if;
 end $$;
 
+-- Reemplaza los cinco campos: quien llame debe mandar titulo, descripcion, prioridad, vence y asignado_a (los ausentes se borran; prioridad vuelve a 'media').
 create function public.actualizar_tarea(p_numero bigint,p_revision integer,p_datos jsonb) returns void
 language plpgsql security definer set search_path='' as $$
 declare t public.tareas;msg text;
 begin
  t:=public.tarea_para_escribir(p_numero,p_revision);
+ if p_revision is null then raise exception 'La tarea cambió mientras la veías. Recarga e intenta de nuevo.';end if;
  if not public.administra_tarea(t) then raise exception 'Solo quien creó la tarea, su gerente o un admin pueden editarla.';end if;
  if t.estado::text in ('hecho','cancelada') then raise exception 'La tarea ya está cerrada.';end if;
  msg:=public.error_datos_tarea(p_datos,array['titulo','descripcion','prioridad','vence','asignado_a']);
@@ -325,15 +330,15 @@ create function public.hilo_tarea(p_numero bigint)
 returns table(tipo text,autor text,texto text,campo text,antes text,despues text,fecha timestamptz)
 language sql stable security definer set search_path='' as $$
  with t as (select x.id from public.tareas x where x.numero=p_numero and public.puede_ver_tarea(x.asignado_a,x.creado_por,x.sucursal_id))
- select * from (
-  select 'comentario'::text tipo,p.nombre autor,c.texto,null::text campo,null::text antes,null::text despues,c.fecha
+ select u.tipo,u.autor,u.texto,u.campo,u.antes,u.despues,u.fecha from (
+  select 'comentario'::text tipo,p.nombre autor,c.texto,null::text campo,null::text antes,null::text despues,c.fecha,c.id
   from public.tarea_comentarios c join t on t.id=c.tarea_id join public.perfiles p on p.id=c.autor_id
   union all
   select 'cambio',p.nombre,null,h.campo,
    case when h.campo='asignado_a' then (select y.nombre from public.perfiles y where y.id=h.antes::uuid) else h.antes end,
-   case when h.campo='asignado_a' then (select y.nombre from public.perfiles y where y.id=h.despues::uuid) else h.despues end,h.fecha
+   case when h.campo='asignado_a' then (select y.nombre from public.perfiles y where y.id=h.despues::uuid) else h.despues end,h.fecha,h.id
   from public.tarea_historial h join t on t.id=h.tarea_id left join public.perfiles p on p.id=h.usuario_id
- ) u order by 7,1 desc
+ ) u order by u.fecha,u.tipo,u.id
 $$;
 
 revoke all on sequence public.tareas_numero from public,anon,authenticated;

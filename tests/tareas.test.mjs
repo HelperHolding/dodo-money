@@ -293,6 +293,35 @@ test('tareas: el historial de reasignación muestra nombres',async()=>{
  }finally{await db.close();}
 });
 
+test('tareas: al regresar, el cambio de estado va justo antes de su comentario',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.admin,{titulo:'Regresar',asignado_a:U.ana,sucursal_id:S.z});
+  await mover(db,U.ana,n,'en_revision');
+  await mover(db,U.admin,n,'en_curso','Falta la firma del proveedor');
+  await como(db,U.admin);
+  const hilo=(await db.query('select tipo,texto,campo,antes,despues from public.hilo_tarea($1)',[n])).rows;
+  const i=hilo.findIndex(h=>h.tipo==='comentario');
+  assert.equal(hilo[i].texto,'Falta la firma del proveedor');
+  assert.deepEqual([hilo[i-1].tipo,hilo[i-1].campo,hilo[i-1].antes,hilo[i-1].despues],['cambio','estado','en_revision','en_curso']);
+  assert.equal(i,hilo.length-1);
+ }finally{await db.close();}
+});
+
+test('tareas: mover valida estado, revisión y largo del motivo con mensajes en español',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.admin,{titulo:'Validar',asignado_a:U.ana,sucursal_id:S.z});
+  await como(db,U.admin);
+  await rechaza(db.query('select public.mover_tarea($1,1,null,$2)',[n,'']),/No puedes hacer ese cambio de estado/);
+  await rechaza(db.query('select public.mover_tarea($1,1,$2,$3)',[n,'inventado','']),/No puedes hacer ese cambio de estado/);
+  await rechaza(db.query('select public.mover_tarea($1,null,$2,$3)',[n,'en_curso','']),/La tarea cambió mientras la veías/);
+  await rechaza(db.query(`select public.actualizar_tarea($1,null,$2::jsonb)`,[n,JSON.stringify({titulo:'Validar',asignado_a:U.ana})]),/La tarea cambió mientras la veías/);
+  await rechaza(db.query('select public.mover_tarea($1,1,$2,$3)',[n,'cancelada','x'.repeat(1001)]),/El motivo de cancelación es demasiado largo/);
+  assert.equal((await estado(db,n)).e,'por_hacer');
+ }finally{await db.close();}
+});
+
 test('tareas: la prueba SQL de Sebastián termina en PRUEBAS OK',{skip:!existsSync(new URL('../supabase/pruebas/20261102120000_tareas.sql',import.meta.url))},async()=>{
  const db=await nueva();
  try{
