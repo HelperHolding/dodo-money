@@ -45,6 +45,6 @@ export default async function Tablero({ searchParams }: { searchParams: Promise<
     {lista.length === 0 ? <EstadoVacio titulo="No hay tareas con estos filtros" />
       : vista === "lista"
         ? <div className="tarjetas">{ordenPendientes(lista, hoy).map((t) => <TarjetaTarea key={t.id} t={t} hoy={hoy} rol={perfil.rol} />)}</div>
-        : <TableroTareas tareas={lista} pasos={Object.fromEntries(lista.map((t) => [t.id, siguientes(t, quien)]))} volverA={aqui} />}
+        : <TableroTareas tareas={lista} pasos={Object.fromEntries(lista.map((t) => [t.id, siguientes(t, quien)]))} volverA={aqui} hoy={hoy} />}
   </>;
 }

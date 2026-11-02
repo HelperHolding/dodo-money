@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { COLUMNAS, ESTADOS, PRIORIDADES, TONO_PRIORIDAD, clave, pideComentario, type EstadoTarea, type Tarea } from "@/lib/tareas";
+import { COLUMNAS, ESTADOS, PRIORIDADES, TONO_PRIORIDAD, clave, pideComentario, vencida, type EstadoTarea, type Tarea } from "@/lib/tareas";
+import { fechaTexto } from "@/lib/formato";
 import { moverTarea } from "../acciones";
 
 /**
@@ -9,7 +10,7 @@ import { moverTarea } from "../acciones";
  * trae un selector con los estados a los que esta persona puede moverla. Ambos envían el mismo formulario.
  * Regresar y cancelar piden texto: esos pasos se hacen desde el detalle.
  */
-export function TableroTareas({ tareas, pasos, volverA }: { tareas: Tarea[]; pasos: Record<string, EstadoTarea[]>; volverA: string }) {
+export function TableroTareas({ tareas, pasos, volverA, hoy }: { tareas: Tarea[]; pasos: Record<string, EstadoTarea[]>; volverA: string; hoy: string }) {
   const [columna, setColumna] = useState<EstadoTarea>("por_hacer");
   const [arrastrando, setArrastrando] = useState<Tarea | null>(null);
   const form = useRef<HTMLFormElement>(null);
@@ -26,7 +27,7 @@ export function TableroTareas({ tareas, pasos, volverA }: { tareas: Tarea[]; pas
       <input name="numero" /><input name="revision" /><input name="estado" /><input name="volver_a" defaultValue={volverA} />
     </form>
     <nav className="accesos solo-celular" aria-label="Columna">
-      {COLUMNAS.map((c) => <button key={c} type="button" aria-current={columna === c ? "page" : undefined} onClick={() => setColumna(c)}>{ESTADOS[c]} ({tareas.filter((t) => t.estado === c).length})</button>)}
+      {COLUMNAS.map((c) => <button key={c} type="button" aria-pressed={columna === c} onClick={() => setColumna(c)}>{ESTADOS[c]} ({tareas.filter((t) => t.estado === c).length})</button>)}
     </nav>
     <div className="tablero-tareas">
       {COLUMNAS.map((c) => (
@@ -40,7 +41,7 @@ export function TableroTareas({ tareas, pasos, volverA }: { tareas: Tarea[]; pas
               <p className="tarea-cabecera"><Link href={`/tareas/${t.numero}`} className="tarea-clave">{clave(t.numero)}</Link>
                 <span className="insignia" data-tono={TONO_PRIORIDAD[t.prioridad]}>{PRIORIDADES[t.prioridad]}</span></p>
               <h3><Link href={`/tareas/${t.numero}`}>{t.titulo}</Link></h3>
-              <p className="tarea-datos"><span>{t.asignado}</span><span>{t.sucursal ?? "Oficina"}</span>{t.vence && <span>{t.vence}</span>}</p>
+              <p className="tarea-datos"><span>{t.asignado}</span><span>{t.sucursal ?? "Oficina"}</span>{t.vence && <span>{vencida(t, hoy) ? "Venció" : "Vence"} {fechaTexto(t.vence)}</span>}</p>
               {directos(t).length > 0 && (
                 <label className="tarea-mover">Mover a{" "}
                   <select defaultValue="" onChange={(e) => e.target.value && enviar(t, e.target.value as EstadoTarea)}>
