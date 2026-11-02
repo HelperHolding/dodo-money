@@ -1899,3 +1899,12 @@ body { background: var(--papel-2); }
 .proveedores-filtros input[type="search"] { width: 100%; }
 .proveedores-filtros .acciones, .compras-listado.barra-filtros .acciones { gap: 8px; }
 .recepciones-conteo { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+
+/* Tareas */
+.tarjeta-tarea { display: grid; gap: 0.35rem; }
+.tarjeta-tarea[data-vencida] { border-left: 4px solid var(--alerta-texto); }
+.tarea-cabecera { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0; }
+.tarea-clave { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tarjeta-tarea h3 { margin: 0; font-size: 1rem; }
+.tarea-datos { display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; margin: 0; color: var(--neutro-texto); font-size: 0.9rem; }
+.tarea-documento { margin: 0; font-size: 0.9rem; }
