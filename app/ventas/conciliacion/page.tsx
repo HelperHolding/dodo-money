@@ -19,12 +19,13 @@ export default async function Conciliacion({searchParams}:{searchParams:Promise<
  const mes=/^\d{4}-(0[1-9]|1[0-2])$/.test(q.mes??"")?q.mes!:hoyCalendarioMX().slice(0,7);
  const desde=`${mes}-01`,hasta=new Date(Date.UTC(Number(mes.slice(0,4)),Number(mes.slice(5,7)),0)).toISOString().slice(0,10);
  const todas=veVentasDeTodas(perfil.rol),edita=puedeImportarVentas(perfil.rol);
- const [{data:sucursales,error},datos,productos,conciliaciones,{data:personas}]=await Promise.all([
+ const [{data:sucursales,error},datos,productos,conciliaciones,{data:personas},tareasLeidas]=await Promise.all([
   supabase.from("sucursales").select("id,nombre").order("nombre"),
   leerTodo<Dia>((a,b)=>supabase.from("ventas_dia").select("id,sucursal_id,fecha,importacion_id,total,efectivo,tarjeta,en_linea,iva").gte("fecha",desde).lte("fecha",hasta).order("sucursal_id").order("fecha").range(a,b)),
   leerTodo<Producto>((a,b)=>supabase.from("ventas_producto").select("sucursal_id,fecha,importe,importe_sin_descuento").gte("fecha",desde).lte("fecha",hasta).order("sucursal_id").order("fecha").order("dodo_id").range(a,b)),
   leerConciliaciones(supabase,desde,hasta,true),
   supabase.from("perfiles").select("id,nombre"),
+  leerTareas(supabase).catch(()=>[]),
  ]);
  if(error)throw Error(error.message);
  const sucursal=todas?(sucursales??[]).find(s=>s.id===q.sucursal)?.id:perfil.sucursal_id;
@@ -41,7 +42,7 @@ export default async function Conciliacion({searchParams}:{searchParams:Promise<
    importe:s?s.importe:null,bruta:s?s.bruta:null,diferencia,estado:activa?"vigente":Math.abs(diferencia)<=1?"cuadra":"revisar",activa,historial};
  });
  const abiertas:Record<string,number>={};
- for(const t of await leerTareas(supabase).catch(()=>[]))if(t.documento_tipo==="ventas_dia"&&t.documento_id&&abierta(t.estado))abiertas[t.documento_id]=(abiertas[t.documento_id]??0)+1;
+ for(const t of tareasLeidas)if(t.documento_tipo==="ventas_dia"&&t.documento_id&&abierta(t.estado))abiertas[t.documento_id]=(abiertas[t.documento_id]??0)+1;
  return <><EncabezadoPagina titulo="Conciliación con Dodo IS" info="Compara la venta diaria con los productos vendidos, corrige formas de pago y justifica lo que no cuadra. La importación original se conserva."
    acciones={<Link className="boton boton-secundario" href="/ventas">Ver ventas</Link>}/>
   <Aviso ok={q.ok} error={q.error}/>
