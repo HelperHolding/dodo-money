@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 2026-11-02 · Aperturas: equipo por categoría del plano · 20261102120000 · pendiente de Supabase
+
+El equipo de apertura lleva `categoria`, una por pestaña de especificaciones del plano (`equipo.xlsx`, 01 a 17). La migración categoriza lo ya cargado de dodo-2 desde `original.grupo` (equipo de cocina 88, mobiliario 11, cámara fría 1) y deja `actualizar_apertura_item` y `agregar_apertura_item` aceptar categoría solo en equipo y compras, con historial. `supabase/cargas/equipo_categorias_dodo_2.sql` agrega 67 conceptos de las pestañas 04 a 17 (`ESP-*`, por cotizar) y categoriza el equipo del presupuesto del 13/10 por su pestaña de origen. Los contactos salen del resumen de la pestaña 11 (37 piezas), no del detalle de la 09; de la 12 solo entra la bocina del salón, porque amplificadores, bocina de notificaciones y router ya vienen del presupuesto (PRE26-HQ-086 a 090). Busca la apertura por "dodo-2" dentro del nombre de la sucursal (hoy "Dodo Lopez Mateos (Dodo-2)"). Repetible: no toca lo ya cargado.
+
+En Equipo y compras hay tarjetas de avance por categoría (instalado o verificado entre aplicables) y filtro por categoría. Las categorías de obra (04 a 15) no cuentan en «Equipo recibido». Orden: migración → carga → prueba `supabase/pruebas/20261102120000_aperturas_categorias.sql` (PRUEBAS OK) → publicar. Pruebas SQL en PGlite, incluida la de 0037.
+
 ## 2026-10-30 · Productos Rappi con varias piezas · 20261030150000 · pendiente de Supabase
 
 Ventas → Rappi permite ligar un producto de Rappi a varias piezas del catálogo con su cantidad (pizza + dip, refresco o rolls, o combos como Plan Dúo, Solo Dodo y Completo y Dulce) mediante `guardar_piezas_rappi` (solo admin); las piezas mandan sobre el vínculo simple, que se limpia. Rentabilidad Rappi suma el costo y el precio POS de las piezas. El P&L sigue costeando Rappi con el vínculo simple: las piezas aún no entran a su costo de venta. Prueba SQL en PGlite.

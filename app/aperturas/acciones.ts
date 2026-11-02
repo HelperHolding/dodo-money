@@ -7,7 +7,7 @@ export async function guardarItem(fd:FormData) {
  const id=String(fd.get('proyecto_id')??''),item=String(fd.get('item_id')??'');
  const ruta=`/aperturas/${id}/items/${item}`;
  const {supabase,perfil}=await obtenerPerfil();if(!puedeEditarCompras(perfil.rol))redirect('/aperturas');
- const campos=['estado','responsable','inicio','fin','cantidad','recibido','precio','evidencia','notas','orden_id','factura_id'];
+ const campos=['estado','responsable','inicio','fin','cantidad','recibido','precio','evidencia','notas','orden_id','factura_id',...(fd.has('categoria')?['categoria']:[])];
  const datos=Object.fromEntries(campos.map(c=>[c,String(fd.get(c)??'')]));
  const {error}=await supabase.rpc('actualizar_apertura_item',{p_item:item,p_revision:Number(fd.get('revision')),p_datos:datos});
  if(error)redirect(`${ruta}?error=${encodeURIComponent(error.message)}`);
@@ -15,7 +15,7 @@ export async function guardarItem(fd:FormData) {
 }
 export async function agregarItem(fd:FormData) {
  const id=String(fd.get('proyecto_id')??'');const {supabase,perfil}=await obtenerPerfil();if(!puedeEditarCompras(perfil.rol))redirect('/aperturas');
- const {data,error}=await supabase.rpc('agregar_apertura_item',{p_proyecto:id,p_tipo:String(fd.get('tipo')),p_etapa:String(fd.get('etapa')),p_nombre:String(fd.get('nombre')??'')});
+ const {data,error}=await supabase.rpc('agregar_apertura_item',{p_proyecto:id,p_tipo:String(fd.get('tipo')),p_etapa:String(fd.get('etapa')),p_nombre:String(fd.get('nombre')??''),p_categoria:fd.get('tipo')==='equipo'?String(fd.get('categoria')??''):''});
  if(error)redirect(`/aperturas/${id}?error=${encodeURIComponent(error.message)}`);
  revalidatePath('/aperturas','layout');redirect(`/aperturas/${id}/items/${data}`);
 }
