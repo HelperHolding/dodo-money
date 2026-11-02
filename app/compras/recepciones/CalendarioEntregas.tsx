@@ -1,4 +1,5 @@
 "use client";
+import { ConInfo } from "@/components/ConInfo";
 
 import { Icono } from "@/components/Icono";
 import Link from "next/link";
@@ -51,7 +52,7 @@ export function CalendarioEntregas({ hoy, porDia,realizadas={} }: { hoy: string;
         })}
       </div>
       <div className="calendario-pie">
-        {!dia ? <p>Toca un día para ver las órdenes programadas y las recepciones realizadas.</p> : !lista.length&&!recibidas.length ? <p>{fechaTexto(dia)}: sin entregas programadas ni recibidas.</p> : (
+        {!dia ? <ConInfo titulo="Calendario de entregas" etiqueta="Cómo leer esto">Toca un día para ver las órdenes programadas y las recepciones realizadas.</ConInfo> : !lista.length&&!recibidas.length ? <p>{fechaTexto(dia)}: sin entregas programadas ni recibidas.</p> : (
           <ul style={{ listStyle: "none", paddingLeft: 0, display: "grid", gap: 6 }}>
             {lista.length>0&&<li><strong>Programadas</strong></li>}
             {lista.map((o) => (

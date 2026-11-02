@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import Link from "next/link";
 import { ResumenEjecutivoVentas } from "@/components/ResumenEjecutivoVentas";
 import { GraficasReporteVentas } from "@/components/GraficasReporteVentas";
@@ -160,7 +161,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
 
       <div className="tablero-fila">
         <section className="seccion"><h2>Venta por día de la semana</h2><Grafica titulo="Venta acumulada por día de la semana" barras={diasSemana.map(d=>({...d,texto:pesos(d.valor)}))}/></section>
-        <section className="seccion"><h2>Ventas por semana</h2><BarrasVerticales titulo="Histórico semanal" dias={[...semanas].sort(([a],[b])=>a.localeCompare(b)).slice(-13).map(([lunes,total])=>({clave:lunes,rotulo:diaYNumero(lunes),valor:total,detalle:`Semana del ${fechaTexto(lunes)} · ${pesos(total)}`}))}/><p className="saldo-nota">Lunes a domingo. Semanas inicial y final pueden tener cobertura parcial.</p></section>
+        <section className="seccion"><h2>Ventas por semana</h2><BarrasVerticales titulo="Histórico semanal" dias={[...semanas].sort(([a],[b])=>a.localeCompare(b)).slice(-13).map(([lunes,total])=>({clave:lunes,rotulo:diaYNumero(lunes),valor:total,detalle:`Semana del ${fechaTexto(lunes)} · ${pesos(total)}`}))}/><ConInfo titulo="Ventas por semana" etiqueta="Cómo leer esto">Lunes a domingo. Semanas inicial y final pueden tener cobertura parcial.</ConInfo></section>
       </div>
 
       <GraficasReporteVentas mensuales={ventasMensuales(ventaDiaria, `${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`, periodo.hasta)}
@@ -170,7 +171,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
           <RankingProductos titulo="Productos que más vendieron" filas={top.map((p) => ({
             clave: String(p.dodo_id), nombre: p.nombre, importe: p.importe, piezas: p.piezas, cambio: p.cambio,
           }))} />
-          <p className="saldo-nota">El cambio es contra los mismos días justo antes del periodo.</p>
+          <ConInfo titulo="Columna de cambio" etiqueta="Cómo leer esto">El cambio es contra los mismos días justo antes del periodo.</ConInfo>
         </Plegable>
 
         <Plegable id="costos" titulo="Costos" resumen={porcentaje(costos.total.costoPct)}
@@ -257,10 +258,10 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
           </div>
         )}
         {cierre.sinCierre > 0 && <p className="saldo-nota">{cierre.sinCierre} {cierre.sinCierre === 1 ? "día importado no tiene" : "días importados no tienen"} cierre del gerente.</p>}
-        <p className="saldo-nota">
+        <ConInfo titulo="Por forma de pago" etiqueta="Cómo leer esto">
           Dodo IS cuenta el día de 0:00 a 23:59 y el cierre de la app hasta las 4:00: las ventas después de medianoche
           pueden explicar una diferencia.
-        </p>
+        </ConInfo>
       </Plegable>
 
       <SeccionesPedidos pedidos={detalle.pedidos} lineas={detalle.lineas} diasSinDetalle={diasSinDetalle} />

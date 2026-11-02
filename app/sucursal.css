@@ -363,23 +363,31 @@ main.pagina :is(.encabezado, .compra-cabecera) p:not(.seccion p, .tarjeta p) { w
 .seccion-cabecera > .con-info { align-self: center; }
 .letrero .con-info-boton { width: 34px; height: 34px; font-size: .95rem; color: #1a120d; background: rgb(255 255 255 / .82);
   border-color: rgb(255 255 255 / .9); box-shadow: 0 3px 0 rgb(120 40 0 / .35), 0 6px 14px -4px rgb(40 8 0 / .5); }
-.letrero .con-info-pop { left: 0; right: auto; z-index: 40; }
 .con-info { position: relative; display: inline-flex; vertical-align: middle; }
 .con-info-boton {
   flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--linea-fuerte);
   background: var(--campo); color: var(--tinta-2); font: 700 .82rem var(--display); cursor: pointer;
 }
 .con-info-pop {
-  position: absolute; z-index: 30; top: calc(100% + 10px); right: 0; width: min(300px, 80vw);
+  position: fixed; inset: auto; margin: 0; overflow: visible; width: min(300px, calc(100vw - 16px));
+  border: 0;
   background: #fff; color: #424242; border-radius: 12px; padding: 14px 16px 16px; border-top: 3px solid var(--dodo-naranja);
   box-shadow: 0 22px 50px -12px rgb(0 0 0 / .45), 0 0 0 1px rgb(0 0 0 / .05);
   font-size: .9rem; line-height: 1.45; text-align: left; font-weight: 400;
   animation: con-info-entrar 220ms cubic-bezier(.16, 1, .3, 1);
 }
-.con-info-pop[hidden] { display: none; }
+.con-info-pop:not(:popover-open) { display: none; }
+/* Nota al pie con etiqueta: «(i) Cómo leer esto», en el color de los vínculos */
+.con-info-etiqueta { width: auto; height: auto; min-height: 32px; padding: 4px 12px 4px 4px; border-radius: var(--r-full);
+  display: inline-flex; align-items: center; gap: 8px; font: 600 .86rem var(--fuente); color: var(--accion-oscuro); }
+.con-info-i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--linea-fuerte); font: 700 .78rem var(--display); color: var(--tinta-2); }
+.con-info:has(.con-info-etiqueta) { margin-top: 2px; }
+/* Si la nota quedó suelta en la página (antes era un párrafo), va en una pastilla de cristal */
+:is(.pagina, .panel-admin, .formulario-pagina) > .con-info { width: fit-content; padding: 2px; border-radius: var(--r-full); background: var(--superficie);
+  border: 1px solid var(--cristal-borde); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
 .con-info-pop strong { display: block; font: 700 1rem var(--display); color: #000; margin-bottom: 4px; }
 @keyframes con-info-entrar { from { opacity: 0; transform: translateY(-4px); } }
-.seccion:has(.con-info-pop:not([hidden])) { transform: translateY(-2px); border-color: rgb(255 120 40 / .7); z-index: 3; position: relative; }
+.seccion:has(.con-info-pop:popover-open) { transform: translateY(-2px); border-color: rgb(255 120 40 / .7); z-index: 3; position: relative; }
 .seccion { transition: transform 200ms cubic-bezier(.16, 1, .3, 1), border-color 200ms; }
 
 /* ─── Carga: esqueletos de cristal y letrero apagado ─── */

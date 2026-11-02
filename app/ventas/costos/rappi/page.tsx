@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import Link from "next/link";
 import {catalogoCosteo} from "../catalogo";
 import {cargarRappi} from "@/app/ventas/rappi/datos";
@@ -71,7 +72,7 @@ export default async function RentabilidadRappi({searchParams}:{searchParams:Pro
   <dt>Cancelaciones cobradas</dt><dd>−{pesos(t.cancelaciones)}</dd>
   <dt><strong>Utilidad del canal</strong></dt><dd><strong>{pesos(t.utilidad)} · {pct(t.margen)}</strong></dd>
  </dl>
- <p className="saldo-nota">El IVA de la comisión y las retenciones de IVA e ISR que descuenta Rappi no se restan: se recuperan en impuestos. Los descuentos que paga Rappi (DAR) no afectan a la tienda.</p></section>
+ <ConInfo titulo="Resumen del canal" etiqueta="Cómo leer esto">El IVA de la comisión y las retenciones de IVA e ISR que descuenta Rappi no se restan: se recuperan en impuestos. Los descuentos que paga Rappi (DAR) no afectan a la tienda.</ConInfo></section>
  <section className="seccion"><h2>Por producto</h2><p className="saldo-nota">Margen sobre la venta sin IVA después del descuento promedio que llevó el producto. Precio mínimo: precio de lista con IVA para llegar a {pct(meta)} con ese mismo descuento. Contra mostrador: utilidad por pieza al precio POS, con terminal y regalías.</p>
  <div className="tabla-contenedor"><table className="tabla tabla-tarjetas"><caption className="solo-lector">Rentabilidad Rappi por producto</caption><thead><tr><th scope="col">Producto</th><th scope="col" className="monto">Piezas</th><th scope="col" className="monto">Precio lista</th><th scope="col" className="monto">Descuento</th><th scope="col" className="monto">Utilidad por pieza</th><th scope="col" className="monto">Margen</th><th scope="col" className="monto">Precio mínimo</th><th scope="col" className="monto">En mostrador</th></tr></thead>
  <tbody>{r.filas.map(f=><tr key={f.clave}>

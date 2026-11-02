@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { Icono } from "@/components/Icono";
@@ -45,7 +46,7 @@ export default async function Conciliacion({searchParams}:{searchParams:Promise<
    <label htmlFor="mes" className="solo-lector">Mes</label><input id="mes" name="mes" type="month" defaultValue={mes} required/>
    {todas&&<><label htmlFor="sucursal" className="solo-lector">Sucursal</label><select id="sucursal" name="sucursal" defaultValue={sucursal??""}><option value="">Todas las sucursales</option>{sucursales?.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></>}
    <button className="boton boton-secundario boton-compacto">Consultar</button>
-   <details className="nota-plegable"><summary><Icono nombre="info"/>Cómo afecta un ajuste</summary><p>Los ajustes de cobro se reflejan en Ventas, en el comparativo con cierres y en las comisiones estimadas del P&L. La venta total, el IVA, los pedidos y los costos de receta se conservan. El detalle de pedidos mantiene la forma de pago original.</p></details>
+   <details className="nota-plegable"><summary><Icono nombre="info"/>Cómo afecta un ajuste</summary><ConInfo titulo="Ajustes de cobro" etiqueta="Cómo leer esto">Los ajustes de cobro se reflejan en Ventas, en el comparativo con cierres y en las comisiones estimadas del P&L. La venta total, el IVA, los pedidos y los costos de receta se conservan. El detalle de pedidos mantiene la forma de pago original.</ConInfo></details>
   </form>
   <ConciliacionMes mes={mes} dias={filas} autores={Object.fromEntries(autores)} edita={edita} disponible={conciliaciones.disponible}/>
  </>;

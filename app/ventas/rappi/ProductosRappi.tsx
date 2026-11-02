@@ -1,4 +1,5 @@
 "use client";
+import { ConInfo } from "@/components/ConInfo";
 import {useState} from 'react';
 import {CATEGORIAS_RAPPI,type ProductoUnidades} from '@/lib/ventas/rappiProductos';
 import {fechaTexto} from '@/lib/formato';
@@ -14,7 +15,7 @@ export function ProductosRappi({resumen:r}:{resumen:Resumen}) {
  const grupos=agrupar?Object.entries(CATEGORIAS_RAPPI).map(([id,nombre])=>({nombre,filas:filas.filter(p=>p.categoria===id)})).filter(g=>g.filas.length):[{nombre:'Consolidado de productos',filas}];
  const top=r.filas.slice(0,5),pizzas=r.filas.filter(p=>p.categoria==='pizza'),max=Math.max(1,...top.map(p=>p.unidades));let offset=0;
  return <>
- <section className="seccion"><h2>Unidades vendidas en Rappi</h2><p className="saldo-nota">Órdenes finalizadas recibidas en vivo del portal, incluidas las que ya están en Dodo IS. No registra ventas adicionales en el P&amp;L. Canceladas y con reclamo quedan fuera.</p>
+ <section className="seccion"><h2>Unidades vendidas en Rappi</h2><ConInfo titulo="Unidades vendidas en Rappi" etiqueta="Cómo leer esto">Órdenes finalizadas recibidas en vivo del portal, incluidas las que ya están en Dodo IS. No registra ventas adicionales en el P&amp;L. Canceladas y con reclamo quedan fuera.</ConInfo>
  <div className="ap-indicadores"><div className="ap-indicador"><span>Unidades de productos</span><strong>{numero(r.unidades)}</strong><small>Suma de cantidades de todos los renglones finalizados</small></div><div className="ap-indicador"><span>Pizzas individuales</span><strong>{numero(pizzas.reduce((s,p)=>s+p.unidades,0))}</strong><small>Los combos permanecen separados</small></div><div className="ap-indicador"><span>Productos distintos</span><strong>{r.filas.length}</strong><small>Variantes consolidadas por producto y categoría</small></div><div className="ap-indicador"><span>Órdenes finalizadas</span><strong>{r.ordenes}</strong><small>{r.enDodo} ya incluidas en Dodo IS</small></div></div>
  <p className="saldo-nota">{r.desde&&r.hasta?`Datos disponibles del ${fechaTexto(r.desde)} al ${fechaTexto(r.hasta)}.`:'Sin órdenes finalizadas del portal en este periodo.'} El reporte usa el periodo y la sucursal seleccionados.</p>
  <div className="ap-graficas"><section className="ap-panel"><h3>Productos más vendidos · unidades</h3>{top.map(p=><div className="rappi-producto" key={p.clave}><div><span>{p.nombre}</span><strong>{numero(p.unidades)} uds.</strong></div><div className="rappi-barra"><span style={{width:`${p.unidades/max*100}%`}}/></div></div>)}{!top.length&&<p>Sin productos para mostrar.</p>}</section>

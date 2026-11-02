@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import {EncabezadoPagina} from "@/components/EncabezadoPagina";
 import Link from "next/link";
 import {obtenerPerfil} from "@/lib/contexto";
@@ -38,10 +39,10 @@ export default async function Mermas({searchParams}:{searchParams:Promise<{mes?:
      <p className="saldo-nota">{r.sinImportar} días sin importar · {r.sinCobertura} días sin cobertura de productos confirmada · {r.sinCosto} renglones de productos sin costo · {r.sinCostoInsumos} renglones de insumos sin costo.</p>
     </div>;
    })}
-   <p className="saldo-nota">Los costos desconocidos no cuentan como cero. Si falta cobertura o costo, el margen y EBITDA muestran que el resultado es provisional. El P&L usa su propio periodo, que puede terminar antes de hoy.</p>
+   <ConInfo titulo="Importes incorporados al P&L" etiqueta="Cómo leer esto">Los costos desconocidos no cuentan como cero. Si falta cobertura o costo, el margen y EBITDA muestran que el resultado es provisional. El P&L usa su propio periodo, que puede terminar antes de hoy.</ConInfo>
   </section>
   {edita&&<Formulario/>}
-  {productos.length>0&&<section className="seccion"><h2>Costos de productos y referencias del BOM</h2><p>El costo importado de Dodo IS es sin IVA. El BOM es una referencia de receta con sus ajustes y empaque; confirma unidad, IVA y componentes antes de usarlo como costo de una baja. No agregamos el 1 % de periféricos a las mermas.</p>
+  {productos.length>0&&<section className="seccion"><h2>Costos de productos y referencias del BOM</h2><ConInfo titulo="Costos de productos y referencias del BOM" etiqueta="Cómo leer esto">El costo importado de Dodo IS es sin IVA. El BOM es una referencia de receta con sus ajustes y empaque; confirma unidad, IVA y componentes antes de usarlo como costo de una baja. No agregamos el 1 % de periféricos a las mermas.</ConInfo>
    {productos.map(r=>{
     const ref=referenciaBOM(r,versiones),historial=datos.costos.filter(c=>c.sucursal_id===r.sucursal_id&&c.clave===r.clave);
     return <details key={`${r.sucursal_id}|${r.clave}`} className="merma-producto"><summary>{r.nombre} · {nombres.get(r.sucursal_id)}{valoradas.some(x=>x.sucursal_id===r.sucursal_id&&x.clave===r.clave&&x.costo_pl===null)?" · costo pendiente":""}</summary>

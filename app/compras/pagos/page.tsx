@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import {leerRazonesSociales} from '@/lib/compras/razonesSociales';
 import {TablaFacturasPago} from './TablaFacturasPago';
 import {validarFiltroCorrida} from '@/lib/compras/corridaPagos';
@@ -172,7 +173,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
         </a>
       </section></div>
       <Aviso ok={ok} error={error??((desde||hasta)&&!rangoValido?'El rango de fechas no es válido. Se muestran los pagos de hoy.':undefined)} />
-      <section className="seccion pagos-hoy" aria-labelledby="pagos-hoy-titulo"><div className="pagos-hoy-resumen"><div><h2 id="pagos-hoy-titulo">Por pagar hoy</h2><p>{fechaTexto(hoy)} · {deHoy.length} {deHoy.length===1?'factura':'facturas'} · con los filtros de proveedor y sucursal</p></div><strong className="pagos-hoy-monto">{pesos(suma(deHoy))}</strong></div><p className="saldo-nota">Saldo pendiente de las facturas programadas o sugeridas para hoy. Los abonos ya están descontados. Tipo de pago indica la forma prevista, no un pago realizado.</p>
+      <section className="seccion pagos-hoy" aria-labelledby="pagos-hoy-titulo"><div className="pagos-hoy-resumen"><div><h2 id="pagos-hoy-titulo">Por pagar hoy</h2><p>{fechaTexto(hoy)} · {deHoy.length} {deHoy.length===1?'factura':'facturas'} · con los filtros de proveedor y sucursal</p></div><strong className="pagos-hoy-monto">{pesos(suma(deHoy))}</strong></div><ConInfo titulo="Por pagar hoy" etiqueta="Cómo leer esto">Saldo pendiente de las facturas programadas o sugeridas para hoy. Los abonos ya están descontados. Tipo de pago indica la forma prevista, no un pago realizado.</ConInfo>
       {deHoy.length?<TablaFacturasPago filas={datosTabla(deHoy)} edita={edita}/>:<p className="vacio">No hay facturas pendientes programadas o sugeridas para hoy con estos filtros.</p>}</section>
       {rango&&<section className="seccion" aria-labelledby="pagos-rango-titulo"><h2 id="pagos-rango-titulo">Rango de Tesorería: {fechaTexto(rango.desde)} al {fechaTexto(rango.hasta)}</h2><p><strong>{pesos(suma(delRango))}</strong> · {delRango.length} facturas pendientes actualmente. Los saldos pueden haber cambiado desde que se exportó el Excel.</p>{delRango.length?<TablaFacturasPago filas={datosTabla(delRango)} edita={edita}/>:<p>Sin saldo pendiente para este rango.</p>}</section>}
 

@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
@@ -35,7 +36,7 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
 
       <section className="seccion" aria-labelledby="t-ajustes">
         <h2 id="t-ajustes">Ajustes de conciliación de bóveda</h2>
-        <p className="saldo-nota">Últimos 50 registros. Importe negativo: salida de bóveda; positivo: devolución.</p>
+        <ConInfo titulo="Movimientos" etiqueta="Cómo leer esto">Últimos 50 registros. Importe negativo: salida de bóveda; positivo: devolución.</ConInfo>
         {!ajustes.data?.length ? <p>Sin ajustes registrados.</p> : <table className="tabla"><thead><tr><th>Fecha de registro</th><th>Motivo</th><th>Registró</th><th>Efecto en bóveda</th></tr></thead><tbody>{ajustes.data.map(a=><tr key={a.id}><td>{new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'short',timeZone:'America/Mexico_City'}).format(new Date(a.creado_en))}</td><td>{a.motivo}</td><td>{persona.get(a.autor_id) ?? 'Sin nombre'}</td><td className="monto">{pesos(-Number(a.importe))}</td></tr>)}</tbody></table>}
       </section>
       <section className="seccion" aria-labelledby="t-hoy">
