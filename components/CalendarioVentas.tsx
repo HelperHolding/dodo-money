@@ -48,11 +48,19 @@ export function CalendarioVentas({ venta, periodo, hoy, maxDias, sucursal, sucur
   const [abierto, setAbierto] = useState(false);
   const diasPeriodo = diasEntreFechas(periodo);
   const rapidos = periodosRapidos(hoy);
-
-  const ir = (r: Rango, suc: string | null) => {
+  // Solo presentación: el día bajo el cursor mientras se elige el segundo extremo (vista previa del rango)
+  const [pasando, setPasando] = useState<string | null>(null);
+  const urlDe = (r: Rango, suc: string | null) => {
     const q = new URLSearchParams({ desde: r.desde, hasta: r.hasta });
     if (suc) q.set("sucursal", suc);
-    iniciar(() => router.push(`${ruta}?${q}`));
+    return `${ruta}?${q}`;
+  };
+  // Intensidad de cada día en el mapa de calor del mes (0 a 1 contra el día que más vendió del mes mostrado)
+  const diasMes = semanasDelMes(mes.anio, mes.mes).flat().filter((x): x is string => Boolean(x));
+  const maxMes = Math.max(0, ...diasMes.map((x) => venta[x] ?? 0));
+
+  const ir = (r: Rango, suc: string | null) => {
+    iniciar(() => router.push(urlDe(r, suc)));
   };
 
   const elegir = (dia: string) => {
@@ -80,6 +88,7 @@ export function CalendarioVentas({ venta, periodo, hoy, maxDias, sucursal, sucur
         {rapidos.map((r) => (
           <button key={r.clave} type="button" disabled={pendiente}
             aria-pressed={r.rango.desde === periodo.desde && r.rango.hasta === periodo.hasta}
+            onMouseEnter={() => router.prefetch(urlDe(r.rango, sucursal))}
             onClick={() => ir(r.rango, sucursal)}>{r.etiqueta}</button>
         ))}
       </div>
@@ -118,9 +127,15 @@ export function CalendarioVentas({ venta, periodo, hoy, maxDias, sucursal, sucur
           const monto = venta[dia];
           const extremo = rango && (dia === rango.desde || dia === rango.hasta);
           const dentro = rango && dia > rango.desde && dia < rango.hasta;
+          // Vista previa: entre el día elegido y el que está bajo el cursor, antes del segundo toque
+          const previa = esperando && sel.inicio && pasando && !extremo && (
+            (dia > sel.inicio && dia <= pasando) || (dia < sel.inicio && dia >= pasando));
+          const nivel = monto !== undefined && maxMes > 0 ? Math.round((monto / maxMes) * 100) / 100 : 0;
           return (
             <button key={dia} type="button" className="calendario-dia" disabled={dia > hoy}
-              data-estado={extremo ? "extremo" : dentro ? "dentro" : undefined} data-vacio={monto === undefined ? "si" : undefined}
+              data-estado={extremo ? "extremo" : dentro ? "dentro" : previa ? "previa" : undefined} data-vacio={monto === undefined ? "si" : undefined}
+              style={monto !== undefined ? ({ "--nivel": nivel } as React.CSSProperties) : undefined}
+              onMouseEnter={() => esperando && setPasando(dia)}
               data-hoy={dia === hoy ? "si" : undefined} aria-current={dia === hoy ? "date" : undefined}
               aria-pressed={Boolean(extremo || dentro)}
               aria-label={`${fechaTexto(dia)}: ${monto === undefined ? "sin ventas importadas" : pesos(monto)}`}

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { diasConEtiqueta } from "@/lib/ventas/tablero";
 
-export type BarraDia = { clave: string; rotulo: string; valor: number; detalle: string };
+/** `alerta` pinta la barra en rojo (p. ej. una hora con cocina lenta). */
+export type BarraDia = { clave: string; rotulo: string; valor: number; detalle: string; alerta?: boolean };
 
 /**
  * Venta por día en barras verticales. Arriba se lee el detalle del día elegido (al inicio, el más alto);
@@ -23,7 +24,7 @@ export function BarrasVerticales({ titulo, dias }: { titulo: string; dias: reado
         {dias.map((d, i) => (
           <button key={d.clave} type="button" aria-pressed={i === elegido} aria-label={d.detalle}
             onClick={() => setElegido(i)} onMouseEnter={() => setElegido(i)}>
-            <span data-max={i === masAlto ? "si" : undefined} style={{ height: `${max > 0 ? (d.valor / max) * 100 : 0}%` }} />
+            <span data-max={i === masAlto ? "si" : undefined} data-alerta={d.alerta ? "si" : undefined} style={{ height: `${max > 0 ? (d.valor / max) * 100 : 0}%` }} />
           </button>
         ))}
       </div>
