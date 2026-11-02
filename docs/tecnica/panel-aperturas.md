@@ -15,6 +15,8 @@ Equipo y compras agrupa por `categoria` (pestañas del plano, `CATEGORIAS` en `l
 
 `vista=checklist` arma cuatro módulos con `checklistApertura` (`MODULOS_CHECKLIST`): primero los resúmenes por grupo (categorías de equipo, validaciones técnicas) y después cada actividad de sus etapas. El avance de cada módulo cuenta conceptos listos; el general promedia los módulos para que las piezas de compras no tapen al resto.
 
+El Checklist es la vista predeterminada (sin `vista`). Con permiso de compras, cada casilla abre `VentanaEstado` (`ChecklistEditable.tsx`); `validarCambioEstado` replica en la ventana las reglas de la función de base y `datosCambioEstado` conserva los demás campos del registro.
+
 La página admite `grupo`, `etapa`, `tipo`, `cat` y `ambito`, además de sus filtros anteriores. `vista=alertas` abre los registros que requieren atención. Los indicadores permanecen calculados sobre el proyecto completo al filtrar una lista.
 
 Verificación: pruebas en `lib/aperturas.test.ts` cubren bases de los porcentajes, exclusiones, recepción parcial/excedentes, fechas y alertas únicas. Revisión visual local del componente real con datos de ejemplo en escritorio y celular; sin modificar producción.
