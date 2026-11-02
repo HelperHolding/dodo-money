@@ -3,10 +3,12 @@ import { MenuLateral } from "@/components/MenuLateral";
 import { MigasDePan } from "@/components/MigasDePan";
 import { cerrarSesion } from "@/app/login/actions";
 import { accesosRapidos, menuLateral, NOMBRE_ROL } from "@/lib/roles";
+import { contarMisTareas } from "@/app/tareas/datos";
+import { crearClienteServidor } from "@/lib/supabase/server";
 import type { Rol } from "@/lib/tipos";
 
 /** Estructura de toda la app: menú lateral a la izquierda y la página a la derecha. */
-export function Marco({ perfil, titulo, detalle, aviso, children }: {
+export async function Marco({ perfil, titulo, detalle, aviso, children }: {
   perfil: { nombre: string; rol: Rol };
   /** Sucursal o sección: "Dodo Coyoacán", "Compras". */
   titulo: string;
@@ -16,7 +18,10 @@ export function Marco({ perfil, titulo, detalle, aviso, children }: {
   aviso?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const menu = menuLateral(perfil.rol);
+  const base = menuLateral(perfil.rol);
+  const { abiertas, vencidas } = await contarMisTareas(await crearClienteServidor()).catch(() => ({ abiertas: 0, vencidas: 0 }));
+  const menu = !abiertas ? base : { ...base, grupos: base.grupos.map((g) => ({ ...g, enlaces: g.enlaces.map((e) =>
+    e.href === "/tareas" ? { ...e, contador: { n: abiertas, urgente: vencidas > 0 } } : e) })) };
   return (
     <div className="marco">
       <MenuLateral

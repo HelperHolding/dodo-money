@@ -175,6 +175,9 @@ a { color: var(--accion-oscuro); }
   display: flex; align-items: center; min-height: 42px; padding: 8px 12px; border-radius: var(--r-sm);
   color: var(--oscuro-texto); text-decoration: none; border-left: 3px solid transparent;
 }
+.lateral-enlace { gap: 0.4rem; }
+.contador-menu { margin-left: auto; min-width: 1.4rem; padding: 0 0.35rem; border-radius: 999px; text-align: center; font-size: 0.75rem; font-weight: 700; background: var(--neutro-fondo); color: var(--neutro-texto); }
+.contador-menu[data-urgente] { background: var(--alerta-fondo); color: var(--alerta-texto); }
 .lateral-enlace:hover { background: var(--oscuro-hover); color: var(--blanco); }
 .lateral-enlace[aria-current="page"] { background: var(--oscuro-activo); color: var(--blanco); font-weight: 700; border-left-color: var(--accion); }
 .lateral-grupo > summary {

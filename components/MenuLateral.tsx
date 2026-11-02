@@ -11,7 +11,7 @@ import { enlaceActivo, enlacesDelMenu, grupoAbierto, type Enlace, type Menu } fr
 /** Icono de cada grupo del menú (por título; un grupo nuevo sin icono se muestra sin él). */
 const ICONO_GRUPO: Record<string, NombreIcono> = {
   Sucursal: "tienda", Efectivo: "cartera", Ventas: "grafica", Compras: "carrito", Finanzas: "banco",
-  "Proyectos y admin.": "maletin", Conocimiento: "libro", Catálogos: "lista",
+  "Proyectos y admin.": "maletin", Conocimiento: "libro", Catálogos: "lista", Tareas: "lista",
 };
 /** Icono de cada acceso rápido de la barra inferior. */
 const ICONO_ACCESO: Record<string, NombreIcono> = {
@@ -78,7 +78,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
               <ul>
                 {g.enlaces.map((e) => (
                   <li key={e.href}>
-                    <Link className="lateral-enlace" href={e.href} aria-current={marcar(e.href)}>{e.texto}</Link>
+                    <Link className="lateral-enlace" href={e.href} aria-current={marcar(e.href)}>{e.texto}{e.contador && <span className="contador-menu" data-urgente={e.contador.urgente || undefined} aria-label={`${e.contador.n} pendientes${e.contador.urgente ? ", con vencidas" : ""}`}>{e.contador.n}</span>}</Link>
                   </li>
                 ))}
               </ul>

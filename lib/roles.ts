@@ -31,7 +31,7 @@ export const puedeImportarVentas = (rol: Rol) => rol === "admin";
 /** Aviso de productos sin costo en el tablero de Ventas (para revisar datos; el gerente no lo ve). */
 export const veAvisoSinCosto = (rol: Rol) => rol === "admin" || rol === "corporativo";
 
-export type Enlace = { href: string; texto: string; aliases?:readonly string[] };
+export type Enlace = { href: string; texto: string; aliases?:readonly string[]; contador?: { n: number; urgente: boolean } };
 
 /** Compras (proveedores, órdenes, facturas, pagos): oficina central. Admin edita; corporativo consulta. */
 export const puedeVerCompras = (rol: Rol) => rol === "admin" || rol === "corporativo";
@@ -76,6 +76,8 @@ export function menuLateral(rol: Rol): Menu {
       ...(puedeRecibirCompras(rol) && !puedeVerCompras(rol) ? [{ href: "/recepciones", texto: "Recepciones" }] : []),
     ],
   }];
+  // Todos reciben tareas; operación solo ve las suyas, sin tablero.
+  grupos.push({ titulo: "Tareas", enlaces: [{ href: "/tareas", texto: "Mis tareas" }, ...(rol !== "operacion" ? [{ href: "/tareas/tablero", texto: "Tablero" }] : [])] });
   if (puedeVerEfectivo(rol)||rol==='gerente') {
     grupos.push({ titulo: "Efectivo", enlaces: [{href:'/recolecciones',texto:'Recolecciones'},...(puedeVerEfectivo(rol)?[{ href: "/efectivo", texto: "Salidas a corporativo" }]:[])] });
   }

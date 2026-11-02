@@ -70,11 +70,13 @@ const grupos = (rol: R) => menuLateral(rol).grupos.map((g) => g.titulo);
 const grupo = (rol: R, titulo: string) => menuLateral(rol).grupos.find((g) => g.titulo === titulo)?.enlaces.map((e) => e.href);
 
 test("menú lateral: cada puesto ve solo sus grupos", () => {
-  assert.deepEqual(grupos("operacion"), ["Sucursal", "Conocimiento"]);
-  assert.deepEqual(grupos("encargado"), ["Sucursal", "Conocimiento"]);
-  assert.deepEqual(grupos("gerente"), ["Sucursal", "Efectivo", "Ventas", "Conocimiento"]);
-  assert.deepEqual(grupos("admin"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
-  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Efectivo", "Ventas", "Compras", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
+  assert.deepEqual(grupos("operacion"), ["Sucursal", "Tareas", "Conocimiento"]);
+  assert.deepEqual(grupos("encargado"), ["Sucursal", "Tareas", "Conocimiento"]);
+  assert.deepEqual(grupos("gerente"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Compras", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
+  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Compras", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
+  assert.deepEqual(grupo("operacion", "Tareas"), ["/tareas"]);
+  assert.deepEqual(grupo("encargado", "Tareas"), ["/tareas", "/tareas/tablero"]);
   assert.deepEqual(grupo("admin", "Proyectos y admin."), ["/aperturas", "/activos", "/cumplimiento", "/administracion/usuarios"]);
   assert.deepEqual(grupo("corporativo", "Proyectos y admin."), ["/aperturas", "/activos", "/cumplimiento"]);
 });

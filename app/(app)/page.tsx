@@ -13,6 +13,9 @@ import { puedeRecibirCompras, puedeVerVentas, puedeVerCompras, puedeVerFinanzas 
 import { NOMBRE_MOVIMIENTO, type Movimiento } from "@/lib/tipos";
 import { FranjaAlertas } from "@/app/cumplimiento/FranjaAlertas";
 import { leerAlertas } from "@/app/cumplimiento/datos";
+import { leerTareas } from "@/app/tareas/datos";
+import { TarjetaTarea } from "@/app/tareas/TarjetaTarea";
+import { abierta, ordenPendientes } from "@/lib/tareas";
 import { abrirTurno } from "./actions";
 import { confirmarMovimiento, rechazarMovimiento } from "./movimientos/actions";
 
@@ -29,6 +32,8 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
   ]);
   // Cumplimiento: si la consulta falla (migración pendiente), el inicio se muestra sin la franja.
   const alertasCumplimiento = puedeVerCompras(perfil.rol) ? await leerAlertas(supabase, hoyCalendarioMX()).catch(() => null) : null;
+  // Tus pendientes: si la RPC falta, el inicio se muestra sin el bloque.
+  const misTareas = ordenPendientes((await leerTareas(supabase).catch(() => [])).filter((t) => t.asignado_a === perfil.id && abierta(t.estado)), hoyCalendarioMX()).slice(0, 3);
   const { data: porRecibir } = puedeRecibirCompras(perfil.rol) ? await supabase.rpc("ordenes_por_recibir") : { data: [] };
   const ordenesPorRecibir = new Set(((porRecibir ?? []) as { orden_id: string; cantidad: number; recibido: number }[])
     .filter((r) => avanceRenglon(Number(r.cantidad), Number(r.recibido)) !== "completa").map((r) => r.orden_id)).size;
@@ -86,6 +91,10 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
       </>} />
       <Aviso ok={ok} error={error} />
       {alertasCumplimiento && <FranjaAlertas alertas={alertasCumplimiento} />}
+      {misTareas.length > 0 && <section className="seccion">
+        <h2>Tus pendientes <Link href="/tareas">Ver todas</Link></h2>
+        <div className="tarjetas">{misTareas.map((t) => <TarjetaTarea key={t.id} t={t} hoy={hoyCalendarioMX()} rol={perfil.rol} />)}</div>
+      </section>}
 
       {(porConfirmar > 0 || ordenesPorRecibir > 0 || (!turno && puedeAbrirTurno(perfil.rol))) && (
         <section className="atencion" aria-label="Pendientes de hoy">
