@@ -1,3 +1,4 @@
+import { TareasDelDocumento } from "@/components/TareasDelDocumento";
 import {precioUnitario} from '@/lib/formato';
 import {FormularioRecepcionOrden} from "../FormularioRecepcionOrden";
 import { HistorialCompra } from "@/components/HistorialCompra";
@@ -203,7 +204,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
       )}
 
       </section>
-      <Aviso ok={ok} error={error} />
+      <Aviso ok={ok} error={error} /><TareasDelDocumento supabase={supabase} tipo="orden" id={id} rol={perfil.rol} hoy={hoyCalendarioMX()} />
       <div className="detalle-con-lado compra-ficha-lado"><div className="detalle-principal">
       <FichaPestanas pestanas={[
         {id:"renglones", titulo:`Artículos (${rs.length})`, contenido:<>      <section className="seccion" aria-labelledby="t-renglones">

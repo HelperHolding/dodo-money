@@ -7,10 +7,12 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { hoyCalendarioMX } from "@/lib/formato";
 import { puedeImportarVentas, veVentasDeTodas } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
+import { leerTareas } from "@/app/tareas/datos";
+import { abierta, puedeLigar } from "@/lib/tareas";
 import { leerConciliaciones } from "./datos";
 import { ConciliacionMes, type DiaConciliacion } from "./ConciliacionMes";
 
-type Dia = { sucursal_id:string; fecha:string; importacion_id:string; total:number; efectivo:number; tarjeta:number; en_linea:number; iva:number };
+type Dia = { id:string; sucursal_id:string; fecha:string; importacion_id:string; total:number; efectivo:number; tarjeta:number; en_linea:number; iva:number };
 type Producto = { sucursal_id:string; fecha:string; importe:number; importe_sin_descuento:number };
 export default async function Conciliacion({searchParams}:{searchParams:Promise<{mes?:string;sucursal?:string;ok?:string;error?:string}>}) {
  const {supabase,perfil}=await obtenerPerfil(),q=await searchParams;
@@ -19,7 +21,7 @@ export default async function Conciliacion({searchParams}:{searchParams:Promise<
  const todas=veVentasDeTodas(perfil.rol),edita=puedeImportarVentas(perfil.rol);
  const [{data:sucursales,error},datos,productos,conciliaciones,{data:personas}]=await Promise.all([
   supabase.from("sucursales").select("id,nombre").order("nombre"),
-  leerTodo<Dia>((a,b)=>supabase.from("ventas_dia").select("sucursal_id,fecha,importacion_id,total,efectivo,tarjeta,en_linea,iva").gte("fecha",desde).lte("fecha",hasta).order("sucursal_id").order("fecha").range(a,b)),
+  leerTodo<Dia>((a,b)=>supabase.from("ventas_dia").select("id,sucursal_id,fecha,importacion_id,total,efectivo,tarjeta,en_linea,iva").gte("fecha",desde).lte("fecha",hasta).order("sucursal_id").order("fecha").range(a,b)),
   leerTodo<Producto>((a,b)=>supabase.from("ventas_producto").select("sucursal_id,fecha,importe,importe_sin_descuento").gte("fecha",desde).lte("fecha",hasta).order("sucursal_id").order("fecha").order("dodo_id").range(a,b)),
   leerConciliaciones(supabase,desde,hasta,true),
   supabase.from("perfiles").select("id,nombre"),
@@ -34,10 +36,12 @@ export default async function Conciliacion({searchParams}:{searchParams:Promise<
   const s=suma.get(`${d.sucursal_id}|${d.fecha}`),diferencia=Math.round((Number(d.total)-(s?.importe??0))*100)/100;
   const historial=conciliaciones.filas.filter(c=>c.sucursal_id===d.sucursal_id&&c.fecha===d.fecha);
   const activa=historial.find(c=>!c.anulado_en&&c.importacion_id===d.importacion_id)??null;
-  return {importacion_id:d.importacion_id,sucursal_id:d.sucursal_id,sucursal:nombres.get(d.sucursal_id)??"",fecha:d.fecha,
+  return {ventas_dia_id:d.id,importacion_id:d.importacion_id,sucursal_id:d.sucursal_id,sucursal:nombres.get(d.sucursal_id)??"",fecha:d.fecha,
    total:Number(d.total),efectivo:Number(d.efectivo),tarjeta:Number(d.tarjeta),en_linea:Number(d.en_linea),
    importe:s?s.importe:null,bruta:s?s.bruta:null,diferencia,estado:activa?"vigente":Math.abs(diferencia)<=1?"cuadra":"revisar",activa,historial};
  });
+ const abiertas:Record<string,number>={};
+ for(const t of await leerTareas(supabase).catch(()=>[]))if(t.documento_tipo==="ventas_dia"&&t.documento_id&&abierta(t.estado))abiertas[t.documento_id]=(abiertas[t.documento_id]??0)+1;
  return <><EncabezadoPagina titulo="Conciliación con Dodo IS" info="Compara la venta diaria con los productos vendidos, corrige formas de pago y justifica lo que no cuadra. La importación original se conserva."
    acciones={<Link className="boton boton-secundario" href="/ventas">Ver ventas</Link>}/>
   <Aviso ok={q.ok} error={q.error}/>
@@ -48,6 +52,6 @@ export default async function Conciliacion({searchParams}:{searchParams:Promise<
    <button className="boton boton-secundario boton-compacto">Consultar</button>
    <details className="nota-plegable"><summary><Icono nombre="info"/>Cómo afecta un ajuste</summary><ConInfo titulo="Ajustes de cobro" etiqueta="Cómo leer esto">Los ajustes de cobro se reflejan en Ventas, en el comparativo con cierres y en las comisiones estimadas del P&L. La venta total, el IVA, los pedidos y los costos de receta se conservan. El detalle de pedidos mantiene la forma de pago original.</ConInfo></details>
   </form>
-  <ConciliacionMes mes={mes} dias={filas} autores={Object.fromEntries(autores)} edita={edita} disponible={conciliaciones.disponible}/>
+  <ConciliacionMes mes={mes} dias={filas} autores={Object.fromEntries(autores)} edita={edita} disponible={conciliaciones.disponible} tareas={abiertas} ligaTareas={puedeLigar(perfil.rol,"ventas_dia")}/>
  </>;
 }

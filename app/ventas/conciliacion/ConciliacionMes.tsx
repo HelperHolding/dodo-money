@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { Cajon } from "@/components/Cajon";
@@ -13,7 +14,7 @@ import { ConInfo } from "@/components/ConInfo";
 /** vigente = tiene conciliación activa; cuadra = diferencia de $1 o menos; revisar = lo demás. Mismo criterio que antes. */
 export type EstadoDia = "vigente" | "cuadra" | "revisar";
 export type DiaConciliacion = {
-  importacion_id: string; sucursal_id: string; sucursal: string; fecha: string;
+  ventas_dia_id: string; importacion_id: string; sucursal_id: string; sucursal: string; fecha: string;
   total: number; efectivo: number; tarjeta: number; en_linea: number;
   /** Suma de productos con descuento y bruta; null si el día no tiene detalle de productos. */
   importe: number | null; bruta: number | null;
@@ -33,8 +34,8 @@ function Estado({ estado }: { estado: EstadoDia }) {
 }
 
 /** Mes de conciliación: tira de días por sucursal, lista filtrable y el detalle del día (con sus formularios) en el cajón. */
-export function ConciliacionMes({ mes, dias, autores, edita, disponible }: {
-  mes: string; dias: DiaConciliacion[]; autores: Record<string, string>; edita: boolean; disponible: boolean;
+export function ConciliacionMes({ mes, dias, autores, edita, disponible, tareas, ligaTareas }: {
+  mes: string; dias: DiaConciliacion[]; autores: Record<string, string>; edita: boolean; disponible: boolean; tareas: Record<string, number>; ligaTareas: boolean;
 }) {
   const [filtro, setFiltro] = useState<"" | EstadoDia>("");
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -106,13 +107,13 @@ export function ConciliacionMes({ mes, dias, autores, edita, disponible }: {
       </section>
 
       <Cajon abierto={!!actual} alCerrar={() => setAbierto(null)} titulo={actual ? fechaTexto(actual.fecha) : ""} antetitulo={actual?.sucursal}>
-        {actual && <DetalleDia d={actual} mes={mes} autores={autores} edita={edita} disponible={disponible} />}
+        {actual && <DetalleDia d={actual} mes={mes} autores={autores} edita={edita} disponible={disponible} tareas={tareas} ligaTareas={ligaTareas} />}
       </Cajon>
     </>
   );
 }
 
-function DetalleDia({ d, mes, autores, edita, disponible }: { d: DiaConciliacion; mes: string; autores: Record<string, string>; edita: boolean; disponible: boolean }) {
+function DetalleDia({ d, mes, autores, edita, disponible, tareas, ligaTareas }: { d: DiaConciliacion; mes: string; autores: Record<string, string>; edita: boolean; disponible: boolean; tareas: Record<string, number>; ligaTareas: boolean }) {
   const mayor = Math.max(d.total, d.importe ?? 0, 1);
   const pagos = [
     { clave: "efectivo", texto: "Efectivo", valor: d.activa ? Number(d.activa.efectivo) : d.efectivo },
@@ -127,6 +128,10 @@ function DetalleDia({ d, mes, autores, edita, disponible }: { d: DiaConciliacion
         <strong data-estado={d.estado}>{pesos(d.diferencia)}</strong>
         <Estado estado={d.estado} />
       </div>
+      {(ligaTareas || (tareas[d.ventas_dia_id] ?? 0) > 0) && <p className="dia-tareas">
+        {(tareas[d.ventas_dia_id] ?? 0) > 0 && <Link href="/tareas/tablero?modulo=ventas">{tareas[d.ventas_dia_id]} tarea(s) abierta(s)</Link>}
+        {ligaTareas && <> <Link className="boton boton-secundario" href={`/tareas/nueva?tipo=ventas_dia&id=${d.ventas_dia_id}`}>Asignar tarea</Link></>}
+      </p>}
 
       <section className="cajon-grupo" aria-label="Venta contra productos">
         <h3>Venta contra productos</h3>
