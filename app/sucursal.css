@@ -185,18 +185,18 @@ a, a:hover { text-decoration: none !important; }
 :is(.seccion, .tarjeta, .saldo, .proveedor-indicador, .zona-plegable, .indicador, .lista-filas, .ap-indicador, .ap-panel,
     .ficha-indicadores, .ficha-cuaderno, .estado-vacio, .error-pagina, .esqueleto-tabla, .atencion-tarjeta, .dia-avance,
     .tarea, fieldset.zona, .activos-dia, .periodo-barra, .promo-canales > div, .compra-grupo, .compra-barra, .pestanas-nav,
-    :is(.pagina, .panel-admin) > .indicadores-marco:has(> h2, > p), .recoleccion-maximo) {
+    :where(.pagina, .panel-admin) > .indicadores-marco:where(:has(> h2, > p)), .recoleccion-maximo) {
   border-color: var(--cristal-borde);
   backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3);
   box-shadow: inset 0 1px 0 var(--cristal-brillo), var(--sombra-cristal);
 }
 .seccion, .tarjeta, .ap-panel, .zona-plegable, .error-pagina { border-radius: 18px; }
-.compra-grupo, .compra-barra, :is(.pagina, .panel-admin) > .indicadores-marco:has(> h2, > p) {
+.compra-grupo, .compra-barra, :where(.pagina, .panel-admin) > .indicadores-marco:where(:has(> h2, > p)) {
   background: var(--superficie); border: 1px solid var(--cristal-borde); border-radius: 18px; padding: 14px 16px;
 }
 .pestanas-nav { background: var(--superficie); border: 1px solid var(--cristal-borde); border-radius: 14px; padding: 4px 8px; width: fit-content; max-width: 100%; }
 /* Dentro de otro cristal no se repiten desenfoque ni sombra (rendimiento y limpieza) */
-:is(.seccion, .tarjeta, .ap-panel, .zona-plegable, .ficha-cuaderno, .lista-filas, .compra-grupo, .indicadores-marco:has(> h2, > p)) :is(.seccion, .tarjeta, .saldo, .indicador, .ap-indicador, .lista-filas, .tarea, fieldset.zona, .activos-dia, .estado-vacio) {
+:is(.seccion, .tarjeta, .ap-panel, .zona-plegable, .ficha-cuaderno, .lista-filas, .compra-grupo, .indicadores-marco:where(:has(> h2, > p))) :is(.seccion, .tarjeta, .saldo, .indicador, .ap-indicador, .lista-filas, .tarea, fieldset.zona, .activos-dia, .estado-vacio) {
   backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
 }
 @supports not (backdrop-filter: blur(1px)) {
@@ -354,6 +354,81 @@ main.pagina :is(.encabezado, .compra-cabecera) p:not(.seccion p, .tarjeta p) { w
 :is(.indicador-valor, .saldo-monto, .ap-indicador strong, .ficha-indicadores strong, .proveedor-indicador strong) { font-family: var(--display); font-weight: 700; }
 .saldo { border-left-width: 1px; border-left-color: var(--cristal-borde); }
 .indicadores-marco, .indicadores { gap: 14px; }
+
+/* ─── Pantalla de ventas: el dashboard es una pantalla digital montada en el muro, como las del local ───
+   Emite su propia luz: igual de día y de noche. Los tokens se redefinen dentro, así el contenido (KPIs, gráficas,
+   tabla y filtros) se pinta claro sobre grafito sin tocar su marcado. Colores de datos validados con la skill
+   dataviz sobre #141416: POS #ff4e00 y Rappi #3d8bff (banda de luz, croma, daltonismo y contraste ≥ 3:1). */
+.seccion.inicio-ventas {
+  --tinta: #f4f1ee; --tinta-2: #b8b1aa; --tinta-3: #9d968f;
+  --linea: rgb(255 255 255 / .08); --linea-fuerte: rgb(255 255 255 / .18);
+  --papel-2: rgb(255 255 255 / .05); --superficie: rgb(255 255 255 / .035); --superficie-solida: #1b1b1e;
+  --campo: rgb(255 255 255 / .06); --accion-oscuro: #ff9a5c; --accion-tinte: rgb(255 120 40 / .12);
+  --cuadra-texto: #7fe0b0; --cuadra-fondo: rgb(60 200 130 / .14); --alerta-texto: #ff9d93; --alerta-fondo: rgb(240 90 80 / .16);
+  --dato-pos: #ff4e00; --dato-rappi: #3d8bff;
+  color: var(--tinta); gap: 22px; padding: 26px 28px 24px; border-radius: 20px;
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgb(255 255 255 / .06), transparent 60%),
+    repeating-linear-gradient(180deg, rgb(255 255 255 / .018) 0 1px, transparent 1px 3px),
+    #141416;
+  border: 1px solid #2e2e33;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  /* marco de la pantalla: bisel oscuro, filo con luz y sombra sobre los listones */
+  box-shadow: 0 0 0 6px #0b0b0d, 0 0 0 7px #34343a, 0 30px 50px -24px rgb(20 4 0 / .75), inset 0 1px 0 rgb(255 255 255 / .06);
+}
+.seccion.inicio-ventas h2 { font-family: var(--display); font-weight: 700; font-size: 1.35rem; color: #fff; }
+.seccion.inicio-ventas h3 { font-family: var(--display); font-weight: 600; font-size: .98rem; color: var(--tinta); margin-bottom: 12px; }
+.seccion.inicio-ventas .saldo-nota { color: var(--tinta-2); }
+.inicio-ventas-titulo { align-items: center; }
+/* Filtros: barra de herramientas compacta */
+.inicio-ventas-filtros { padding: 0; gap: 10px 12px; }
+.seccion.inicio-ventas .inicio-ventas-filtros .campo { font-size: .8rem; font-weight: 600; color: var(--tinta-2); gap: 4px; }
+.seccion.inicio-ventas .inicio-ventas-filtros :is(input, select) { min-height: 42px; color: var(--tinta); border-color: var(--linea-fuerte); }
+.seccion.inicio-ventas .inicio-ventas-filtros .boton { min-height: 42px; padding: 8px 20px; }
+.seccion.inicio-ventas select option { color: #000; }
+/* KPIs: una sola franja con divisiones finas; cifra grande y cambio en píldora (verde si mejora, rojo si empeora) */
+.seccion.inicio-ventas .ficha-indicadores { background: var(--linea); border-color: var(--linea-fuerte); border-radius: 14px; box-shadow: none; backdrop-filter: none; margin: 0; }
+.seccion.inicio-ventas .ficha-indicadores > div { background: #18181b; padding: 18px 20px 16px; gap: 6px; }
+.seccion.inicio-ventas .ficha-indicadores small { color: var(--tinta-2); font-size: .8rem; font-weight: 600; }
+.seccion.inicio-ventas .inicio-ventas-kpis strong { font-size: clamp(1.4rem, 2.1vw, 1.9rem); font-weight: 700; color: #fff; letter-spacing: -.01em; }
+.inicio-ventas-cambio { font-size: .78rem; color: var(--tinta-3); display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.inicio-ventas-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--r-full); font-weight: 700; font-variant-numeric: tabular-nums; }
+.inicio-ventas-cambio[data-direccion="sube"] .inicio-ventas-chip { background: var(--cuadra-fondo); color: var(--cuadra-texto); }
+.inicio-ventas-cambio[data-direccion="baja"] .inicio-ventas-chip { background: var(--alerta-fondo); color: var(--alerta-texto); }
+.inicio-ventas-cambio[data-direccion="sube"], .inicio-ventas-cambio[data-direccion="baja"] { color: var(--tinta-3); }
+/* Gráficas en paneles de la pantalla */
+.seccion.inicio-ventas .tablero-fila > section { background: #18181b; border: 1px solid var(--linea); border-radius: 14px; padding: 16px 18px; }
+.seccion.inicio-ventas .barras-v button span { opacity: .6; }
+.seccion.inicio-ventas .barras-v button span[data-max] { opacity: .8; }
+.seccion.inicio-ventas .barras-v button[aria-pressed="true"] span { opacity: 1; }
+.seccion.inicio-ventas .barras-v-detalle { font-family: var(--display); font-weight: 600; color: #fff; }
+.seccion.inicio-ventas .dona-centro { fill: #fff; font-family: var(--display); }
+.seccion.inicio-ventas .dona-fondo { stroke: rgb(255 255 255 / .06); }
+.inicio-dona-canales .cat-pos { stroke: var(--dato-pos, var(--accion)); }
+.inicio-dona-canales .cat-rappi { stroke: var(--dato-rappi, var(--dato-2)); }
+.inicio-dona-canales .dona-punto.cat-pos { background: var(--dato-pos, var(--accion)); }
+.inicio-dona-canales .dona-punto.cat-rappi { background: var(--dato-rappi, var(--dato-2)); }
+/* Tabla por canal */
+.seccion.inicio-ventas .tabla-contenedor { border: 1px solid var(--linea); border-radius: 14px; overflow: hidden; background: #18181b; }
+.seccion.inicio-ventas .tabla:not(.tabla-pl) th { background: rgb(255 120 40 / .1); color: var(--tinta); border-bottom-color: rgb(255 120 40 / .45); }
+.seccion.inicio-ventas .tabla td { color: var(--tinta); }
+/* Notas de la pantalla: pie discreto con línea fina */
+.seccion.inicio-ventas > .saldo-nota:last-child { font-size: .8rem; border-top: 1px solid var(--linea); padding-top: 12px; }
+.seccion.inicio-ventas .boton-secundario { white-space: nowrap; }
+
+/* Barras verticales (aquí y en Ventas): ancho máximo para que pocos días no se vuelvan bloques,
+   guías horizontales tenues y la barra elegida encendida */
+.barras-v { gap: 8px; justify-content: center; position: relative;
+  background: linear-gradient(var(--linea), var(--linea)) 0 0 / 100% 1px no-repeat,
+              linear-gradient(var(--linea), var(--linea)) 0 33.33% / 100% 1px no-repeat,
+              linear-gradient(var(--linea), var(--linea)) 0 66.66% / 100% 1px no-repeat; }
+.barras-v button { max-width: 64px; }
+.barras-v-rotulos { justify-content: center; }
+.barras-v-rotulos span { max-width: 64px; }
+.barras-v button span { border-radius: 4px 4px 1px 1px; background: var(--accion); opacity: .4; transition: opacity 120ms ease, box-shadow 120ms ease; }
+.barras-v button span[data-max] { opacity: .65; }
+.barras-v button[aria-pressed="true"] span { opacity: 1; background: linear-gradient(180deg, #ff8a45, var(--accion) 40%); box-shadow: 0 0 14px rgb(255 100 30 / .45); }
+.barras-v button:focus-visible { outline-offset: -2px; }
 
 /* ─── Pop-up (ConInfo): ticket blanco con filete naranja, igual de día y de noche ─── */
 /* En el letrero, el (i) es una pastilla de cristal sobre el muro y el ticket se abre hacia la derecha */
