@@ -12,14 +12,15 @@ export async function cargarRappi(supabase:SupabaseClient,sucursal:string|null,d
   return {ordenes,catalogo};
 }
 
-/** Solo importes diarios: navegar el calendario no carga conceptos fuera del periodo elegido. */
+/** Solo importes y órdenes por día: navegar el calendario no carga conceptos fuera del periodo elegido. Las órdenes
+ * por día dan el ticket del periodo anterior para comparar. */
 export async function ventaDiariaRappi(supabase:SupabaseClient,sucursal:string|null,desde:string,hasta:string){
   const ordenes=await leerTodo<{fecha:string;subtotal_restaurante:number|string}>((a,b)=>{
     let c=supabase.from("rappi_ordenes").select("fecha,subtotal_restaurante").eq("estado","Finalizado").eq("sumar",true).like("archivo",EN_VIVO).gte("fecha",desde).lte("fecha",hasta);
     if(sucursal)c=c.eq("sucursal_id",sucursal);
     return c.order("rappi_id").range(a,b);
   });
-  const centavos:Record<string,number>={};
-  for(const o of ordenes)centavos[o.fecha]=(centavos[o.fecha]??0)+Math.round(Number(o.subtotal_restaurante)*100);
-  return Object.fromEntries(Object.entries(centavos).map(([dia,monto])=>[dia,monto/100]));
+  const centavos:Record<string,number>={},cuantas:Record<string,number>={};
+  for(const o of ordenes){centavos[o.fecha]=(centavos[o.fecha]??0)+Math.round(Number(o.subtotal_restaurante)*100);cuantas[o.fecha]=(cuantas[o.fecha]??0)+1;}
+  return {venta:Object.fromEntries(Object.entries(centavos).map(([dia,monto])=>[dia,monto/100])),ordenes:cuantas};
 }

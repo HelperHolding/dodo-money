@@ -551,6 +551,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .cat-postre { --cat: var(--dato-4); }
 .cat-otro { --cat: var(--dato-otro); }
 .cat-sin { --cat: var(--dato-sin); }
+.cat-combo { --cat: var(--violeta); }
 
 .indicadores { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 /* 4 en fila si hay espacio; 2×2 cuando el contenido es angosto (celular o ventana chica con menú). */
