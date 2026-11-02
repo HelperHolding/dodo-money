@@ -7,7 +7,7 @@ import type { Caja, Perfil, Sucursal, Turno } from "@/lib/tipos";
 export { puedeAbrirTurno, puedeGestionar, puedeSupervisar, puedeCerrarDia } from "@/lib/roles";
 
 /** Sucursal que corporativo eligió en la vista general. */
-export const COOKIE_SUCURSAL = "sucursal_vista";
+export const COOKIE_SUCURSAL = "__Host-sucursal_vista";
 
 /**
  * Sesión y perfil, sin sucursal. Redirige a /login si falta algo, y a /cuenta si tiene que cambiar su contraseña

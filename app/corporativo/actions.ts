@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_SUCURSAL, obtenerPerfil } from "@/lib/contexto";
 import { esCorporativo, puedeCambiarSucursal } from "@/lib/roles";
+import { COOKIE_HOST } from "@/lib/seguridad";
 
 /**
  * Abre una sucursal. Admin: la vuelve su sucursal activa y opera ahí (la base valida que exista).
@@ -22,8 +23,6 @@ export async function verSucursal(formData: FormData) {
   }
   if (!esCorporativo(perfil.rol)) redirect("/");
   if (!id) redirect("/corporativo");
-  (await cookies()).set(COOKIE_SUCURSAL, id, {
-    httpOnly: true, sameSite: "lax", path: "/", secure: process.env.NODE_ENV === "production",
-  });
+  (await cookies()).set(COOKIE_SUCURSAL, id, COOKIE_HOST);
   redirect("/");
 }
