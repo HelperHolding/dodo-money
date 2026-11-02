@@ -56,7 +56,9 @@ historial deja quién hizo qué y cuándo. La factura muestra sus tareas abierta
 | `ventas_dia_id` | uuid → `ventas_dia` | |
 | `apertura_proyecto_id` | uuid → `apertura_proyectos` | |
 | `apertura_item_id` | uuid → `apertura_items` | |
+| `documento_texto` | text | texto del documento al crear (p. ej. «Factura A-1234 · Proveedor»): el asignado lo lee aunque no pueda abrir el documento |
 | `motivo_cierre` | text | obligatorio al cancelar |
+| `revision` | integer | sube en cada cambio; las funciones rechazan una revisión vieja |
 | `creada_en`, `actualizada_en`, `cerrada_en` | timestamptz | `cerrada_en` se llena al pasar a `hecho` o `cancelada` |
 
 Restricciones:
@@ -95,8 +97,12 @@ Toda escritura pasa por funciones `security definer` (`crear_tarea`, `actualizar
 
 Reglas de las funciones:
 - El asignado debe estar activo. En tareas de sucursal debe pertenecer a esa sucursal, salvo admins.
-- Quien asigna debe poder ver el documento ligado (`facturas` y `ordenes_compra` solo admin; `ventas_dia` según
-  `ve_ventas`; aperturas según sus permisos actuales).
+- Quien asigna debe poder ver el documento ligado. Órdenes, facturas y aperturas hoy solo las ve oficina, así que
+  solo un admin liga tareas a ellas; el gerente liga días de venta de su sucursal; el encargado crea tareas sin
+  documento. El asignado ve el texto del documento y, si su puesto no puede abrirlo, no se muestra el enlace.
+- Las lecturas (`tareas_visibles`, `hilo_tarea`) son funciones que aplican la misma `puede_ver_tarea` de la RLS y
+  devuelven los nombres de las personas, que la RLS de `perfiles` no deja ver entre sucursales. Las tareas cerradas
+  salen en listas y tablero durante 30 días; por número o desde su documento, siempre.
 - Transiciones válidas: `por_hacer→en_curso`, `en_curso→en_revision`, `por_hacer→en_revision`,
   `en_revision→hecho`, `en_revision→en_curso` (regresar, exige comentario), `* abierta → cancelada` (exige motivo).
   `en_revision→hecho` y `en_revision→en_curso` solo para el creador, el gerente de la sucursal o admin.
@@ -120,9 +126,11 @@ Todas con tarjetas, pensadas para celular primero; nada de tablas anchas.
    enlace, y un hilo único con comentarios e historial en orden cronológico. Botones según estado: *Empezar*,
    *Mandar a revisión*, *Aprobar*, *Regresar* (pide comentario) y *Cancelar* (pide motivo).
 4. **Asignar tarea desde documentos**: botón en orden de compra, factura, día de venta, proyecto de apertura e ítem
-   de apertura. Abre un `Cajon` con persona (solo las elegibles), título prellenado (p. ej. «Factura A-1234 ·
-   Proveedor X»), descripción, prioridad y vencimiento. El documento muestra una franja con sus tareas abiertas y
-   quién las tiene.
+   de apertura. Lleva a `/tareas/nueva?tipo=…&id=…` con persona (solo las elegibles), título prellenado (p. ej.
+   «Factura A-1234 · Proveedor X»), descripción, prioridad y vencimiento; al crear, regresa a la tarea. (Página en
+   lugar de `Cajon`: la lista de personas depende de la sucursal y así funciona sin JavaScript en celular.) El
+   documento muestra una franja con sus tareas abiertas y quién las tiene; en Conciliación cada día muestra el
+   número de tareas abiertas y el botón.
 5. **Avisos**: contador de tareas asignadas abiertas junto a «Tareas» en `MenuLateral`, rojo si hay vencidas; en
    Inicio, bloque «Tus pendientes» con las 3 más urgentes (vencidas primero, luego prioridad y fecha).
 6. **Menú**: «Tareas» visible para todos los puestos. Operación no ve el enlace al tablero.
