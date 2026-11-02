@@ -1913,3 +1913,16 @@ body { background: var(--papel-2); }
 .hilo-tarea { list-style: none; padding: 0; display: grid; gap: 0.6rem; }
 .hilo-tarea li { padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--neutro-fondo); }
 .hilo-tarea li[data-tipo="cambio"] { background: transparent; color: var(--neutro-texto); font-size: 0.9rem; }
+
+/* Tareas: tablero por estado */
+.tablero-tareas { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 0.75rem; align-items: start; }
+.tablero-columna { display: grid; gap: 0.5rem; padding: 0.5rem; border-radius: 10px; background: var(--neutro-fondo); min-height: 6rem; }
+.tablero-columna h2 { font-size: 0.95rem; margin: 0.25rem; }
+.tarjeta-tarea[draggable="true"] { cursor: grab; }
+.tarea-mover { font-size: 0.85rem; }
+.solo-celular { display: none; }
+@media (max-width: 767px) {
+  .solo-celular { display: flex; }
+  .tablero-tareas { grid-template-columns: 1fr; }
+  .tablero-columna:not([data-activa]) { display: none; }
+}
