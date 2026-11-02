@@ -14,7 +14,7 @@ const NOMBRE = "Rappi_Ventas_Diarias";
 const APP = "https://dodo-money-j31t.vercel.app";
 const EXTRACTOR = "http://rappi-extractor:3100/sincronizar";
 const SMTP = { id: "77HAkO1eZAVBGkN4", name: "SMTP Notifications" }; // la misma de los reportes
-const AVISAR_A = "cvalencia@mx.thecoffee.jp";
+const AVISAR_A = "cvalencia@mx.thecoffee.jp, scervera@mx.thecoffee.jp";
 
 const resumen = `const leido = $('Leer Rappi').first().json;
 const envio = $('Enviar a Dodo').isExecuted ? $('Enviar a Dodo').first().json : null;
