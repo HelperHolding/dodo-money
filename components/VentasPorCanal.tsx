@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import {participacionCanales} from "@/lib/ventas/reporte";
 import { pesos,pesosRedondos,porcentaje,fechaTexto } from "@/lib/formato";
 import { Cambio } from "@/components/Indicadores";
@@ -32,6 +33,6 @@ export function TarjetasCanales({canales}:{canales:CanalReporte[]}){
    <span className="indicador-detalle">Neta {pesosRedondos(c.actual.neta)} · costo {c.actual.costoPct===null?"—":porcentaje(c.actual.costoPct)}</span>
   </div>;
  })}</div>
- <p className="saldo-nota">Rappi usa el subtotal del restaurante; no es el depósito recibido ni la liquidación después de comisiones.</p>
+ <ConInfo titulo="Por canal" etiqueta="Cómo leer esto">Rappi usa el subtotal del restaurante; no es el depósito recibido ni la liquidación después de comisiones.</ConInfo>
  </section>;
 }

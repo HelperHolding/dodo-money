@@ -1,11 +1,13 @@
 import { ConInfo } from "@/components/ConInfo";
 import Link from "next/link";
 import { ResumenEjecutivoVentas } from "@/components/ResumenEjecutivoVentas";
-import { GraficasReporteVentas } from "@/components/GraficasReporteVentas";
+import { HorasPicoDias } from "@/components/HorasPicoDias";
 import { ventasMensuales, ventasHorarias } from "@/lib/ventas/graficasReporte";
 import { cuentaComoVenta } from "@/lib/ventas/pedidos";
 import { AvisoSinCosto } from "@/components/AvisoSinCosto";
+import { BarraApilada } from "@/components/BarraApilada";
 import { BarrasVerticales } from "@/components/BarrasVerticales";
+import { CurvaAcumulada, type PasoCurva } from "@/components/CurvaAcumulada";
 import { CalendarioVentas } from "@/components/CalendarioVentas";
 import { Dona } from "@/components/Dona";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
@@ -14,7 +16,7 @@ import { Icono } from "@/components/Icono";
 import { Grafica } from "@/components/Grafica";
 import { Indicadores } from "@/components/Indicadores";
 import { RankingProductos } from "@/components/RankingProductos";
-import { Plegable } from "@/components/Plegable";
+import { TarjetaDetalle } from "@/components/TarjetaDetalle";
 import { obtenerPerfil } from "@/lib/contexto";
 import { diaYNumero, fechaTexto, hoyMX, pesos, pesosRedondos, porcentaje } from "@/lib/formato";
 import { puedeImportarVentas, veAvisoSinCosto, veVentasDeTodas } from "@/lib/roles";
@@ -27,9 +29,13 @@ import { moverMes, periodosRapidos } from "@/lib/ventas/calendario";
 import { datosPedidos, datosVentas, sucursalElegida, ultimoDiaConDatos, ventaDiariaDesde } from "./datos";
 import { SeccionesPedidos } from "./SeccionesPedidos";
 import { TarjetasCanales } from "@/components/VentasPorCanal";
+import type { TipoDesglose } from "@/lib/ventas/extraer";
 import { reporteCanales } from "./reporte-datos";
 
 const categoria = (c: Categoria | null) => (c ? NOMBRE_CATEGORIA[c] : "Sin categoría");
+
+// Color fijo por tipo en las barras de reparto: sigue al tipo, no a su lugar en la lista
+const SERIE_TIPO: Record<TipoDesglose, 1 | 2 | 3 | 4> = { entrega: 1, llevadera: 2, restaurante: 3, centro_llamadas: 4, sitio: 2, app: 3, agregador: 1 };
 
 export default async function PaginaVentas({ searchParams }: { searchParams: Promise<{ desde?: string; hasta?: string; sucursal?: string }> }) {
   const q = await searchParams;
@@ -102,6 +108,35 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
   const diasSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map((nombre,i)=>({
     clave:String(i),etiqueta:nombre,valor:porDia.filter(d=>(new Date(`${d.fecha}T12:00:00Z`).getUTCDay()+6)%7===i).reduce((n,d)=>n+d.total,0),
   }));
+  const inicioHistorico = `${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`;
+  const mensuales = ventasMensuales(ventaDiaria, inicioHistorico, periodo.hasta);
+  const horarias = ventasHorarias(detalle.pedidos.filter(cuentaComoVenta));
+  // Venta acumulada: día por día contra el periodo anterior del mismo largo; en un solo día, hora por hora
+  const anterior = periodoAnterior(periodo);
+  const fechasDe = (desde: string, hasta: string) => {
+    const lista: string[] = [];
+    for (let t = Date.parse(`${desde}T12:00:00Z`); t <= Date.parse(`${hasta}T12:00:00Z`); t += 86400000) lista.push(new Date(t).toISOString().slice(0, 10));
+    return lista;
+  };
+  const unDia = periodo.desde === periodo.hasta;
+  const ventaDe = new Map(porDia.map((x) => [x.fecha, x.total]));
+  const ventaPrevia = new Map(ventaPorDia(d.anterior.dias).map((x) => [x.fecha, x.total]));
+  const fechasPrevias = fechasDe(anterior.desde, anterior.hasta);
+  const hh = (n: number) => String(n).padStart(2, "0");
+  const horasDia = horarias.horas.map((h) => h.hora);
+  const pasosCurva: PasoCurva[] = !unDia
+    ? fechasDe(periodo.desde, periodo.hasta).map((f, i) => ({
+        clave: f, rotulo: String(Number(f.slice(8))), detalle: `Al ${fechaTexto(f)}`,
+        actual: f > hoy ? null : ventaDe.get(f) ?? 0, anterior: fechasPrevias[i] ? ventaPrevia.get(fechasPrevias[i]) ?? 0 : null,
+      }))
+    : horasDia.length ? Array.from({ length: Math.max(...horasDia) - Math.min(...horasDia) + 1 }, (_, k) => {
+        const hora = Math.min(...horasDia) + k;
+        return {
+          clave: String(hora), rotulo: `${hh(hora)} h`, detalle: `Al cierre de ${hh(hora)}:59`, anterior: null,
+          actual: horarias.horas.filter((h) => h.hora === hora).reduce((n, h) => n + h.total, 0),
+        };
+      }) : [];
+  const nombreMes = (mes: string) => new Intl.DateTimeFormat("es-MX", { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${mes}-01T12:00:00Z`));
   const titulo = sucursal ? nombreDe.get(sucursal) : "Todas las sucursales";
   const filtroReporte = new URLSearchParams({ desde: periodo.desde, hasta: periodo.hasta, ...(sucursal ? { sucursal } : {}) }).toString();
   // Días importados con el formato anterior: tienen venta pero no pedidos.
@@ -123,14 +158,16 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
       <CalendarioVentas key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} venta={ventaDiaria} periodo={periodo} hoy={hoy}
         maxDias={MAX_DIAS} sucursal={sucursal} sucursales={todas ? sucursales ?? [] : null} />
 
+      {/* Pantalla del periodo: los tres números principales y cómo se reparten por canal, en un solo bloque */}
+      <section className="tablero-pantalla" aria-label="Resumen del periodo"><div className="tablero-pantalla-rejilla">
       <Indicadores columnas={3} lista={kpis.filter((k) => k.clave !== "costo")} detalle={{
         venta: `Neta ${pesosRedondos(resumen.neta)} · IVA ${pesosRedondos(resumen.iva)}`,
         pedidos: `${resumen.dias} ${resumen.dias === 1 ? "día" : "días"}`,
         ticket: "Con IVA",
       }} />
       <TarjetasCanales canales={reporteCanales(d.canales, d.anterior.canales)} />
+      </div></section>
 
-      <ResumenEjecutivoVentas desde={periodo.desde} hasta={periodo.hasta} total={resumen.total} piezas={costos.total.piezas} pedidos={resumen.pedidos} global={!sucursal} />
       {conDiferencia.length > 0 && (
         <a className="atencion-tarjeta" data-tono="peligro" href="#cierre">
           <span className="atencion-icono"><Icono nombre="alerta" tamano={20} /></span>
@@ -139,8 +176,21 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         </a>
       )}
 
-      <div className="tablero-fila tablero-fila-ancha">
-        <section className="seccion" aria-labelledby="t-diaria">
+      <div className="tablero-graficas"><div className="tablero-rejilla">
+        {pasosCurva.length > 1 && (
+          <section className="seccion tablero-ancha" aria-labelledby="t-acumulada">
+            <div className="seccion-cabecera">
+              <h2 id="t-acumulada">Venta acumulada</h2>
+              <ConInfo titulo="Venta acumulada" etiqueta="Cómo leer esto">{unDia
+                ? "Suma hora por hora de los pedidos con hora registrada del día; puede quedar abajo de la venta del día cuando faltan pedidos detallados."
+                : "Suma día por día del periodo contra los mismos días justo antes del periodo. Los días que aún no llegan no se dibujan."}</ConInfo>
+            </div>
+            <CurvaAcumulada key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} titulo={unDia ? "Venta acumulada por hora" : "Venta acumulada por día"}
+              pasos={pasosCurva} actual={unDia ? "Este día" : "Este periodo"} anterior={unDia || !previo.dias ? undefined : "Periodo anterior"} />
+          </section>
+        )}
+        <ResumenEjecutivoVentas desde={periodo.desde} hasta={periodo.hasta} total={resumen.total} piezas={costos.total.piezas} pedidos={resumen.pedidos} global={!sucursal} />
+        <section className="seccion tablero-ancha" aria-labelledby="t-diaria">
           <h2 id="t-diaria">Venta diaria</h2>
           <BarrasVerticales key={`${periodo.desde}|${periodo.hasta}|${sucursal ?? ""}`} titulo="Venta por día" dias={porDia.map((x) => ({
             clave: x.fecha, rotulo: diaYNumero(x.fecha), valor: x.total,
@@ -157,114 +207,130 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
             detalle: `${porcentaje(resumen.total ? g.importe / resumen.total : null)} · ${g.piezas} pzs`,
           }))} />
         </section>
-      </div>
-
-      <div className="tablero-fila">
         <section className="seccion"><h2>Venta por día de la semana</h2><Grafica titulo="Venta acumulada por día de la semana" barras={diasSemana.map(d=>({...d,texto:pesos(d.valor)}))}/></section>
         <section className="seccion"><h2>Ventas por semana</h2><BarrasVerticales titulo="Histórico semanal" dias={[...semanas].sort(([a],[b])=>a.localeCompare(b)).slice(-13).map(([lunes,total])=>({clave:lunes,rotulo:diaYNumero(lunes),valor:total,detalle:`Semana del ${fechaTexto(lunes)} · ${pesos(total)}`}))}/><ConInfo titulo="Ventas por semana" etiqueta="Cómo leer esto">Lunes a domingo. Semanas inicial y final pueden tener cobertura parcial.</ConInfo></section>
-      </div>
-
-      <GraficasReporteVentas mensuales={ventasMensuales(ventaDiaria, `${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`, periodo.hasta)}
-        {...ventasHorarias(detalle.pedidos.filter(cuentaComoVenta))} desde={`${inicioCalendario.anio}-${String(inicioCalendario.mes).padStart(2, "0")}-01`} hasta={periodo.hasta} totalPeriodo={resumen.total} />
-      <div className="tablero-fila">
-        <Plegable id="productos" titulo="Los 10 que más vendieron" resumen={`${productos.length} productos`}>
+        <section className="seccion tablero-meses" aria-labelledby="t-meses">
+          <div className="seccion-cabecera">
+            <h2 id="t-meses">Ventas por mes y año</h2>
+            <ConInfo titulo="Ventas por mes y año" etiqueta="Cómo leer esto">Histórico del {fechaTexto(inicioHistorico)} al {fechaTexto(periodo.hasta)}. Último mes hasta la fecha final del reporte; otros meses pueden tener cobertura parcial. Se muestran únicamente meses con datos importados.</ConInfo>
+          </div>
+          {mensuales.length ? <BarrasVerticales titulo="Venta por mes y año, con IVA" dias={mensuales.map((m) => ({
+            clave: m.mes, rotulo: nombreMes(m.mes), valor: m.total, detalle: `${nombreMes(m.mes)}: ${pesos(m.total)} · ${m.dias} días con datos`,
+          }))} /> : <p>Sin datos mensuales disponibles.</p>}
+        </section>
+        <section className="seccion tablero-ranking" aria-labelledby="productos">
+          <div className="seccion-cabecera">
+            <h2 id="productos">Los 10 que más vendieron</h2>
+            <span className="plegable-resumen">{productos.length} productos</span>
+          </div>
           <RankingProductos titulo="Productos que más vendieron" filas={top.map((p) => ({
             clave: String(p.dodo_id), nombre: p.nombre, importe: p.importe, piezas: p.piezas, cambio: p.cambio,
           }))} />
           <ConInfo titulo="Columna de cambio" etiqueta="Cómo leer esto">El cambio es contra los mismos días justo antes del periodo.</ConInfo>
-        </Plegable>
-
-        <Plegable id="costos" titulo="Costos" resumen={porcentaje(costos.total.costoPct)}
-          insignia={veAviso && <AvisoSinCosto key="sin-costo" productos={costos.sinCosto} piezas={resumenSinCosto(costos.sinCosto).piezas} puedeAsignar={esAdmin} />}>
-          <div className="costos-categorias">
-            {costos.categorias.map((g) => (
-              <div key={g.categoria ?? "sin"} className="costo-categoria">
-                <span className={`dona-punto cat-${g.categoria ?? "sin"}`} aria-hidden="true" />
-                <strong>{categoria(g.categoria)}</strong>
-                <span>{porcentaje(g.costoPct)}</span>
-                <span className="saldo-nota">{g.costoPromedio === null ? "sin costo" : `${pesos(g.costoPromedio)} por pieza`}</span>
-              </div>
-            ))}
-          </div>
-          {mayorCosto.length > 0 && (
-            <>
-              <h3>Mayor costo %</h3>
-              <Grafica titulo="Productos con mayor costo %" barras={mayorCosto.map((p) => ({
-                clave: String(p.dodo_id), etiqueta: p.nombre, valor: p.costoPct ?? 0, texto: porcentaje(p.costoPct),
+        </section>
+        <section className="seccion tablero-ancha tablero-pagos" aria-labelledby="t-pagos">
+          <h2 id="t-pagos">Pagos, servicio y descuentos</h2>
+          <div className="tablero-pagos-cuerpo">
+            <div className="tablero-pagos-barras">
+              <BarraApilada titulo="Por forma de pago" partes={[
+                { clave: "efectivo", etiqueta: "Efectivo", valor: resumen.efectivo, detalle: pesos(resumen.efectivo), serie: 1 },
+                { clave: "tarjeta", etiqueta: "Tarjeta", valor: resumen.tarjeta, detalle: pesos(resumen.tarjeta), serie: 2 },
+                { clave: "en_linea", etiqueta: "En línea", valor: resumen.en_linea, detalle: pesos(resumen.en_linea), serie: 3 },
+              ]} />
+              <BarraApilada titulo="Por tipo de servicio" partes={tipos.servicio.map((t) => ({
+                clave: t.tipo, etiqueta: NOMBRE_TIPO[t.tipo], valor: t.total, detalle: `${pesos(t.total)} · ${t.pedidos} ped.`, serie: SERIE_TIPO[t.tipo],
               }))} />
-            </>
-          )}
-        </Plegable>
-      </div>
-
-      <div className="tablero-fila">
-        <Plegable id="descuentos" titulo="Descuentos" resumen={pesos(desc.total)}>
-          <p>{pesos(desc.total)} de descuento sobre {pesos(desc.sinDescuento)} de precio de lista ({porcentaje(desc.pct)}).</p>
-          {desc.top.length > 0 && (
+              {tipos.origen.length > 0 && (
+                <BarraApilada titulo="Por origen del pedido" partes={tipos.origen.map((t) => ({
+                  clave: t.tipo, etiqueta: NOMBRE_TIPO[t.tipo], valor: t.total, detalle: `${pesos(t.total)} · ${t.pedidos} ped.`, serie: SERIE_TIPO[t.tipo],
+                }))} />
+              )}
+            </div>
+            <div className="tablero-pagos-descuentos" id="descuentos">
+              <h3>Descuentos</h3>
+              <dl className="mini-cifras">
+                <div><dt>Descuento otorgado</dt><dd>{pesos(desc.total)}</dd></div>
+                <div><dt>% del precio de lista</dt><dd>{porcentaje(desc.pct)}</dd></div>
+                <div><dt>Precio de lista</dt><dd>{pesos(desc.sinDescuento)}</dd></div>
+              </dl>
+              {desc.top.length > 0 && (
+                <details className="mini-detalle">
+                  <summary>Productos con más descuento</summary>
             <Grafica titulo="Productos con más descuento" barras={desc.top.map((p) => ({
               clave: String(p.dodo_id), etiqueta: p.nombre, valor: p.descuento,
               texto: `${pesos(p.descuento)} (${porcentaje(p.sinDescuento ? p.descuento / p.sinDescuento : null)})`,
             }))} />
-          )}
-        </Plegable>
-
-        <Plegable id="servicio" titulo="Servicio y forma de pago" resumen={`${tipos.servicio.length} tipos`}>
-          <h3>Por tipo de servicio</h3>
-          <Grafica titulo="Venta por tipo de servicio" barras={tipos.servicio.map((t) => ({
-            clave: t.tipo, etiqueta: NOMBRE_TIPO[t.tipo], valor: t.total, texto: `${pesos(t.total)} · ${t.pedidos} ped.`,
-          }))} />
-          {tipos.origen.length > 0 && (
-            <>
-              <h3>Por origen del pedido</h3>
-              <Grafica titulo="Venta por origen del pedido" barras={tipos.origen.map((t) => ({
-                clave: t.tipo, etiqueta: NOMBRE_TIPO[t.tipo], valor: t.total, texto: `${pesos(t.total)} · ${t.pedidos} ped.`,
-              }))} />
-            </>
-          )}
-          <h3>Por forma de pago</h3>
-          <Grafica titulo="Venta por forma de pago" barras={[
-            { clave: "efectivo", etiqueta: "Efectivo", valor: resumen.efectivo, texto: pesos(resumen.efectivo) },
-            { clave: "tarjeta", etiqueta: "Tarjeta", valor: resumen.tarjeta, texto: pesos(resumen.tarjeta) },
-            { clave: "en_linea", etiqueta: "En línea", valor: resumen.en_linea, texto: pesos(resumen.en_linea) },
-          ]} />
-        </Plegable>
-      </div>
-
-      <Plegable id="cierre" titulo="Cierre contra Dodo IS" resumen={conDiferencia.length ? `${conDiferencia.length} con diferencia` : "Coinciden"}
-        alerta={conDiferencia.length > 0}>
-        {!cierre.comparados.length && <p className="vacio">Ningún día importado del periodo tiene cierre del gerente.</p>}
-        {cierre.comparados.length > 0 && !conDiferencia.length && (
-          <p className="aviso aviso-ok">Los {cierre.comparados.length} días con cierre coinciden con Dodo IS (diferencias de $1 o menos).</p>
-        )}
-        {conDiferencia.length > 0 && (
-          <div className="tarjetas">
-            {conDiferencia.map((c) => (
-              <article key={`${c.sucursal_id}|${c.fecha}`} className="tarjeta" data-alerta="si">
-                <h3>{nombreDe.get(c.sucursal_id)} · {fechaTexto(c.fecha)}</h3>
-                <dl className="tarjeta-datos">
-                  {c.filas.filter((f) => f.alerta).map((f) => (
-                    <div key={f.concepto} style={{ display: "contents" }}>
-                      <dt>{f.concepto}</dt>
-                      <dd>
-                        <span>Dodo IS {f.esPedido ? f.dodo : pesos(f.dodo)}</span>
-                        <span>Cierre {f.esPedido ? f.cierre : pesos(f.cierre)}</span>
-                        <span className="celda-alerta">Diferencia {f.esPedido ? f.diferencia : pesos(f.diferencia)}</span>
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </article>
-            ))}
+                </details>
+              )}
+            </div>
           </div>
-        )}
-        {cierre.sinCierre > 0 && <p className="saldo-nota">{cierre.sinCierre} {cierre.sinCierre === 1 ? "día importado no tiene" : "días importados no tienen"} cierre del gerente.</p>}
-        <ConInfo titulo="Por forma de pago" etiqueta="Cómo leer esto">
-          Dodo IS cuenta el día de 0:00 a 23:59 y el cierre de la app hasta las 4:00: las ventas después de medianoche
-          pueden explicar una diferencia.
-        </ConInfo>
-      </Plegable>
+        </section>
+        <HorasPicoDias {...horarias} totalPeriodo={resumen.total} />
 
-      <SeccionesPedidos pedidos={detalle.pedidos} lineas={detalle.lineas} diasSinDetalle={diasSinDetalle} />
+        {/* Detalles del periodo, siempre abiertos: los de una columna junto a los dobles; al final, los de todo el ancho */}
+        <TarjetaDetalle id="costos" ancho="doble" titulo="Costos" resumen={porcentaje(costos.total.costoPct)}
+          insignia={veAviso && <AvisoSinCosto key="sin-costo" productos={costos.sinCosto} piezas={resumenSinCosto(costos.sinCosto).piezas} puedeAsignar={esAdmin} />}>
+          <div className="detalle-rejilla">
+            <div className="detalle-bloque">
+              <h3>Costo por categoría</h3>
+              <div className="costos-categorias">
+                {costos.categorias.map((g) => (
+                  <div key={g.categoria ?? "sin"} className="costo-categoria">
+                    <span className={`dona-punto cat-${g.categoria ?? "sin"}`} aria-hidden="true" />
+                    <strong>{categoria(g.categoria)}</strong>
+                    <span>{porcentaje(g.costoPct)}</span>
+                    <span className="saldo-nota">{g.costoPromedio === null ? "sin costo" : `${pesos(g.costoPromedio)} por pieza`}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {mayorCosto.length > 0 && (
+              <div className="detalle-bloque">
+                <h3>Mayor costo %</h3>
+                <Grafica titulo="Productos con mayor costo %" barras={mayorCosto.map((p) => ({
+                  clave: String(p.dodo_id), etiqueta: p.nombre, valor: p.costoPct ?? 0, texto: porcentaje(p.costoPct),
+                }))} />
+              </div>
+            )}
+          </div>
+        </TarjetaDetalle>
+        <SeccionesPedidos pedidos={detalle.pedidos} lineas={detalle.lineas} diasSinDetalle={diasSinDetalle} />
+        <TarjetaDetalle id="cierre" ancho="completo" titulo="Cierre contra Dodo IS" resumen={conDiferencia.length ? `${conDiferencia.length} con diferencia` : "Coinciden"}
+          alerta={conDiferencia.length > 0}>
+          {!cierre.comparados.length && <p className="vacio">Ningún día importado del periodo tiene cierre del gerente.</p>}
+          {cierre.comparados.length > 0 && !conDiferencia.length && (
+            <p className="aviso aviso-ok">Los {cierre.comparados.length} días con cierre coinciden con Dodo IS (diferencias de $1 o menos).</p>
+          )}
+          {conDiferencia.length > 0 && (
+            <div className="tarjetas cierre-tarjetas">
+              {conDiferencia.map((c) => (
+                <article key={`${c.sucursal_id}|${c.fecha}`} className="tarjeta" data-alerta="si">
+                  <h3>{nombreDe.get(c.sucursal_id)} · {fechaTexto(c.fecha)}</h3>
+                  <dl className="tarjeta-datos">
+                    {c.filas.filter((f) => f.alerta).map((f) => (
+                      <div key={f.concepto} style={{ display: "contents" }}>
+                        <dt>{f.concepto}</dt>
+                        <dd className="cierre-cifras">
+                          <span><small>Dodo IS</small> {f.esPedido ? f.dodo : pesos(f.dodo)}</span>
+                          <span><small>Cierre</small> {f.esPedido ? f.cierre : pesos(f.cierre)}</span>
+                          <span className="celda-alerta"><small>Diferencia</small> {f.esPedido ? f.diferencia : pesos(f.diferencia)}</span>
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </article>
+              ))}
+            </div>
+          )}
+          {cierre.sinCierre > 0 && <p className="saldo-nota">{cierre.sinCierre} {cierre.sinCierre === 1 ? "día importado no tiene" : "días importados no tienen"} cierre del gerente.</p>}
+          <ConInfo titulo="Por forma de pago" etiqueta="Cómo leer esto">
+            Dodo IS cuenta el día de 0:00 a 23:59 y el cierre de la app hasta las 4:00: las ventas después de medianoche
+            pueden explicar una diferencia.
+          </ConInfo>
+        </TarjetaDetalle>
+      </div></div>
+
+
     </>
   );
 }
