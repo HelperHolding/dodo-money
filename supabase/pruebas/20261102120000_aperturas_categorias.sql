@@ -1,10 +1,10 @@
 -- Después de 20261102120000_aperturas_categorias.sql y supabase/cargas/equipo_categorias_dodo_2.sql. PRUEBAS OK revierte todas las pruebas.
 do $$
-declare a uuid;p uuid;i uuid;t uuid;m uuid;r integer;
+declare a uuid;p uuid;i uuid;t uuid;m uuid;r integer;n integer;
 begin
  select id into a from public.perfiles where activo and rol::text='admin' limit 1;
- select x.id into p from public.apertura_proyectos x join public.sucursales s on s.id=x.sucursal_id where lower(trim(s.nombre))='dodo-2';
- if a is null or p is null then raise exception 'FALTAN DATOS: admin y carga de dodo-2.';end if;
+ select count(*),min(x.id::text)::uuid into n,p from public.apertura_proyectos x join public.sucursales s on s.id=x.sucursal_id where lower(s.nombre) like '%dodo-2%';
+ if a is null or n<>1 then raise exception 'FALTAN DATOS: admin y una sola apertura de Dodo-2.';end if;
  if (select count(*) from public.apertura_items where proyecto_id=p and categoria='equipo_cocina')<88
  or (select count(*) from public.apertura_items where proyecto_id=p and categoria='mobiliario')<11
  or (select count(*) from public.apertura_items where proyecto_id=p and categoria='camara_fria')<1 then raise exception 'FALLÓ: el plano cargado en 0037 no quedó categorizado';end if;

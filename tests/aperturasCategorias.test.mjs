@@ -20,7 +20,8 @@ const BASE=`create role anon;create role authenticated;create schema auth;
  create table sucursales(id uuid primary key default gen_random_uuid(),nombre text not null);insert into sucursales(nombre) values('dodo-2');
  create table ordenes_compra(id uuid primary key,sucursal_id uuid);create table facturas(id uuid primary key,sucursal_id uuid);
  grant usage on schema auth to authenticated;grant select on perfiles to authenticated;`;
-const preparar=async db=>{await db.exec(BASE);await db.exec(aperturas);await db.exec(cargaInicial);await db.exec(migracion);await db.exec(carga);};
+// La sucursal se renombró después de la carga inicial, como en producción.
+const preparar=async db=>{await db.exec(BASE);await db.exec(aperturas);await db.exec(cargaInicial);await db.exec(`update sucursales set nombre='Dodo Lopez Mateos (Dodo-2)'`);await db.exec(migracion);await db.exec(carga);};
 
 test('categorías de apertura: la prueba SQL de Sebastián termina en PRUEBAS OK',async()=>{
  const db=new PGlite();
@@ -29,7 +30,7 @@ test('categorías de apertura: la prueba SQL de Sebastián termina en PRUEBAS OK
 });
 test('categorías de apertura: la prueba de 0037 sigue pasando con la nueva columna y la carga',async()=>{
  const db=new PGlite();
- try{await preparar(db);await assert.rejects(db.exec(pruebasIniciales),e=>{assert.match(e.message,/^PRUEBAS OK/);return true;});}
+ try{await preparar(db);await db.exec(`update sucursales set nombre='dodo-2'`);await assert.rejects(db.exec(pruebasIniciales),e=>{assert.match(e.message,/^PRUEBAS OK/);return true;});}
  finally{await db.close();}
 });
 test('categorías de apertura: repetir la carga no duplica ni pisa el seguimiento',async()=>{
