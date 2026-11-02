@@ -71,9 +71,9 @@ export const MODULOS_CHECKLIST = [
 export type MarcaChecklist = 'listo'|'curso'|'bloqueado'|'pendiente';
 export const MARCAS:Record<MarcaChecklist,{texto:string;icono:string}>={listo:{texto:'Listo',icono:'✓'},curso:{texto:'En curso',icono:'◐'},bloqueado:{texto:'Bloqueado',icono:'!'},pendiente:{texto:'Pendiente',icono:''}};
 export type LineaChecklist = {clave:string;nombre:string;marca:MarcaChecklist;listos:number;total:number;destino:{item:string}|{vista:string;etapa?:string;cat?:string};hijos?:string[]};
-export const marcaItem = (i:ItemApertura):MarcaChecklist => i.estado==='completado'||i.estado==='verificado'||(i.tipo==='equipo'&&i.estado==='instalado')?'listo':i.estado==='bloqueado'?'bloqueado':['pendiente','por_validar','por_cotizar'].includes(i.estado)?'pendiente':'curso';
-const marcaGrupo = (de:ItemApertura[]):MarcaChecklist => {const m=de.map(marcaItem);return m.every(x=>x==='listo')?'listo':m.includes('bloqueado')?'bloqueado':m.some(x=>x!=='pendiente')?'curso':'pendiente';};
-export function checklistApertura(items:ItemApertura[]) {
+export const marcaItem = (i:Pick<ItemApertura,'tipo'|'estado'>):MarcaChecklist => i.estado==='completado'||i.estado==='verificado'||(i.tipo==='equipo'&&i.estado==='instalado')?'listo':i.estado==='bloqueado'?'bloqueado':['pendiente','por_validar','por_cotizar'].includes(i.estado)?'pendiente':'curso';
+const marcaGrupo = (de:Pick<ItemApertura,'tipo'|'estado'>[]):MarcaChecklist => {const m=de.map(marcaItem);return m.every(x=>x==='listo')?'listo':m.includes('bloqueado')?'bloqueado':m.some(x=>x!=='pendiente')?'curso':'pendiente';};
+export function checklistApertura(items:Pick<ItemApertura,'id'|'nombre'|'tipo'|'etapa'|'estado'|'categoria'>[]) {
  // Misma base que los indicadores: sin no aplica, y el equipo y las referencias por validar quedan fuera.
  const aplicables=items.filter(i=>i.estado!=='no_aplica'&&!(['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar'));
  const modulos=MODULOS_CHECKLIST.map(m=>{
@@ -117,4 +117,16 @@ export function datosCambioEstado(i:ItemApertura,c:{estado:string;evidencia:stri
  return {estado:c.estado,responsable:v(i.responsable),inicio:v(i.inicio),fin:v(i.fin),
   cantidad:compra&&c.cantidad!==undefined?c.cantidad:v(i.cantidad),recibido:compra&&c.recibido!==undefined?c.recibido:v(i.recibido),
   precio:v(i.precio),evidencia:c.evidencia,notas:c.notas,orden_id:v(i.orden_id),factura_id:v(i.factura_id)};
+}
+
+// Lo que el checklist necesita en el navegador de cada concepto; llega de la página, del guardado o de Realtime.
+export type ItemChecklist = Pick<ItemApertura,'id'|'nombre'|'tipo'|'etapa'|'estado'|'categoria'|'evidencia'|'notas'|'revision'> & {cantidad:number|null;recibido:number;unidad:string|null};
+export const aItemChecklist = (i:Pick<ItemApertura,'id'|'nombre'|'tipo'|'etapa'|'estado'|'categoria'|'evidencia'|'notas'|'revision'|'cantidad'|'recibido'> & {original?:Record<string,unknown>|null}):ItemChecklist => ({
+ id:i.id,nombre:i.nombre,tipo:i.tipo,etapa:i.etapa,estado:i.estado,categoria:i.categoria??null,evidencia:i.evidencia??null,notas:i.notas??null,revision:Number(i.revision),
+ cantidad:i.cantidad===null||i.cantidad===undefined?null:Number(i.cantidad),recibido:Number(i.recibido??0),unidad:typeof i.original?.unidad==='string'?i.original.unidad:null});
+// Gana la revisión más nueva: un aviso de Realtime atrasado o una página recargada antes de tiempo no deshacen un cambio.
+export function fusionarItems(actual:Record<string,ItemChecklist>,nuevos:ItemChecklist[]) {
+ let cambio=false;const r={...actual};
+ for(const n of nuevos){const a=r[n.id];if(a&&a.revision>=n.revision)continue;r[n.id]=n;cambio=true;}
+ return cambio?r:actual;
 }

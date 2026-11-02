@@ -955,6 +955,9 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .ap-check-encabezado { display:flex; align-items:center; gap:20px; flex-wrap:wrap; margin-bottom:16px; }
 .ap-check-encabezado h2 { margin:0 0 4px; }
 .ap-check-leyenda { display:flex; flex-wrap:wrap; gap:14px; margin:8px 0 0; color:var(--tinta-2); font-size:.85rem; }
+.ap-check-conexion { margin:6px 0 0; font-size:.8rem; color:var(--tinta-2); display:flex; align-items:center; gap:6px; }
+.ap-check-conexion::before { content:''; width:8px; height:8px; border-radius:50%; background:var(--tinta-3); flex:0 0 8px; }
+.ap-check-conexion[data-conexion="en_vivo"]::before { background:var(--cuadra); }.ap-check-conexion[data-conexion="sin_conexion"]::before { background:var(--ambar); }
 .ap-check-leyenda > span { display:inline-flex; align-items:center; gap:6px; }
 .ap-check-modulos { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
 .ap-check-modulo { display:flex; flex-direction:column; gap:8px; border:1px solid var(--linea); border-radius: var(--r-md); padding:18px; background:var(--superficie); min-width:0; }
