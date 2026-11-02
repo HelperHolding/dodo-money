@@ -45,7 +45,7 @@ export default async function ListasDelTurno({
 
   return (
     <>
-      <EncabezadoPagina titulo="Listas del turno" descripcion="Apertura, cambio de turno, durante el turno, cierre y tareas del día. Toca una casilla para llenarla o verla." />
+      <EncabezadoPagina titulo="Listas del turno" info="Apertura, cambio de turno, durante el turno, cierre y tareas del día. Toca una casilla para llenarla o verla." />
       <Aviso ok={ok} error={error} />
 
       {elegida && columna && (

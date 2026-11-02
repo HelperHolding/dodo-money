@@ -24,7 +24,7 @@ export default async function NuevoCompromiso({ searchParams }: { searchParams: 
     if (f?.sucursal_id) desdeFactura = { id: f.id, datos: compromisoDesdeFactura({ ...f, sucursal_id: f.sucursal_id }, conceptos?.[0]?.descripcion ?? "") };
   }
   return <>
-    <EncabezadoPagina titulo="Nuevo compromiso" descripcion="Algo que se paga sí o sí cada cierto tiempo: renta, fumigación, basura, trampas de grasa." />
+    <EncabezadoPagina titulo="Nuevo compromiso" info="Algo que se paga sí o sí cada cierto tiempo: renta, fumigación, basura, trampas de grasa." />
     <Aviso error={error} />
     <FormCompromiso {...opciones} hoy={hoyCalendarioMX()} sucursalInicial={sucursal} desdeFactura={desdeFactura} />
   </>;

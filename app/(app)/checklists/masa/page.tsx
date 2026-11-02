@@ -34,7 +34,7 @@ export default async function Masa({ searchParams }: { searchParams: Promise<{ o
 
   return (
     <>
-      <EncabezadoPagina titulo="Temperatura de masa" descripcion="Cada hora saca las bolas que marca la norma para la temperatura del área y toma la temperatura de la masa. En norma: de 12 a 22 °C." />
+      <EncabezadoPagina titulo="Temperatura de masa" info="Cada hora saca las bolas que marca la norma para la temperatura del área y toma la temperatura de la masa. En norma: de 12 a 22 °C." />
       <Aviso ok={ok} error={error} />
 
       <section className="seccion" aria-labelledby="t-registro">

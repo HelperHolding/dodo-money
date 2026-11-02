@@ -1,4 +1,5 @@
 "use client";
+import { ConInfo } from "@/components/ConInfo";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Cajon } from "@/components/Cajon";
@@ -67,7 +68,7 @@ export function ListaUsuarios({usuarios,sucursales,cambios,yo,editable}:{usuario
       <p aria-live="polite" className={styles.cuenta}>{visibles.length} de {usuarios.length} usuarios</p>
     </div>
     <section className={styles.grupo} aria-labelledby="u-general">
-      <header className={styles.grupoCabecera}><div><h2 id="u-general">Acceso general</h2><p>Administración y corporativo participan en todas las sucursales.</p></div><span>{visibles.filter(general).length}</span></header>
+      <header className={styles.grupoCabecera}><div><h2 id="u-general">Acceso general</h2><ConInfo titulo="Acceso general" etiqueta="Cómo leer esto">Administración y corporativo participan en todas las sucursales.</ConInfo></div><span>{visibles.filter(general).length}</span></header>
       <ul className={styles.personas}>{filas(visibles.filter(general))}</ul>
       {!visibles.some(general)&&<p className={styles.vacio}>No hay usuarios con estos filtros.</p>}
     </section>

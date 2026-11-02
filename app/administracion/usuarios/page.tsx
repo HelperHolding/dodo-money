@@ -16,7 +16,7 @@ export default async function Usuarios({searchParams}:{searchParams:Promise<{ok?
   ]);
   if(usuarios.error||sucursales.error) throw new Error(usuarios.error?.message??sucursales.error?.message);
   const invitacionesListas=!(invitaciones.error||eventos.error);
-  return <><EncabezadoPagina titulo="Usuarios y sucursales" descripcion="Quién entra, con qué rol y en qué sucursal. Las cuentas nuevas llegan por invitación."
+  return <><EncabezadoPagina titulo="Usuarios y sucursales" info="Quién entra, con qué rol y en qué sucursal. Las cuentas nuevas llegan por invitación."
       acciones={invitacionesListas&&<InvitarUsuario sucursales={sucursales.data??[]}/>}/>
     <Aviso ok={q.ok} error={q.error}/>
     {cambios.error&&<Aviso error="La administración de cuentas requiere aplicar la migración 0057. Puedes consultar los usuarios mientras tanto."/>}

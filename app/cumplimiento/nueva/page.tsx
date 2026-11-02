@@ -12,7 +12,7 @@ export default async function NuevaObligacion({ searchParams }: { searchParams: 
   const { supabase, perfil } = await obtenerPerfil();
   if (!puedeEditarCompras(perfil.rol)) redirect("/cumplimiento");
   return <>
-    <EncabezadoPagina titulo="Nueva obligación" descripcion="Permisos, licencias, protección civil, extintores, trámites fiscales y seguros." />
+    <EncabezadoPagina titulo="Nueva obligación" info="Permisos, licencias, protección civil, extintores, trámites fiscales y seguros." />
     <Aviso error={error} />
     <FormObligacion {...await leerOpciones(supabase)} hoy={hoyCalendarioMX()} />
   </>;

@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import Link from "next/link";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaTexto, hoyMX } from "@/lib/formato";
@@ -92,8 +93,8 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         <details className="nota-plegable">
           <summary><Icono nombre="info" />Cómo leer este P&L</summary>
           <p>El desglose Dodo IS / POS y Rappi corresponde a la fuente de importación. Los subtotales por fuente ya están incluidos en los totales. {ases ? "En Formato asesores, los porcentajes son sobre ventas brutas sin IVA (o netas si la bruta no está completa)." : "Los porcentajes son sobre la venta neta total."}</p>
-          <p>Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los costos desconocidos quedan pendientes.</p>
-          {p.tipo === "semana" && <p>Lo que se registra por mes (nómina, renta, servicios, facturas, oficina) se reparte por días; si llega una factura de ese mes, la semana se ajusta.</p>}
+          <ConInfo titulo="Merma en el P&L" etiqueta="Cómo leer esto">Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los costos desconocidos quedan pendientes.</ConInfo>
+          {p.tipo === "semana" && <ConInfo titulo="Gastos mensuales por semana" etiqueta="Cómo leer esto">Lo que se registra por mes (nómina, renta, servicios, facturas, oficina) se reparte por días; si llega una factura de ese mes, la semana se ajusta.</ConInfo>}
           <p><Link href="/ventas/conciliacion">Revisar diferencias y conciliaciones de Dodo IS →</Link></p>
         </details>
       </div>
@@ -101,12 +102,12 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         p.vacio ? <EstadoVacio icono="calendario" titulo={p.tipo === "semana" ? "La semana apenas empieza" : "El mes apenas empieza"} descripcion="Todavía no hay días cerrados. Elige un periodo anterior para ver resultados." />
         : !ases.formato ? <AdvertenciasPL avisos={[`No se muestra el formato de asesores: ${ases.error}`]} />
         : <>
-          <p className="nota">Estructura de la plantilla de los asesores con cifras reales. Los renglones debajo de EBITDA quedan pendientes hasta tener su fuente.</p>
+          <ConInfo titulo="Formato asesores" etiqueta="Cómo leer esto">Estructura de la plantilla de los asesores con cifras reales. Los renglones debajo de EBITDA quedan pendientes hasta tener su fuente.</ConInfo>
           <AdvertenciasPL avisos={[...ases.formato.avisos, ...ases.avisos]} />
           <TablaAsesores formato={ases.formato} detalleDe={ases.detalleDe} />
         </>
       ) : contable ? <>
-        <p className="nota">Cuentas exactas confirmadas del catálogo Helper. Los documentos pendientes y las fuentes calculadas se muestran por separado y permanecen incluidos en los totales. Insumos e inversiones se presentan en memo, fuera del resultado.</p>
+        <ConInfo titulo="Por cuentas" etiqueta="Cómo leer esto">Cuentas exactas confirmadas del catálogo Helper. Los documentos pendientes y las fuentes calculadas se muestran por separado y permanecen incluidos en los totales. Insumos e inversiones se presentan en memo, fuera del resultado.</ConInfo>
         <AdvertenciasPL avisos={contable.avisos}/>
         {contable.columnas.length?<TablaCuentas filas={contable.filas} columnas={contable.columnas}/>:<EstadoVacio icono="calendario" titulo="Todavía no hay días cerrados" descripcion="Elige un periodo anterior."/>}
       </> : comp ? (

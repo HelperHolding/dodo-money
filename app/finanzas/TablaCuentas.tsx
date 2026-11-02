@@ -1,4 +1,5 @@
 "use client";
+import { ConInfo } from "@/components/ConInfo";
 
 import { useId, useRef, useState } from "react";
 import Link from "next/link";
@@ -88,7 +89,7 @@ export default function TablaCuentas({ filas, columnas }: { filas: FilaCuenta[];
           <div><h2 id={tituloDialogo}>{detalle.nombre}</h2><p>{detalle.periodo.desde} al {detalle.periodo.hasta} · Aportación al P&L: <strong>{pesos(detalle.monto)}</strong></p></div>
           <button className="boton boton-secundario" autoFocus onClick={() => dialogo.current?.close()} aria-label="Cerrar detalle">Cerrar</button>
         </div>
-        <p>El importe corresponde al periodo devengado, después de descuentos y sin IVA. Las notas de crédito restan. Un documento puede aportar a varias cuentas.</p>
+        <ConInfo titulo="Importe por cuenta" etiqueta="Cómo leer esto">El importe corresponde al periodo devengado, después de descuentos y sin IVA. Las notas de crédito restan. Un documento puede aportar a varias cuentas.</ConInfo>
         <div className="tabla-contenedor"><table className="tabla">
           <thead><tr><th>Fecha</th><th>Documento / concepto</th><th>Proveedor / razón social</th><th>Cuenta</th><th>UUID</th><th className="monto">Aportación</th></tr></thead>
           <tbody>{detalle.grupos.flatMap(g => g.items.map((item, i) => <tr key={`${g.id}-${i}`}>

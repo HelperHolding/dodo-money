@@ -24,7 +24,7 @@ export default async function Compromisos({ searchParams }: { searchParams: Prom
   const grupos = sucursales.map(([id, nombre]) => ({ id, nombre, cs: lista.filter((c) => c.sucursal_id === id) })).filter((g) => g.cs.length);
   const edita = puedeEditarCompras(perfil.rol);
   return <>
-    <EncabezadoPagina titulo="Compromisos fijos" descripcion="Lo que se paga sí o sí cada cierto tiempo, por sucursal. Sale como previsto en el calendario de pagos hasta que llega su factura."
+    <EncabezadoPagina titulo="Compromisos fijos" info="Lo que se paga sí o sí cada cierto tiempo, por sucursal. Sale como previsto en el calendario de pagos hasta que llega su factura."
       acciones={edita && <Link className="boton" href={`/compras/pagos/compromisos/nuevo${sucursal ? `?sucursal=${sucursal}` : ""}`}><Icono nombre="mas" />Nuevo compromiso</Link>} />
     <Aviso ok={ok} error={error} />
     {avisos.vencidosSinFactura > 0 && <p className="aviso aviso-error">{avisos.vencidosSinFactura} pagos fijos vencidos sin factura.</p>}

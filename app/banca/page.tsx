@@ -35,7 +35,7 @@ export default async function PaginaBanca({ searchParams }: { searchParams: Prom
   const sucursales=fuente?.id==='rappi'?await supabase.from('sucursales').select('id,nombre').order('nombre'):null;
   if(sucursales?.error)throw Error('No se pudieron consultar las sucursales.');
   return <div className={styles.pagina}>
-    <EncabezadoPagina titulo="Banca" descripcion="Disponibilidad, liquidaciones y conciliación del grupo." acciones={<Link className="boton boton-secundario" href="/compras/pagos"><Icono nombre="calendario" />Calendario de pagos</Link>} />
+    <EncabezadoPagina titulo="Banca" info="Disponibilidad, liquidaciones y conciliación del grupo." acciones={<Link className="boton boton-secundario" href="/compras/pagos"><Icono nombre="calendario" />Calendario de pagos</Link>} />
     <p className={styles.aviso}><Icono nombre="info" />Banregio y Rappi se actualizan con reportes importados. Los depósitos se concilian en la pestaña Conciliación.</p>
     <div className={styles.indicadores}>
       {[

@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import { Grafica } from "@/components/Grafica";
 import { MapaCalor } from "@/components/MapaCalor";
 import { Plegable } from "@/components/Plegable";
@@ -108,7 +109,7 @@ export function SeccionesPedidos({ pedidos, lineas, diasSinDetalle }: { pedidos:
               clave: c.combo, etiqueta: c.combo, valor: c.vendidos, texto: `${c.vendidos} · ${pesos(c.total)}`,
             }))} />
           ) : <p className="vacio">No se vendieron combos en el periodo.</p>}
-          <p className="saldo-nota">Si un pedido lleva dos veces el mismo combo, cuenta como uno.</p>
+          <ConInfo titulo="Cómo se cuentan los combos" etiqueta="Cómo leer esto">Si un pedido lleva dos veces el mismo combo, cuenta como uno.</ConInfo>
         </Plegable>
       </div>
     </>

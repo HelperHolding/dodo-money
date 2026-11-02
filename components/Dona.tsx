@@ -17,10 +17,14 @@ export function Dona({ titulo, partes }: { titulo: string; partes: readonly Part
     <div className="dona">
       <svg className="dona-svg" viewBox="0 0 42 42" role="img" aria-label={`${titulo}: ${rebanadas.map((r) => `${etiqueta(r.clave)} ${porcentaje(r.fraccion)}`).join(", ")}`}>
         <circle cx="21" cy="21" r="15.9155" fill="none" className="dona-fondo" strokeWidth="6" />
-        {rebanadas.map((r) => (
-          <circle key={r.clave} cx="21" cy="21" r="15.9155" fill="none" className={`dona-rebanada cat-${r.clave}`} strokeWidth="6"
-            strokeDasharray={`${r.fraccion * 100} ${100 - r.fraccion * 100}`} strokeDashoffset={25 - r.inicio * 100} />
-        ))}
+        {rebanadas.map((r) => {
+          // 0.8 de separación entre rebanadas (solo de presentación; la fracción no cambia)
+          const hueco = rebanadas.length > 1 ? Math.min(0.8, r.fraccion * 100 * 0.5) : 0;
+          return (
+            <circle key={r.clave} cx="21" cy="21" r="15.9155" fill="none" className={`dona-rebanada cat-${r.clave}`} strokeWidth="6"
+              strokeDasharray={`${r.fraccion * 100 - hueco} ${100 - r.fraccion * 100 + hueco}`} strokeDashoffset={25 - r.inicio * 100 - hueco / 2} />
+          );
+        })}
         <text x="21" y="21" textAnchor="middle" className="dona-centro">{Math.round(mayor.fraccion * 100)} %</text>
         <text x="21" y="26.5" textAnchor="middle" className="dona-centro-sub">{etiqueta(mayor.clave)}</text>
       </svg>

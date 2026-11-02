@@ -28,7 +28,7 @@ export default async function LimpiezaProfundaPagina({ searchParams }: { searchP
 
   return (
     <>
-      <EncabezadoPagina titulo="Limpieza profunda" descripcion="Un área distinta cada día, en un ciclo de dos semanas. El encargado la revisa al terminar." />
+      <EncabezadoPagina titulo="Limpieza profunda" info="Un área distinta cada día, en un ciclo de dos semanas. El encargado la revisa al terminar." />
       <Aviso ok={ok} error={error} />
       <section className="seccion" aria-labelledby="t-hoy">
         <h2 id="t-hoy">Hoy toca: {NOMBRE_DIA[diaSemanaISO(fecha)]} · {areaHoy ?? "sin área"}</h2>

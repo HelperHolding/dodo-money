@@ -27,7 +27,7 @@ export default async function Cumplimiento({ searchParams }: { searchParams: Pro
     tipo: p.tipo && Object.hasOwn(TIPOS, p.tipo) ? p.tipo : "",
   };
   return <>
-    <EncabezadoPagina titulo="Calendario de cumplimiento" descripcion="Permisos, licencias, protección civil, extintores, trámites fiscales, seguros, servicios fijos y mantenimiento de activos."
+    <EncabezadoPagina titulo="Calendario de cumplimiento" info="Permisos, licencias, protección civil, extintores, trámites fiscales, seguros, servicios fijos y mantenimiento de activos."
       acciones={puedeEditarCompras(perfil.rol) && <Link className="boton" href="/cumplimiento/nueva">Nueva obligación</Link>} />
     <Aviso ok={p.ok} error={p.error} />
     <FranjaAlertas alertas={alertas} />

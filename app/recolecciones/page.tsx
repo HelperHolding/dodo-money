@@ -26,7 +26,7 @@ export default async function Pagina({searchParams}:{searchParams:Promise<{sucur
  const registros=await leerTodo<Registro>((d,h)=>supabase.from('recolecciones_corporativo').select('id,desde,hasta,sucursales(nombre),movimientos!recolecciones_corporativo_id_fkey(monto,folio,estado,recepcion)').order('creado_en',{ascending:false}).order('id').range(d,h).returns<Registro[]>());
  const rango=(s:string)=>`/recolecciones?${new URLSearchParams({sucursal:s,desde,hasta})}`;
  const elegida=(lugares??[]).find(s=>s.id===sucursal);
- return <><EncabezadoPagina titulo="Recolecciones a corporativo" descripcion="Efectivo que cada sucursal entrega según sus cierres, con respaldo de compras y conteo al recibir." acciones={<Link className="boton boton-secundario" href="/efectivo">Salidas y entregas anteriores</Link>}/><Aviso ok={q.ok} error={q.error??problema??undefined}/>
+ return <><EncabezadoPagina titulo="Recolecciones a corporativo" info="Efectivo que cada sucursal entrega según sus cierres, con respaldo de compras y conteo al recibir." acciones={<Link className="boton boton-secundario" href="/efectivo">Salidas y entregas anteriores</Link>}/><Aviso ok={q.ok} error={q.error??problema??undefined}/>
  <div className="barra-filtros">
   {(lugares??[]).length>1&&<nav className="segmentos" aria-label="Sucursal">{lugares?.map(s=><Link key={s.id} href={rango(s.id)} aria-current={s.id===sucursal?'page':undefined}>{s.nombre}</Link>)}</nav>}
   <form className="barra-filtros" aria-label="Rango de cierres"><input type="hidden" name="sucursal" value={sucursal??''}/>

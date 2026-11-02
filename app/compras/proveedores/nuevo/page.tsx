@@ -12,7 +12,7 @@ export default async function NuevoProveedor({ searchParams }: { searchParams: P
   const { data: sucursales } = await supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>();
   return (
     <>
-      <EncabezadoPagina titulo="Nuevo proveedor" descripcion="El RFC y el régimen fiscal sirven para reconocer sus facturas." />
+      <EncabezadoPagina titulo="Nuevo proveedor" info="El RFC y el régimen fiscal sirven para reconocer sus facturas." />
       <Aviso error={error} />
       <FormProveedor sucursales={sucursales ?? []} />
     </>

@@ -39,7 +39,7 @@ export default async function PaginaNomina({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <EncabezadoPagina titulo="Nómina" descripcion="Nómina real mensual o plantilla estimada, más ajustes del mes. Se incluye en el P&L; capturar nómina no registra un pago."
+      <EncabezadoPagina titulo="Nómina" info="Nómina real mensual o plantilla estimada, más ajustes del mes. Se incluye en el P&L; capturar nómina no registra un pago."
         acciones={<Link className="boton boton-secundario" href="/finanzas/personal">Perfiles de personal</Link>} />
       <Aviso ok={q.ok} error={q.error} />
       <div className="indicadores-marco"><section className="indicadores" aria-label="Resumen del mes">

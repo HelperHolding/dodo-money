@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import ListaCosteo from "./ListaCosteo";
 import {BusquedaUrl} from "@/components/BusquedaUrl";
 import {catalogoCosteo} from "./catalogo";
@@ -63,10 +64,10 @@ export default async function PaginaCostos({ searchParams }: { searchParams: Pro
     <>
       <div className="encabezado ficha-encabezado">
         <h1>Costeo</h1>
-        <p>
+        <ConInfo titulo="Costeo" etiqueta="Cómo leer esto">
           Costo por producto con la fecha desde la que aplica. Un costo nuevo no borra el anterior: los días previos
           se siguen costeando con el que estaba vigente.
-        </p>
+        </ConInfo>
       </div>
       <Aviso ok={ok} error={error} />
       <div className="acciones orden-acciones-encabezado"><Link className="boton" href="/ventas/costos/materiales">Insumos y listas de materiales</Link><Link className="boton boton-secundario" href="/ventas/costos/calculadora">Calculadoras</Link><Link className="boton boton-secundario" href="/ventas/costos/rappi">Rentabilidad Rappi</Link>{edita&&<Link className="boton boton-secundario" href="/ventas/costos/cargar">Cargar Excel del menú</Link>}</div>

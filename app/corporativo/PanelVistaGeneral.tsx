@@ -8,6 +8,7 @@ import type { Alerta, DatosSucursal } from "@/lib/corporativo";
 import { fechaTexto, pesos } from "@/lib/formato";
 import { verSucursal } from "./actions";
 import { SemaforoSucursales, type FilaSemaforo } from "./SemaforoSucursales";
+import { ConInfo } from "@/components/ConInfo";
 
 
 /** Día anterior a una fecha YYYY-MM-DD (solo para el atajo "Ayer"; fechaElegida valida lo que llegue). */
@@ -134,7 +135,7 @@ export function PanelVistaGeneral({ fecha, hoy, filas, efectivo, proveedoresResu
               clave: f.id, etiqueta: f.nombre, valor: f.cierre?.ventaTotal ?? 0, alerta: !f.cierre && f.alertas.includes("cierre"),
               texto: f.cierre ? pesos(f.cierre.ventaTotal) : "Sin cierre",
             }))} />
-            <p className="saldo-nota">Venta capturada en el cierre de cada sucursal.</p>
+            <ConInfo titulo="Venta del día por sucursal" etiqueta="Cómo leer esto">Venta capturada en el cierre de cada sucursal.</ConInfo>
           </section>
         </div>
 
@@ -142,7 +143,7 @@ export function PanelVistaGeneral({ fecha, hoy, filas, efectivo, proveedoresResu
           <div className="seccion-cabecera">
             <div>
               <h2 id="t-semaforo">Semáforo de sucursales</h2>
-              <p className="saldo-nota">Toca una sucursal para ver su día completo.</p>
+              <ConInfo titulo="Semáforo de sucursales">Toca una sucursal para ver su día completo.</ConInfo>
             </div>
             <ul className="semaforo-leyenda" aria-label="Qué significa cada señal">
               <li><span className="senal" data-estado="ok"><Icono nombre="ok" /></span>En orden</li>

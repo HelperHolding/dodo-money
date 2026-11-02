@@ -14,7 +14,7 @@ export default async function EditarObligacion({ params, searchParams }: { param
   const [[o], opciones] = await Promise.all([leerObligaciones(supabase, id), leerOpciones(supabase)]);
   if (!o) notFound();
   return <>
-    <EncabezadoPagina titulo={`Editar · ${o.nombre}`} descripcion="Los cambios aplican a las fechas que aún no se trabajan." />
+    <EncabezadoPagina titulo={`Editar · ${o.nombre}`} info="Los cambios aplican a las fechas que aún no se trabajan." />
     <Aviso error={error} />
     <FormObligacion o={o} {...opciones} hoy={hoyCalendarioMX()} />
   </>;

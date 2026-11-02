@@ -35,7 +35,7 @@ export default async function Mermas({ searchParams }: { searchParams: Promise<{
 
   return (
     <>
-      <EncabezadoPagina titulo="Mermas" descripcion="Registra cada merma cuando pase, con el nombre de quien la hizo. Al final del día el encargado las captura en Dodo IS y cierra la lista." />
+      <EncabezadoPagina titulo="Mermas" info="Registra cada merma cuando pase, con el nombre de quien la hizo. Al final del día el encargado las captura en Dodo IS y cierra la lista." />
       <Aviso ok={ok} error={error} />
 
       {cierre ? (

@@ -1,3 +1,4 @@
+import { ConInfo } from "@/components/ConInfo";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
@@ -28,14 +29,14 @@ export default async function Movimientos({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <EncabezadoPagina titulo="Movimientos entre cajas" descripcion="Cada vez que el efectivo pasa de una caja a otra se registra aquí. Quien lo recibe lo confirma con su propio usuario." />
+      <EncabezadoPagina titulo="Movimientos entre cajas" info="Cada vez que el efectivo pasa de una caja a otra se registra aquí. Quien lo recibe lo confirma con su propio usuario." />
       <Aviso ok={ok} error={error} />
       {!soloLectura && <FormMovimiento limiteRetiro={Number(sucursal.limite_retiro)} fondoCajon={Number(sucursal.fondo_caja_venta)}
         boveda={boveda} />}
 
       <section className="seccion" aria-labelledby="t-ajustes">
         <h2 id="t-ajustes">Ajustes de conciliación de bóveda</h2>
-        <p className="saldo-nota">Últimos 50 registros. Importe negativo: salida de bóveda; positivo: devolución.</p>
+        <ConInfo titulo="Movimientos" etiqueta="Cómo leer esto">Últimos 50 registros. Importe negativo: salida de bóveda; positivo: devolución.</ConInfo>
         {!ajustes.data?.length ? <p>Sin ajustes registrados.</p> : <table className="tabla"><thead><tr><th>Fecha de registro</th><th>Motivo</th><th>Registró</th><th>Efecto en bóveda</th></tr></thead><tbody>{ajustes.data.map(a=><tr key={a.id}><td>{new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'short',timeZone:'America/Mexico_City'}).format(new Date(a.creado_en))}</td><td>{a.motivo}</td><td>{persona.get(a.autor_id) ?? 'Sin nombre'}</td><td className="monto">{pesos(-Number(a.importe))}</td></tr>)}</tbody></table>}
       </section>
       <section className="seccion" aria-labelledby="t-hoy">

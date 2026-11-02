@@ -14,6 +14,7 @@ import { leerTodo } from "@/lib/ventas/paginar";
 import { clasificarRecepcion, conciliarRecepcion, desligarProveedorDodo, ligarProveedorDodo } from "./acciones";
 import { FormImportarRecepciones } from "./FormImportarRecepciones";
 import { CalendarioEntregas, type OrdenEsperada } from "./CalendarioEntregas";
+import { ConInfo } from "@/components/ConInfo";
 
 type Recepcion = {
   id: string; sucursal_id: string; dodo_insumo_id: string; material: string; unidad: string; fecha: string; cantidad: number; precio: number;
@@ -115,7 +116,7 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <EncabezadoPagina titulo="Recepciones" descripcion="Lo que se recibió en Dodo IS, entrega por entrega, ligado a las órdenes de compra del mismo proveedor y a su factura cuando el folio coincide. Llega solo cada 15 minutos." />
+      <EncabezadoPagina titulo="Recepciones" info="Lo que se recibió en Dodo IS, entrega por entrega, ligado a las órdenes de compra del mismo proveedor y a su factura cuando el folio coincide. Llega solo cada 15 minutos." />
       {puedeRecibirCompras(perfil.rol) && <PestanasRecepciones actual="compras" />}
       <Aviso ok={ok} error={error} />
       <CalendarioEntregas hoy={hoy} porDia={porDia} realizadas={realizadas} />
@@ -144,8 +145,7 @@ export default async function Recepciones({ searchParams }: { searchParams: Prom
         </section>
       )}
       {agendaFacturas.length>0 && <section className="seccion">
-        <h2>Recepciones programadas desde facturas</h2>
-        <p className="saldo-nota">Fechas previstas; no confirman la recepción. Las órdenes vinculadas siguen mostrando su avance real en el calendario de entregas.</p>
+        <div className="seccion-cabecera"><h2>Recepciones programadas desde facturas</h2><ConInfo titulo="Recepciones programadas desde facturas">Fechas previstas; no confirman la recepción. Las órdenes vinculadas siguen mostrando su avance real en el calendario de entregas.</ConInfo></div>
         <ul>{agendaFacturas.map(f=><li key={f.id}><Link href={`/compras/facturas/${f.id}`}>{f.serie??""}{f.folio??f.uuid??"Factura"}</Link> · {f.proveedores?.nombre_comercial??f.proveedores?.razon_social} · {f.sucursales?.nombre??"Oficina"} · {fechaTexto(f.recepcion_programada_el)}</li>)}</ul>
       </section>}
       <Plegable id="ordenes-recibidas" titulo="Órdenes ya recibidas" resumen={`${esperadas.filter(o=>o.completa).length} completas`}>

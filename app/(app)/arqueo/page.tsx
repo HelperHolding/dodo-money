@@ -40,7 +40,7 @@ export default async function PaginaArqueo({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <EncabezadoPagina titulo="Arqueo de turno" descripcion="Cuenta el efectivo por denominación. El fondo y los retiros a bóveda salen de los movimientos confirmados del turno." />
+      <EncabezadoPagina titulo="Arqueo de turno" info="Cuenta el efectivo por denominación. El fondo y los retiros a bóveda salen de los movimientos confirmados del turno." />
       <Aviso ok={ok} error={error} />
       {!!pendientes && (
         <p className="aviso aviso-error">

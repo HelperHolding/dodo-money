@@ -21,7 +21,7 @@ export default async function NuevaOrden({ searchParams }: { searchParams: Promi
   const proveedorInicial = (proveedores ?? []).some(p => p.id === proveedor) ? proveedor : "";
   return (
     <>
-      <EncabezadoPagina titulo="Nueva cotización" descripcion="Después agregas los artículos. Al confirmarla se vuelve orden de compra." />
+      <EncabezadoPagina titulo="Nueva cotización" info="Después agregas los artículos. Al confirmarla se vuelve orden de compra." />
       <Aviso error={error} />
       <form action={crearOrden} className="seccion formulario"><CampoRazonSocial razones={razones}/>
         <div className="rejilla">

@@ -119,7 +119,7 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <EncabezadoPagina titulo={`Cierre del día ${fecha}`} descripcion="Las ventas se copian del reporte de Dodo IS. La bóveda incluye los movimientos confirmados desde el último cierre, aunque haya días sin corte." />
+      <EncabezadoPagina titulo={`Cierre del día ${fecha}`} info="Las ventas se copian del reporte de Dodo IS. La bóveda incluye los movimientos confirmados desde el último cierre, aunque haya días sin corte." />
       <Aviso ok={ok} error={error} />
       {turno && <p className="aviso aviso-error">Hay un turno abierto. Ciérralo con su <Link href="/arqueo">arqueo de cierre</Link> primero.</p>}
       {d.pendientes > 0 && <p className="aviso aviso-error">Hay {d.pendientes} movimientos sin confirmar en <Link href="/movimientos">Movimientos</Link>.</p>}

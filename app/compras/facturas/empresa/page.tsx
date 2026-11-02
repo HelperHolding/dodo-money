@@ -22,7 +22,7 @@ export default async function Empresa({ searchParams }: { searchParams: Promise<
   );
   return (
     <>
-      <EncabezadoPagina titulo="Datos de la empresa" descripcion="Configuración de la empresa principal y días de pago recomendados. Cada documento usa los datos de su propia razón social." />
+      <EncabezadoPagina titulo="Datos de la empresa" info="Configuración de la empresa principal y días de pago recomendados. Cada documento usa los datos de su propia razón social." />
       <p><Link className="boton boton-secundario" href="/compras/razones-sociales">Ver y agregar razones sociales</Link></p><Aviso error={error} />
       {edita ? (
         <form action={guardarEmpresa} className="seccion formulario">

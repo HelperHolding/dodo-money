@@ -29,7 +29,7 @@ export default async function PaginaDodoIS({ searchParams }: { searchParams: Pro
   const unidades = conexion?.unidades ?? [];
   return (
     <>
-      <EncabezadoPagina titulo="Dodo IS" descripcion="Las ventas llegan solas cada 15 minutos de 10:00 a 0:00 y el día anterior se cierra a las 3 a.m. Los días importados del Excel no se tocan." />
+      <EncabezadoPagina titulo="Dodo IS" info="Las ventas llegan solas cada 15 minutos de 10:00 a 0:00 y el día anterior se cierra a las 3 a.m. Los días importados del Excel no se tocan." />
       <Aviso ok={ok} error={error} />
 
       <section className="seccion">
