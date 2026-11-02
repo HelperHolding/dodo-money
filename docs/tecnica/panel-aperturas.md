@@ -17,6 +17,8 @@ Equipo y compras agrupa por `categoria` (pestañas del plano, `CATEGORIAS` en `l
 
 El Checklist es la vista predeterminada (sin `vista`). Con permiso de compras, cada casilla abre `VentanaEstado` (`ChecklistEditable.tsx`); `validarCambioEstado` replica en la ventana las reglas de la función de base y `datosCambioEstado` conserva los demás campos del registro.
 
+El Checklist calcula sus módulos en el navegador (`ChecklistEditable`) a partir de `ItemChecklist`. Recibe cambios por el canal `apertura-<proyecto>` de Realtime (`postgres_changes` de `apertura_items`, filtrado por `proyecto_id`) con el cliente de `lib/supabase/navegador.ts`, que usa la sesión del usuario para respetar RLS.
+
 La página admite `grupo`, `etapa`, `tipo`, `cat` y `ambito`, además de sus filtros anteriores. `vista=alertas` abre los registros que requieren atención. Los indicadores permanecen calculados sobre el proyecto completo al filtrar una lista.
 
 Verificación: pruebas en `lib/aperturas.test.ts` cubren bases de los porcentajes, exclusiones, recepción parcial/excedentes, fechas y alertas únicas. Revisión visual local del componente real con datos de ejemplo en escritorio y celular; sin modificar producción.
