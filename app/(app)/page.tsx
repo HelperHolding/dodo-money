@@ -3,6 +3,7 @@ import Link from "next/link";
 import { IconoInicio } from "@/components/IconoInicio";
 import { Aviso } from "@/components/Aviso";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { ConInfo } from "@/components/ConInfo";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { Icono } from "@/components/Icono";
 import { obtenerContexto, puedeAbrirTurno } from "@/lib/contexto";
@@ -110,7 +111,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         <section className="seccion" aria-labelledby="t-saldos">
           <div className="seccion-cabecera">
             <h2 id="t-saldos">Efectivo disponible</h2>
-            <p className="saldo-nota">Movimientos confirmados. La caja de venta se revisa en el arqueo.</p>
+            <ConInfo titulo="Efectivo disponible">Movimientos confirmados. La caja de venta se revisa en el arqueo.</ConInfo>
           </div>
           <div className="indicadores-marco"><div className="indicadores inicio-saldos">
             <div className="indicador">

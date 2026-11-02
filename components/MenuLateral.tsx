@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BuscadorPaginas } from "@/components/BuscadorPaginas";
 import { Icono, type NombreIcono } from "@/components/Icono";
+import { InterruptorLuz } from "@/components/InterruptorLuz";
 import { enlaceActivo, enlacesDelMenu, grupoAbierto, type Enlace, type Menu } from "@/lib/roles";
 
 /** Icono de cada grupo del menú (por título; un grupo nuevo sin icono se muestra sin él). */
@@ -58,6 +59,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
         </button>
         <img className="lateral-logo" src="/logo-dodo.png" alt="" width={28} height={28} />
         <span className="franja-movil-titulo">{titulo}</span>
+        <InterruptorLuz />
       </div>
       {cajon && <button type="button" className="lateral-velo" aria-label="Cerrar menú" onClick={() => setCajon(false)} />}
       <aside id="menu-lateral" className="lateral" data-abierto={cajon ? "si" : undefined}>
@@ -66,6 +68,7 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
           <button type="button" className="lateral-cerrar" aria-label="Cerrar menú" onClick={() => setCajon(false)}><Icono nombre="cerrar" tamano={24} /></button>
         </div>
         <div className="lateral-buscar"><BuscadorPaginas menu={menu} /></div>
+        <div className="lateral-luz"><InterruptorLuz /></div>
         <nav className="lateral-nav" aria-label="Secciones">
           <Link className="lateral-enlace" href={menu.inicio.href} aria-current={marcar(menu.inicio.href)}>{menu.inicio.texto}</Link>
           {menu.grupos.map((g) => (
