@@ -44,3 +44,22 @@ test('categorías de apertura: avance por instalado o verificado, sin no aplica 
  assert.deepEqual(c.map(x=>x.clave),['iluminacion',null]);
  assert.equal(esCategoria('pisos'),true);assert.equal(esCategoria('toString'),false);assert.equal(esCategoria(''),false);
 });
+import {checklistApertura} from './aperturas.ts';
+test('checklist de apertura: módulos por etapa, equipo por categoría y general promediado',()=>{
+ const c=checklistApertura([
+  item({id:'a1',tipo:'actividad',etapa:'P1',estado:'completado'}),item({id:'a2',tipo:'actividad',etapa:'P2',estado:'en_curso'}),item({id:'a3',tipo:'actividad',etapa:'P3',estado:'no_aplica'}),
+  item({id:'t1',tipo:'tecnico',etapa:'P2',estado:'completado'}),item({id:'t2',tipo:'tecnico',etapa:'P2',estado:'bloqueado'}),
+  item({categoria:'equipo_cocina',estado:'verificado'}),item({categoria:'equipo_cocina',estado:'pedido'}),item({categoria:'equipo_cocina',estado:'por_validar'}),item({estado:'por_cotizar'}),
+  item({categoria:'pisos',estado:'instalado'}),item({categoria:'pisos',estado:'instalado'}),item({tipo:'referencia',estado:'cotizado'}),
+ ]);
+ const [proyecto,compras,obra,apertura]=c.modulos;
+ assert.deepEqual(proyecto.lineas.map(l=>[l.nombre,l.marca,l.listos,l.total]),[['Validaciones técnicas','bloqueado',1,2],['Horno','listo',1,1],['Horno','curso',0,1]]);
+ assert.equal(proyecto.porcentaje,50);
+ assert.deepEqual(compras.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['equipo_cocina','curso',1,2],['sin','pendiente',0,1]]);
+ assert.equal(compras.porcentaje,33);
+ assert.deepEqual(obra.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['pisos','listo',2,2]]);
+ assert.equal(apertura.porcentaje,null);assert.equal(c.general,Math.round((50+33+100)/3));
+ assert.deepEqual(checklistApertura([]).general,null);
+ const v=checklistApertura([item({tipo:'tecnico',etapa:'P7',estado:'por_validar'}),item({tipo:'tecnico',etapa:'P7',estado:'por_validar'})]).modulos[3].lineas[0];
+ assert.deepEqual([v.marca,v.listos,v.total],['pendiente',0,2]);
+});
