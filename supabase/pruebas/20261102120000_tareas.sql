@@ -1,22 +1,23 @@
 -- Ejecutar completo después de 20261102120000_tareas.sql. PRUEBAS OK revierte los datos mediante un ERROR intencional.
+-- Cada corrida consume números e ids de las secuencias (no son transaccionales): deja un hueco inofensivo.
 do $$
-declare a uuid;c uuid;g record;o uuid;f uuid;n bigint;rev integer;ok boolean;k integer;
+declare a uuid;c uuid;g record;o uuid;f uuid;n bigint;ok boolean;k integer;t text;r text;q text;
 begin
   select id into a from public.perfiles where activo and rol::text='admin' order by nombre limit 1;
   select id into c from public.perfiles where activo and rol::text='corporativo' limit 1;
   select p.id,p.sucursal_id into g from public.perfiles p where p.activo and p.rol::text='gerente' and p.sucursal_id is not null
    and exists(select 1 from public.perfiles x where x.activo and x.rol::text='operacion' and x.sucursal_id=p.sucursal_id) limit 1;
   select id into o from public.perfiles where activo and rol::text='operacion' and sucursal_id=g.sucursal_id limit 1;
-  select id into f from public.facturas where estado::text<>'cancelada' and sucursal_id=g.sucursal_id limit 1;
+  select id into f from public.facturas where estado::text<>'cancelada' and nombre_emisor is not null and sucursal_id=g.sucursal_id limit 1;
   if a is null or c is null or g.id is null or o is null or f is null then
-   raise exception 'FALTAN DATOS: admin, corporativo, gerente con operación en su sucursal y una factura vigente de esa sucursal.';
+   raise exception 'FALTAN DATOS: admin, corporativo, gerente con operación en su sucursal y una factura vigente con emisor de esa sucursal.';
   end if;
 
   -- 1. Admin crea ligada a factura; la tarea toma la sucursal de la factura.
   perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
   n:=public.crear_tarea(jsonb_build_object('titulo','Prueba de tareas','prioridad','alta','vence','','asignado_a',o,'documento_tipo','factura','documento_id',f));
   if (select sucursal_id from public.tareas where numero=n) is distinct from g.sucursal_id then raise exception 'FALLÓ: sucursal de la factura';end if;
-  if (select documento_texto from public.tareas where numero=n) not like 'Factura %' then raise exception 'FALLÓ: texto del documento';end if;
+  if coalesce((select documento_texto from public.tareas where numero=n),'') not like 'Factura %' then raise exception 'FALLÓ: texto del documento';end if;
 
   -- 2. Gerente no puede ligar facturas.
   perform set_config('request.jwt.claims',json_build_object('sub',g.id,'role','authenticated')::text,true);
@@ -53,8 +54,13 @@ begin
   if k<>1 then raise exception 'FALLÓ: % comentarios',k;end if;
 
   -- 7. Nadie escribe directo en las tablas.
-  if has_table_privilege('authenticated','public.tareas','insert') or has_table_privilege('authenticated','public.tarea_historial','insert') then
-   raise exception 'FALLÓ: authenticated puede escribir directo';end if;
+  foreach t in array array['public.tareas','public.tarea_comentarios','public.tarea_historial'] loop
+   foreach r in array array['authenticated','anon'] loop
+    foreach q in array array['insert','update','delete'] loop
+     if has_table_privilege(r,t,q) then raise exception 'FALLÓ: % puede % directo en %',r,q,t;end if;
+    end loop;
+   end loop;
+  end loop;
 
   raise exception 'PRUEBAS OK';
 end $$;
