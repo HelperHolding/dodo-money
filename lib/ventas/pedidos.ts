@@ -31,6 +31,13 @@ export const cuentaComoVenta = (p: Pick<Pedido, "estado" | "tipo">) => p.estado 
 /** IVA como lo calcula Dodo IS: por producto, redondeando cada uno. */
 export const ivaDe = (precios: readonly number[]) => redondear(precios.reduce((s, p) => s + redondear((p * 16) / 116), 0));
 
+/**
+ * IVA de un pedido: por producto como Dodo IS cuando los productos suman lo cobrado. Si no suman (pedidos en $0 o con
+ * descuento al pedido entero, que el Excel no reparte en los renglones), sobre lo cobrado: no hay IVA de lo que no se cobró.
+ */
+export const ivaPedido = (total: number, precios: readonly number[]) =>
+  redondear(precios.reduce((s, p) => s + p, 0)) === redondear(total) ? ivaDe(precios) : redondear((total * 16) / 116);
+
 /** Tipos de servicio y de origen del desglose del reporte de Ventas a los que pertenece un pedido. */
 export function tiposDesglose(p: Pick<Pedido, "tipo" | "origen" | "agregador">): TipoDesglose[] {
   const servicio: TipoDesglose = p.tipo === "entrega" ? "entrega" : p.origen === "app" || p.origen === "sitio" ? "llevadera" : "restaurante";
@@ -85,7 +92,7 @@ export function resumirDias(pedidos: readonly (Pedido & { sucursal: string })[],
       continue;
     }
     const precios = preciosDe.get(p.dodo_id) ?? [];
-    const iva = ivaDe(precios);
+    const iva = ivaPedido(p.total, precios);
     sumar(d.resumen, p, iva);
     d.productos.piezas += precios.length;
     d.productos.suma = redondear(d.productos.suma + precios.reduce((s, x) => s + x, 0));
