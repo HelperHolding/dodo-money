@@ -44,3 +44,38 @@ test('categorías de apertura: avance por instalado o verificado, sin no aplica 
  assert.deepEqual(c.map(x=>x.clave),['iluminacion',null]);
  assert.equal(esCategoria('pisos'),true);assert.equal(esCategoria('toString'),false);assert.equal(esCategoria(''),false);
 });
+import {checklistApertura} from './aperturas.ts';
+test('checklist de apertura: módulos por etapa, equipo por categoría y general promediado',()=>{
+ const c=checklistApertura([
+  item({id:'a1',tipo:'actividad',etapa:'P1',estado:'completado'}),item({id:'a2',tipo:'actividad',etapa:'P2',estado:'en_curso'}),item({id:'a3',tipo:'actividad',etapa:'P3',estado:'no_aplica'}),
+  item({id:'t1',tipo:'tecnico',etapa:'P2',estado:'completado'}),item({id:'t2',tipo:'tecnico',etapa:'P2',estado:'bloqueado'}),
+  item({categoria:'equipo_cocina',estado:'verificado'}),item({categoria:'equipo_cocina',estado:'pedido'}),item({categoria:'equipo_cocina',estado:'por_validar'}),item({estado:'por_cotizar'}),
+  item({categoria:'pisos',estado:'instalado'}),item({categoria:'pisos',estado:'instalado'}),item({tipo:'referencia',estado:'cotizado'}),
+ ]);
+ const [proyecto,compras,obra,apertura]=c.modulos;
+ assert.deepEqual(proyecto.lineas.map(l=>[l.nombre,l.marca,l.listos,l.total]),[['Validaciones técnicas','bloqueado',1,2],['Horno','listo',1,1],['Horno','curso',0,1]]);
+ assert.equal(proyecto.porcentaje,50);
+ assert.deepEqual(compras.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['equipo_cocina','curso',1,2],['sin','pendiente',0,1]]);
+ assert.equal(compras.porcentaje,33);
+ assert.deepEqual(obra.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['pisos','listo',2,2]]);
+ assert.equal(apertura.porcentaje,null);assert.equal(c.general,Math.round((50+33+100)/3));
+ assert.deepEqual(checklistApertura([]).general,null);
+ assert.deepEqual(proyecto.lineas[0].hijos,['t1','t2']);assert.equal(proyecto.lineas[1].hijos,undefined);
+ const v=checklistApertura([item({tipo:'tecnico',etapa:'P7',estado:'por_validar'}),item({tipo:'tecnico',etapa:'P7',estado:'por_validar'})]).modulos[3].lineas[0];
+ assert.deepEqual([v.marca,v.listos,v.total],['pendiente',0,2]);
+});
+import {datosCambioEstado,validarCambioEstado} from './aperturas.ts';
+test('checklist: el cambio rápido pide lo mismo que la base y conserva lo capturado',()=>{
+ const sin={evidencia:'',cantidad:'',recibido:''};
+ assert.equal(validarCambioEstado('actividad',{...sin,estado:'en_curso'}),null);
+ assert.equal(validarCambioEstado('actividad',{...sin,estado:'completado'}),'Registra evidencia o el motivo de no aplicar.');
+ assert.equal(validarCambioEstado('actividad',{...sin,estado:'completado',evidencia:'Contrato firmado'}),null);
+ assert.equal(validarCambioEstado('actividad',{...sin,estado:'pedido'}),'Estado inválido para este registro.');
+ assert.equal(validarCambioEstado('equipo',{...sin,estado:'recibido'}),'Confirma la cantidad necesaria.');
+ assert.equal(validarCambioEstado('equipo',{...sin,estado:'instalado',cantidad:'4',recibido:'3'}),'Confirma la cantidad necesaria y la recepción completa.');
+ assert.equal(validarCambioEstado('equipo',{...sin,estado:'recibido_parcial',cantidad:'4',recibido:'4'}),'La recepción parcial debe ser mayor que cero y menor a la cantidad necesaria.');
+ assert.equal(validarCambioEstado('equipo',{...sin,estado:'verificado',cantidad:'4',recibido:'4',evidencia:'Prueba de arranque'}),null);
+ const i=item({tipo:'actividad',responsable:'Julio',inicio:'2026-11-01',fin:'2026-11-05',cantidad:null,precio:null,orden_id:'o1'});
+ assert.deepEqual(datosCambioEstado(i,{estado:'completado',evidencia:'Listo en obra',notas:'',cantidad:'9'}),{estado:'completado',responsable:'Julio',inicio:'2026-11-01',fin:'2026-11-05',cantidad:'',recibido:'0',precio:'',evidencia:'Listo en obra',notas:'',orden_id:'o1',factura_id:''});
+ assert.equal(datosCambioEstado(item({cantidad:2,recibido:0,precio:150}),{estado:'recibido',evidencia:'',notas:'',cantidad:'2',recibido:'2'}).recibido,'2');
+});

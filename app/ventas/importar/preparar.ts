@@ -3,7 +3,7 @@ import { tamanoPorNombre } from "@/lib/ventas/calculos";
 import { extraerDatosBrutos } from "@/lib/ventas/datosBrutos";
 import { buscarSucursal, type Desglose, type Montos } from "@/lib/ventas/extraer";
 import { leerTodo } from "@/lib/ventas/paginar";
-import { ivaDe, resumirDias } from "@/lib/ventas/pedidos";
+import { ivaPedido, resumirDias } from "@/lib/ventas/pedidos";
 import { leerHojas } from "@/lib/ventas/xlsx";
 
 /** Lo que ve el admin antes de guardar. Sin los pedidos: esos se quedan en el servidor. */
@@ -135,7 +135,7 @@ export async function prepararImportacion(supabase: SupabaseClient, fd: FormData
     pedidos: archivo.pedidos.map(({ sucursal, ...p }) => ({
       ...p,
       sucursal_id: sucursalDe.get(sucursal)!.id,
-      iva: ivaDe(lineasDe.get(p.dodo_id) ?? []),
+      iva: ivaPedido(p.total, lineasDe.get(p.dodo_id) ?? []),
     })),
     productos: archivo.productos.map((x) => ({ ...x, tamano: tamanoPorNombre(x.nombre) })),
   };
