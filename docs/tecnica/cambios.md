@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-02 · Aperturas: Checklist en vivo · 20261102180000 · pendiente de Supabase
+
+El Checklist se actualiza sin recargar. Al guardar, `cambiarEstadoApertura` devuelve el registro y la casilla y los porcentajes cambian al momento. Los cambios de otras personas o pestañas llegan por Supabase Realtime (websocket) filtrados por proyecto y por la política de lectura `ver_apertura_items`; ganan siempre la revisión más nueva (`fusionarItems`). Los indicadores de arriba se refrescan una vez que dejan de llegar cambios. Un aviso muestra si la conexión en vivo está activa. La migración agrega `apertura_items` a la publicación `supabase_realtime` y se puede repetir; prueba SQL en PGlite.
+
 ## 2026-11-02 · Aperturas: Checklist editable y vista predeterminada
 
 El proyecto de apertura abre en el Checklist. Administración cambia el estado desde la casilla de cada concepto en una ventana emergente, sin salir de la página. Si el estado pide evidencia (completado, verificado, no aplica) o cantidades (recibido parcial, recibido, instalado, verificado), la ventana las solicita; al recibir completo propone la cantidad completa. Las categorías y las validaciones técnicas se abren para marcar cada concepto. `cambiarEstadoApertura` conserva responsable, fechas, precio, orden y factura del registro y llama a `actualizar_apertura_item` con su revisión, así que el historial y las reglas de la base no cambian. Sin migración.
