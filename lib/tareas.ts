@@ -14,6 +14,10 @@ export type Prioridad = keyof typeof PRIORIDADES;
 export const TONO_PRIORIDAD: Record<Prioridad, string> = { alta: "peligro", media: "aviso", baja: "info" };
 const PESO_PRIORIDAD: Record<Prioridad, number> = { alta: 0, media: 1, baja: 2 };
 
+/** Al cerrar una tarea que se repite sale sola la siguiente, con el vencimiento corrido a la próxima fecha que no haya pasado. */
+export const REPITE = { semanal: "Cada semana", mensual: "Cada mes" } as const;
+export type Repite = keyof typeof REPITE;
+
 export const DOCUMENTOS = { orden: "Orden de compra", factura: "Factura", ventas_dia: "Día de venta", apertura_proyecto: "Apertura", apertura_item: "Ítem de apertura" } as const;
 export type TipoDocumento = keyof typeof DOCUMENTOS;
 export const MODULOS = { compras: "Compras", facturas: "Facturas", ventas: "Ventas", aperturas: "Aperturas", sin: "Sin documento" } as const;
@@ -28,6 +32,7 @@ export type Tarea = {
   sucursal_id: string | null; sucursal: string | null; origen: "manual" | "automatica";
   documento_tipo: TipoDocumento | null; documento_id: string | null; documento_texto: string | null; documento_ruta: string | null; documento_anulado: boolean;
   motivo_cierre: string | null; revision: number; creada_en: string; actualizada_en: string; cerrada_en: string | null;
+  repite: Repite | null; anterior_numero: number | null; siguiente_numero: number | null;
 };
 export type Quien = { id: string; rol: Rol; sucursal_id: string | null };
 
@@ -107,7 +112,7 @@ export const meTocaCerrar = (t: Tarea, q: Quien) =>
 
 export type DatosTarea = {
   titulo: string; descripcion: string; prioridad: Prioridad; vence: string; asignado_a: string; sucursal_id: string;
-  documento_tipo: TipoDocumento | ""; documento_id: string;
+  documento_tipo: TipoDocumento | ""; documento_id: string; repite: Repite | "";
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fechaValida = (v: string) => {
@@ -118,20 +123,23 @@ const fechaValida = (v: string) => {
 export function leerNuevaTarea(get: (c: string) => string): { datos: DatosTarea } | { error: string } {
   const titulo = get("titulo").trim(), descripcion = get("descripcion").trim(), prioridad = get("prioridad").trim() || "media";
   const vence = get("vence").trim(), asignado_a = get("asignado_a").trim(), sucursal_id = get("sucursal_id").trim();
-  const documento_tipo = get("documento_tipo").trim(), documento_id = get("documento_id").trim();
+  const documento_tipo = get("documento_tipo").trim(), documento_id = get("documento_id").trim(), repite = get("repite").trim();
   if (titulo.length < 3 || titulo.length > 200) return { error: "El título debe tener de 3 a 200 caracteres." };
   if (descripcion.length > 4000) return { error: "La descripción es demasiado larga (máximo 4000 caracteres)." };
   if (!Object.hasOwn(PRIORIDADES, prioridad)) return { error: "Prioridad inválida." };
   if (vence && !fechaValida(vence)) return { error: "La fecha de vencimiento no es válida." };
+  if (repite && !Object.hasOwn(REPITE, repite)) return { error: "Repetición inválida." };
+  if (repite && !vence) return { error: "Para que se repita, ponle fecha de vencimiento." };
   if (!UUID.test(asignado_a)) return { error: "Elige a quién se asigna la tarea." };
   if (sucursal_id && !UUID.test(sucursal_id)) return { error: "Sucursal inválida." };
   if (!documento_tipo !== !documento_id || (documento_tipo && (!Object.hasOwn(DOCUMENTOS, documento_tipo) || !UUID.test(documento_id))))
     return { error: "El documento ligado está incompleto." };
-  return { datos: { titulo, descripcion, prioridad: prioridad as Prioridad, vence, asignado_a, sucursal_id, documento_tipo: documento_tipo as TipoDocumento | "", documento_id } };
+  return { datos: { titulo, descripcion, prioridad: prioridad as Prioridad, vence, asignado_a, sucursal_id, documento_tipo: documento_tipo as TipoDocumento | "", documento_id, repite: repite as Repite | "" } };
 }
 
 /** Una fila de `hilo_tarea`: comentario o cambio. En `asignado_a`, antes/después ya vienen como nombres. */
 export type EntradaHilo = { tipo: "comentario" | "cambio"; autor: string | null; texto: string | null; campo: string | null; antes: string | null; despues: string | null; fecha: string };
+const repiteTexto = (v: string | null) => (v && Object.hasOwn(REPITE, v) ? REPITE[v as Repite].toLowerCase() : "no se repite");
 const nombreDe = (catalogo: Record<string, string>, v: string | null) => (v && catalogo[v]) ?? v ?? "sin fecha";
 export function textoCambio(e: EntradaHilo): string {
   switch (e.campo) {
@@ -143,9 +151,14 @@ export function textoCambio(e: EntradaHilo): string {
     case "titulo": return "cambió el título";
     case "descripcion": return "editó la descripción";
     case "resuelta": return "la cerró: el pendiente ya se resolvió en el documento";
+    case "repite": return `cambió la repetición de ${repiteTexto(e.antes)} a ${repiteTexto(e.despues)}`;
     default: return "actualizó la tarea";
   }
 }
+
+/** Aviso tras mover una tarea; si se repetía y se cerró, dice cuál es la siguiente y cuándo vence. */
+export const avisoMovida = (numero: number, siguiente: { numero: number; vence: string | null } | null) =>
+  `${clave(numero)} actualizada.${siguiente ? ` Siguiente: ${clave(siguiente.numero)}${siguiente.vence ? `, vence ${fechaTexto(siguiente.vence)}` : ""}.` : ""}`;
 
 /** Una fila de `generar_tareas_automaticas`: lo que hizo cada regla en una corrida. */
 export type ResultadoRegla = { regla: string; creadas: number; cerradas: number };

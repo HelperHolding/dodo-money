@@ -6,8 +6,8 @@ import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaMX, fechaTexto, hora } from "@/lib/formato";
 import {
-  ESTADOS, PRIORIDADES, abierta, administra, clave, numeroDeClave, pideComentario, puedeAbrirDocumento, siguientes, textoCambio,
-  type EstadoTarea, type Prioridad, type Quien,
+  ESTADOS, PRIORIDADES, REPITE, abierta, administra, clave, numeroDeClave, pideComentario, puedeAbrirDocumento, siguientes, textoCambio,
+  type EstadoTarea, type Prioridad, type Quien, type Repite,
 } from "@/lib/tareas";
 import { actualizarTarea, comentarTarea, moverTarea } from "../acciones";
 import { leerHilo, leerPersonas, leerTareas } from "../datos";
@@ -41,6 +41,9 @@ export default async function DetalleTarea({ params, searchParams }: { params: P
         <dt>Asignada a</dt><dd>{t.asignado}{!t.asignado_activo && " · asignado inactivo"}</dd>
         <dt>Creada por</dt><dd>{t.creador ?? "Sistema"} · {fechaTexto(fechaMX(t.creada_en))}</dd>
         <dt>Vence</dt><dd>{t.vence ? fechaTexto(t.vence) : "Sin fecha"}</dd>
+        {t.repite && <><dt>Se repite</dt><dd>{REPITE[t.repite]}</dd></>}
+        {t.anterior_numero && <><dt>Viene de</dt><dd><Link href={`/tareas/${t.anterior_numero}`}>{clave(t.anterior_numero)}</Link></dd></>}
+        {t.siguiente_numero && <><dt>Siguiente</dt><dd><Link href={`/tareas/${t.siguiente_numero}`}>{clave(t.siguiente_numero)}</Link></dd></>}
         {t.documento_texto && <><dt>Documento</dt><dd>{abrir ? <Link href={t.documento_ruta!}>{t.documento_texto}</Link> : t.documento_texto}{t.documento_anulado && " · documento anulado"}</dd></>}
         {t.descripcion && <><dt>Descripción</dt><dd className="texto-saltos">{t.descripcion}</dd></>}
         {t.motivo_cierre && <><dt>Motivo de cancelación</dt><dd>{t.motivo_cierre}</dd></>}
@@ -52,6 +55,7 @@ export default async function DetalleTarea({ params, searchParams }: { params: P
           <input type="hidden" name="numero" value={t.numero} /><input type="hidden" name="revision" value={t.revision} /><input type="hidden" name="estado" value={a} />
           {pideComentario(t.estado, a) && <div className="campo"><label htmlFor={`c-${a}`}>{a === "cancelada" ? "Motivo de cancelación" : "Qué falta"}</label>
             <textarea id={`c-${a}`} name="comentario" rows={2} minLength={5} maxLength={4000} required /></div>}
+          {a === "cancelada" && t.repite && <label className="casilla"><input type="checkbox" name="detener" value="1" defaultChecked /> Dejar de repetir (si la desmarcas, solo se salta esta vez y sale la siguiente)</label>}
           <BotonEnviar className={a === "cancelada" ? "boton boton-secundario" : "boton"}>{a === "en_curso" && t.estado === "en_revision" ? "Regresar" : BOTON[a]}</BotonEnviar>
         </form>
       ))}
@@ -65,6 +69,8 @@ export default async function DetalleTarea({ params, searchParams }: { params: P
           <div className="campo"><label htmlFor="asignado_a">Asignada a</label><select id="asignado_a" name="asignado_a" defaultValue={t.asignado_a}>{opciones.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></div>
           <div className="campo"><label htmlFor="prioridad">Prioridad</label><select id="prioridad" name="prioridad" defaultValue={t.prioridad}>{(Object.keys(PRIORIDADES) as Prioridad[]).map((k) => <option key={k} value={k}>{PRIORIDADES[k]}</option>)}</select></div>
           <div className="campo"><label htmlFor="vence">Vence</label><input id="vence" name="vence" type="date" defaultValue={t.vence ?? ""} /></div>
+          {t.origen === "manual" && <div className="campo"><label htmlFor="repite">Se repite</label>
+            <select id="repite" name="repite" defaultValue={t.repite ?? ""}><option value="">No se repite</option>{(Object.keys(REPITE) as Repite[]).map((k) => <option key={k} value={k}>{REPITE[k]}</option>)}</select></div>}
         </div>
         <BotonEnviar>Guardar cambios</BotonEnviar>
       </form>

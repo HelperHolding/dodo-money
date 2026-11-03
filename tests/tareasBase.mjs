@@ -38,3 +38,22 @@ export const U={admin:'00000000-0000-0000-0000-0000000000a1',corp:'00000000-0000
  encargado:'00000000-0000-0000-0000-0000000000d1',ana:'00000000-0000-0000-0000-0000000000f1',luis:'00000000-0000-0000-0000-0000000000f2',baja:'00000000-0000-0000-0000-0000000000f3'};
 export const S={z:'00000000-0000-0000-0000-0000000000e1',t:'00000000-0000-0000-0000-0000000000e2'};
 export const como=(db,id)=>db.query(`select set_config('request.jwt.claims',$1,false)`,[JSON.stringify({sub:id,role:'authenticated'})]);
+
+// Lo que las reglas leen, encima de los stubs de la fase 1. Columnas, enums y checks copian los reales
+// (0006, 0012, 0013, 0014, 0022, 0037, 20261020180000); recibido_renglon_total resume la de 20261020200000 sin conciliación.
+export const EXTRA=`create role service_role;
+ alter table sucursales add column dodois_unit_id text unique;
+ create type tipo_factura as enum('ingreso','egreso');
+ alter table facturas add column tipo tipo_factura not null default 'ingreso',add column vence_el date not null default '2026-12-31',
+  add column revisada boolean not null default false,add column revision_nota text,add column revisada_por uuid,add column revisada_en timestamptz,add column creado_en timestamptz not null default now(),
+  add column pago_programado_el date,add check(not revisada or coalesce(trim(revision_nota),'')<>'');
+ alter table ordenes_compra add column entrega_esperada date,add column confirmada_en timestamptz;
+ create table orden_renglones(id uuid primary key,orden_id uuid not null references ordenes_compra(id),cantidad numeric(12,3) not null check(cantidad>0));
+ create table recepciones_app(id uuid primary key default gen_random_uuid(),orden_renglon_id uuid not null references orden_renglones(id),cantidad numeric(12,3) not null check(cantidad>0),
+  anulada_en timestamptz,motivo_anulacion text,check(anulada_en is null or coalesce(trim(motivo_anulacion),'')<>''));
+ create table recepciones_dodo(id uuid primary key default gen_random_uuid(),orden_renglon_id uuid,cantidad numeric(12,3) not null check(cantidad>0));
+ create function recibido_renglon_total(p_renglon uuid) returns numeric language sql stable security definer set search_path=public as $$
+  select coalesce((select sum(cantidad) from recepciones_dodo where orden_renglon_id=p_renglon),0)
+   +coalesce((select sum(cantidad) from recepciones_app where orden_renglon_id=p_renglon and anulada_en is null),0)$$;
+ alter table apertura_items add column tipo text not null default 'actividad' check(tipo in ('actividad','equipo','referencia','tecnico')),add column estado text not null default 'pendiente' check(estado in ('pendiente','por_validar','en_curso','bloqueado','completado','no_aplica','por_cotizar','cotizado','aprobado','pedido','recibido_parcial','recibido','instalado','verificado')),
+  add column inicio date,add column fin date,add check(fin is null or inicio is null or fin>=inicio);`;

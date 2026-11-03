@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   administra, agrupar, clave, filtrar, grupoVence, leerFiltros, leerNuevaTarea, meTocaCerrar, moduloDe, numeroDeClave,
-  ordenPendientes, pideComentario, puedeAbrirDocumento, puedeCrearTareas, puedeLigar, resumenGeneracion, siguientes, textoCambio, vencida, veTablero,
+  avisoMovida, ordenPendientes, pideComentario, puedeAbrirDocumento, puedeCrearTareas, puedeLigar, resumenGeneracion, siguientes, textoCambio, vencida, veTablero,
   type Quien, type Tarea,
 } from "./tareas.ts";
 
@@ -10,7 +10,8 @@ const tarea = (x: Partial<Tarea>): Tarea => ({
   id: "t1", numero: 1, titulo: "Subir remisión", descripcion: null, estado: "por_hacer", prioridad: "media", vence: null,
   asignado_a: "op", asignado: "Ana", asignado_activo: true, creado_por: "jefe", creador: "Julio", sucursal_id: "s1", sucursal: "Zapopan-1",
   origen: "manual", documento_tipo: null, documento_id: null, documento_texto: null, documento_ruta: null, documento_anulado: false,
-  motivo_cierre: null, revision: 1, creada_en: "2026-11-02T10:00:00Z", actualizada_en: "2026-11-02T10:00:00Z", cerrada_en: null, ...x,
+  motivo_cierre: null, revision: 1, creada_en: "2026-11-02T10:00:00Z", actualizada_en: "2026-11-02T10:00:00Z", cerrada_en: null,
+  repite: null, anterior_numero: null, siguiente_numero: null, ...x,
 });
 const q = (id: string, rol: Quien["rol"], sucursal_id: string | null = "s1"): Quien => ({ id, rol, sucursal_id });
 
@@ -110,13 +111,17 @@ test("me toca cerrar: lo que creé y está en revisión; el gerente, lo de su su
 test("leerNuevaTarea: limpia, valida y rechaza con mensaje", () => {
   const campos = (x: Record<string, string>) => (c: string) => x[c] ?? "";
   const ok = leerNuevaTarea(campos({ titulo: "  Subir remisión  ", prioridad: "alta", vence: "2026-11-06", asignado_a: "11111111-1111-1111-1111-111111111111", documento_tipo: "factura", documento_id: "22222222-2222-2222-2222-222222222222" }));
-  assert.deepEqual(ok, { datos: { titulo: "Subir remisión", descripcion: "", prioridad: "alta", vence: "2026-11-06", asignado_a: "11111111-1111-1111-1111-111111111111", sucursal_id: "", documento_tipo: "factura", documento_id: "22222222-2222-2222-2222-222222222222" } });
+  assert.deepEqual(ok, { datos: { titulo: "Subir remisión", descripcion: "", prioridad: "alta", vence: "2026-11-06", asignado_a: "11111111-1111-1111-1111-111111111111", sucursal_id: "", documento_tipo: "factura", documento_id: "22222222-2222-2222-2222-222222222222", repite: "" } });
   assert.deepEqual(leerNuevaTarea(campos({ titulo: " a ", asignado_a: "11111111-1111-1111-1111-111111111111" })), { error: "El título debe tener de 3 a 200 caracteres." });
   assert.deepEqual(leerNuevaTarea(campos({ titulo: "Revisar", asignado_a: "" })), { error: "Elige a quién se asigna la tarea." });
   assert.deepEqual(leerNuevaTarea(campos({ titulo: "Revisar", asignado_a: "11111111-1111-1111-1111-111111111111", vence: "2026-13-40" })), { error: "La fecha de vencimiento no es válida." });
   assert.deepEqual(leerNuevaTarea(campos({ titulo: "Revisar", asignado_a: "11111111-1111-1111-1111-111111111111", prioridad: "urgente" })), { error: "Prioridad inválida." });
   assert.deepEqual(leerNuevaTarea(campos({ titulo: "Revisar", asignado_a: "11111111-1111-1111-1111-111111111111", documento_tipo: "factura" })), { error: "El documento ligado está incompleto." });
   assert.equal("datos" in leerNuevaTarea(campos({ titulo: "Revisar", asignado_a: "11111111-1111-1111-1111-111111111111" })), true);
+  const recoger = leerNuevaTarea(campos({ titulo: "Recoger efectivo", asignado_a: "11111111-1111-1111-1111-111111111111", vence: "2026-11-09", repite: "semanal" }));
+  assert.equal("datos" in recoger && recoger.datos.repite, "semanal");
+  assert.deepEqual(leerNuevaTarea(campos({ titulo: "Recoger efectivo", asignado_a: "11111111-1111-1111-1111-111111111111", repite: "semanal" })), { error: "Para que se repita, ponle fecha de vencimiento." });
+  assert.deepEqual(leerNuevaTarea(campos({ titulo: "Recoger efectivo", asignado_a: "11111111-1111-1111-1111-111111111111", vence: "2026-11-09", repite: "diario" })), { error: "Repetición inválida." });
 });
 
 test("textoCambio: historial en palabras", () => {
@@ -130,6 +135,8 @@ test("textoCambio: historial en palabras", () => {
   assert.equal(textoCambio({ ...e, campo: "titulo", antes: "a", despues: "b" }), "cambió el título");
   assert.equal(textoCambio({ ...e, campo: "descripcion", antes: "a", despues: "b" }), "editó la descripción");
   assert.equal(textoCambio({ ...e, campo: "resuelta", antes: null, despues: "Resuelto automáticamente" }), "la cerró: el pendiente ya se resolvió en el documento");
+  assert.equal(textoCambio({ ...e, campo: "repite", antes: null, despues: "semanal" }), "cambió la repetición de no se repite a cada semana");
+  assert.equal(textoCambio({ ...e, campo: "repite", antes: "mensual", despues: null }), "cambió la repetición de cada mes a no se repite");
 });
 
 test("resumenGeneracion: totales de una corrida de reglas", () => {
@@ -138,4 +145,9 @@ test("resumenGeneracion: totales de una corrida de reglas", () => {
   assert.equal(resumenGeneracion([f("a", 2, 0), f("b", 1, 1)]), "3 tareas creadas y 1 tarea cerrada.");
   assert.equal(resumenGeneracion([f("a", 1, 0)]), "1 tarea creada.");
   assert.equal(resumenGeneracion([f("a", 0, 4)]), "4 tareas cerradas.");
+});
+
+test("avisoMovida: dice cuál es la siguiente de una tarea que se repite", () => {
+  assert.equal(avisoMovida(82, null), "DODO-82 actualizada.");
+  assert.equal(avisoMovida(82, { numero: 131, vence: "2026-11-09" }), "DODO-82 actualizada. Siguiente: DODO-131, vence lun 9 de nov.");
 });

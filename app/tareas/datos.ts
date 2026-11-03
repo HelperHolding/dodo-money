@@ -11,7 +11,8 @@ export function mensajeDe(error: { code?: string; message: string }): string {
 export async function leerTareas(supabase: SupabaseClient, o: { numero?: number; documento?: string } = {}): Promise<Tarea[]> {
   const { data, error } = await supabase.rpc("tareas_visibles", { p_numero: o.numero ?? null, p_documento: o.documento ?? null });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Tarea[]).map((t) => ({ ...t, numero: Number(t.numero) }));
+  const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return ((data ?? []) as Tarea[]).map((t) => ({ ...t, numero: Number(t.numero), anterior_numero: num(t.anterior_numero), siguiente_numero: num(t.siguiente_numero) }));
 }
 
 export async function leerHilo(supabase: SupabaseClient, numero: number): Promise<EntradaHilo[]> {

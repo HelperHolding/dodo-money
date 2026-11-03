@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fechaTexto } from "@/lib/formato";
-import { ESTADOS, PRIORIDADES, TONO_PRIORIDAD, clave, puedeAbrirDocumento, vencida, type Tarea } from "@/lib/tareas";
+import { ESTADOS, PRIORIDADES, REPITE, TONO_PRIORIDAD, clave, puedeAbrirDocumento, vencida, type Tarea } from "@/lib/tareas";
 import type { Rol } from "@/lib/tipos";
 
 /** Tarjeta de una tarea: clave, título, prioridad, vencimiento, persona, sucursal y documento ligado. */
@@ -13,6 +13,7 @@ export function TarjetaTarea({ t, hoy, rol }: { t: Tarea; hoy: string; rol: Rol 
         <span className="insignia" data-tono={TONO_PRIORIDAD[t.prioridad]}>{PRIORIDADES[t.prioridad]}</span>
         <span className="insignia">{ESTADOS[t.estado]}</span>
         {t.origen === "automatica" && <span className="insignia" data-tono="info">Automática</span>}
+        {t.repite && <span className="insignia" data-tono="info">{REPITE[t.repite]}</span>}
       </p>
       <h3><Link href={`/tareas/${t.numero}`}>{t.titulo}</Link></h3>
       <p className="tarea-datos">
