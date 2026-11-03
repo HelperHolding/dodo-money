@@ -175,6 +175,9 @@ a { color: var(--accion-oscuro); }
   display: flex; align-items: center; min-height: 42px; padding: 8px 12px; border-radius: var(--r-sm);
   color: var(--oscuro-texto); text-decoration: none; border-left: 3px solid transparent;
 }
+.lateral-enlace { gap: 0.4rem; }
+.contador-menu { margin-left: auto; min-width: 1.4rem; padding: 0 0.35rem; border-radius: 999px; text-align: center; font-size: 0.75rem; font-weight: 700; background: var(--neutro-fondo); color: var(--neutro-texto); }
+.contador-menu[data-urgente] { background: var(--alerta-fondo); color: var(--alerta-texto); }
 .lateral-enlace:hover { background: var(--oscuro-hover); color: var(--blanco); }
 .lateral-enlace[aria-current="page"] { background: var(--oscuro-activo); color: var(--blanco); font-weight: 700; border-left-color: var(--accion); }
 .lateral-grupo > summary {
@@ -421,6 +424,8 @@ input[type="checkbox"], input[type="radio"] { min-height: auto; width: 22px; hei
   display: inline-flex; align-items: center;
 }
 .accesos a[aria-current="page"] { border-color: var(--accion); background: var(--accion); color: var(--accion-texto); font-weight: 700; }
+.accesos button { font: inherit; font-size: 0.9rem; padding: 6px 12px; border-radius: var(--r-full); border: 1.5px solid var(--linea); background: var(--campo); color: var(--tinta); min-height: 40px; cursor: pointer; display: inline-flex; align-items: center; }
+.accesos button[aria-pressed="true"] { border-color: var(--accion); background: var(--accion); color: var(--accion-texto); font-weight: 700; }
 .zona { gap: 10px; }
 .zona h3 { font-size: 1.1rem; }
 fieldset.zona { border: 1px solid var(--linea); border-radius: var(--r-md); padding: 16px; margin: 0; background: var(--superficie); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -497,7 +502,7 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 
   .accesos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: calc(-1 * clamp(16px, 4vw, 40px)); padding-inline: clamp(16px, 4vw, 40px); padding-block: 2px; }
   .accesos::-webkit-scrollbar { display: none; }
-  .accesos a { min-height: 44px; white-space: nowrap; flex: none; }
+  .accesos a, .accesos button { min-height: 44px; white-space: nowrap; flex: none; }
 
   .pagina { padding-top: 18px; gap: 22px; }
   .seccion { padding: 16px; }
@@ -1974,3 +1979,34 @@ body { background: var(--papel-2); }
 .proveedores-filtros input[type="search"] { width: 100%; }
 .proveedores-filtros .acciones, .compras-listado.barra-filtros .acciones { gap: 8px; }
 .recepciones-conteo { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+
+/* Tareas */
+.tarjeta-tarea { display: grid; gap: 0.35rem; }
+.tarjeta-tarea[data-vencida] { border-left: 4px solid var(--alerta-texto); }
+.tarea-cabecera { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0; }
+.tarea-clave { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tarjeta-tarea h3 { margin: 0; font-size: 1rem; }
+.tarea-datos { display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; margin: 0; color: var(--neutro-texto); font-size: 0.9rem; }
+.tarea-documento { margin: 0; font-size: 0.9rem; }
+
+.acciones-tarea { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+.hilo-tarea { list-style: none; padding: 0; display: grid; gap: 0.6rem; }
+.hilo-tarea li { padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--neutro-fondo); }
+.hilo-tarea li[data-tipo="cambio"] { background: transparent; color: var(--neutro-texto); font-size: 0.9rem; }
+
+/* Tareas: tablero por estado */
+.tablero-tareas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; align-items: start; }
+.tablero-columna { min-width: 0; overflow-wrap: anywhere; }
+@media (min-width: 768px) and (max-width: 1259px) {
+  .tablero-tareas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.tablero-columna { display: grid; gap: 0.5rem; padding: 0.5rem; border-radius: 10px; background: var(--neutro-fondo); min-height: 6rem; }
+.tablero-columna h2 { font-size: 0.95rem; margin: 0.25rem; }
+.tarjeta-tarea[draggable="true"] { cursor: grab; }
+.tarea-mover { font-size: 0.85rem; }
+.solo-celular { display: none; }
+@media (max-width: 767px) {
+  .solo-celular { display: flex; }
+  .tablero-tareas { grid-template-columns: 1fr; }
+  .tablero-columna:not([data-activa]) { display: none; }
+}

@@ -1,5 +1,6 @@
 import { ConInfo } from "@/components/ConInfo";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
+import { TareasDelDocumento } from "@/components/TareasDelDocumento";
 import {PanelProyecto} from '../PanelProyecto';
 import {CortePresupuesto} from '../CortePresupuesto';
 import {Checklist} from '../Checklist';
@@ -22,7 +23,7 @@ export default async function Proyecto({params,searchParams}:{params:Promise<{id
  const items=data??[],hoy=hoyCalendarioMX(),indicadores=indicadoresApertura(items,hoy),vista=['roadmap','actividades','compras','tecnico','activos','alertas'].includes(f.vista??'')?f.vista!:'checklist';
  const tipos=vista==='compras'?['equipo','referencia']:vista==='tecnico'?['tecnico']:['actividad'];
  const visibles=items.filter(i=>(vista==='alertas'?indicadores.alertas.some(a=>a.id===i.id):tipos.includes(i.tipo))&&(!f.tipo||i.tipo===f.tipo)&&(!f.etapa||i.etapa===f.etapa)&&(!f.grupo||(i.estado!=='no_aplica'&&!(f.tipo==='equipo'&&i.estado==='por_validar')&&grupoApertura(i)===f.grupo))&&(!f.cat||(f.cat==='sin'?i.categoria===null:i.categoria===f.cat))&&(f.ambito!=='equipo'||!esObra(i))&&(!f.estado||i.estado===f.estado)&&(!f.q||`${i.nombre} ${i.clave} ${i.responsable??''}`.toLocaleLowerCase().includes(f.q.toLocaleLowerCase())));
- return <><EncabezadoPagina titulo={<>{p.sucursales?.nombre} · Apertura</>} descripcion={<>{p.responsable} · objetivo {fechaTexto(p.objetivo_desde)} a {fechaTexto(p.objetivo_hasta)}</>} /><Aviso ok={f.ok} error={f.error}/>
+ return <><EncabezadoPagina titulo={<>{p.sucursales?.nombre} · Apertura</>} descripcion={<>{p.responsable} · objetivo {fechaTexto(p.objetivo_desde)} a {fechaTexto(p.objetivo_hasta)}</>} /><Aviso ok={f.ok} error={f.error}/><TareasDelDocumento supabase={supabase} tipo="apertura_proyecto" id={id} rol={perfil.rol} hoy={hoy} />
  <CortePresupuesto items={items}/>
  {puedeEditarCompras(perfil.rol)&&<details className="seccion"><summary>Responsable, fechas y presupuesto</summary><form action={guardarProyecto} className="formulario"><input type="hidden" name="proyecto_id" value={id}/><input type="hidden" name="revision" value={p.revision}/><div className="rejilla"><div className="campo"><label htmlFor="responsable_proyecto">Responsable de apertura</label><input id="responsable_proyecto" name="responsable" defaultValue={p.responsable} required maxLength={200}/></div><div className="campo"><label htmlFor="desde">Objetivo desde</label><input id="desde" name="desde" type="date" defaultValue={p.objetivo_desde} required/></div><div className="campo"><label htmlFor="hasta">Objetivo hasta</label><input id="hasta" name="hasta" type="date" defaultValue={p.objetivo_hasta} required/></div><div className="campo"><label htmlFor="presupuesto">Presupuesto estimado total MXN (con IVA)</label><input id="presupuesto" name="presupuesto" type="number" min="0" max="999999999999" step="0.01" defaultValue={p.presupuesto??''}/></div></div><BotonEnviar>Guardar proyecto</BotonEnviar></form></details>}
  <p>Presupuesto: {p.presupuesto===null?'Sin definir':pesos(p.presupuesto)} · fechas objetivo sujetas a confirmación de obra y entregas.</p>
