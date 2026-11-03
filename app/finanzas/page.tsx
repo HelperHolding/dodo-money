@@ -10,17 +10,25 @@ import { TablaComparativo } from "./TablaComparativo";
 import TablaCuentas from "./TablaCuentas";
 import { cuentasPL } from "./cuentasDatos";
 import { TablaPL } from "./TablaPL";
+import { ListaAjustes } from "./ListaAjustes";
 import AdvertenciasPL from "./AdvertenciasPL";
 import { ResumenPL } from "./ResumenPL";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { EstadoVacio } from "@/components/EstadoVacio";
 import { Icono } from "@/components/Icono";
+import { Aviso } from "@/components/Aviso";
+import { puedeEditarFinanzas } from "@/lib/roles";
+import { esAjustable, type AjustePL } from "@/lib/finanzas/ajustes";
+import type { FilaPL } from "@/lib/finanzas/pl";
+import { FormAjuste } from "./FormAjuste";
+import { anularAjustePL } from "./ajustes/acciones";
 
-type Filtros = { periodo?: string; mes?: string; semana?: string; sucursal?: string; vista?: string };
+type Filtros = { periodo?: string; mes?: string; semana?: string; sucursal?: string; vista?: string; ok?: string; error?: string };
 
 export default async function PaginaPL({ searchParams }: { searchParams: Promise<Filtros> }) {
   const q = await searchParams;
-  const { supabase } = await obtenerPerfil();
+  const { supabase, perfil } = await obtenerPerfil();
+  const admin = puedeEditarFinanzas(perfil.rol);
   const hoy = hoyMX();
   const p = elegirPeriodo(q, hoy, INICIO_FECHA);
   const asesores = q.vista === "asesores";
@@ -41,6 +49,24 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
     <Link aria-current={activa ? "page" : undefined} href={href}>{texto}</Link>
   );
 
+  const volverA = `/finanzas?${filtro}`;
+  const conAjuste = new Set(meta?.ajustado?.lista.map((a) => a.renglon) ?? []);
+  const captura = admin && meta?.suc && p.tipo === "mes" && !p.vacio
+    ? (f: FilaPL) => esAjustable(f.clave) && !conAjuste.has(f.clave) && (
+      <FormAjuste sucursal={meta.suc!.id} mes={`${p.clave}-01`} renglon={f.clave} real={f.monto ?? 0} ventaNeta={meta.entrada.ventaNeta} volverA={volverA} />)
+    : undefined;
+  const anular = admin ? (a: AjustePL) => (
+    <details className="pl-ajustar">
+      <summary className="saldo-nota">Anular</summary>
+      <form action={anularAjustePL} className="pl-ajustar-form">
+        <input type="hidden" name="id" value={a.id} />
+        <input type="hidden" name="volver" value={volverA} />
+        <label>Motivo<input name="motivo" required minLength={5} maxLength={500} /></label>
+        <button className="boton boton-secundario boton-compacto" type="submit">Anular ajuste</button>
+      </form>
+    </details>
+  ) : undefined;
+
   return (
     <div className="panel-admin">
       <EncabezadoPagina
@@ -52,10 +78,19 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         acciones={<>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/catalogo">Catálogo contable</Link>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/asignacion">Asignar cuentas</Link>
-          {!asesores && <Link className="boton boton-secundario boton-compacto" href={`/reporte/pl?${filtro}`} target="_blank"><Icono nombre="documento" />{cuentas?"PDF operativo":"PDF"}</Link>}
+          {meta?.ajustado ? (
+            <form action="/reporte/pl" method="get" target="_blank" className="pl-pdf-columnas">
+              {[...new URLSearchParams(filtro)].map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+              <select name="columnas" defaultValue="ambas" aria-label="Columnas del PDF">
+                <option value="ambas">Real y ajustado</option><option value="real">Solo real</option><option value="ajustado">Solo ajustado</option>
+              </select>
+              <button className="boton boton-secundario boton-compacto" type="submit"><Icono nombre="documento" />PDF</button>
+            </form>
+          ) : !asesores && <Link className="boton boton-secundario boton-compacto" href={`/reporte/pl?${filtro}`} target="_blank"><Icono nombre="documento" />{cuentas?"PDF operativo":"PDF"}</Link>}
           <a className="boton boton-secundario boton-compacto" href={`/reporte/pl/excel?${filtro}`} download><Icono nombre="descargar" />Excel</a>
         </>}
       />
+      <Aviso ok={q.ok} error={q.error} />
       <div className="barra-filtros">
         <nav className="segmentos" aria-label="Periodo">
           {pestana(p.tipo === "mes", `/finanzas?${new URLSearchParams({ periodo: "mes", ...suc, ...vista })}`, "Mes")}
@@ -93,7 +128,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         <details className="nota-plegable">
           <summary><Icono nombre="info" />Cómo leer este P&L</summary>
           <p>El desglose Dodo IS / POS y Rappi corresponde a la fuente de importación. Los subtotales por fuente ya están incluidos en los totales. {ases ? "En Formato asesores, los porcentajes son sobre ventas brutas sin IVA (o netas si la bruta no está completa)." : "Los porcentajes son sobre la venta neta total."}</p>
-          <ConInfo titulo="Merma en el P&L" etiqueta="Cómo leer esto">Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los costos desconocidos quedan pendientes.</ConInfo>
+          <ConInfo titulo="Merma en el P&L" etiqueta="Cómo leer esto">Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los costos desconocidos quedan pendientes. En Contra meta, con sucursal y mes elegidos, admin puede ajustar un renglón de gasto con nota; el real no cambia.</ConInfo>
           {p.tipo === "semana" && <ConInfo titulo="Gastos mensuales por semana" etiqueta="Cómo leer esto">Lo que se registra por mes (nómina, renta, servicios, facturas, oficina) se reparte por días; si llega una factura de ese mes, la semana se ajusta.</ConInfo>}
           <p><Link href="/ventas/conciliacion">Revisar diferencias y conciliaciones de Dodo IS →</Link></p>
         </details>
@@ -104,7 +139,8 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         : <>
           <ConInfo titulo="Formato asesores" etiqueta="Cómo leer esto">Estructura de la plantilla de los asesores con cifras reales. Los renglones debajo de EBITDA quedan pendientes hasta tener su fuente.</ConInfo>
           <AdvertenciasPL avisos={[...ases.formato.avisos, ...ases.avisos]} />
-          <TablaAsesores formato={ases.formato} detalleDe={ases.detalleDe} />
+          <TablaAsesores formato={ases.formato} ajustado={ases.formatoAjustado} detalleDe={ases.detalleDe} />
+          {ases.ajustado && <ListaAjustes lista={ases.ajustado.lista} conSucursal={!ases.suc} anular={anular} />}
         </>
       ) : contable ? <>
         <ConInfo titulo="Por cuentas" etiqueta="Cómo leer esto">Cuentas exactas confirmadas del catálogo Helper. Los documentos pendientes y las fuentes calculadas se muestran por separado y permanecen incluidos en los totales. Insumos e inversiones se presentan en memo, fuera del resultado.</ConInfo>
@@ -120,7 +156,8 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         <>
           <ResumenPL filas={meta.filas} />
           <AdvertenciasPL avisos={meta.avisos} />
-          <TablaPL r={meta} columnas={meta.columnas} />
+          <TablaPL r={meta} columnas={meta.columnas} ajustado={meta.ajustado?.filas ?? null} captura={captura} />
+          {meta.ajustado && <ListaAjustes lista={meta.ajustado.lista} conSucursal={!meta.suc} anular={anular} />}
         </>
       )}
     </div>

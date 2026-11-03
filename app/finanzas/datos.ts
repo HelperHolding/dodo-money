@@ -14,6 +14,7 @@ import {
 } from "@/lib/finanzas/pl";
 import type { ColumnaPL } from "@/lib/finanzas/excel";
 import { formatoAsesores, type FormatoAsesores } from "@/lib/finanzas/formatoAsesores";
+import { aplicarAjustes, conDeltas, esAjustable, faltaTabla, sumarDeltas, type AjustePL, type AjusteVigente } from "@/lib/finanzas/ajustes";
 import { prorratear } from "@/lib/finanzas/prorrateo";
 import { costearProductos, costeo, type Categoria, type Costo, type VentaDia, type VentaProducto } from "@/lib/ventas/calculos";
 import { leerTodo } from "@/lib/ventas/paginar";
@@ -35,7 +36,7 @@ const renglonDe = (cuenta: string | null) => (cuenta && cuenta !== "insumos" && 
 const TEXTO_COBRO = { dlocal: "Comisión dLocal (pagos en la app, sin Rappi)", netpay: "Comisión NetPay (terminal, sin Rappi)" } as const;
 const esComisionCobro = (texto: string) => texto === TEXTO_COBRO.dlocal || texto === TEXTO_COBRO.netpay;
 
-export type SucursalPL = { id: string; nombre: string; entrada: EntradaPL; ctx: ContextoMeta; metas: Meta[]; avisos: string[] };
+export type SucursalPL = { id: string; nombre: string; entrada: EntradaPL; ctx: ContextoMeta; metas: Meta[]; avisos: string[]; ajustes: AjusteVigente[] };
 export type DatosPeriodo = {
   rango: Rango; porSucursal: SucursalPL[]; oficina: number;
   /** Avisos de oficina central (van en el consolidado). */
@@ -62,19 +63,25 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   // Sin meses (periodo vacío) se consulta un mes que no existe en lugar de una lista vacía.
   const primerosDeMes = meses.length ? meses.map((m) => `${m.mes}-01`) : ["1900-01-01"];
 
-  const res = await Promise.all([
+  const res0 = await Promise.all([
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     supabase.from("pl_parametros").select("clave, valor, vigente_desde").returns<Parametro[]>(),
     supabase.from("nomina_plantilla").select("sucursal_id, puesto, renglon, personas, sueldo, pct_cargas, bono, vigente_desde").returns<Puesto[]>(),
     supabase.from("nomina_ajustes").select("sucursal_id, renglon, monto, concepto, mes").in("mes", primerosDeMes).returns<AjusteMes[]>(),
     supabase.from("nomina_reales").select("id, sucursal_id, mes, fuente, empleados").is("anulada_en", null).in("mes", primerosDeMes).returns<NominaReal[]>(),
     supabase.from("pl_metas").select("sucursal_id, renglon, tipo, valor").returns<(Meta & { sucursal_id: string })[]>(),
+    supabase.from("pl_ajustes").select("id, sucursal_id, mes, renglon, tipo, valor, nota").is("anulado_en", null).in("mes", primerosDeMes)
+      .returns<{ id: string; sucursal_id: string; mes: string; renglon: string; tipo: string; valor: number | string; nota: string }[]>(),
   ]);
+  // Sin la tabla pl_ajustes (migración pendiente) se calcula sin ajustes; otro error sigue fallando.
+  const res = [...res0.slice(0, 6), faltaTabla(res0[6].error) ? { data: [], error: null } : res0[6]] as unknown as typeof res0;
   const error = primerError(res);
   if (error) throw new Error(`No se pudieron cargar los datos del P&L: ${error}`);
   const sucursales = res[0].data ?? [], params = res[1].data ?? [], puestos = res[2].data ?? [], ajustes = res[3].data ?? [];
   const reales = res[4].data ?? [];
   const metas = res[5].data ?? [];
+  const ajustesPL: AjusteVigente[] = (res[6].data ?? []).flatMap((a) => esAjustable(a.renglon) && (a.tipo === "tope_pct" || a.tipo === "monto")
+    ? [{ id: a.id, sucursalId: a.sucursal_id, mes: a.mes, renglon: a.renglon, tipo: a.tipo, valor: Number(a.valor), nota: a.nota }] : []);
 
   type FacturaPL = Fila & { id: string;
     uuid:string|null;uuid_manual:string|null;rfc_receptor:string;total:number;tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
@@ -274,6 +281,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     return {
       id: s.id, nombre: s.nombre, entrada, ctx: { ventaNeta, ventaRappi, plantilla: nomina.plantilla },
       metas: escalarMetas(metas.filter((m) => m.sucursal_id === s.id), fraccionTotal), avisos,
+      ajustes: ajustesPL.filter((a) => a.sucursalId === s.id),
     };
   });
 
@@ -316,20 +324,36 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   return { rango, porSucursal, oficina, avisosOficina, consolidado: { entrada, ctx }, detalle };
 }
 
-/** P&L de una sucursal (o consolidado si no hay o no existe) en un periodo ya cargado. */
+/** Ajustes de una sucursal en el periodo: los deltas sobre su entrada y la lista con el nombre de la sucursal. */
+function ajustesDe(d: DatosPeriodo, s: SucursalPL) {
+  const r = aplicarAjustes(calcularPL(s.entrada, s.metas, s.ctx), s.entrada, s.ajustes, mesesDelRango(d.rango.desde, d.rango.hasta));
+  return { deltas: r.deltas, lista: r.lista.map((a): AjustePL => ({ ...a, sucursal: s.nombre })) };
+}
+
+/** P&L de una sucursal (o consolidado si no hay o no existe) en un periodo ya cargado; `ajustado` solo si hay ajustes en el periodo. */
 export function vistaPL(d: DatosPeriodo, sucursalId: string | undefined) {
   const suc = d.porSucursal.find((s) => s.id === sucursalId) ?? null;
   if (suc) {
     const filas = calcularPL(suc.entrada, suc.metas, suc.ctx);
-    return { suc, titulo: suc.nombre, entrada: suc.entrada, filas, avisos: [...avisosSinCapturar(filas), ...suc.avisos] };
+    const a = ajustesDe(d, suc);
+    const entradaAj = conDeltas(suc.entrada, a.deltas);
+    return {
+      suc, titulo: suc.nombre, entrada: suc.entrada, filas, avisos: [...avisosSinCapturar(filas), ...suc.avisos],
+      ajustado: a.lista.length ? { entrada: entradaAj, filas: calcularPL(entradaAj, suc.metas, suc.ctx), lista: a.lista } : null,
+    };
   }
   // En el consolidado, los costos fijos sin capturar se avisan por sucursal (ahí es donde falta capturarlos).
   const porSucursal = d.porSucursal.flatMap((s) =>
     [...avisosSinCapturar(calcularPL(s.entrada, s.metas, s.ctx)), ...s.avisos].map((a) => `${s.nombre}: ${a}`));
+  const metas = sumarMetas(d.porSucursal);
+  const ajs = d.porSucursal.map((s) => ajustesDe(d, s));
+  const lista = ajs.flatMap((a) => a.lista);
+  const entradaAj = conDeltas(d.consolidado.entrada, sumarDeltas(ajs.map((a) => a.deltas)));
   return {
     suc: null, titulo: "Consolidado", entrada: d.consolidado.entrada,
-    filas: calcularPL(d.consolidado.entrada, sumarMetas(d.porSucursal), d.consolidado.ctx),
+    filas: calcularPL(d.consolidado.entrada, metas, d.consolidado.ctx),
     avisos: [...d.avisosOficina, ...porSucursal],
+    ajustado: lista.length ? { entrada: entradaAj, filas: calcularPL(entradaAj, metas, d.consolidado.ctx), lista } : null,
   };
 }
 
@@ -346,11 +370,18 @@ export async function plConHistoria(supabase: SupabaseClient, p: Periodo, sucurs
   ]);
   const vista = vistaPL(d, sucursalId);
   const pctDe = (filas: FilaPL[]) => new Map(filas.map((f) => [f.clave, f.pct]));
-  const acum = sumarEntradas(meses.map((m) => vistaPL(m!, sucursalId).entrada));
+  const sinMetas = (e: EntradaPL) => calcularPL(e, [], { ventaNeta: e.ventaNeta, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } });
+  const vPrevio = previo ? vistaPL(previo, sucursalId) : null;
+  const vMeses = meses.map((m) => vistaPL(m!, sucursalId));
+  const acum = sumarEntradas(vMeses.map((v) => v.entrada));
+  const acumAj = sumarEntradas(vMeses.map((v) => v.ajustado?.entrada ?? v.entrada));
   return {
     datos: d, ...vista,
-    anterior: previo ? pctDe(vistaPL(previo, sucursalId).filas) : null,
-    acumulado: pctDe(calcularPL(acum, [], { ventaNeta: acum.ventaNeta, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } })),
+    anterior: vPrevio ? pctDe(vPrevio.filas) : null,
+    acumulado: pctDe(sinMetas(acum)),
+    /** Para el PDF "ajustado": las mismas comparaciones con los ajustes de cada periodo. */
+    anteriorAjustado: vPrevio ? pctDe(vPrevio.ajustado?.filas ?? vPrevio.filas) : null,
+    acumuladoAjustado: pctDe(sinMetas(acumAj)),
     columnas: COLUMNAS[p.tipo],
     detalleDe: (renglon: string) => (vista.suc ? d.detalle.get(`${vista.suc.id}|${renglon}`) ?? [] : []),
     memoDetalle: (cuenta: "insumos" | "inversiones") => (vista.suc ? d.detalle.get(`${vista.suc.id}|memo_${cuenta}`) ?? [] : []),
@@ -361,15 +392,18 @@ export async function plConHistoria(supabase: SupabaseClient, p: Periodo, sucurs
 export async function plAsesores(supabase: SupabaseClient, p: Periodo, sucursalId: string | undefined) {
   const d = await datosPL(supabase, p);
   const vista = vistaPL(d, sucursalId);
-  let formato: FormatoAsesores | null = null, error: string | null = null;
-  try { formato = formatoAsesores(vista.entrada, vista.filas); } catch (e) { console.error(e); error = e instanceof Error ? e.message : String(e); }
+  let formato: FormatoAsesores | null = null, formatoAjustado: FormatoAsesores | null = null, error: string | null = null;
+  try {
+    formato = formatoAsesores(vista.entrada, vista.filas);
+    if (vista.ajustado) formatoAjustado = formatoAsesores(vista.ajustado.entrada, vista.ajustado.filas);
+  } catch (e) { console.error(e); error = e instanceof Error ? e.message : String(e); }
   const de = (clave: string) => (vista.suc ? d.detalle.get(`${vista.suc.id}|${clave}`) ?? [] : []);
   /** "comisiones_cobro" son las comisiones anotadas en "otros"; "otros" aquí ya no las incluye. */
   const detalleDe = (origen: readonly string[]): Detalle => origen.flatMap((clave) =>
     clave === "comisiones_cobro" ? de("otros").filter((x) => esComisionCobro(x.texto))
       : clave === "otros" ? de("otros").filter((x) => !esComisionCobro(x.texto))
       : de(clave));
-  return { datos: d, ...vista, formato, error, detalleDe };
+  return { datos: d, ...vista, formato, formatoAjustado, error, detalleDe };
 }
 
 /** Vista comparativa: cada columna es un periodo (mes o semana) cargado en paralelo; el total es su suma. Sin metas. */

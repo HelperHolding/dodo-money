@@ -9,14 +9,17 @@ export function hojaAsesores(r: {
   secciones: readonly { clave: SeccionAsesores; nombre: string; fondo: string }[];
   /** Avisos de la página (datos del periodo): van después de los del formato. */
   avisos: readonly string[];
+  /** Formato con los ajustes del periodo: columnas Ajustado y su %. */
+  ajustado?: FormatoAsesores | null;
 }): HojaXlsx[] {
+  const aj = r.ajustado ? new Map(r.ajustado.renglones.map((x) => [x.clave, x])) : null;
   const base = r.formato.base === "bruta" ? "% de ventas brutas" : "% de ventas netas";
   const filas: Celda[][] = [
     [`P&L formato asesores · ${r.titulo}`],
     [`${r.periodo} · montos en MXN sin IVA; criterio devengado; ${base}`],
     [`Generado por ${r.generado}`],
     [],
-    ["Renglón", "Monto", base],
+    ["Renglón", "Monto", base, ...(aj ? ["Ajustado", `${base} ajustado`] : [])],
   ];
   const estilos: Record<number, EstiloFila> = {};
   for (const s of r.secciones) {
@@ -24,10 +27,15 @@ export function hojaAsesores(r: {
     filas.push([s.nombre.toUpperCase()]);
     for (const x of r.formato.renglones.filter((y) => y.seccion === s.clave)) {
       if (x.tipo === "total") estilos[filas.length] = BARRA;
-      filas.push([x.pendiente && x.monto !== null ? `${x.nombre} (provisional)` : x.nombre, x.monto === null ? "Pendiente" : { valor: x.monto, formato: "contable" }, x.pct === null ? null : { valor: x.pct, formato: "porcentaje" }]);
+      const y = aj?.get(x.clave);
+      filas.push([
+        x.pendiente && x.monto !== null ? `${x.nombre} (provisional)` : x.nombre,
+        x.monto === null ? "Pendiente" : { valor: x.monto, formato: "contable" }, x.pct === null ? null : { valor: x.pct, formato: "porcentaje" },
+        ...(aj ? [y?.monto == null ? "Pendiente" : { valor: y.monto, formato: "contable" as const }, y?.pct == null ? null : { valor: y.pct, formato: "porcentaje" as const }] : []),
+      ]);
     }
     filas.push([]);
   }
   for (const a of [...r.formato.avisos, ...r.avisos]) filas.push([a]);
-  return [{ nombre: "P&L asesores", filas, negritas: [0, 4], estilos, anchos: [40, 18, 18] }];
+  return [{ nombre: "P&L asesores", filas, negritas: [0, 4], estilos, anchos: aj ? [40, 18, 18, 18, 18] : [40, 18, 18] }];
 }
