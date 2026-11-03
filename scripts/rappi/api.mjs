@@ -103,6 +103,13 @@ export function planearRepaso(items, fecha, cache = {}) {
   return { abrir, cambios, base };
 }
 
+/**
+ * Devuelve la misma promesa, pero si nadie llega a esperarla su rechazo no tumba el proceso. Para las esperas que se
+ * arman antes de navegar (waitForResponse): si la navegación falla, se sale sin await y el timeout de 60 s quedaba suelto
+ * (3/11/2026 23:00: TimeoutError sin atrapar en abrirOrden, Node se cerró y n8n perdió la vuelta).
+ */
+export const sinRechazoSuelto = (promesa) => { promesa.catch(() => {}); return promesa; };
+
 /** Espera a que condicion() sea verdadera, revisando cada paso ms, hasta ms milisegundos. Devuelve si se cumplió. */
 export async function esperarHasta(condicion, ms, paso = 200) {
   const fin = Date.now() + ms;

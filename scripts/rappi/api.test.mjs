@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ordenDesdeApi, estadoDesdeApi, montosApi, fechaListado } from "./api.mjs";
+import { ordenDesdeApi, estadoDesdeApi, montosApi, fechaListado, sinRechazoSuelto } from "./api.mjs";
 
 // Forma real de la API (orden 2482139768 del 20/10/2026), sin datos de cliente ni repartidor.
 const totales = (sub, rest, subRest, rappi, total) => ({ total: { id: "suggested_total", value: total }, details: [{ id: "subtotal", value: sub }, { id: "discounts_partner_store", value: -rest }, { id: "subtotal_rest", value: subRest }, { id: "discounts_rappi", value: -rappi }] });
@@ -86,4 +86,19 @@ test("esperarHasta: espera a que la condición se cumpla y respeta el tope", asy
   // Una condición que se cumple tarde (como el JSON del portal que tarda más de 500 ms) sí se alcanza.
   let listo = false; setTimeout(() => { listo = true; }, 700);
   assert.equal(await esperarHasta(() => listo, 3000, 50), true);
+});
+
+test("sinRechazoSuelto: si nadie la espera no hay rechazo suelto; si se espera, sigue fallando", async () => {
+  const sueltos = [];
+  const anotar = (e) => sueltos.push(e);
+  process.on("unhandledRejection", anotar);
+  try {
+    sinRechazoSuelto(Promise.reject(new Error("Timeout 60000ms"))); // como abrirOrden cuando abrir() devuelve false
+    const esperada = sinRechazoSuelto(new Promise((_, no) => setTimeout(() => no(new Error("otro")), 5)));
+    await assert.rejects(esperada, /otro/);
+    await new Promise((r) => setTimeout(r, 20));
+    assert.deepEqual(sueltos, []);
+  } finally {
+    process.off("unhandledRejection", anotar);
+  }
 });
