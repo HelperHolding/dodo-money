@@ -30,7 +30,16 @@ const BASE=`create role anon;create role authenticated;create schema auth;
   if new.recepcion is not null and exists(select 1 from public.recolecciones_corporativo where id=new.id and contado_corporativo is null) then raise exception 'Recibe esta entrega desde su expediente de recolección, con el conteo real.';end if;
   return new;
  end $$;
- create trigger exigir_conteo_recoleccion before update of recepcion on public.movimientos for each row execute function public.exigir_conteo_recoleccion();`;
+ create trigger exigir_conteo_recoleccion before update of recepcion on public.movimientos for each row execute function public.exigir_conteo_recoleccion();
+ -- 0042: al insertar una salida, proteger_reserva_movimiento consulta disponibilidad_boveda, que exige una sesión con acceso a la sucursal.
+ create function public.mi_sucursal() returns uuid language sql stable security definer set search_path=public as $$select sucursal_id from public.perfiles where id=auth.uid() and activo$$;
+ create function public.ve_todas_las_sucursales() returns boolean language sql stable security definer set search_path=public as $$select coalesce(public.mi_rol()::text in ('admin','corporativo'),false)$$;
+ create function public.proteger_reserva_movimiento() returns trigger language plpgsql security definer set search_path='' as $$
+ begin
+  if not coalesce(public.ve_todas_las_sucursales() or new.sucursal_id=public.mi_sucursal(),false) then raise exception 'Sucursal sin acceso.';end if;
+  return new;
+ end $$;
+ create trigger proteger_reserva_movimiento before insert or update of estado,monto on public.movimientos for each row execute function public.proteger_reserva_movimiento();`;
 
 const nueva=async()=>{const db=new PGlite();await db.exec(BASE);await db.exec(migracion);return db;};
 

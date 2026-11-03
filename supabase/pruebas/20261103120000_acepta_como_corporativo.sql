@@ -11,6 +11,8 @@ begin
  if a is null or b is null or c is null or reg is null then raise exception 'FALTAN DATOS: dos admins y un corporativo activos, y otro usuario.';end if;
  update public.perfiles set acepta_como_corporativo=false where id in (a,b);
 
+ -- Las salidas revisan la bóveda con la sesión activa: se preparan como el admin a (ve todas las sucursales).
+ perform set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true);
  insert into public.sucursales(nombre) values('Prueba acepta como corporativo '||e1) returning id into s;
  insert into public.cajas(sucursal_id,tipo,nombre,saldo_inicial) values(s,'boveda','Bóveda',100000) returning id into bov;
  insert into public.cajas(sucursal_id,tipo,nombre,saldo_inicial) values(s,'corporativo','Corporativo',0) returning id into corp;
