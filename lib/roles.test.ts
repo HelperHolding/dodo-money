@@ -11,7 +11,7 @@ test('corte diario: encargado de sucursal puede cerrar sin ampliar otros permiso
 });
 import {
   accesosRapidos, enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
-  puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
+  puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeRecibirSalida, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
   puedeVerFinanzas, puedeEditarFinanzas, puedeCambiarSucursal, puedeVerVistaGeneral } from "./roles.ts";
 
 test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () => {
@@ -124,14 +124,21 @@ test("enlaceActivo elige la ruta más larga de todo el menú", () => {
   assert.equal(enlaceActivo("/otra", todos), undefined);
 });
 
-test("efectivo a corporativo: admin y corporativo lo ven; solo corporativo recibe", () => {
+test("efectivo a corporativo: admin y corporativo lo ven; recibe corporativo o un admin con la bandera", () => {
   for (const rol of ["admin", "corporativo"] as const) {
     assert.equal(puedeVerEfectivo(rol), true);
     assert.deepEqual(grupo(rol, "Efectivo"), ["/recolecciones", "/efectivo"]);
   }
   for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerEfectivo(rol), false);
-  assert.equal(puedeRecibirEfectivo("corporativo"), true);
-  for (const rol of ["operacion", "encargado", "gerente", "admin"] as const) assert.equal(puedeRecibirEfectivo(rol), false);
+  assert.equal(puedeRecibirEfectivo({ rol: "corporativo" }), true);
+  for (const rol of ["operacion", "encargado", "gerente", "admin"] as const) assert.equal(puedeRecibirEfectivo({ rol }), false);
+  // La bandera solo la aprovecha un admin, que así recibe sin cambiar de puesto.
+  assert.equal(puedeRecibirEfectivo({ rol: "admin", acepta_como_corporativo: true }), true);
+  for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeRecibirEfectivo({ rol, acepta_como_corporativo: true }), false);
+  const ernesto = { id: "e", rol: "admin" as const, acepta_como_corporativo: true };
+  assert.equal(puedeRecibirSalida(ernesto, { registrado_por: "r", confirmado_por: "j" }), true);
+  assert.equal(puedeRecibirSalida(ernesto, { registrado_por: "r", confirmado_por: "e" }), false);
+  assert.equal(puedeRecibirSalida(ernesto, { registrado_por: "e", confirmado_por: "j" }), false);
   assert.equal(grupoAbierto(menuLateral("admin"), "/efectivo"), "Efectivo");
 });
 

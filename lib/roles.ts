@@ -43,8 +43,14 @@ export const puedeEditarFinanzas = (rol: Rol) => rol === "admin";
 export const puedeRecibirCompras = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
 /** Salidas de efectivo a corporativo de todas las sucursales: un admin las recoge y corporativo las recibe. */
 export const puedeVerEfectivo = (rol: Rol) => rol === "admin" || rol === "corporativo";
-/** Aceptar o rechazar el efectivo que llega a corporativo (la única acción que corporativo puede hacer). */
-export const puedeRecibirEfectivo = esCorporativo;
+/** Aceptar o rechazar el efectivo que llega a corporativo (la única acción que corporativo puede hacer). Un admin con la bandera también. */
+export const puedeRecibirEfectivo = (perfil: { rol: Rol; acepta_como_corporativo?: boolean }) =>
+  esCorporativo(perfil.rol) || (perfil.rol === "admin" && perfil.acepta_como_corporativo === true);
+/** Nadie recibe en corporativo lo que registró o recogió; la base de datos lo vuelve a revisar. */
+export const puedeRecibirSalida = (
+  perfil: { id: string; rol: Rol; acepta_como_corporativo?: boolean },
+  salida: { registrado_por: string; confirmado_por: string | null },
+) => puedeRecibirEfectivo(perfil) && salida.registrado_por !== perfil.id && salida.confirmado_por !== perfil.id;
 
 /** Historial de turnos con sus arqueos, movimientos y gastos, y sus reportes para imprimir. Operación no lo ve. */
 export const puedeVerTurnos = (rol: Rol) => puedeAbrirTurno(rol) || esCorporativo(rol);
