@@ -78,7 +78,15 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         acciones={<>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/catalogo">Catálogo contable</Link>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/asignacion">Asignar cuentas</Link>
-          {!asesores && <Link className="boton boton-secundario boton-compacto" href={`/reporte/pl?${filtro}`} target="_blank"><Icono nombre="documento" />{cuentas?"PDF operativo":"PDF"}</Link>}
+          {meta?.ajustado ? (
+            <form action="/reporte/pl" method="get" target="_blank" className="pl-pdf-columnas">
+              {[...new URLSearchParams(filtro)].map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+              <select name="columnas" defaultValue="ambas" aria-label="Columnas del PDF">
+                <option value="ambas">Real y ajustado</option><option value="real">Solo real</option><option value="ajustado">Solo ajustado</option>
+              </select>
+              <button className="boton boton-secundario boton-compacto" type="submit"><Icono nombre="documento" />PDF</button>
+            </form>
+          ) : !asesores && <Link className="boton boton-secundario boton-compacto" href={`/reporte/pl?${filtro}`} target="_blank"><Icono nombre="documento" />{cuentas?"PDF operativo":"PDF"}</Link>}
           <a className="boton boton-secundario boton-compacto" href={`/reporte/pl/excel?${filtro}`} download><Icono nombre="descargar" />Excel</a>
         </>}
       />

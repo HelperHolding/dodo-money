@@ -864,6 +864,17 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .tabla-pl.tabla-pl-impresa .pl-desglose td:first-child { padding-left: 16px; color: var(--tinta); }
 .tabla-pl.tabla-pl-impresa .pl-informativo td { color: var(--tinta); }
 .tabla-pl.tabla-pl-impresa .importe { min-width: 0; width: 100%; gap: 4px; }
+/* PDF con real y ajustado: ocho columnas (sin las dos comparaciones). */
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(1) { width: 26%; }
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(2),
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(4),
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(5),
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(7) { width: 12%; }
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(3),
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(6) { width: 6%; }
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(8) { width: 14%; }
+.reporte-pl .pl-ajustes-impresos { gap: 0; }
+.pl-pdf-columnas { display: inline-flex; gap: 6px; align-items: center; }
 @media print {
   .reporte-pl { padding: 0; }
   .reporte-pl .tabla-contenedor { overflow: visible; }
