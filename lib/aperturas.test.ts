@@ -60,7 +60,11 @@ test('checklist de apertura: módulos por etapa, equipo por categoría y general
  assert.deepEqual(obra.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['pisos','listo',2,2]]);
  assert.equal(apertura.porcentaje,null);assert.equal(c.general,Math.round((50+33+100)/3));
  assert.deepEqual(checklistApertura([]).general,null);
- assert.deepEqual(proyecto.lineas[0].hijos,['t1','t2']);assert.equal(proyecto.lineas[1].hijos,undefined);
+ assert.deepEqual(proyecto.lineas[0].hijos,['t1','t2']);
+ const con=checklistApertura([item({id:'a',tipo:'actividad',etapa:'P1',estado:'completado',categoria:'iluminacion'}),item({id:'b',tipo:'tecnico',etapa:'P2',estado:'en_curso',categoria:'iluminacion'}),item({id:'c',categoria:'iluminacion',estado:'instalado'})]);
+ const luz=con.modulos[2].lineas.find(l=>l.clave==='iluminacion')!;
+ assert.deepEqual([luz.listos,luz.total,luz.hijos],[2,3,['a','b','c']]);assert.equal(con.modulos[0].lineas.length,0);
+ assert.deepEqual(avanceCategorias([item({tipo:'actividad',estado:'completado',categoria:'pisos'}),item({tipo:'actividad',estado:'en_curso',categoria:'pisos'}),item({tipo:'tecnico',estado:'por_validar',categoria:'pisos'})]).map(x=>[x.listos,x.conceptos,x.pedidos]),[[1,3,1]]);assert.equal(proyecto.lineas[1].hijos,undefined);
  const v=checklistApertura([item({tipo:'tecnico',etapa:'P7',estado:'por_validar'}),item({tipo:'tecnico',etapa:'P7',estado:'por_validar'})]).modulos[3].lineas[0];
  assert.deepEqual([v.marca,v.listos,v.total],['pendiente',0,2]);
 });

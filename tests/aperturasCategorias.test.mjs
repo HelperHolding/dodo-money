@@ -10,6 +10,8 @@ const pruebasIniciales=load('supabase/pruebas/0037_aperturas.sql');
 const migracion=load('supabase/migrations/20261102120000_aperturas_categorias.sql');
 const carga=load('supabase/cargas/equipo_categorias_dodo_2.sql');
 const pruebas=load('supabase/pruebas/20261102120000_aperturas_categorias.sql');
+const actividades=load('supabase/migrations/20261103120000_aperturas_categoria_actividades.sql');
+const pruebasActividades=load('supabase/pruebas/20261103120000_aperturas_categoria_actividades.sql');
 
 // Lo mínimo de Supabase, perfiles, sucursales y compras que usa 0037.
 const BASE=`create role anon;create role authenticated;create schema auth;
@@ -46,4 +48,9 @@ test('categorías de apertura: repetir la carga no duplica ni pisa el seguimient
   assert.deepEqual((await db.query(`select clave from apertura_items where categoria='baja_tension' order by clave`)).rows.map(r=>r.clave),['ESP-12-005','PRE26-HQ-086','PRE26-HQ-087','PRE26-HQ-088','PRE26-HQ-089','PRE26-HQ-090']);
   assert.deepEqual((await db.query(`select estado,responsable from apertura_items where clave='ESP-06-001'`)).rows[0],{estado:'pedido',responsable:'Julio'});
  }finally{await db.close();}
+});
+test('categorías de apertura: actividades y validaciones también llevan categoría',async()=>{
+ const db=new PGlite();
+ try{await preparar(db);await db.exec(actividades);await assert.rejects(db.exec(pruebasActividades),e=>{assert.match(e.message,/^PRUEBAS OK/);return true;});}
+ finally{await db.close();}
 });

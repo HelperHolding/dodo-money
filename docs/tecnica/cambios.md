@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-03 · Aperturas: actividades dentro de una categoría · 20261103120000 · pendiente de Supabase
+
+Actividades y validaciones técnicas pueden llevar categoría del plano (por ejemplo, "Instalar luminarias" en Iluminación), al darlas de alta o desde su detalle. La migración quita la restricción `apertura_items_categoria_compra` y el candado de `actualizar_apertura_item` y `agregar_apertura_item`; el resto de las funciones queda igual. En el Checklist, lo que tiene categoría aparece y cuenta dentro del grupo de su categoría, no suelto en su etapa; las tarjetas de Equipo y compras y su lista filtrada por categoría también lo incluyen (listo = actividad completada o equipo instalado o verificado). Prueba SQL en PGlite.
+
 ## 2026-11-02 · Aperturas: Checklist en vivo · 20261102180000 · pendiente de Supabase
 
 El Checklist se actualiza sin recargar. Al guardar, `cambiarEstadoApertura` devuelve el registro y la casilla y los porcentajes cambian al momento. Los cambios de otras personas o pestañas llegan por Supabase Realtime (websocket) filtrados por proyecto y por la política de lectura `ver_apertura_items`; ganan siempre la revisión más nueva (`fusionarItems`). Los indicadores de arriba se refrescan una vez que dejan de llegar cambios. Un aviso muestra si la conexión en vivo está activa. La migración agrega `apertura_items` a la publicación `supabase_realtime` y se puede repetir; prueba SQL en PGlite.
