@@ -19,7 +19,7 @@ export async function obtenerPerfil({ permitirCambioPendiente = false }: { permi
   if (!user) redirect("/login");
 
   const { data: perfil } = await supabase
-    .from("perfiles").select("id, nombre, rol, sucursal_id, activo, debe_cambiar_contrasena").eq("id", user.id).single<Perfil>();
+    .from("perfiles").select("id, nombre, rol, sucursal_id, activo, debe_cambiar_contrasena, acepta_como_corporativo").eq("id", user.id).single<Perfil>();
   if (!perfil) redirect("/login?error=sin-perfil");
   if (!puedeEntrar(perfil)) redirect("/login?error=inactivo");
   if (perfil.debe_cambiar_contrasena && !permitirCambioPendiente) redirect("/cuenta");

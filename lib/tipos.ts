@@ -19,6 +19,8 @@ export interface Perfil {
   activo: boolean;
   /** Contraseña temporal: la app lo manda a /cuenta hasta que la cambie. */
   debe_cambiar_contrasena: boolean;
+  /** Admin que también recibe en corporativo (salidas y recolecciones) sin cambiar de puesto. */
+  acepta_como_corporativo?: boolean;
 }
 
 export interface Sucursal {
