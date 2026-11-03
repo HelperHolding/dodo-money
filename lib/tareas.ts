@@ -142,6 +142,17 @@ export function textoCambio(e: EntradaHilo): string {
     case "vence": return `cambió el vencimiento de ${e.antes ? fechaTexto(e.antes) : "sin fecha"} a ${e.despues ? fechaTexto(e.despues) : "sin fecha"}`;
     case "titulo": return "cambió el título";
     case "descripcion": return "editó la descripción";
+    case "resuelta": return "la cerró: el pendiente ya se resolvió en el documento";
     default: return "actualizó la tarea";
   }
+}
+
+/** Una fila de `generar_tareas_automaticas`: lo que hizo cada regla en una corrida. */
+export type ResultadoRegla = { regla: string; creadas: number; cerradas: number };
+const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+/** «3 tareas creadas y 1 cerrada», o que no hubo cambios. */
+export function resumenGeneracion(filas: ResultadoRegla[]): string {
+  const creadas = filas.reduce((s, f) => s + f.creadas, 0), cerradas = filas.reduce((s, f) => s + f.cerradas, 0);
+  if (!creadas && !cerradas) return "Sin cambios: no hay pendientes nuevos ni tareas por cerrar.";
+  return [creadas && plural(creadas, "tarea creada", "tareas creadas"), cerradas && plural(cerradas, "tarea cerrada", "tareas cerradas")].filter(Boolean).join(" y ") + ".";
 }
