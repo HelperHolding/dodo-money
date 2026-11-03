@@ -7,7 +7,7 @@ import { puedeVerFinanzas } from "@/lib/roles";
 import { comparativoPL, plAsesores, plConHistoria } from "./datos";
 import { cuentasPL } from "./cuentasDatos";
 
-export type FiltrosPL = { periodo?: string; mes?: string; semana?: string; sucursal?: string; vista?: string };
+export type FiltrosPL = { periodo?: string; mes?: string; semana?: string; sucursal?: string; vista?: string; columnas?: string };
 
 /** Lo que llevan el PDF y el Excel del P&L, con el mismo periodo y sucursal que la pantalla; `que` dice qué vistas cargar. */
 export async function reportePL(q: FiltrosPL, que: { meta: boolean; comparativo: boolean; cuentas?: boolean; asesores?: boolean }) {

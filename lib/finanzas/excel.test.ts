@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hojaComparativo, hojaPL } from "./excel.ts";
+import { hojaAjustes, hojaComparativo, hojaPL } from "./excel.ts";
 import { calcularPL, entradaVacia } from "./pl.ts";
 import { PRESENTACION } from "./secciones.ts";
 
@@ -83,4 +83,36 @@ test("exportaciones conservan el estado provisional de merma en comparativo",()=
  assert.ok(h.filas.some(f=>f[0]==="Merma (pendiente/parcial)"));
  const fila=h.filas.find(f=>f[0]==="EBITDA (provisional)")!;
  assert.deepEqual(fila[1],{valor:660,formato:"contable"});
+});
+
+test("hojaPL con ajustado: Ajuste, Ajustado y % ajustado junto al real", () => {
+  const e = { ...entradaVacia(), ventaNeta: 356560.09, gastos: { marketing: 34067.74 } };
+  const filas = calcularPL(e, [], ctx(e.ventaNeta));
+  const ajustado = calcularPL({ ...e, gastos: { marketing: 17828 } }, [], ctx(e.ventaNeta));
+  const [h] = hojaPL({ titulo: "Centro", periodo: "Octubre 2026", generado: "S", filas, entrada: e, anterior: null,
+    acumulado: new Map(), columnas: { anterior: "Mes anterior %", acumulado: "Acumulado del año %" }, ajustado }, PRESENTACION);
+  assert.deepEqual(h.filas[4], ["Renglón", "Real", "% de venta", "Ajuste", "Ajustado", "% ajustado", "Meta", "Meta %", "Diferencia", "Mes anterior %", "Acumulado del año %"]);
+  const m = h.filas.find((f) => f[0] === "Marketing")!;
+  assert.deepEqual(m.slice(1, 6), [{ valor: 34067.74, formato: "contable" }, { valor: 0.0955, formato: "porcentaje" },
+    { valor: -16239.74, formato: "contable" }, { valor: 17828, formato: "contable" }, { valor: 0.05, formato: "porcentaje" }]);
+  assert.equal(h.anchos!.length, 11);
+});
+
+test("hojaPL sin ajustado: igual que siempre", () => {
+  const e = { ...entradaVacia(), ventaNeta: 1000 };
+  const [h] = hojaPL({ titulo: "C", periodo: "P", generado: "S", filas: calcularPL(e, [], ctx(1000)), entrada: e, anterior: null,
+    acumulado: new Map(), columnas: { anterior: "A", acumulado: "B" }, ajustado: null }, PRESENTACION);
+  assert.equal(h.filas[4].length, 8);
+});
+
+test("hojaAjustes: una fila por ajuste con su regla y nota; vacía si no hay", () => {
+  assert.deepEqual(hojaAjustes({ titulo: "C", periodo: "P", generado: "S", lista: [] }), []);
+  const [h] = hojaAjustes({ titulo: "Consolidado", periodo: "Octubre 2026", generado: "S", lista: [{
+    id: "a", sucursalId: "s", sucursal: "Centro", mes: "2026-10-01", renglon: "marketing", tipo: "tope_pct", valor: 0.05, nota: "Inauguración: solo el 5 %",
+    nombre: "Marketing", real: 34067.74, ajuste: -16239.74, ajustado: 17828, regla: "Tope 5 % de la venta neta = $17,828.00", sinEfecto: false,
+  }] });
+  assert.equal(h.nombre, "Ajustes");
+  assert.deepEqual(h.filas[4], ["Sucursal", "Mes", "Renglón", "Regla", "Real", "Ajuste", "Ajustado", "Nota"]);
+  assert.deepEqual(h.filas[5], ["Centro", "2026-10", "Marketing", "Tope 5 % de la venta neta = $17,828.00",
+    { valor: 34067.74, formato: "contable" }, { valor: -16239.74, formato: "contable" }, { valor: 17828, formato: "contable" }, "Inauguración: solo el 5 %"]);
 });
