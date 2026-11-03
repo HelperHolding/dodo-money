@@ -1,3 +1,4 @@
+import { TareasDelDocumento } from "@/components/TareasDelDocumento";
 import {precioUnitario} from '@/lib/formato';
 import {RecepcionDirecta} from "../RecepcionDirecta";
 import { RecepcionesDodo } from "../RecepcionesDodo";
@@ -232,7 +233,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           </details>
       )}
       </div>
-      <Aviso ok={ok} error={error} />
+      <Aviso ok={ok} error={error} /><TareasDelDocumento supabase={supabase} tipo="factura" id={id} rol={perfil.rol} hoy={hoyCalendarioMX()} />
       {f.estado === "cancelada" && <section className="seccion"><h2>Cancelación registrada</h2><p>{f.motivo_cancelacion}</p><p>Este registro ya no cuenta como gasto en el P&amp;L ni como pago pendiente.</p>{cancelacion && <><p>{cancelacion.perfiles?.nombre ?? "Administración"} · {new Date(cancelacion.creado_en).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}</p><p>Importe original: <strong>{pesos(f.total)}</strong></p>{cancelacion.ordenes.length > 0 && <p>Órdenes anteriormente vinculadas: {cancelacion.ordenes.map((orden, i) => <Fragment key={orden}>{i > 0 && " · "}<Link href={`/compras/ordenes/${orden}`}>Ver orden {i + 1}</Link></Fragment>)}</p>}</>}</section>}
 
       <div className="detalle-con-lado compra-ficha-lado"><div className="detalle-principal">
