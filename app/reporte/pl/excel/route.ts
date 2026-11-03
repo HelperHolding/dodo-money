@@ -1,6 +1,6 @@
 import { reportePL, type FiltrosPL } from "@/app/finanzas/reporte-datos";
 import { fechaMX, hora } from "@/lib/formato";
-import { hojaComparativo, hojaPL } from "@/lib/finanzas/excel";
+import { hojaAjustes, hojaComparativo, hojaPL } from "@/lib/finanzas/excel";
 import { hojaAsesores } from "@/lib/finanzas/excelAsesores";
 import { hojasCuentas } from "@/lib/finanzas/excelCuentas";
 import { SECCIONES_ASESORES } from "@/lib/finanzas/formatoAsesores";
@@ -22,13 +22,17 @@ export async function GET(request: Request) {
   if (ases && !ases.formato)
     return new Response(`No se generó el Excel: ${ases.error}`, { status: 409, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
   const archivo = escribirXlsx(ases?.formato
-    ? hojaAsesores({ titulo: r.titulo, periodo, generado, formato: ases.formato, secciones: SECCIONES_ASESORES, avisos: ases.avisos })
+    ? [
+      ...hojaAsesores({ titulo: r.titulo, periodo, generado, formato: ases.formato, ajustado: ases.formatoAjustado, secciones: SECCIONES_ASESORES, avisos: ases.avisos }),
+      ...hojaAjustes({ titulo: r.titulo, periodo, generado, lista: ases.ajustado?.lista ?? [] }),
+    ]
     : [
       ...hojasCuentas({ ...r.cuentas!, generado }),
       ...hojaPL({
         titulo: r.titulo, periodo, generado, filas: r.meta!.filas, entrada: r.meta!.entrada,
-        anterior: r.meta!.anterior, acumulado: r.meta!.acumulado, columnas: r.meta!.columnas,
+        anterior: r.meta!.anterior, acumulado: r.meta!.acumulado, columnas: r.meta!.columnas, ajustado: r.meta!.ajustado?.filas ?? null,
       }, PRESENTACION),
+      ...hojaAjustes({ titulo: r.titulo, periodo, generado, lista: r.meta!.ajustado?.lista ?? [] }),
       ...hojaComparativo({ titulo: r.titulo, periodo: r.comp!.periodoTitulo, generado, columnas: r.comp!.columnas, total: r.comp!.total }, PRESENTACION),
     ]);
   const nombre = `P&L ${asesores ? "asesores " : ""}${r.titulo.replace(/[\\/:*?"<>|]/g, " ")} ${p.clave}.xlsx`;
