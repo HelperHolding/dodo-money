@@ -96,3 +96,11 @@ export function rutaVolver(valor: unknown): string {
   const v = typeof valor === "string" ? valor : "";
   return /^\/finanzas\?[^\\]*$/.test(v) && !v.includes("..") && !v.includes("//") ? v : "/finanzas";
 }
+
+/** La tabla pl_ajustes aún no existe: cubre la ventana entre el despliegue y la migración. */
+export function faltaTabla(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  if (error.code === "42P01" || error.code === "PGRST205") return true;
+  const m = error.message ?? "";
+  return /pl_ajustes/.test(m) && /does not exist|schema cache/i.test(m);
+}

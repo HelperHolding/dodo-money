@@ -14,7 +14,7 @@ import {
 } from "@/lib/finanzas/pl";
 import type { ColumnaPL } from "@/lib/finanzas/excel";
 import { formatoAsesores, type FormatoAsesores } from "@/lib/finanzas/formatoAsesores";
-import { aplicarAjustes, conDeltas, esAjustable, sumarDeltas, type AjustePL, type AjusteVigente } from "@/lib/finanzas/ajustes";
+import { aplicarAjustes, conDeltas, esAjustable, faltaTabla, sumarDeltas, type AjustePL, type AjusteVigente } from "@/lib/finanzas/ajustes";
 import { prorratear } from "@/lib/finanzas/prorrateo";
 import { costearProductos, costeo, type Categoria, type Costo, type VentaDia, type VentaProducto } from "@/lib/ventas/calculos";
 import { leerTodo } from "@/lib/ventas/paginar";
@@ -63,7 +63,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   // Sin meses (periodo vacío) se consulta un mes que no existe en lugar de una lista vacía.
   const primerosDeMes = meses.length ? meses.map((m) => `${m.mes}-01`) : ["1900-01-01"];
 
-  const res = await Promise.all([
+  const res0 = await Promise.all([
     supabase.from("sucursales").select("id, nombre").order("nombre").returns<{ id: string; nombre: string }[]>(),
     supabase.from("pl_parametros").select("clave, valor, vigente_desde").returns<Parametro[]>(),
     supabase.from("nomina_plantilla").select("sucursal_id, puesto, renglon, personas, sueldo, pct_cargas, bono, vigente_desde").returns<Puesto[]>(),
@@ -73,6 +73,8 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     supabase.from("pl_ajustes").select("id, sucursal_id, mes, renglon, tipo, valor, nota").is("anulado_en", null).in("mes", primerosDeMes)
       .returns<{ id: string; sucursal_id: string; mes: string; renglon: string; tipo: string; valor: number | string; nota: string }[]>(),
   ]);
+  // Sin la tabla pl_ajustes (migración pendiente) se calcula sin ajustes; otro error sigue fallando.
+  const res = [...res0.slice(0, 6), faltaTabla(res0[6].error) ? { data: [], error: null } : res0[6]] as unknown as typeof res0;
   const error = primerError(res);
   if (error) throw new Error(`No se pudieron cargar los datos del P&L: ${error}`);
   const sucursales = res[0].data ?? [], params = res[1].data ?? [], puestos = res[2].data ?? [], ajustes = res[3].data ?? [];

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aplicarAjustes, conDeltas, lineaAjuste, RENGLONES_AJUSTABLES, rutaVolver, sumarDeltas, type AjusteVigente, type Deltas } from "./ajustes.ts";
+import { aplicarAjustes, conDeltas, lineaAjuste, faltaTabla, RENGLONES_AJUSTABLES, rutaVolver, sumarDeltas, type AjusteVigente, type Deltas } from "./ajustes.ts";
 import { calcularPL, entradaVacia, sumarEntradas, type EntradaPL } from "./pl.ts";
 
 const ctx = (v: number) => ({ ventaNeta: v, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } });
@@ -120,4 +120,14 @@ test("rutaVolver: solo regresa a /finanzas", () => {
   assert.equal(rutaVolver("//otro.com/finanzas?x"), "/finanzas");
   assert.equal(rutaVolver("/finanzas/../otro?x"), "/finanzas");
   assert.equal(rutaVolver(null), "/finanzas");
+});
+
+test("faltaTabla reconoce la tabla ausente y nada más", () => {
+  assert.equal(faltaTabla({ code: "42P01", message: "x" }), true);
+  assert.equal(faltaTabla({ code: "PGRST205", message: "x" }), true);
+  assert.equal(faltaTabla({ message: 'relation "public.pl_ajustes" does not exist' }), true);
+  assert.equal(faltaTabla({ message: "Could not find the table 'public.pl_ajustes' in the schema cache" }), true);
+  assert.equal(faltaTabla({ code: "42501", message: "permission denied for table pl_ajustes" }), false);
+  assert.equal(faltaTabla({ message: 'relation "otra" does not exist' }), false);
+  assert.equal(faltaTabla(null), false);
 });

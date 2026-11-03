@@ -128,7 +128,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         <details className="nota-plegable">
           <summary><Icono nombre="info" />Cómo leer este P&L</summary>
           <p>El desglose Dodo IS / POS y Rappi corresponde a la fuente de importación. Los subtotales por fuente ya están incluidos en los totales. {ases ? "En Formato asesores, los porcentajes son sobre ventas brutas sin IVA (o netas si la bruta no está completa)." : "Los porcentajes son sobre la venta neta total."}</p>
-          <ConInfo titulo="Merma en el P&L" etiqueta="Cómo leer esto">Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los costos desconocidos quedan pendientes. Con sucursal y mes, admin puede ajustar un renglón de gasto con nota; el real no cambia.</ConInfo>
+          <ConInfo titulo="Merma en el P&L" etiqueta="Cómo leer esto">Merma: productos terminados e insumos adicionales al BOM, sin IVA. Ambos descuentan del resultado; los costos desconocidos quedan pendientes. En Contra meta, con sucursal y mes elegidos, admin puede ajustar un renglón de gasto con nota; el real no cambia.</ConInfo>
           {p.tipo === "semana" && <ConInfo titulo="Gastos mensuales por semana" etiqueta="Cómo leer esto">Lo que se registra por mes (nómina, renta, servicios, facturas, oficina) se reparte por días; si llega una factura de ese mes, la semana se ajusta.</ConInfo>}
           <p><Link href="/ventas/conciliacion">Revisar diferencias y conciliaciones de Dodo IS →</Link></p>
         </details>
