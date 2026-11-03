@@ -2,9 +2,10 @@
 import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { SOLO_CONSULTA, esCorporativo } from "@/lib/roles";
-import { clave, leerNuevaTarea, numeroDeClave } from "@/lib/tareas";
+import { crearClienteAdmin } from "@/lib/supabase/admin";
+import { clave, leerNuevaTarea, numeroDeClave, resumenGeneracion } from "@/lib/tareas";
 import { volver } from "../compras/servidor";
-import { mensajeDe } from "./datos";
+import { generarAutomaticas, mensajeDe } from "./datos";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
 /** Solo rutas internas de un solo "/": sin barra invertida ni caracteres de control (evita "/\\evil.com"). */
@@ -62,4 +63,28 @@ export async function comentarTarea(fd: FormData) {
   const { error } = await supabase.rpc("comentar_tarea", { p_numero: numero, p_texto: texto(fd, "comentario") });
   if (error) return volver(ruta, "error", mensajeDe(error));
   listo(ruta, "Comentario agregado.");
+}
+
+const REGLAS = "/tareas/reglas";
+
+export async function guardarRegla(fd: FormData) {
+  const supabase = await cliente(REGLAS);
+  const dias = Number(texto(fd, "dias"));
+  const { error } = await supabase.rpc("actualizar_regla_tarea", {
+    p_clave: texto(fd, "clave"), p_activa: texto(fd, "activa") === "1", p_asignado: texto(fd, "asignado_default") || null,
+    p_dias: Number.isInteger(dias) ? dias : null, p_prioridad: texto(fd, "prioridad"),
+  });
+  if (error) return volver(REGLAS, "error", mensajeDe(error));
+  revalidatePath(REGLAS);
+  return volver(REGLAS, "ok", "Regla guardada.");
+}
+
+/** «Generar ahora»: lo mismo que n8n cada mañana, con la llave de servicio para que el historial diga «Sistema». */
+export async function generarAhora() {
+  const { perfil } = await obtenerPerfil();
+  if (perfil.rol !== "admin") return volver(REGLAS, "error", "Solo un admin configura las tareas automáticas.");
+  let filas;
+  try { filas = await generarAutomaticas(crearClienteAdmin()); }
+  catch { return volver(REGLAS, "error", "No se pudieron generar las tareas. Revisa que la migración 20261102200000_tareas_automaticas esté aplicada."); }
+  listo(REGLAS, resumenGeneracion(filas));
 }
