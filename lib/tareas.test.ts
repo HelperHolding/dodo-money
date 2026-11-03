@@ -14,8 +14,13 @@ const tarea = (x: Partial<Tarea>): Tarea => ({
 });
 const q = (id: string, rol: Quien["rol"], sucursal_id: string | null = "s1"): Quien => ({ id, rol, sucursal_id });
 
-test("clave: DODO-n y de regreso", () => {
-  assert.equal(clave(142), "DODO-142");
+test("clave: T-001 y de regreso", () => {
+  assert.equal(clave(1), "T-001");
+  assert.equal(clave(42), "T-042");
+  assert.equal(clave(1234), "T-1234");
+  assert.equal(numeroDeClave("T-001"), 1);
+  assert.equal(numeroDeClave("t-42"), 42);
+  assert.equal(numeroDeClave("T-"), null);
   assert.equal(numeroDeClave("DODO-142"), 142);
   assert.equal(numeroDeClave("dodo-7"), 7);
   assert.equal(numeroDeClave("15"), 15);

@@ -1,8 +1,11 @@
 -- Ejecutar completo después de 20261102200000_tareas_automaticas.sql. PRUEBAS OK revierte todo mediante un ERROR intencional:
 -- las reglas siguen apagadas, no queda ninguna tarea y los documentos que se movieron para probar vuelven como estaban.
 -- Si una regla no tiene datos para probarse (p. ej. ninguna orden confirmada sin recibir), avisa con NOTICE y sigue.
+-- La numeración de tareas (T-001…) vuelve al final a donde estaba: no deja huecos. Córrela cuando nadie esté creando tareas.
 do $$
-declare a uuid;f uuid;i uuid;s uuid;o uuid;hoy date:=public.hoy_mx();n bigint;k integer;
+declare a uuid;f uuid;i uuid;s uuid;o uuid;hoy date:=public.hoy_mx();n bigint;k integer;sec_ultimo bigint;sec_usado boolean;
+begin
+  select last_value,is_called into sec_ultimo,sec_usado from public.tareas_numero;
 begin
   select id into a from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' order by nombre limit 1;
   select id into f from public.facturas where estado::text<>'cancelada' order by creado_en desc limit 1;
@@ -95,4 +98,9 @@ begin
   end if;
 
   raise exception 'PRUEBAS OK';
+exception when others then
+  -- setval no se revierte con el ERROR: devuelve los números que consumió la prueba.
+  perform setval('public.tareas_numero',sec_ultimo,sec_usado);
+  raise;
+end;
 end $$;
