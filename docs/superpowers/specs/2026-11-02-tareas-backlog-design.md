@@ -151,8 +151,22 @@ Casos especiales en pantalla:
 | `orden_sin_recibir` | orden `enviada` o `confirmada` sin recepción tras N días | Gerente de la sucursal | se registra recepción o se cierra/cancela |
 | `apertura_item_atrasado` | `apertura_items.fin < hoy` y estado no terminal | Admin configurado | el ítem llega a estado terminal |
 
-Los nombres exactos de columnas para «sin pago programado», «cargada» y «recepción» se fijan en el plan contra el
-esquema de `main`.
+Columnas fijadas contra el esquema de `main` (migración `20261102200000_tareas_automaticas.sql`):
+
+- «Cargada»: `facturas.creado_en` (fecha en hora de México). «Sin pago programado»: `facturas.pago_programado_el is null`.
+- `factura_por_vencer` también cuenta `estado = 'parcial'` (abonada, aún con saldo) y las ya vencidas; solo `tipo = 'ingreso'`
+  (las notas de crédito no se pagan).
+- «Recepción»: algún renglón con `recibido_renglon_total(renglon) > 0` (Dodo IS más app, sin anuladas). No se usa
+  `hay_recepciones`: revisa permisos del usuario y sin sesión devuelve null.
+- `orden_sin_recibir` solo cuenta órdenes `confirmada`: una `enviada` sigue siendo cotización y no se puede recibir. N se
+  cuenta desde `entrega_esperada` o, si no tiene, desde `confirmada_en`. Si la orden es de oficina o la sucursal no tiene
+  gerente activo, va al responsable de la regla.
+- «Sucursal activa» para ventas: `sucursales.dodois_unit_id is not null` y con ventas antes del día revisado (una sucursal
+  que aún no abre no genera avisos). N = días hacia atrás que revisa, de ayer en adelante (mínimo ayer).
+- Estados terminales de apertura: `completado`, `verificado`, `no_aplica` (los mismos que `lib/aperturas.ts`). También se
+  cierra si la fecha fin se mueve a hoy o después.
+
+Umbrales por defecto (editables en `/tareas/reglas`): sin revisar 3, por vencer 5, día sin ventas 3, orden 3, apertura 0.
 
 ### `tarea_reglas`
 
@@ -164,8 +178,11 @@ esquema de `main`.
 - Función `generar_tareas_automaticas()`, idempotente. En cada corrida (1) crea las tareas faltantes, ya ligadas a
   su documento y con `origen = 'automatica'`, y (2) pasa a `hecho` las que ya se resolvieron, con historial
   «resuelto automáticamente» (`usuario` null).
-- No hay duplicados: índice único parcial por `(regla, documento)` mientras la tarea esté abierta. Para reglas de
-  «día sin ventas» el documento es `(sucursal_id, fecha)` en columnas propias `regla_sucursal_id`, `regla_fecha`.
+- No hay duplicados: índice único parcial por `(regla, documento)` mientras la tarea esté abierta. Para «día sin
+  ventas» el documento es la clave natural que ya usa la fase 1 (`ventas_sucursal_id`, `ventas_fecha`): la tarea se liga
+  al día aunque su fila de `ventas_dia` aún no exista, y el enlace aparece cuando llega.
+- Una tarea automática que alguien pasa a `hecho` sin resolver el pendiente se vuelve a crear en la siguiente corrida;
+  solo cancelarla la silencia.
 - Cancelar una tarea automática la silencia: no se vuelve a crear para ese mismo documento.
 - Se invoca diario desde una ruta `/api/tareas/generar` protegida con secreto, siguiendo el patrón de
   `/api/dodois/sincronizar` (`quienLlama`), y disparada por n8n como el calendario de cumplimiento.

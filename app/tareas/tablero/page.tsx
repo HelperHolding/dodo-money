@@ -29,7 +29,10 @@ export default async function Tablero({ searchParams }: { searchParams: Promise<
   const aqui = `/tareas/tablero?${new URLSearchParams(Object.entries(p).filter(([k, v]) => v && !["ok", "error"].includes(k)) as [string, string][])}`;
   return <>
     <EncabezadoPagina titulo="Tablero de tareas" info="Todo el backlog que puedes ver. Arrastra una tarjeta o usa «Mover a»; regresar y cancelar se hacen desde el detalle."
-      acciones={puedeCrearTareas(perfil.rol) && <Link className="boton" href="/tareas/nueva">Nueva tarea</Link>} />
+      acciones={<>
+        {perfil.rol === "admin" && <Link className="boton boton-secundario" href="/tareas/reglas">Reglas automáticas</Link>}
+        {puedeCrearTareas(perfil.rol) && <Link className="boton" href="/tareas/nueva">Nueva tarea</Link>}
+      </>} />
     <Aviso ok={p.ok} error={p.error} />
     <form className="barra-filtros" aria-label="Filtros">
       {vista === "lista" && <input type="hidden" name="vista" value="lista" />}

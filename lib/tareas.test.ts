@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   administra, agrupar, clave, filtrar, grupoVence, leerFiltros, leerNuevaTarea, meTocaCerrar, moduloDe, numeroDeClave,
-  ordenPendientes, pideComentario, puedeAbrirDocumento, puedeCrearTareas, puedeLigar, siguientes, textoCambio, vencida, veTablero,
+  ordenPendientes, pideComentario, puedeAbrirDocumento, puedeCrearTareas, puedeLigar, resumenGeneracion, siguientes, textoCambio, vencida, veTablero,
   type Quien, type Tarea,
 } from "./tareas.ts";
 
@@ -129,4 +129,13 @@ test("textoCambio: historial en palabras", () => {
   assert.equal(textoCambio({ ...e, campo: "vence", antes: "2026-11-06", despues: null }), "cambió el vencimiento de vie 6 de nov a sin fecha");
   assert.equal(textoCambio({ ...e, campo: "titulo", antes: "a", despues: "b" }), "cambió el título");
   assert.equal(textoCambio({ ...e, campo: "descripcion", antes: "a", despues: "b" }), "editó la descripción");
+  assert.equal(textoCambio({ ...e, campo: "resuelta", antes: null, despues: "Resuelto automáticamente" }), "la cerró: el pendiente ya se resolvió en el documento");
+});
+
+test("resumenGeneracion: totales de una corrida de reglas", () => {
+  const f = (regla: string, creadas: number, cerradas: number) => ({ regla, creadas, cerradas });
+  assert.equal(resumenGeneracion([f("a", 0, 0), f("b", 0, 0)]), "Sin cambios: no hay pendientes nuevos ni tareas por cerrar.");
+  assert.equal(resumenGeneracion([f("a", 2, 0), f("b", 1, 1)]), "3 tareas creadas y 1 tarea cerrada.");
+  assert.equal(resumenGeneracion([f("a", 1, 0)]), "1 tarea creada.");
+  assert.equal(resumenGeneracion([f("a", 0, 4)]), "4 tareas cerradas.");
 });
