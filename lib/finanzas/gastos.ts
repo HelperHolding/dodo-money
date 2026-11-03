@@ -48,3 +48,22 @@ export const enResultado = (partes: readonly { cuenta: string | null; monto: num
 
 /** Faltantes de efectivo como gasto: −Σ diferencias (una diferencia negativa es faltante). */
 export const faltantesDe = (diferencias: readonly number[]) => centavos(-diferencias.reduce((s, d) => s + Number(d), 0));
+
+/**
+ * Cobros con tarjeta o en línea que se registraron como efectivo: por día, lo que la conciliación de Dodo IS sacó del efectivo,
+ * topado al faltante de los arqueos de cierre de ese día (todos sus turnos). Un día sin faltante no inventa un sobrante; la bóveda no entra.
+ */
+export function cobrosReclasificados(
+  arqueos: readonly { fecha: string; diferencia: number }[],
+  dias: readonly { fecha: string; importado: number; conciliado: number }[],
+) {
+  const faltante = new Map<string, number>();
+  for (const a of arqueos) faltante.set(a.fecha, (faltante.get(a.fecha) ?? 0) - Number(a.diferencia));
+  const sacado = new Map<string, number>();
+  for (const d of dias) sacado.set(d.fecha, (sacado.get(d.fecha) ?? 0) + Number(d.importado) - Number(d.conciliado));
+  const porDia = [...sacado]
+    .map(([fecha, s]) => ({ fecha, monto: centavos(Math.min(Math.max(0, s), Math.max(0, faltante.get(fecha) ?? 0))) }))
+    .filter((x) => x.monto > 0)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  return { total: centavos(porDia.reduce((t, x) => t + x.monto, 0)), porDia };
+}
