@@ -19,7 +19,7 @@ import { createServer } from "node:http";
 import { existsSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium } from "playwright-core";
-import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso, esperarHasta } from "./api.mjs";
+import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso, esperarHasta, sinRechazoSuelto } from "./api.mjs";
 import { iniciarSesion } from "./login.mjs";
 
 const PORTAL = "https://restaurantes.rappi.com";
@@ -107,7 +107,8 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
     // Abre el detalle de una orden, la agrega al envío, anota si cambió de estado y actualiza la caché del día.
     const abrirOrden = async (id, dia, cache) => {
       try {
-        const json = pagina.waitForResponse((r) => r.url().includes(`/orders/partner/status/v2/store/${NUM}/orders/${id}`) && r.ok(), { timeout: 60_000 }).then((r) => r.json());
+        // Se arma antes de navegar para no perder la respuesta; si abrir() falla o devuelve false, nadie la espera.
+        const json = sinRechazoSuelto(pagina.waitForResponse((r) => r.url().includes(`/orders/partner/status/v2/store/${NUM}/orders/${id}`) && r.ok(), { timeout: 60_000 }).then((r) => r.json()));
         if (!(await abrir(`${PORTAL}/orders/history/${NUM}/${id}?storeIds=${RAPPI_TIENDA}`, "Total sugerido a facturar"))) return false;
         const r = ordenDesdeApi(await json, RAPPI_TIENDA);
         if (!r) return true; // sigue en curso
@@ -146,6 +147,10 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
     await navegador.close();
   }
 }
+
+// Red de seguridad: un rechazo que nadie atrapó se registra, pero no tumba el servicio (la corrida en curso responde por
+// su propio try/catch; lo demás era una espera suelta).
+process.on("unhandledRejection", (e) => console.error("Rechazo sin atrapar (el servicio sigue):", String(e?.message ?? e).slice(0, 300)));
 
 const responder = (res, status, cuerpo) => { res.writeHead(status, { "content-type": "application/json; charset=utf-8" }); res.end(JSON.stringify(cuerpo)); };
 createServer(async (req, res) => {
