@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "./gastos.ts";
+import { cobrosReclasificados, enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "./gastos.ts";
 
 test("facturasAGastos: subtotal − descuento; notas de crédito restan; canceladas fuera; memos aparte", () => {
   const r = facturasAGastos([
@@ -17,6 +17,40 @@ test("facturasAGastos: subtotal − descuento; notas de crédito restan; cancela
 test("sumarGastos y faltantes", () => {
   assert.deepEqual(sumarGastos({ renta: 100 }, { renta: 50, otros: 1 }), { renta: 150, otros: 1 });
   assert.equal(faltantesDe([-50, 20, -10.5]), 40.5);
+});
+
+test("cobrosReclasificados: el cobro con tarjeta que se registró como efectivo compensa el faltante del arqueo de ese día", () => {
+  // La Calma, 28-oct: Dodo IS importó $10,267 en efectivo; la conciliación deja $3,319 y el arqueo de cierre faltó $6,948.
+  const r = cobrosReclasificados([{ fecha: "2026-10-28", diferencia: -6948 }], [{ fecha: "2026-10-28", importado: 10267, conciliado: 3319 }]);
+  assert.deepEqual(r, { total: 6948, porDia: [{ fecha: "2026-10-28", monto: 6948 }] });
+});
+
+test("cobrosReclasificados: se topa al faltante del día y un día sin faltante no inventa un sobrante", () => {
+  const r = cobrosReclasificados(
+    [{ fecha: "2026-10-28", diferencia: -1000 }, { fecha: "2026-10-29", diferencia: 0 }, { fecha: "2026-10-30", diferencia: 50 }],
+    [
+      { fecha: "2026-10-28", importado: 5000, conciliado: 2000 },
+      { fecha: "2026-10-29", importado: 4000, conciliado: 1000 },
+      { fecha: "2026-10-30", importado: 4000, conciliado: 1000 },
+    ],
+  );
+  assert.deepEqual(r, { total: 1000, porDia: [{ fecha: "2026-10-28", monto: 1000 }] });
+});
+
+test("cobrosReclasificados: el faltante de varios turnos del día se suma antes del tope", () => {
+  const r = cobrosReclasificados(
+    [{ fecha: "2026-11-01", diferencia: -3000 }, { fecha: "2026-11-01", diferencia: -6326.22 }],
+    [{ fecha: "2026-11-01", importado: 15000, conciliado: 4000 }],
+  );
+  assert.deepEqual(r, { total: 9326.22, porDia: [{ fecha: "2026-11-01", monto: 9326.22 }] });
+});
+
+test("cobrosReclasificados: sin conciliación, o si la conciliación sube el efectivo, no compensa", () => {
+  assert.deepEqual(cobrosReclasificados([{ fecha: "2026-10-28", diferencia: -6948 }], []), { total: 0, porDia: [] });
+  assert.deepEqual(
+    cobrosReclasificados([{ fecha: "2026-10-28", diferencia: -6948 }], [{ fecha: "2026-10-28", importado: 3000, conciliado: 3500 }]),
+    { total: 0, porDia: [] },
+  );
 });
 
 test("facturasAGastos con fracción: cada factura por su propia fracción", () => {

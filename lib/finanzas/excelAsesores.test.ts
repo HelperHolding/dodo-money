@@ -53,3 +53,16 @@ test("avisos del formato y de la página al final, uno por fila", () => {
   assert.deepEqual(ultimas.slice(1), ["Renta sin capturar.", "Merma pendiente."]);
   assert.ok(h.filas.slice(-3).every((f) => f.length === 1));
 });
+
+test("hojaAsesores con ajustado: columnas Ajustado y % ajustado por renglón", () => {
+  const base = formatoAsesores(e, calcularPL(e, [], { ventaNeta: e.ventaNeta, ventaRappi: 0, plantilla: { cocina: 0, gerencia: 0 } }));
+  const ajustado = { ...base, renglones: base.renglones.map((r) => ({ ...r, monto: r.monto === null ? null : r.monto - 1 })) };
+  const [h] = hojaAsesores({ titulo: "C", periodo: "P", generado: "S", formato: base, ajustado, secciones: SECCIONES_ASESORES, avisos: [] });
+  assert.equal(h.filas[4].length, 5);
+  assert.equal(h.filas[4][3], "Ajustado");
+  assert.equal(h.filas[4][4], "% de ventas brutas ajustado");
+  const r0 = base.renglones.find((r) => r.monto !== null && !r.pendiente)!;
+  const i = h.filas.findIndex((f) => f[0] === r0.nombre);
+  assert.deepEqual(h.filas[i][3], { valor: r0.monto! - 1, formato: "contable" });
+  assert.equal(h.anchos!.length, 5);
+});

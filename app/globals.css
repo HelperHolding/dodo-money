@@ -833,6 +833,56 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
   .tabla-comparativo .pl-seccion-nombre { position: static; }
 }
 
+/* P&L en PDF (mes o semana): una sola letra y un solo tamaño; la jerarquía la dan las negritas y las barras de sección y de total.
+   Un renglón por línea y anchos fijos para que quepa en una hoja carta. */
+.reporte-pl { gap: 10px; padding-top: 0; font-size: 10px; line-height: 1.3; }
+.reporte-pl * { font-family: inherit; }
+.reporte-pl .tarjeta-encabezado h1 { font-size: 16px; line-height: 1.2; margin: 0 0 2px; }
+.reporte-pl .tarjeta-encabezado p, .reporte-pl .saldo-nota { font-size: 10px; line-height: 1.3; margin: 0; color: var(--tinta); }
+.reporte-pl .tarjeta-encabezado img { width: 28px; height: 28px; }
+.tabla-pl.tabla-pl-impresa { width: 100%; table-layout: fixed; font-size: 10px; }
+.tabla-pl.tabla-pl-impresa th, .tabla-pl.tabla-pl-impresa td {
+  font-size: 10px; line-height: 1.3; padding: 2px 6px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Las cifras usan la misma letra y peso que el texto (en pantalla, `.tabla td.monto` las cambia). */
+.tabla-pl.tabla-pl-impresa td.monto, .tabla-pl.tabla-pl-impresa td.monto * { font-family: var(--texto); font-weight: 400; }
+.tabla-pl.tabla-pl-impresa .pl-total td.monto, .tabla-pl.tabla-pl-impresa .pl-total td.monto * { font-weight: 700; }
+.tabla-pl.tabla-pl-impresa thead th { font-weight: 700; }
+.tabla-pl.tabla-pl-impresa thead th:nth-child(1) { width: 32%; }
+.tabla-pl.tabla-pl-impresa thead th:nth-child(2), .tabla-pl.tabla-pl-impresa thead th:nth-child(4) { width: 14%; }
+.tabla-pl.tabla-pl-impresa thead th:nth-child(3), .tabla-pl.tabla-pl-impresa thead th:nth-child(6), .tabla-pl.tabla-pl-impresa thead th:nth-child(7) { width: 8%; }
+.tabla-pl.tabla-pl-impresa thead th:nth-child(5) { width: 16%; }
+/* Un nombre que no cabe pasa a otra línea en lugar de cortarse. */
+.tabla-pl.tabla-pl-impresa td:first-child { white-space: normal; }
+/* Lo que pasa la meta conserva su fondo, sin icono ni negrita, para que la cifra se lea completa. */
+.tabla-pl.tabla-pl-impresa .celda-alerta { font-weight: 400; }
+.tabla-pl.tabla-pl-impresa .celda-alerta::before { content: none; }
+.tabla-pl.tabla-pl-impresa .pl-seccion th { font-weight: 700; text-transform: uppercase; padding: 3px 6px; }
+.tabla-pl.tabla-pl-impresa tbody + tbody .pl-seccion th { border-top-width: 6px; }
+.tabla-pl.tabla-pl-impresa .pl-total td { font-weight: 700; }
+.tabla-pl.tabla-pl-impresa .pl-desglose td:first-child { padding-left: 16px; color: var(--tinta); }
+.tabla-pl.tabla-pl-impresa .pl-informativo td { color: var(--tinta); }
+.tabla-pl.tabla-pl-impresa .importe { min-width: 0; width: 100%; gap: 4px; }
+/* PDF con real y ajustado: ocho columnas (sin las dos comparaciones); menos relleno lateral para que "100.0 %" y los totales no se corten. */
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas th, .tabla-pl.tabla-pl-impresa.tabla-pl-ambas td { padding-left: 4px; padding-right: 4px; }
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(1) { width: 23%; }
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(2),
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(4),
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(5),
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(7) { width: 12%; }
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(3),
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(6) { width: 7.5%; }
+.tabla-pl.tabla-pl-impresa.tabla-pl-ambas thead th:nth-child(8) { width: 14%; }
+/* La lista de ajustes al pie va sin marco de tarjeta: cabe en la misma hoja que la tabla. */
+.reporte-pl .seccion.pl-ajustes-impresos { gap: 0; padding: 2px 0 0; border: 0; background: none; box-shadow: none; }
+.pl-pdf-columnas { display: inline-flex; gap: 6px; align-items: center; }
+@media print {
+  .reporte-pl { padding: 0; }
+  .reporte-pl .tabla-contenedor { overflow: visible; }
+  .reporte-pl .seccion { break-inside: avoid; }
+}
+
 /* Migas de pan y regresar, arriba del título de cada página (en celular solo el botón de regresar). */
 .migas { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; margin-bottom: 12px; font-size: 0.88rem; }
 .migas-ruta { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; margin: 0; padding: 0; color: var(--tinta-2); }
@@ -1973,3 +2023,9 @@ body { background: var(--papel-2); }
   .tablero-tareas { grid-template-columns: 1fr; }
   .tablero-columna:not([data-activa]) { display: none; }
 }
+
+/* Ajustes del P&L: "Ajustar"/"Anular" plegables bajo el renglón, formulario compacto. */
+.pl-ajustar summary { cursor: pointer; }
+.pl-ajustar-form { display: grid; gap: 6px; margin-top: 6px; max-width: 360px; }
+.pl-ajustar-form label { display: grid; gap: 2px; font-size: 13px; }
+@media print { .pl-ajustar { display: none; } }
