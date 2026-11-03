@@ -30,12 +30,6 @@ declare x public.pl_ajustes; v_nota text := trim(p_nota);
 begin
   if not coalesce(public.edita_finanzas(), false) then raise exception 'Solo administración captura ajustes del P&L.'; end if;
   if p_solicitud is null then raise exception 'Falta el id de la solicitud.'; end if;
-  select * into x from public.pl_ajustes where id = p_solicitud;
-  if found then
-    if x.sucursal_id = p_sucursal and x.mes = p_mes and x.renglon = p_renglon and x.tipo = p_tipo and x.valor = p_valor and x.nota = v_nota
-      then return x.id; end if;
-    raise exception 'La solicitud ya se utilizó con otros datos.';
-  end if;
   if v_nota is null or length(v_nota) not between 10 and 500 then raise exception 'Escribe la nota del ajuste (10 a 500 caracteres).'; end if;
   if p_tipo is null or p_tipo not in ('tope_pct', 'monto') then raise exception 'Tipo de ajuste inválido.'; end if;
   if p_tipo = 'tope_pct' and (p_valor is null or p_valor <= 0 or p_valor > 1) then raise exception 'El tope debe ser mayor a 0 %% y hasta 100 %%.'; end if;
@@ -47,6 +41,12 @@ begin
     then raise exception 'Renglón inválido: solo renglones de gasto.'; end if;
   if not exists (select 1 from public.sucursales where id = p_sucursal) then raise exception 'Sucursal inválida.'; end if;
   perform pg_advisory_xact_lock(hashtextextended(p_sucursal::text || '|' || p_mes::text || '|' || p_renglon, 0));
+  select * into x from public.pl_ajustes where id = p_solicitud;
+  if found then
+    if x.sucursal_id = p_sucursal and x.mes = p_mes and x.renglon = p_renglon and x.tipo = p_tipo and x.valor = p_valor and x.nota = v_nota
+      then return x.id; end if;
+    raise exception 'La solicitud ya se utilizó con otros datos.';
+  end if;
   if exists (select 1 from public.pl_ajustes where sucursal_id = p_sucursal and mes = p_mes and renglon = p_renglon and anulado_en is null)
     then raise exception 'Ya hay un ajuste vigente en ese renglón y mes; anúlalo para capturar otro.'; end if;
   insert into public.pl_ajustes (id, sucursal_id, mes, renglon, tipo, valor, nota, creado_por)
