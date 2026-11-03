@@ -4,7 +4,7 @@ import { aplicarConciliaciones } from "@/lib/ventas/conciliacion";
 import { leerConciliaciones } from "@/app/ventas/conciliacion/datos";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { comisionesCobro, comisionRappi, regalias, type DiaVenta, type Vigente } from "@/lib/finanzas/comisiones";
-import { enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "@/lib/finanzas/gastos";
+import { cobrosReclasificados, enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "@/lib/finanzas/gastos";
 import { conceptosNomina, realDelMes, costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Puesto, type NominaReal } from "@/lib/finanzas/nomina";
 import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
 import { acumuladoDe, anteriorDe, columnasComparativo, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
@@ -19,7 +19,7 @@ import { prorratear } from "@/lib/finanzas/prorrateo";
 import { costearProductos, costeo, type Categoria, type Costo, type VentaDia, type VentaProducto } from "@/lib/ventas/calculos";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { primerError } from "@/lib/corporativo";
-import { fechaMX, hoyMX, pesos } from "@/lib/formato";
+import { fechaMX, fechaTexto, hoyMX, pesos } from "@/lib/formato";
 import { capturasTardias, esMesDeEmision, fraccionCubre, textoCubre } from "@/lib/finanzas/cubre";
 import {cargarRappi} from "@/app/ventas/rappi/datos";
 import {ventasRappi} from "@/lib/ventas/rappi";
@@ -96,9 +96,9 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       .returns<(Fila & { id:string; proveedor:string|null; uuid_cfdi:string|null; fecha: string; concepto: string; monto: number; cuenta_pl: string | null; informativo: boolean })[]>()),
     leerTodo<Fila & { boveda_diferencia: number }>((d, h) => supabase.from("cierres_dia").select("sucursal_id, boveda_diferencia")
       .gte("fecha", desde).lte("fecha", hasta).order("id").range(d, h).returns<(Fila & { boveda_diferencia: number })[]>()),
-    leerTodo<{ diferencia: number; turnos: { sucursal_id: string } }>((d, h) => supabase.from("arqueos").select("diferencia, turnos!inner(sucursal_id, fecha)")
+    leerTodo<{ diferencia: number; turnos: { sucursal_id: string; fecha: string } }>((d, h) => supabase.from("arqueos").select("diferencia, turnos!inner(sucursal_id, fecha)")
       .eq("momento", "cierre").is("anulado_en", null).gte("turnos.fecha", desde).lte("turnos.fecha", hasta).order("id").range(d, h)
-      .returns<{ diferencia: number; turnos: { sucursal_id: string } }[]>()),
+      .returns<{ diferencia: number; turnos: { sucursal_id: string; fecha: string } }[]>()),
     leerTodo<VentaDia & { id: string; importacion_id: string }>((d, h) => supabase.from("ventas_dia").select("id, importacion_id, sucursal_id, fecha, pedidos, total, efectivo, tarjeta, en_linea, iva, venta_m2")
       .gte("fecha", desde).lte("fecha", hasta).order("sucursal_id").order("fecha").range(d, h).returns<(VentaDia & { id: string; importacion_id: string })[]>()),
     leerTodo<{ ventas_dia_id: string; total: number; tarjeta: number; en_linea: number }>((d, h) => supabase.from("ventas_dia_desglose")
@@ -238,11 +238,22 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     anotar(s.id, "otros", TEXTO_COBRO.dlocal, cobro.dlocal);
     anotar(s.id, "otros", TEXTO_COBRO.netpay, cobro.netpay);
     // Neto: un sobrante compensa un faltante del mismo periodo.
-    const faltantes = faltantesDe([
-      ...arqueos.filter((a) => a.turnos.sucursal_id === s.id).map((a) => Number(a.diferencia)),
+    const arqueosSuc = arqueos.filter((a) => a.turnos.sucursal_id === s.id);
+    const brutos = faltantesDe([
+      ...arqueosSuc.map((a) => Number(a.diferencia)),
       ...de(cierres, s.id).map((x) => Number(x.boveda_diferencia ?? 0)),
     ]);
-    anotar(s.id, "otros", "Faltantes de efectivo, neto (arqueos de cierre y bóveda)", faltantes);
+    anotar(s.id, "otros", "Faltantes de efectivo, neto (arqueos de cierre y bóveda)", brutos);
+    // Lo que la conciliación de Dodo IS pasó de efectivo a tarjeta o en línea no es faltante: se resta, topado al faltante de cada día.
+    const importados = new Map(dias.map((d) => [d.id, Number(d.efectivo)]));
+    const reclasificados = cobrosReclasificados(
+      arqueosSuc.map((a) => ({ fecha: a.turnos.fecha, diferencia: Number(a.diferencia) })),
+      diasSuc.map((d) => ({ fecha: d.fecha, importado: importados.get(d.id) ?? Number(d.efectivo), conciliado: Number(d.efectivo) })),
+    );
+    anotar(s.id, "otros", "Cobros con tarjeta registrados como efectivo (conciliación Dodo IS)", -reclasificados.total, {
+      href: "/ventas/conciliacion", nota: reclasificados.porDia.map((x) => `${fechaTexto(x.fecha)}: ${pesos(x.monto)}`).join(" · "),
+    });
+    const faltantes = centavos(brutos - reclasificados.total);
     const presentes=new Set(datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.estado==='Finalizado').map(o=>o.rappi_id));
     const sinDetalleFin=fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta&&m.tipo==='ORDEN'&&!['canceled','canceled_with_charge'].includes(m.estado)&&!presentes.has(m.orden)).length;
     const historicoSinFin=rappi.dias.some(d=>d.sucursal_id===s.id&&!fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta));
