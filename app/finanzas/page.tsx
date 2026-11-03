@@ -10,6 +10,7 @@ import { TablaComparativo } from "./TablaComparativo";
 import TablaCuentas from "./TablaCuentas";
 import { cuentasPL } from "./cuentasDatos";
 import { TablaPL } from "./TablaPL";
+import { ListaAjustes } from "./ListaAjustes";
 import AdvertenciasPL from "./AdvertenciasPL";
 import { ResumenPL } from "./ResumenPL";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
@@ -104,7 +105,8 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         : <>
           <ConInfo titulo="Formato asesores" etiqueta="Cómo leer esto">Estructura de la plantilla de los asesores con cifras reales. Los renglones debajo de EBITDA quedan pendientes hasta tener su fuente.</ConInfo>
           <AdvertenciasPL avisos={[...ases.formato.avisos, ...ases.avisos]} />
-          <TablaAsesores formato={ases.formato} detalleDe={ases.detalleDe} />
+          <TablaAsesores formato={ases.formato} ajustado={ases.formatoAjustado} detalleDe={ases.detalleDe} />
+          {ases.ajustado && <ListaAjustes lista={ases.ajustado.lista} conSucursal={!ases.suc} />}
         </>
       ) : contable ? <>
         <ConInfo titulo="Por cuentas" etiqueta="Cómo leer esto">Cuentas exactas confirmadas del catálogo Helper. Los documentos pendientes y las fuentes calculadas se muestran por separado y permanecen incluidos en los totales. Insumos e inversiones se presentan en memo, fuera del resultado.</ConInfo>
@@ -120,7 +122,8 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
         <>
           <ResumenPL filas={meta.filas} />
           <AdvertenciasPL avisos={meta.avisos} />
-          <TablaPL r={meta} columnas={meta.columnas} />
+          <TablaPL r={meta} columnas={meta.columnas} ajustado={meta.ajustado?.filas ?? null} />
+          {meta.ajustado && <ListaAjustes lista={meta.ajustado.lista} conSucursal={!meta.suc} />}
         </>
       )}
     </div>
