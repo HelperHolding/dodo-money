@@ -4,7 +4,7 @@ import { Aviso } from "@/components/Aviso";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { obtenerPerfil } from "@/lib/contexto";
-import { DOCUMENTOS, PRIORIDADES, puedeCrearTareas, type Prioridad, type TipoDocumento } from "@/lib/tareas";
+import { DOCUMENTOS, PRIORIDADES, REPITE, puedeCrearTareas, type Prioridad, type Repite, type TipoDocumento } from "@/lib/tareas";
 import { crearTarea } from "../acciones";
 import { leerDocumento, leerPersonas, type Persona } from "../datos";
 
@@ -46,6 +46,9 @@ export default async function NuevaTarea({ searchParams }: { searchParams: Promi
         <div className="campo"><label htmlFor="prioridad">Prioridad</label>
           <select id="prioridad" name="prioridad" defaultValue="media">{(Object.keys(PRIORIDADES) as Prioridad[]).map((k) => <option key={k} value={k}>{PRIORIDADES[k]}</option>)}</select></div>
         <div className="campo"><label htmlFor="vence">Vence</label><input id="vence" name="vence" type="date" /></div>
+        <div className="campo"><label htmlFor="repite">Se repite</label>
+          <select id="repite" name="repite" defaultValue="" aria-describedby="repite-ayuda"><option value="">No se repite</option>{(Object.keys(REPITE) as Repite[]).map((k) => <option key={k} value={k}>{REPITE[k]}</option>)}</select>
+          <small id="repite-ayuda">Al terminarla o cancelarla sale sola la siguiente, con la fecha corrida. Necesita fecha de vencimiento.</small></div>
       </div>
       {personas.length === 0 && <p className="aviso aviso-error">No hay personas activas a quienes puedas asignar esta tarea.</p>}
       <BotonEnviar>Crear tarea</BotonEnviar>

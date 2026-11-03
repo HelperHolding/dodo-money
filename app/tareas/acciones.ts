@@ -3,9 +3,9 @@ import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { SOLO_CONSULTA, esCorporativo } from "@/lib/roles";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
-import { clave, leerNuevaTarea, numeroDeClave, resumenGeneracion } from "@/lib/tareas";
+import { avisoMovida, clave, leerNuevaTarea, numeroDeClave, resumenGeneracion } from "@/lib/tareas";
 import { volver } from "../compras/servidor";
-import { generarAutomaticas, mensajeDe } from "./datos";
+import { generarAutomaticas, leerTareas, mensajeDe } from "./datos";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
 /** Solo rutas internas de un solo "/": sin barra invertida ni caracteres de control (evita "/\\evil.com"). */
@@ -33,11 +33,14 @@ export async function moverTarea(fd: FormData) {
   const ruta = rutaSegura(texto(fd, "volver_a"), numero ? `/tareas/${numero}` : "/tareas");
   if (!numero) return volver(ruta, "error", "Tarea no encontrada.");
   const supabase = await cliente(ruta);
-  const { error } = await supabase.rpc("mover_tarea", {
+  const { data, error } = await supabase.rpc("mover_tarea", {
     p_numero: numero, p_revision: Number(texto(fd, "revision")), p_estado: texto(fd, "estado"), p_comentario: texto(fd, "comentario"),
+    p_detener: texto(fd, "detener") === "1",
   });
   if (error) return volver(ruta, "error", mensajeDe(error));
-  listo(ruta, `${clave(numero)} actualizada.`);
+  // Si se repetía, mover_tarea devuelve el número de la siguiente; su fecha es solo para el aviso.
+  const siguiente = data ? (await leerTareas(supabase, { numero: Number(data) }).catch(() => []))[0] ?? { numero: Number(data), vence: null } : null;
+  listo(ruta, avisoMovida(numero, siguiente));
 }
 
 export async function actualizarTarea(fd: FormData) {
@@ -47,9 +50,9 @@ export async function actualizarTarea(fd: FormData) {
   const supabase = await cliente(ruta);
   const r = leerNuevaTarea((c) => texto(fd, c));
   if ("error" in r) return volver(ruta, "error", r.error);
-  const { titulo, descripcion, prioridad, vence, asignado_a } = r.datos;
+  const { titulo, descripcion, prioridad, vence, asignado_a, repite } = r.datos;
   const { error } = await supabase.rpc("actualizar_tarea", {
-    p_numero: numero, p_revision: Number(texto(fd, "revision")), p_datos: { titulo, descripcion, prioridad, vence, asignado_a },
+    p_numero: numero, p_revision: Number(texto(fd, "revision")), p_datos: { titulo, descripcion, prioridad, vence, asignado_a, repite },
   });
   if (error) return volver(ruta, "error", mensajeDe(error));
   listo(ruta, "Cambios guardados.");
