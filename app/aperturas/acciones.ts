@@ -15,7 +15,7 @@ export async function guardarItem(fd:FormData) {
 }
 export async function agregarItem(fd:FormData) {
  const id=String(fd.get('proyecto_id')??'');const {supabase,perfil}=await obtenerPerfil();if(!puedeEditarCompras(perfil.rol))redirect('/aperturas');
- const {data,error}=await supabase.rpc('agregar_apertura_item',{p_proyecto:id,p_tipo:String(fd.get('tipo')),p_etapa:String(fd.get('etapa')),p_nombre:String(fd.get('nombre')??''),p_categoria:fd.get('tipo')==='equipo'?String(fd.get('categoria')??''):''});
+ const {data,error}=await supabase.rpc('agregar_apertura_item',{p_proyecto:id,p_tipo:String(fd.get('tipo')),p_etapa:String(fd.get('etapa')),p_nombre:String(fd.get('nombre')??''),p_categoria:String(fd.get('categoria')??'')});
  if(error)redirect(`/aperturas/${id}?error=${encodeURIComponent(error.message)}`);
  revalidatePath('/aperturas','layout');redirect(`/aperturas/${id}/items/${data}`);
 }

@@ -4,7 +4,7 @@ import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaMX, fechaTexto, hora, hoyCalendarioMX, pesos } from "@/lib/formato";
-import { puedeRecibirEfectivo } from "@/lib/roles";
+import { puedeRecibirSalida } from "@/lib/roles";
 import { CLASE_ESTADO_SALIDA, estadoSalida, NOMBRE_ESTADO_SALIDA, resumenEnCamino, type Recepcion } from "@/lib/salidas";
 import type { EstadoMovimiento } from "@/lib/tipos";
 import { aceptarEntrada, noCuadra, rechazarSalida, recogerSalida } from "./actions";
@@ -41,7 +41,6 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
   const enCamino = (abiertas ?? []).filter((s) => s.estado === "confirmado");
   const resumen = resumenEnCamino([...(abiertas ?? []), ...(recientes ?? [])]);
   const esAdmin = perfil.rol === "admin";
-  const recibe = puedeRecibirEfectivo(perfil.rol);
 
   const tarjeta = (s: Salida, acciones?: React.ReactNode) => {
     const e = estadoSalida(s);
@@ -91,7 +90,7 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
         <h2 id="t-camino">En camino</h2>
         {!enCamino.length ? <p className="vacio">No hay efectivo en camino.</p> : (
           <div className="tarjetas">
-            {enCamino.map((s) => tarjeta(s, recibe && (
+            {enCamino.map((s) => tarjeta(s, puedeRecibirSalida(perfil, s) && (
               <div className="acciones-salida">
                 <form action={aceptarEntrada}>
                   <input type="hidden" name="id" value={s.id} />

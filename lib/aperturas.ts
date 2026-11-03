@@ -39,12 +39,12 @@ export function grupoApertura(i:ItemApertura) {
 export const esObra = (i:ItemApertura) => i.categoria!==null&&CATEGORIAS[i.categoria]?.obra===true;
 // Avance por categoría: instalado o verificado sobre los conceptos aplicables (sin no aplica ni por validar).
 export function avanceCategorias(items:ItemApertura[]) {
- const compras=items.filter(i=>(i.tipo==='equipo'||(i.tipo==='referencia'&&i.categoria!==null))&&i.estado!=='no_aplica'&&i.estado!=='por_validar');
+ const compras=items.filter(i=>(i.tipo==='equipo'||i.categoria!==null)&&i.estado!=='no_aplica'&&!(['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar'));
  const claves=[...Object.keys(CATEGORIAS) as CategoriaApertura[],null];
  return claves.map(clave=>{
-  const de=compras.filter(i=>i.categoria===clave),listos=de.filter(i=>i.estado==='instalado'||i.estado==='verificado').length;
+  const de=compras.filter(i=>i.categoria===clave),listos=de.filter(i=>marcaItem(i)==='listo').length;
   return {clave,nombre:clave?CATEGORIAS[clave].nombre:'Sin categoría',hoja:clave?CATEGORIAS[clave].hoja:null,obra:clave?CATEGORIAS[clave].obra:false,conceptos:de.length,listos,
-   pedidos:de.filter(i=>['aprobado','pedido','recibido_parcial'].includes(i.estado)).length,recibidos:de.filter(i=>i.estado==='recibido').length,bloqueados:de.filter(i=>i.estado==='bloqueado').length,
+   pedidos:de.filter(i=>['aprobado','pedido','recibido_parcial','en_curso'].includes(i.estado)).length,recibidos:de.filter(i=>i.estado==='recibido').length,bloqueados:de.filter(i=>i.estado==='bloqueado').length,
    porcentaje:de.length?Math.round(listos/de.length*100):null};
  }).filter(c=>c.conceptos>0);
 }
@@ -78,14 +78,15 @@ export function checklistApertura(items:Pick<ItemApertura,'id'|'nombre'|'tipo'|'
  const aplicables=items.filter(i=>i.estado!=='no_aplica'&&!(['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar'));
  const modulos=MODULOS_CHECKLIST.map(m=>{
   const etapas:readonly string[]=m.etapas,lineas:LineaChecklist[]=[];
-  const tecnico=aplicables.filter(i=>i.tipo==='tecnico'&&etapas.includes(i.etapa));
+  // Lo que tiene categoría vive en el grupo de su categoría, no suelto en su etapa.
+  const tecnico=aplicables.filter(i=>i.tipo==='tecnico'&&i.categoria===null&&etapas.includes(i.etapa));
   if(tecnico.length)lineas.push({clave:'tecnico',nombre:'Validaciones técnicas',marca:marcaGrupo(tecnico),listos:tecnico.filter(i=>marcaItem(i)==='listo').length,total:tecnico.length,destino:{vista:'tecnico',etapa:etapas.length===1?etapas[0]:undefined},hijos:tecnico.map(i=>i.id)});
   if(m.equipo)for(const c of [...Object.keys(CATEGORIAS) as CategoriaApertura[],null]){
    if((c===null?false:CATEGORIAS[c].obra)!==(m.equipo==='obra'))continue;
-   const de=aplicables.filter(i=>(i.tipo==='equipo'||(i.tipo==='referencia'&&i.categoria!==null))&&i.categoria===c);
+   const de=aplicables.filter(i=>c===null?i.tipo==='equipo'&&i.categoria===null:i.categoria===c);
    if(de.length)lineas.push({clave:c??'sin',nombre:c?CATEGORIAS[c].nombre:'Equipo sin categoría',marca:marcaGrupo(de),listos:de.filter(i=>marcaItem(i)==='listo').length,total:de.length,destino:{vista:'compras',cat:c??'sin'},hijos:de.map(i=>i.id)});
   }
-  for(const i of aplicables.filter(i=>i.tipo==='actividad'&&etapas.includes(i.etapa)))lineas.push({clave:i.id,nombre:i.nombre,marca:marcaItem(i),listos:marcaItem(i)==='listo'?1:0,total:1,destino:{item:i.id}});
+  for(const i of aplicables.filter(i=>i.tipo==='actividad'&&i.categoria===null&&etapas.includes(i.etapa)))lineas.push({clave:i.id,nombre:i.nombre,marca:marcaItem(i),listos:marcaItem(i)==='listo'?1:0,total:1,destino:{item:i.id}});
   const listos=lineas.reduce((s,l)=>s+l.listos,0),total=lineas.reduce((s,l)=>s+l.total,0);
   return {clave:m.clave,nombre:m.nombre,etapas:m.etapas,lineas,listos,total,porcentaje:total?Math.round(listos/total*100):null};
  });

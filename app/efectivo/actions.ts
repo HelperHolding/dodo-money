@@ -27,7 +27,7 @@ async function recoger(formData: FormData, aceptar: boolean) {
 /** Corporativo acepta el efectivo que trajo el admin o dice por qué no cuadró. */
 async function recibir(formData: FormData, aceptar: boolean) {
   const { supabase, perfil } = await obtenerPerfil();
-  if (!puedeRecibirEfectivo(perfil.rol)) volver("error", "Solo corporativo recibe el efectivo.");
+  if (!puedeRecibirEfectivo(perfil)) volver("error", "Solo corporativo recibe el efectivo.");
   const nota = String(formData.get("nota") ?? "").trim();
   if (!aceptar && !nota) volver("error", "Escribe por qué no cuadró (por ejemplo, cuánto falta).");
   const { error } = await supabase.rpc("recibir_en_corporativo", { p_id: idDe(formData), p_aceptar: aceptar, p_nota: nota || null });
