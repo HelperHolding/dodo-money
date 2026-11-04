@@ -7,6 +7,8 @@ const compromisos=load('supabase/migrations/20261028180000_compromisos_recurrent
 const retenciones=load('supabase/migrations/20261029120000_compromisos_retenciones.sql');
 const migracion=load('supabase/migrations/20261029150000_calendario_cumplimiento.sql');
 const pruebas=load('supabase/pruebas/20261029150000_calendario_cumplimiento.sql');
+const internet=load('supabase/migrations/20261104120000_compromisos_internet_monto_variable.sql');
+const pruebasInternet=load('supabase/pruebas/20261104120000_compromisos_internet_monto_variable.sql');
 
 // Lo mínimo de Supabase, Compras y Activos que usan las migraciones. Los checks copian los reales (0038, 0068).
 export const BASE=`create role anon;create role authenticated;create schema auth;create schema storage;
@@ -46,7 +48,7 @@ export const BASE=`create role anon;create role authenticated;create schema auth
 
 export async function montar(){
  const db=new PGlite();
- await db.exec(BASE);await db.exec(compromisos);await db.exec(retenciones);await db.exec(migracion);
+ await db.exec(BASE);await db.exec(compromisos);await db.exec(retenciones);await db.exec(migracion);await db.exec(internet);
  return db;
 }
 
@@ -159,5 +161,28 @@ test('cumplimiento: los avisos miran 12 meses atrás y los compromisos solo 3',a
   const ids=(await db.query(`select referencia_id from public.avisos_cumplimiento('2027-03-08','correo') where tipo_aviso='vencida'`)).rows.map(r=>r.referencia_id);
   assert.ok(!ids.includes(vieja),'obligación de hace 13 meses');assert.ok(ids.includes(reciente),'obligación de hace 11 meses');
   assert.ok(!ids.includes(c4),'compromiso de hace 4 meses');assert.ok(ids.includes(c2),'compromiso de hace 2 meses');
+ }finally{await db.close();}
+});
+
+test('cumplimiento: internet y monto variable — la prueba SQL termina en PRUEBAS OK',async()=>{
+ const db=await montar();
+ try{await assert.rejects(db.exec(pruebasInternet),e=>{assert.match(e.message,/^PRUEBAS OK$/);return true;});}
+ finally{await db.close();}
+});
+
+test('cumplimiento: internet sin servicio sale pendiente y se cumple al ligar su factura; la renta no sale',async()=>{
+ const db=await montar();
+ try{
+  await db.exec(ADMIN);
+  const co=async(concepto)=>(await db.query(`select public.guardar_compromiso(null,0,$1::jsonb) id`,[JSON.stringify({sucursal_id:'00000000-0000-0000-0000-0000000000e1',concepto,descripcion:'',proveedor_id:'00000000-0000-0000-0000-0000000000b1',monto_estimado:'',monto_variable:'true',forma_pago:'transferencia',unidad:'mes',cada:'1',dia_mes:'10',inicio:'2027-04-10',fin:'',requiere_servicio:'false'})])).rows[0].id;
+  const internet=await co('internet'),renta=await co('renta');
+  const filas=async()=>(await db.query(`select * from public.cumplimiento_en_rango('2027-04-01','2027-04-30','2027-03-08') where origen='compromiso'`)).rows;
+  let rs=await filas();
+  assert.deepEqual(rs.map(r=>r.referencia_id),[internet]);
+  assert.equal(rs[0].estado,'pendiente');assert.equal(rs[0].titulo,'Internet');assert.equal(rs[0].falta_evidencia,false);assert.equal(rs[0].falta_factura,true);
+  await db.exec(`select public.ligar_factura_compromiso('${internet}','2027-04-10',0,'00000000-0000-0000-0000-0000000000f1')`);
+  rs=await filas();
+  assert.equal(rs[0].estado,'cumplida');assert.equal(rs[0].falta_factura,false);
+  assert.ok(!rs.some(r=>r.referencia_id===renta));
  }finally{await db.close();}
 });
