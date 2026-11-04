@@ -99,7 +99,7 @@ begin
   -- Sin servicio (internet, teléfono): se cumple con su factura vigente.
   else
    case when r.omitida_motivo is not null then 'omitida'
-    when r.factura_id is not null and r.factura_estado<>'cancelada' then 'cumplida'
+    when r.factura_id is not null and r.factura_estado is distinct from 'cancelada' then 'cumplida'
     when r.vence<p_hoy then 'vencida'
     when r.vence-p_hoy<=(public.dias_aviso_cumplimiento(q.frecuencia))[1] then 'por_vencer'
     else 'pendiente' end end,

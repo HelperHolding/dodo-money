@@ -66,7 +66,7 @@ export function FormCompromiso({ c, sucursales, proveedores, hoy, sucursalInicia
         <label className="campo">Desde<input name="inicio" type="date" defaultValue={d?.inicio ?? hoy} required readOnly={fijo} /><small>La primera fecha que falta por pagar, no el inicio del contrato.</small></label>
         <label className="campo">Hasta (opcional)<input name="fin" type="date" defaultValue={c?.fin ?? ""} /><small>Cuando termina el contrato.</small></label>
       </div>
-      <label className="casilla"><input type="checkbox" name="monto_variable" value="si" checked={variable} onChange={(e) => setVariable(e.target.checked)} /> El monto cambia cada periodo (luz, agua, teléfono por consumo)</label>
+      <label className="casilla"><input type="checkbox" name="monto_variable" value="si" checked={variable} onChange={(e) => { setVariable(e.target.checked); if (!e.target.checked && variable) setImp(impuestosPorConcepto(concepto)); }} /> El monto cambia cada periodo (luz, agua, teléfono por consumo)</label>
       {variable ? <p className="saldo-nota">Sin importe ni impuestos: en Pagos sale como previsto en $0.00 y se paga el monto de cada factura.</p> : <fieldset className="seccion"><legend>Impuestos</legend>
         <div className="rejilla">
           <label className="campo">IVA<select name="iva" value={imp.iva === 0 ? "0" : "16"} onChange={(e) => setImp({ ...imp, iva: e.target.value === "0" ? 0 : 0.16, retIva: e.target.value === "0" ? "ninguna" : imp.retIva })}><option value="16">16 %</option><option value="0">0 % o exento</option></select></label>
