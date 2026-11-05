@@ -99,6 +99,21 @@ test('facturación: un ticket, una factura (reserva doble, liberar, cancelar)',a
  }finally{await db.close();}
 });
 
+test('facturación: la factura sobrevive al borrado del pedido (reimportación)',async()=>{
+ const db=await nueva();try{
+  await pedido(db,'A');const id=await reservar(db,'A');
+  await db.query(`select facturacion_confirmar($1,'fa_1','11111111-2222-3333-4444-555555555555','F',1,330.17,52.83)`,[id]);
+  await db.query(`delete from pedidos where dodo_id='A'`);
+  const f=(await db.query(`select sucursal_id,fecha::text as fecha,hora::text as hora,total::text as total from facturas_clientes where id=$1`,[id])).rows[0];
+  assert.deepEqual(f,{sucursal_id:S,fecha:'2026-11-04',hora:'17:35:00',total:'383.00'});
+ }finally{await db.close();}
+});
+
+test('facturación: un pedido cancelado en la ventana no estorba al entregado',async()=>{
+ const db=await nueva();try{await pedido(db,'C',{estado:'cancelado',hora:'17:34'});await pedido(db,'E',{hora:'17:37'});
+  const r=await buscar(db);assert.equal(r.resultado,'ok');assert.equal(r.pedido_id,'E');}finally{await db.close();}
+});
+
 test('facturación: datos inválidos se rechazan en la base',async()=>{
  const db=await nueva();try{await pedido(db,'A');
   await rechaza(reservar(db,'A',{...DATOS,rfc:'XAXX010101000'}),/facturas_clientes_rfc_check/);

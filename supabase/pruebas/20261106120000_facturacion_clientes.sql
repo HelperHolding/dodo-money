@@ -12,5 +12,6 @@ begin
   or has_function_privilege('authenticated','public.facturacion_buscar_ticket(text,uuid,date,time,numeric)','execute') then
   raise exception 'FALLÓ: anon o authenticated pueden ejecutar funciones del servidor';end if;
  if not (select relrowsecurity from pg_class where oid='public.facturas_clientes'::regclass) then raise exception 'FALLÓ: facturas_clientes sin RLS';end if;
+ if exists(select 1 from pg_constraint where conrelid='public.facturas_clientes'::regclass and confrelid='public.pedidos'::regclass) then raise exception 'FALLÓ: facturas_clientes no debe tener FK a pedidos';end if;
  raise exception 'PRUEBAS OK';
 end $$;

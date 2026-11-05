@@ -14,7 +14,11 @@ insert into public.facturacion_sucursales(sucursal_id,rfc_emisor)
 
 create table public.facturas_clientes(
  id uuid primary key default gen_random_uuid(),
- pedido_id text not null references public.pedidos(dodo_id),
+ -- Sin FK a pedidos: la importación manual (0007) y la sincronización de Dodo IS borran y recrean pedidos; la factura debe sobrevivir.
+ pedido_id text not null,
+ sucursal_id uuid not null references public.sucursales(id),
+ fecha date not null,
+ hora time not null,
  rfc_emisor text not null references public.razones_sociales(rfc),
  rfc text not null constraint facturas_clientes_rfc_check check(rfc ~ '^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$' and rfc not in ('XAXX010101000','XEXX010101000')),
  nombre text not null check(length(trim(nombre))>0),
@@ -59,22 +63,22 @@ create function public.facturacion_motivo(p public.pedidos) returns text languag
 create function public.facturacion_buscar_ticket(p_ip text,p_sucursal uuid,p_fecha date,p_hora time,p_total numeric)
 returns table(resultado text,pedido_id text,fecha date,hora time,total numeric,pago text,productos jsonb,factura_id uuid,correo text)
 language plpgsql security definer set search_path=public as $$
-declare v_n int;v_p pedidos;v_f facturas_clientes;
+declare v_n int;v_t int;v_p pedidos;v_f facturas_clientes;
 begin
+ perform pg_advisory_xact_lock(hashtext(p_ip));
  if (select count(*) from facturacion_intentos i where i.ip=p_ip and i.creado>now()-interval '10 minutes')>=10 then
   return query select 'limite',null::text,null::date,null::time,null::numeric,null::text,null::jsonb,null::uuid,null::text;return;end if;
  insert into facturacion_intentos(ip) values(p_ip);
  delete from facturacion_intentos i where i.creado<now()-interval '1 day';
  if date_trunc('month',p_fecha)<>date_trunc('month',facturacion_hoy()) or p_fecha>facturacion_hoy() then
   return query select 'fuera_de_plazo',null::text,null::date,null::time,null::numeric,null::text,null::jsonb,null::uuid,null::text;return;end if;
- select count(*) into v_n from pedidos p where p.sucursal_id=p_sucursal and p.fecha=p_fecha and p.total=p_total
+ select count(*) filter (where facturacion_motivo(p) is null),count(*) into v_n,v_t from pedidos p where p.sucursal_id=p_sucursal and p.fecha=p_fecha and p.total=p_total
   and p.hora between p_hora-interval '3 minutes' and p_hora+interval '3 minutes';
- if v_n=0 then return query select 'no_encontrado',null::text,null::date,null::time,null::numeric,null::text,null::jsonb,null::uuid,null::text;return;end if;
+ if v_t=0 then return query select 'no_encontrado',null::text,null::date,null::time,null::numeric,null::text,null::jsonb,null::uuid,null::text;return;end if;
+ if v_n=0 then return query select 'no_facturable',null::text,null::date,null::time,null::numeric,null::text,null::jsonb,null::uuid,null::text;return;end if;
  if v_n>1 then return query select 'varios',null::text,null::date,null::time,null::numeric,null::text,null::jsonb,null::uuid,null::text;return;end if;
  select * into v_p from pedidos p where p.sucursal_id=p_sucursal and p.fecha=p_fecha and p.total=p_total
-  and p.hora between p_hora-interval '3 minutes' and p_hora+interval '3 minutes';
- if facturacion_motivo(v_p) is not null then
-  return query select 'no_facturable',null::text,null::date,null::time,null::numeric,null::text,null::jsonb,null::uuid,null::text;return;end if;
+  and p.hora between p_hora-interval '3 minutes' and p_hora+interval '3 minutes' and facturacion_motivo(p) is null;
  select * into v_f from facturas_clientes f where f.pedido_id=v_p.dodo_id and f.estado='timbrada';
  if found then return query select 'facturado',v_p.dodo_id,v_p.fecha,v_p.hora,v_p.total,v_p.pago,null::jsonb,v_f.id,
   left(split_part(v_f.correo,'@',1),2)||'***@'||split_part(v_f.correo,'@',2);return;end if;
@@ -94,8 +98,8 @@ begin
  select * into v_f from facturas_clientes where pedido_id=p_pedido and estado in ('en_proceso','timbrada');
  if found and v_f.estado='timbrada' then raise exception 'YA_FACTURADO';end if;
  if found then raise exception 'EN_PROCESO:%:%',v_f.id,floor(extract(epoch from v_f.creada))::bigint;end if;
- insert into facturas_clientes(pedido_id,rfc_emisor,rfc,nombre,regimen_fiscal,codigo_postal,uso_cfdi,correo,forma_pago,total)
-  select p_pedido,s.rfc_emisor,p_datos->>'rfc',p_datos->>'nombre',p_datos->>'regimen_fiscal',p_datos->>'codigo_postal',
+ insert into facturas_clientes(pedido_id,sucursal_id,fecha,hora,rfc_emisor,rfc,nombre,regimen_fiscal,codigo_postal,uso_cfdi,correo,forma_pago,total)
+  select p_pedido,v_p.sucursal_id,v_p.fecha,v_p.hora,s.rfc_emisor,p_datos->>'rfc',p_datos->>'nombre',p_datos->>'regimen_fiscal',p_datos->>'codigo_postal',
    p_datos->>'uso_cfdi',p_datos->>'correo',p_datos->>'forma_pago',v_p.total
   from facturacion_sucursales s where s.sucursal_id=v_p.sucursal_id
   returning id into v_id;
