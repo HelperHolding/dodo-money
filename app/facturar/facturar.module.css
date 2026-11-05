@@ -1,0 +1,23 @@
+.pagina { max-width: 480px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; color: var(--tinta); }
+.encabezado { display: flex; align-items: center; gap: 12px; }
+.encabezado h1 { margin: 0; font-size: 1.5rem; }
+.nota { margin: 0; color: var(--tinta-2); font-size: 0.9rem; }
+.tarjeta { display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--superficie); border: 1px solid var(--linea); border-radius: 12px; min-width: 0; }
+.tarjeta h2 { margin: 0; font-size: 1.1rem; }
+.campo { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 0.9rem; min-width: 0; }
+.campo input, .campo select { width: 100%; min-height: 44px; padding: 8px 12px; font: inherit; font-weight: 400; background: var(--campo); border: 1px solid var(--linea-fuerte); border-radius: 8px; box-sizing: border-box; }
+.campo small { font-weight: 400; color: var(--tinta-2); }
+.opciones { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 12px; border: 1px solid var(--linea-fuerte); border-radius: 8px; }
+.opciones label { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.productos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.productos li { display: flex; justify-content: space-between; gap: 12px; }
+.productos li span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.total { display: flex; justify-content: space-between; margin: 0; padding-top: 8px; border-top: 1px solid var(--linea); font-size: 1.1rem; }
+.folio { margin: 0; color: var(--tinta-2); font-size: 0.9rem; overflow-wrap: anywhere; }
+.folio strong { color: var(--tinta); }
+.aviso { margin: 0; padding: 12px; background: var(--aviso-fondo); color: var(--aviso-texto); border-radius: 8px; }
+.boton, .botonSecundario { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; padding: 0 16px; font: inherit; font-weight: 700; text-decoration: none; border-radius: 8px; cursor: pointer; box-sizing: border-box; }
+.boton { background: var(--accion); color: var(--accion-texto); border: 0; }
+.botonSecundario { background: var(--campo); color: var(--tinta); border: 1px solid var(--linea-fuerte); }
+.boton:disabled, .botonSecundario:disabled { opacity: 0.6; cursor: not-allowed; }
+.boton:focus-visible, .botonSecundario:focus-visible { outline: 3px solid var(--anillo); outline-offset: 2px; }
