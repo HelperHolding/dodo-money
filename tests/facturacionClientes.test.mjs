@@ -130,6 +130,21 @@ test('facturación: límite de 10 búsquedas por IP cada 10 minutos',async()=>{
  }finally{await db.close();}
 });
 
+test('facturación: el límite de intentos es independiente por tipo e IP',async()=>{
+ const db=await nueva();try{
+  const intento=(ip,tipo)=>db.query(`select facturacion_registrar_intento($1,$2) as ok`,[ip,tipo]).then(r=>r.rows[0].ok);
+  for(let i=0;i<10;i++) assert.equal(await intento('x','constancia'),true);
+  assert.equal(await intento('x','constancia'),false);
+  assert.equal(await intento('x','busqueda'),true);
+  assert.equal(await intento('y','constancia'),true);
+  for(let i=0;i<10;i++) await buscar(db,{ip:'z'});
+  assert.equal((await buscar(db,{ip:'z'})).resultado,'limite');
+  assert.equal(await intento('z','constancia'),true);
+  assert.equal((await db.query(`select count(*)::int as n from facturacion_intentos where ip='x' and tipo='constancia'`)).rows[0].n,10);
+  await rechaza(intento('x','otro'),/check/);
+ }finally{await db.close();}
+});
+
 test('facturación: descarga solo con el token correcto y factura timbrada',async()=>{
  const db=await nueva();try{await pedido(db,'A');const id=await reservar(db,'A');
   const tok=(await db.query(`select token_descarga from facturas_clientes where id=$1`,[id])).rows[0].token_descarga;
@@ -144,9 +159,10 @@ test('facturación: descarga solo con el token correcto y factura timbrada',asyn
 test('facturación: permisos (anon y authenticated no ejecutan las funciones del servidor)',async()=>{
  const db=await nueva();try{
   const puede=(rol,fn)=>db.query(`select has_function_privilege($1,$2,'execute') as p`,[rol,fn]).then(r=>r.rows[0].p);
-  for(const fn of ['facturacion_buscar_ticket(text,uuid,date,time,numeric)','facturacion_reservar(text,jsonb)','facturacion_liberar(uuid,text)'])
+  for(const fn of ['facturacion_buscar_ticket(text,uuid,date,time,numeric)','facturacion_registrar_intento(text,text)','facturacion_reservar(text,jsonb)','facturacion_liberar(uuid,text)'])
    for(const rol of ['anon','authenticated']) assert.equal(await puede(rol,fn),false,`${rol} ${fn}`);
   assert.equal(await puede('service_role','facturacion_reservar(text,jsonb)'),true);
+  assert.equal(await puede('service_role','facturacion_registrar_intento(text,text)'),true);
   assert.equal(await puede('authenticated','facturacion_registrar_cancelacion(uuid,text)'),true);
  }finally{await db.close();}
 });

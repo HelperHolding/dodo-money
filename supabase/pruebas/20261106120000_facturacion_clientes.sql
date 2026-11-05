@@ -7,9 +7,12 @@ begin
   raise exception 'FALLÓ: Mariano Otero no quedó ligada a Helper';end if;
  if not exists(select 1 from pg_indexes where indexname='facturas_clientes_un_ticket') then raise exception 'FALLÓ: falta el índice de un ticket, una factura';end if;
  select count(*) into v from pg_proc where proname like 'facturacion\_%' and prosecdef;
- if v<>6 then raise exception 'FALLÓ: se esperaban 6 funciones security definer de facturación y hay %',v;end if;
+ if v<>7 then raise exception 'FALLÓ: se esperaban 7 funciones security definer de facturación y hay %',v;end if;
  if has_function_privilege('anon','public.facturacion_reservar(text,jsonb)','execute')
-  or has_function_privilege('authenticated','public.facturacion_buscar_ticket(text,uuid,date,time,numeric)','execute') then
+  or has_function_privilege('authenticated','public.facturacion_buscar_ticket(text,uuid,date,time,numeric)','execute')
+  or has_function_privilege('anon','public.facturacion_registrar_intento(text,text)','execute')
+  or has_function_privilege('authenticated','public.facturacion_registrar_intento(text,text)','execute')
+  or not has_function_privilege('service_role','public.facturacion_registrar_intento(text,text)','execute') then
   raise exception 'FALLÓ: anon o authenticated pueden ejecutar funciones del servidor';end if;
  if not (select relrowsecurity from pg_class where oid='public.facturas_clientes'::regclass) then raise exception 'FALLÓ: facturas_clientes sin RLS';end if;
  if exists(select 1 from pg_constraint where conrelid='public.facturas_clientes'::regclass and confrelid='public.pedidos'::regclass) then raise exception 'FALLÓ: facturas_clientes no debe tener FK a pedidos';end if;

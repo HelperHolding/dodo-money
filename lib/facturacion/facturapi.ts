@@ -3,7 +3,7 @@ import type { ConceptoFacturapi } from "./conceptos";
 import type { DatosFiscales } from "./reglas";
 
 const BASE = "https://www.facturapi.io/v2";
-export type FacturaTimbrada = { id: string; uuid: string; series: string; folio_number: number; subtotal: number; total: number; status: string };
+export type FacturaTimbrada = { id: string; uuid: string; series: string; folio_number: number; subtotal: number; total: number; status: string; external_id?: string };
 export type Respuesta<T> = { ok: true; valor: T } | { ok: false; tipo: "rechazo" | "incierto"; mensaje: string };
 
 type Objeto = Record<string, unknown>;
@@ -50,11 +50,19 @@ export function crearClienteFacturapi(llave: string, f: typeof fetch = fetch) {
       const r = await llamar("GET", `/invoices?external_id=${encodeURIComponent(externo)}`);
       if (!r.ok) return r;
       if (!Array.isArray(r.valor.data)) return sinDatos;
-      const facturas = r.valor.data as FacturaTimbrada[];
+      // No se confía en el filtro del servidor: solo cuentan las facturas con este external_id.
+      const facturas = (r.valor.data as unknown[]).filter((x): x is FacturaTimbrada => typeof x === "object" && x !== null && (x as Objeto).external_id === externo);
       const valida = facturas.find((x) => x.status === "valid");
       if (valida) return { ok: true, valor: valida };
       if (facturas.some((x) => x.status === "pending")) return { ok: false, tipo: "incierto", mensaje: "La factura sigue timbrándose en Facturapi." };
       return { ok: true, valor: null };
+    },
+    async obtener(id: string): Promise<Respuesta<{ id: string; status: string; cancellation_status?: string }>> {
+      const r = await llamar("GET", `/invoices/${encodeURIComponent(id)}`);
+      if (!r.ok) return r;
+      if (typeof r.valor.id !== "string" || typeof r.valor.status !== "string") return sinDatos;
+      const cs = r.valor.cancellation_status;
+      return { ok: true, valor: { id: r.valor.id, status: r.valor.status, ...(typeof cs === "string" ? { cancellation_status: cs } : {}) } };
     },
     async urlDescarga(id: string, formato: "pdf" | "xml"): Promise<Respuesta<string>> {
       const r = await llamar("GET", `/invoices/${encodeURIComponent(id)}/download-url/${formato}`);

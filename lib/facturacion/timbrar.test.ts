@@ -51,10 +51,19 @@ test("reintento tras timeout: la factura sí se timbró → se confirma sin timb
   assert.deepEqual(log, ["reservar:EN_PROCESO:f1:999000000", "buscar:f1", "confirmar:f1:fa_1"]);
 });
 
-test("reintento tras timeout: no se timbró y pasaron más de 2 min → libera y reserva de nuevo", async () => {
+test("reintento tras timeout: no se timbró y pasaron más de 10 min → libera y reserva de nuevo", async () => {
   const { log, dep } = dobles([{ error: "EN_PROCESO:f1:999000000" }, { id: "f2" }], [{ ok: true, valor: { ...FACT, id: "fa_2" } }], [{ ok: true, valor: null }]);
   assert.equal((await timbrarTicket(dep, "P", DATOS, [])).estado, "timbrada");
   assert.deepEqual(log, ["reservar:EN_PROCESO:f1:999000000", "buscar:f1", "liberar:f1:Sin respuesta de Facturapi; reintento", "reservar:f2", "crear:f2:f2", "confirmar:f2:fa_2"]);
+});
+
+test("a 9 minutos de la reserva todavía no se libera; a 11 sí", async () => {
+  const reciente = dobles([{ error: "EN_PROCESO:f1:999999460" }], [], [{ ok: true, valor: null }]);
+  assert.deepEqual(await timbrarTicket(reciente.dep, "P", DATOS, []), { estado: "procesando" });
+  assert.equal(reciente.log.some((l) => l.startsWith("liberar")), false);
+  const vieja = dobles([{ error: "EN_PROCESO:f1:999999340" }, { id: "f2" }], [{ ok: true, valor: FACT }], [{ ok: true, valor: null }]);
+  assert.equal((await timbrarTicket(vieja.dep, "P", DATOS, [])).estado, "timbrada");
+  assert.ok(vieja.log.includes("liberar:f1:Sin respuesta de Facturapi; reintento"));
 });
 
 test("EN_PROCESO antigua pero Facturapi sigue timbrando (incierto) → procesando, sin liberar ni crear", async () => {

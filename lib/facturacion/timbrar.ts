@@ -21,7 +21,7 @@ export type ResultadoTimbrado =
   | { estado: "ya_facturado" }
   | { estado: "no_facturable"; mensaje: string };
 
-const ESPERA_MS = 120_000;
+const ESPERA_MS = 600_000;
 
 export async function timbrarTicket(
   dep: { base: Base; pac: Pac; ahora: () => number },

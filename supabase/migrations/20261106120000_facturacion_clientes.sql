@@ -40,8 +40,10 @@ create table public.facturas_clientes(
 create unique index facturas_clientes_un_ticket on public.facturas_clientes(pedido_id) where estado in ('en_proceso','timbrada');
 create index facturas_clientes_creada on public.facturas_clientes(creada);
 
-create table public.facturacion_intentos(id bigint generated always as identity primary key,ip text not null,creado timestamptz not null default now());
-create index facturacion_intentos_ip on public.facturacion_intentos(ip,creado);
+-- tipo: cada acción pública pesa distinto y lleva su propio límite (búsqueda de ticket, lectura de constancia).
+create table public.facturacion_intentos(id bigint generated always as identity primary key,ip text not null,
+ tipo text not null default 'busqueda' check(tipo in ('busqueda','constancia')),creado timestamptz not null default now());
+create index facturacion_intentos_ip on public.facturacion_intentos(ip,tipo,creado);
 
 -- "Hoy" en México (no UTC: el día 1 a las 00:30 de México todavía es el mes nuevo). facturacion_hoy va aparte para fijarla en pruebas.
 create function public.facturacion_dia_mx(p timestamptz) returns date language sql immutable as $$select (p at time zone 'America/Mexico_City')::date$$;
@@ -66,9 +68,9 @@ language plpgsql security definer set search_path=public as $$
 declare v_n int;v_t int;v_p pedidos;v_f facturas_clientes;
 begin
  perform pg_advisory_xact_lock(hashtext(p_ip));
- if (select count(*) from facturacion_intentos i where i.ip=p_ip and i.creado>now()-interval '10 minutes')>=10 then
+ if (select count(*) from facturacion_intentos i where i.ip=p_ip and i.tipo='busqueda' and i.creado>now()-interval '10 minutes')>=10 then
   return query select 'limite',null::text,null::date,null::time,null::numeric,null::text,null::jsonb,null::uuid,null::text;return;end if;
- insert into facturacion_intentos(ip) values(p_ip);
+ insert into facturacion_intentos(ip,tipo) values(p_ip,'busqueda');
  delete from facturacion_intentos i where i.creado<now()-interval '1 day';
  if date_trunc('month',p_fecha)<>date_trunc('month',facturacion_hoy()) or p_fecha>facturacion_hoy() then
   return query select 'fuera_de_plazo',null::text,null::date,null::time,null::numeric,null::text,null::jsonb,null::uuid,null::text;return;end if;
@@ -85,6 +87,16 @@ begin
  return query select 'ok',v_p.dodo_id,v_p.fecha,v_p.hora,v_p.total,v_p.pago,
   coalesce((select jsonb_agg(jsonb_build_object('nombre',x.nombre,'precio',x.precio) order by x.renglon) from pedido_productos x where x.pedido_id=v_p.dodo_id),'[]'::jsonb),
   null::uuid,null::text;
+end$$;
+
+-- Límite de 10 intentos por IP y tipo cada 10 minutos. true = puede continuar (el intento ya quedó registrado).
+create function public.facturacion_registrar_intento(p_ip text,p_tipo text) returns boolean
+language plpgsql security definer set search_path=public as $$
+begin
+ perform pg_advisory_xact_lock(hashtext(p_ip||p_tipo));
+ if (select count(*) from facturacion_intentos i where i.ip=p_ip and i.tipo=p_tipo and i.creado>now()-interval '10 minutes')>=10 then return false;end if;
+ insert into facturacion_intentos(ip,tipo) values(p_ip,p_tipo);
+ return true;
 end$$;
 
 create function public.facturacion_reservar(p_pedido text,p_datos jsonb) returns uuid
@@ -141,10 +153,10 @@ create policy ver_facturas_clientes on public.facturas_clientes for select using
 create policy ver_facturacion_sucursales on public.facturacion_sucursales for select using (mi_rol() in ('admin','corporativo'));
 
 revoke all on function public.facturacion_dia_mx(timestamptz),public.facturacion_hoy(),public.facturacion_motivo(public.pedidos),
- public.facturacion_buscar_ticket(text,uuid,date,time,numeric),public.facturacion_reservar(text,jsonb),
+ public.facturacion_buscar_ticket(text,uuid,date,time,numeric),public.facturacion_registrar_intento(text,text),public.facturacion_reservar(text,jsonb),
  public.facturacion_confirmar(uuid,text,text,text,integer,numeric,numeric),public.facturacion_liberar(uuid,text),
  public.facturacion_para_descarga(uuid,uuid),public.facturacion_registrar_cancelacion(uuid,text) from public,anon,authenticated;
-grant execute on function public.facturacion_buscar_ticket(text,uuid,date,time,numeric),public.facturacion_reservar(text,jsonb),
+grant execute on function public.facturacion_buscar_ticket(text,uuid,date,time,numeric),public.facturacion_registrar_intento(text,text),public.facturacion_reservar(text,jsonb),
  public.facturacion_confirmar(uuid,text,text,text,integer,numeric,numeric),public.facturacion_liberar(uuid,text),
  public.facturacion_para_descarga(uuid,uuid) to service_role;
 grant execute on function public.facturacion_registrar_cancelacion(uuid,text) to authenticated;

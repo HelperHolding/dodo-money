@@ -79,21 +79,35 @@ test("401 y 403 son incierto con mensaje de llave, sin exponer la llave", async 
 });
 
 test("buscarPorExterno: regresa la válida o null", async () => {
-  const { f, llamadas } = falso([json(200, { data: [{ ...FACT, status: "canceled" }, FACT] }), json(200, { data: [] })]);
+  const { f, llamadas } = falso([json(200, { data: [{ ...FACT, external_id: "ped 1", status: "canceled" }, { ...FACT, external_id: "ped 1" }] }), json(200, { data: [] })]);
   const c = crearClienteFacturapi("k", f);
-  assert.deepEqual(await c.buscarPorExterno("ped 1"), { ok: true, valor: FACT });
+  assert.deepEqual(await c.buscarPorExterno("ped 1"), { ok: true, valor: { ...FACT, external_id: "ped 1" } });
   assert.equal(llamadas[0].url, "https://www.facturapi.io/v2/invoices?external_id=ped%201");
   assert.deepEqual(await c.buscarPorExterno("x"), { ok: true, valor: null });
 });
 
 test("buscarPorExterno: con una pending y ninguna valid es incierto", async () => {
-  const { f } = falso([json(200, { data: [{ ...FACT, status: "canceled" }, { ...FACT, status: "pending" }] })]);
+  const { f } = falso([json(200, { data: [{ ...FACT, external_id: "x", status: "canceled" }, { ...FACT, external_id: "x", status: "pending" }] })]);
   assert.deepEqual(await crearClienteFacturapi("k", f).buscarPorExterno("x"), { ok: false, tipo: "incierto", mensaje: "La factura sigue timbrándose en Facturapi." });
 });
 
 test("buscarPorExterno: valid tiene prioridad sobre pending", async () => {
-  const { f } = falso([json(200, { data: [{ ...FACT, status: "pending" }, FACT] })]);
-  assert.deepEqual(await crearClienteFacturapi("k", f).buscarPorExterno("x"), { ok: true, valor: FACT });
+  const { f } = falso([json(200, { data: [{ ...FACT, external_id: "x", status: "pending" }, { ...FACT, external_id: "x" }] })]);
+  assert.deepEqual(await crearClienteFacturapi("k", f).buscarPorExterno("x"), { ok: true, valor: { ...FACT, external_id: "x" } });
+});
+
+test("buscarPorExterno: ignora facturas de otro external_id aunque el servidor las devuelva", async () => {
+  const { f } = falso([json(200, { data: [{ ...FACT, external_id: "otro" }, null, "x", { ...FACT, status: "pending", external_id: "otro" }] })]);
+  assert.deepEqual(await crearClienteFacturapi("k", f).buscarPorExterno("x"), { ok: true, valor: null });
+});
+
+test("obtener: lee estado y cancelación; sin id o status es incierto", async () => {
+  const { f, llamadas } = falso([json(200, { id: "fa_1", status: "valid", cancellation_status: "pending", otro: 1 }), json(200, { id: "fa_1" }), json(404, { message: "no" })]);
+  const c = crearClienteFacturapi("k", f);
+  assert.deepEqual(await c.obtener("fa_1"), { ok: true, valor: { id: "fa_1", status: "valid", cancellation_status: "pending" } });
+  assert.deepEqual(await c.obtener("fa_1"), SIN_DATOS);
+  assert.equal((await c.obtener("fa_1")).ok, false);
+  assert.equal(`${llamadas[0].init.method} ${llamadas[0].url}`, "GET https://www.facturapi.io/v2/invoices/fa_1");
 });
 
 test("buscarPorExterno: data que no es arreglo es incierto", async () => {
