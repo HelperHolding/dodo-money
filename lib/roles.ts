@@ -113,6 +113,10 @@ export function menuLateral(rol: Rol): Menu {
         ...(puedeEditarCompras(rol) ? [{ href: "/compras/cargar", texto: "Cargar Excel" }] : []),
       ],
     });
+    grupos.push({
+      titulo: "Inventario",
+      enlaces: [{ href: "/inventario", texto: "Insumos Dodo IS" }, { href: "/inventario/uniformes", texto: "Uniformes" }],
+    });
   }
   if (puedeVerFinanzas(rol)) {
     grupos.push({
