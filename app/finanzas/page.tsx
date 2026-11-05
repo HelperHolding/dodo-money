@@ -143,7 +143,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
           {ases.ajustado && <ListaAjustes lista={ases.ajustado.lista} conSucursal={!ases.suc} anular={anular} />}
         </>
       ) : contable ? <>
-        <ConInfo titulo="Por cuentas" etiqueta="Cómo leer esto">Cuentas exactas confirmadas del catálogo Helper. Los documentos pendientes y las fuentes calculadas se muestran por separado y permanecen incluidos en los totales. Insumos e inversiones se presentan en memo, fuera del resultado.</ConInfo>
+        <ConInfo titulo="Por cuentas" etiqueta="Cómo leer esto">Cuentas exactas confirmadas del catálogo Helper. Los documentos pendientes y las fuentes calculadas se muestran por separado y permanecen incluidos en los totales. Insumos, inversiones y regalías facturadas se presentan en memo, fuera del resultado.</ConInfo>
         <AdvertenciasPL avisos={contable.avisos}/>
         {contable.columnas.length?<TablaCuentas filas={contable.filas} columnas={contable.columnas}/>:<EstadoVacio icono="calendario" titulo="Todavía no hay días cerrados" descripcion="Elige un periodo anterior."/>}
       </> : comp ? (

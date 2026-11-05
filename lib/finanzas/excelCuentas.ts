@@ -27,7 +27,7 @@ export function hojasCuentas(r:Reporte):HojaXlsx[]{
   const rango=r.columnas.length?`${r.columnas[0].desde} al ${r.columnas.at(-1)!.hasta}`:'Sin días cerrados';
   const resumen:HojaXlsx={nombre:'Por cuentas',filas:[
     [`P&L por cuentas · ${r.titulo}`],[`${rango}. MXN sin IVA, después de descuentos. Criterio devengado.`],
-    [`Generado por ${r.generado}`],['Haz clic en un importe para ver su respaldo. Insumos e inversiones son memo, fuera del resultado.'],
+    [`Generado por ${r.generado}`],['Haz clic en un importe para ver su respaldo. Insumos, inversiones y regalías facturadas son memo, fuera del resultado.'],
     ['Cuenta / concepto','Código de cuenta',...r.columnas.map(c=>`${c.etiqueta}\n${c.desde} al ${c.hasta}`),'Acumulado'],
   ],anchos:[52,22,...r.columnas.map(()=>23),23],estilos:{0:oscuro,1:normal,2:normal,3:normal,4:cabecera},
     combinadas:[`A1:${finCol}1`,`A2:${finCol}2`,`A3:${finCol}3`,`A4:${finCol}4`],altos:{0:30,1:30,2:24,3:34,4:44},inmovilizar:5,ocultarCuadricula:true};

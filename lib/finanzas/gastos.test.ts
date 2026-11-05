@@ -1,6 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cobrosReclasificados, enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "./gastos.ts";
+import { CUENTAS_MEMO, NOMBRE_MEMO, esCuentaGasto, esCuentaMemo, esCuentaPl, memosVacios } from "./cuentas.ts";
+import { entradaVacia } from "./pl.ts";
+
+test("cuentas memo: regalías es memo (no gasto) y las copias locales coinciden con CUENTAS_MEMO", () => {
+  assert.deepEqual(CUENTAS_MEMO, ["insumos", "inversiones", "regalias"]);
+  assert.ok(esCuentaPl("regalias") && esCuentaMemo("regalias") && !esCuentaGasto("regalias"));
+  assert.equal(NOMBRE_MEMO.regalias, "Regalías facturadas (memo)");
+  assert.deepEqual(Object.keys(facturasAGastos([]).memos), [...CUENTAS_MEMO]);
+  assert.deepEqual(entradaVacia().memos, memosVacios());
+});
 
 test("facturasAGastos: subtotal − descuento; notas de crédito restan; canceladas fuera; memos aparte", () => {
   const r = facturasAGastos([
@@ -10,8 +20,9 @@ test("facturasAGastos: subtotal − descuento; notas de crédito restan; cancela
     { tipo: "ingreso", estado: "pagada", subtotal: 300, descuento: 0, cuenta_pl: null },
     { tipo: "ingreso", estado: "pagada", subtotal: 5000, descuento: 0, cuenta_pl: "insumos" },
     { tipo: "ingreso", estado: "pagada", subtotal: 8000, descuento: 0, cuenta_pl: "inversiones" },
+    { tipo: "ingreso", estado: "pagada", subtotal: 4500, descuento: 0, cuenta_pl: "regalias" },
   ]);
-  assert.deepEqual(r, { gastos: { servicios: 700 }, sinCuenta: 300, memos: { insumos: 5000, inversiones: 8000 } });
+  assert.deepEqual(r, { gastos: { servicios: 700 }, sinCuenta: 300, memos: { insumos: 5000, inversiones: 8000, regalias: 4500 } });
 });
 
 test("sumarGastos y faltantes", () => {
@@ -59,7 +70,7 @@ test("facturasAGastos con fracción: cada factura por su propia fracción", () =
     { tipo: "ingreso", estado: "pagada", subtotal: 3100, descuento: 0, cuenta_pl: "renta", fecha_emision: "2026-10-02" },
     { tipo: "egreso", estado: "pagada", subtotal: 310, descuento: 0, cuenta_pl: null, fecha_emision: "2026-10-20" },
   ], (f) => (f.fecha_emision?.startsWith("2026-09") ? 0.1 : 4 / 31));
-  assert.deepEqual(r, { gastos: { renta: 700 }, sinCuenta: -40, memos: { insumos: 0, inversiones: 0 } });
+  assert.deepEqual(r, { gastos: { renta: 700 }, sinCuenta: -40, memos: { insumos: 0, inversiones: 0, regalias: 0 } });
 });
 
 const c2 = (n: number) => Math.round(n * 100) / 100;
@@ -79,9 +90,19 @@ test("partesFactura: por concepto con su cuenta; sin cuenta, la de la factura; d
 test("facturasAGastos reparte por conceptos", () => {
   const r = facturasAGastos([{ tipo: "ingreso", estado: "por_pagar", subtotal: 31200, descuento: 0, cuenta_pl: "renta",
     conceptos: [{ importe: 30000, cuenta_pl: "renta" }, { importe: 1200, cuenta_pl: "servicios" }] }]);
-  assert.deepEqual(r, { gastos: { renta: 30000, servicios: 1200 }, sinCuenta: 0, memos: { insumos: 0, inversiones: 0 } });
+  assert.deepEqual(r, { gastos: { renta: 30000, servicios: 1200 }, sinCuenta: 0, memos: { insumos: 0, inversiones: 0, regalias: 0 } });
 });
 
-test("enResultado: suma lo que mueve el resultado; insumos e inversiones (memo) no", () => {
-  assert.equal(enResultado([{ cuenta: "servicios", monto: 100 }, { cuenta: "insumos", monto: 900 }, { cuenta: null, monto: 5 }, { cuenta: "inversiones", monto: 50 }]), 105);
+test("facturasAGastos: regalías facturadas van al memo, no a Otros (las regalías del resultado son las calculadas)", () => {
+  const r = facturasAGastos([
+    { tipo: "ingreso", estado: "por_pagar", subtotal: 12000, descuento: 0, cuenta_pl: "regalias" },
+    { tipo: "egreso", estado: "pagada", subtotal: 2000, descuento: 0, cuenta_pl: "regalias" },
+    { tipo: "ingreso", estado: "pagada", subtotal: 5000, descuento: 0, cuenta_pl: "otros",
+      conceptos: [{ importe: 3000, cuenta_pl: "regalias" }, { importe: 2000, cuenta_pl: null }] },
+  ]);
+  assert.deepEqual(r, { gastos: { otros: 2000 }, sinCuenta: 0, memos: { insumos: 0, inversiones: 0, regalias: 13000 } });
+});
+
+test("enResultado: suma lo que mueve el resultado; insumos, inversiones y regalías (memo) no", () => {
+  assert.equal(enResultado([{ cuenta: "servicios", monto: 100 }, { cuenta: "insumos", monto: 900 }, { cuenta: null, monto: 5 }, { cuenta: "inversiones", monto: 50 }, { cuenta: "regalias", monto: 7000 }]), 105);
 });

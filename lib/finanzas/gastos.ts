@@ -1,6 +1,9 @@
-import type { CuentaGasto } from "./cuentas";
+import type { CuentaGasto, CuentaMemo, Memos } from "./cuentas";
 
 const GASTO = ["repartidores", "marketing_agregadores", "marketing", "renta", "servicios", "mantenimiento", "consumibles_equipo", "otros"];
+/** Igual que CUENTAS_MEMO de ./cuentas (aquí solo se importan tipos para que las pruebas corran sin compilar). */
+const MEMO: readonly CuentaMemo[] = ["insumos", "inversiones", "regalias"];
+const esCuentaMemo = (c: string | null): c is CuentaMemo => MEMO.includes(c as CuentaMemo);
 const centavos = (n: number) => Math.round(n * 100) / 100;
 
 type FacturaGasto = {
@@ -25,10 +28,10 @@ export function partesFactura(f: FacturaGasto, fraccion = 1): { cuenta: string |
 export function facturasAGastos<F extends FacturaGasto>(facturas: readonly F[], fraccionDe?: (f: F) => number) {
   const gastos: Partial<Record<CuentaGasto, number>> = {};
   let sinCuenta = 0;
-  const memos = { insumos: 0, inversiones: 0 };
+  const memos: Memos = { insumos: 0, inversiones: 0, regalias: 0 };
   for (const f of facturas) {
     for (const p of partesFactura(f, fraccionDe ? fraccionDe(f) : 1)) {
-      if (p.cuenta === "insumos" || p.cuenta === "inversiones") memos[p.cuenta] = centavos(memos[p.cuenta] + p.monto);
+      if (esCuentaMemo(p.cuenta)) memos[p.cuenta] = centavos(memos[p.cuenta] + p.monto);
       else if (p.cuenta && GASTO.includes(p.cuenta)) gastos[p.cuenta as CuentaGasto] = centavos((gastos[p.cuenta as CuentaGasto] ?? 0) + p.monto);
       else sinCuenta = centavos(sinCuenta + p.monto);
     }
@@ -42,9 +45,9 @@ export function sumarGastos(...partes: Partial<Record<CuentaGasto, number>>[]): 
   return r;
 }
 
-/** Lo que mueve el resultado del P&L: todas las partes menos insumos e inversiones (van al memo). */
+/** Lo que mueve el resultado del P&L: todas las partes menos las cuentas memo (insumos, inversiones y regalías facturadas). */
 export const enResultado = (partes: readonly { cuenta: string | null; monto: number }[]) =>
-  centavos(partes.filter((p) => p.cuenta !== "insumos" && p.cuenta !== "inversiones").reduce((t, p) => t + p.monto, 0));
+  centavos(partes.filter((p) => !esCuentaMemo(p.cuenta)).reduce((t, p) => t + p.monto, 0));
 
 /** Faltantes de efectivo como gasto: −Σ diferencias (una diferencia negativa es faltante). */
 export const faltantesDe = (diferencias: readonly number[]) => centavos(-diferencias.reduce((s, d) => s + Number(d), 0));

@@ -1,5 +1,5 @@
 import { porcentaje } from "@/lib/formato";
-import { NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
+import { CUENTAS_MEMO, NOMBRE_MEMO } from "@/lib/finanzas/cuentas";
 import type { ColumnaPL } from "@/lib/finanzas/excel";
 import { RENGLONES, type ClaveRenglon } from "@/lib/finanzas/pl";
 import { SECCIONES } from "@/lib/finanzas/secciones";
@@ -43,8 +43,7 @@ export function TablaComparativo({ columnas, total }: { columnas: ColumnaPL[]; t
           ))}
           <tbody>
             <tr className="pl-seccion pl-memo"><th colSpan={ancho} scope="rowgroup"><span className="pl-seccion-nombre">Memo</span></th></tr>
-            {simple("insumos", NOMBRE_CUENTA.insumos, (c) => c.entrada.memos.insumos)}
-            {simple("inversiones", NOMBRE_CUENTA.inversiones, (c) => c.entrada.memos.inversiones)}
+            {CUENTAS_MEMO.map((m) => simple(m, NOMBRE_MEMO[m], (c) => c.entrada.memos[m] ?? 0))}
           </tbody>
         </table>
       </div>
