@@ -1,14 +1,17 @@
-/** Compromisos recurrentes por sucursal (renta, fumigación, basura, trampas de grasa). Fechas YYYY-MM-DD. */
+/** Compromisos recurrentes por sucursal (renta, fumigación, basura, trampas de grasa, internet, teléfono). Fechas YYYY-MM-DD. */
 import type { FormaPago } from "./proveedores";
 import type { Impuestos } from "./gastoManual";
 
-export type Concepto = "renta" | "fumigacion" | "basura" | "trampas_grasa" | "otro";
-export const CONCEPTOS: Record<Concepto, string> = { renta: "Renta", fumigacion: "Fumigación", basura: "Recolección de basura", trampas_grasa: "Limpieza de trampas de grasa", otro: "Otro" };
-/** Valor inicial de la casilla en el formulario: los servicios se comprueban; la renta no. */
-export const REQUIERE_SERVICIO: Record<Concepto, boolean> = { renta: false, fumigacion: true, basura: true, trampas_grasa: true, otro: false };
+export type Concepto = "renta" | "fumigacion" | "basura" | "trampas_grasa" | "internet" | "telefono" | "otro";
+export const CONCEPTOS: Record<Concepto, string> = { renta: "Renta", fumigacion: "Fumigación", basura: "Recolección de basura", trampas_grasa: "Limpieza de trampas de grasa", internet: "Internet", telefono: "Teléfono", otro: "Otro" };
+/** Valor inicial de la casilla en el formulario: los servicios se comprueban; la renta, el internet y el teléfono no
+ * (internet y teléfono salen igual en el calendario de cumplimiento: se cumplen al ligar su factura). */
+export const REQUIERE_SERVICIO: Record<Concepto, boolean> = { renta: false, fumigacion: true, basura: true, trampas_grasa: true, internet: false, telefono: false, otro: false };
 
 export type Compromiso = {
-  id: string; sucursal_id: string; concepto: Concepto; descripcion: string | null; proveedor_id: string; monto_estimado: number;
+  id: string; sucursal_id: string; concepto: Concepto; descripcion: string | null; proveedor_id: string;
+  /** Subtotal estimado; null cuando el monto cambia cada periodo (`monto_variable`: se paga el de la factura). */
+  monto_estimado: number | null; monto_variable: boolean;
   forma_pago: FormaPago; unidad: "mes" | "semana"; cada: number; dia_mes: number | null; inicio: string; fin: string | null;
   requiere_servicio: boolean; revision: number;
   /** Impuestos sobre `monto_estimado` (el subtotal), como en el gasto sin CFDI. */
@@ -25,7 +28,7 @@ export function compromisoDesdeFactura(
 ): Pick<Compromiso, "sucursal_id" | "proveedor_id" | "concepto" | "descripcion" | "monto_estimado" | "iva" | "ret_iva" | "ret_isr" | "unidad" | "cada" | "dia_mes" | "inicio"> {
   const base = Math.round((Number(f.subtotal) - Number(f.descuento)) * 100) / 100;
   const texto = descripcion.trim(), plano = texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  const concepto: Concepto = /renta|arrendamiento/.test(plano) ? "renta" : /fumiga/.test(plano) ? "fumigacion" : /trampa/.test(plano) ? "trampas_grasa" : /basura/.test(plano) ? "basura" : "otro";
+  const concepto: Concepto = /renta|arrendamiento/.test(plano) ? "renta" : /fumiga/.test(plano) ? "fumigacion" : /trampa/.test(plano) ? "trampas_grasa" : /basura/.test(plano) ? "basura" : /internet/.test(plano) ? "internet" : /telefon/.test(plano) ? "telefono" : "otro";
   // ISR: 10 % (arrendamiento, honorarios) o 1.25 % (RESICO); lo que quede en medio se toma por la tasa más cercana.
   const isr = Number(f.retencion_isr) > 0 ? (Number(f.retencion_isr) / base > 0.05 ? "diez" : "resico") : "ninguna";
   return {
@@ -80,16 +83,17 @@ export function avisosCompromisos(fechas: readonly FechaCompromiso[], requiere: 
   };
 }
 
-export type Previsto = { compromisoId: string; vence: string; fechaPago: string; monto: number; titulo: string; vencido: boolean };
+/** `variable`: compromiso de monto variable; va en $0 (se paga el de la factura) y no suma al total del día. */
+export type Previsto = { compromisoId: string; vence: string; fechaPago: string; monto: number; titulo: string; vencido: boolean; variable: boolean };
 
 /** Lo que aún no tiene factura vigente ni está omitido, agrupado por día de pago (igual que una factura). */
-export function previstosPorDia(fechas: readonly FechaCompromiso[], datos: ReadonlyMap<string, { monto: number; titulo: string }>, hoy: string, fechaDePago: (vence: string) => string): Record<string, Previsto[]> {
+export function previstosPorDia(fechas: readonly FechaCompromiso[], datos: ReadonlyMap<string, { monto: number; titulo: string; variable?: boolean }>, hoy: string, fechaDePago: (vence: string) => string): Record<string, Previsto[]> {
   const r: Record<string, Previsto[]> = {};
   for (const f of fechas) {
     const estado = estadoPago(f, hoy), d = datos.get(f.compromiso_id);
     if (!d || (estado !== "previsto" && estado !== "vencido")) continue;
     const fechaPago = fechaDePago(f.vence);
-    (r[fechaPago] ??= []).push({ compromisoId: f.compromiso_id, vence: f.vence, fechaPago, monto: d.monto, titulo: d.titulo, vencido: estado === "vencido" });
+    (r[fechaPago] ??= []).push({ compromisoId: f.compromiso_id, vence: f.vence, fechaPago, monto: d.variable ? 0 : d.monto, titulo: d.titulo, vencido: estado === "vencido", variable: !!d.variable });
   }
   return r;
 }
@@ -115,11 +119,11 @@ const FORMAS = ["transferencia", "efectivo", "tarjeta", "cheque"];
 /** Valida el formulario y arma `p_datos` de `guardar_compromiso`. */
 export function leerCompromiso(campo: (c: string) => string): { datos: Record<string, string> } | { error: string } {
   const v = (c: string) => campo(c).trim();
-  const concepto = v("concepto"), unidad = v("unidad"), monto = v("monto_estimado").replace(/[$,\s]/g, "");
+  const concepto = v("concepto"), unidad = v("unidad"), variable = v("monto_variable") === "si", monto = variable ? "" : v("monto_estimado").replace(/[$,\s]/g, "");
   if (!v("sucursal_id") || !v("proveedor_id")) return { error: "Elige sucursal y proveedor." };
   if (!(concepto in CONCEPTOS)) return { error: "Elige el concepto." };
   if (concepto === "otro" && v("descripcion").length < 3) return { error: "Describe el compromiso (al menos 3 letras)." };
-  if (!/^\d+(\.\d{1,2})?$/.test(monto) || Number(monto) <= 0) return { error: "Escribe el monto estimado (mayor a cero)." };
+  if (!variable && (!/^\d+(\.\d{1,2})?$/.test(monto) || Number(monto) <= 0)) return { error: "Escribe el monto estimado (mayor a cero)." };
   if (!FORMAS.includes(v("forma_pago"))) return { error: "Elige la forma de pago prevista." };
   if (unidad !== "mes" && unidad !== "semana") return { error: "Elige si se repite por meses o por semanas." };
   const cada = Number(v("cada"));
@@ -128,14 +132,18 @@ export function leerCompromiso(campo: (c: string) => string): { datos: Record<st
   if (unidad === "mes" && (!Number.isInteger(dia) || dia < 1 || dia > 31)) return { error: "El día del mes va del 1 al 31." };
   if (!FECHA.test(v("inicio"))) return { error: "Indica la fecha de inicio." };
   if (v("fin") && (!FECHA.test(v("fin")) || v("fin") < v("inicio"))) return { error: "El fin no puede ser antes del inicio." };
-  if (v("iva") !== "16" && v("iva") !== "0") return { error: "Elige el IVA (16 % o 0 %)." };
-  if (v("ret_iva") !== "ninguna" && v("ret_iva") !== "dos_tercios") return { error: "Elige la retención de IVA." };
-  if (v("iva") === "0" && v("ret_iva") !== "ninguna") return { error: "Sin IVA no hay retención de IVA." };
-  if (!["ninguna", "diez", "resico"].includes(v("ret_isr"))) return { error: "Elige la retención de ISR." };
+  // Monto variable: sin importe ni impuestos (los trae cada factura).
+  if (!variable) {
+    if (v("iva") !== "16" && v("iva") !== "0") return { error: "Elige el IVA (16 % o 0 %)." };
+    if (v("ret_iva") !== "ninguna" && v("ret_iva") !== "dos_tercios") return { error: "Elige la retención de IVA." };
+    if (v("iva") === "0" && v("ret_iva") !== "ninguna") return { error: "Sin IVA no hay retención de IVA." };
+    if (!["ninguna", "diez", "resico"].includes(v("ret_isr"))) return { error: "Elige la retención de ISR." };
+  }
   return { datos: {
     sucursal_id: v("sucursal_id"), concepto, descripcion: v("descripcion"), proveedor_id: v("proveedor_id"), monto_estimado: monto,
     forma_pago: v("forma_pago"), unidad, cada: String(cada), dia_mes: unidad === "mes" ? String(dia) : "", inicio: v("inicio"), fin: v("fin"),
     requiere_servicio: v("requiere_servicio") === "si" ? "true" : "false",
-    iva: v("iva") === "16" ? "0.16" : "0", ret_iva: v("ret_iva"), ret_isr: v("ret_isr"),
+    iva: !variable && v("iva") === "16" ? "0.16" : "0", ret_iva: variable ? "ninguna" : v("ret_iva"), ret_isr: variable ? "ninguna" : v("ret_isr"),
+    monto_variable: variable ? "true" : "false",
   } };
 }

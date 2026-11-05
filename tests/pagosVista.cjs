@@ -21,3 +21,9 @@ test('pagos: los compromisos fijos sin factura salen como previstos y suman al d
  assert.match(html,/Renta · Zapopan/);assert.match(html,/href="\/compras\/pagos\/compromisos\/c1#fecha-2026-10-03"/);assert.match(html,/Previsto/);
  assert.match(html,/aria-label="[^"]*45,060\.00[^"]*1 previstos"/);assert.match(html,/data-previsto="si"/);
 });
+test('pagos: un compromiso de monto variable sale en $0.00 con su nota y no suma al día',()=>{
+ const previstos={'2026-10-02':[{compromisoId:'c2',vence:'2026-10-05',fechaPago:'2026-10-02',monto:0,titulo:'Teléfono · Zapopan',vencido:false,variable:true}]};
+ const html=renderToStaticMarkup(React.createElement(CalendarioPagos,{hoy:'2026-10-01',rangoInicial:{desde:'2026-10-02',hasta:'2026-10-02'},porDia:{'2026-10-02':[{...fila,vencida:false}]},previstos}));
+ assert.match(html,/Teléfono · Zapopan/);assert.match(html,/\$0\.00/);assert.match(html,/Monto variable: paga el de la factura/);
+ assert.match(html,/aria-label="[^"]*\$60\.00[^"]*1 previstos"/);
+});

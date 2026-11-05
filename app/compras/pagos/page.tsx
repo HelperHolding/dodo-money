@@ -62,7 +62,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const compromisosVisibles = filtrarPrevistos(compromisos, { sucursal, proveedor });
   const idsCompromiso = new Set(compromisosVisibles.map((c) => c.id));
   const fechasVisibles = fechasCompromiso.filter((f) => idsCompromiso.has(f.compromiso_id));
-  const previstos = previstosPorDia(fechasVisibles, new Map(compromisosVisibles.map((c) => [c.id, { monto: importesDe(c).total, titulo: tituloCompromiso(c, sucursalDe(c)) }])), hoy, (v) => diaDePagoSugerido(v, hoy, dias));
+  const previstos = previstosPorDia(fechasVisibles, new Map(compromisosVisibles.map((c) => [c.id, { monto: importesDe(c).total, titulo: tituloCompromiso(c, sucursalDe(c)), variable: c.monto_variable }])), hoy, (v) => diaDePagoSugerido(v, hoy, dias));
   const requiereServicio = new Map(compromisosVisibles.map((c) => [c.id, c.requiere_servicio]));
   const avisosFijos = avisosCompromisos(fechasVisibles, (id) => requiereServicio.get(id) ?? false, hoy);
   const facturas = facturasLeidas.map((f) => ({ ...f, pago_sugerido_el: diaDePagoSugerido(f.vence_el, hoy, dias) }));

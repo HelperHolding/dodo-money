@@ -21,7 +21,8 @@ export function FormCompromiso({ c, sucursales, proveedores, hoy, sucursalInicia
   const [unidad, setUnidad] = useState(d?.unidad ?? "mes");
   const [requiere, setRequiere] = useState(c?.requiere_servicio ?? REQUIERE_SERVICIO[d?.concepto ?? "renta"]);
   const [imp, setImp] = useState<Impuestos>(d ? impuestosDe(d) : impuestosPorConcepto("renta"));
-  const [monto, setMonto] = useState(d ? String(d.monto_estimado) : "");
+  const [monto, setMonto] = useState(d?.monto_estimado != null ? String(d.monto_estimado) : "");
+  const [variable, setVariable] = useState(c?.monto_variable ?? false);
   const t = calcularGasto([{ importe: Number(monto.replace(/[$,\s]/g, "")) || 0 }], imp);
   const fijo = !!c;
   return (
@@ -48,7 +49,7 @@ export function FormCompromiso({ c, sucursales, proveedores, hoy, sucursalInicia
             <option value="">Elige…</option>{proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
         </label>
-        <label className="campo">Importe antes de impuestos (MXN)<input name="monto_estimado" inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} required /><small>El subtotal de la factura; el IVA y las retenciones se calculan abajo.</small></label>
+        {!variable && <label className="campo">Importe antes de impuestos (MXN)<input name="monto_estimado" inputMode="decimal" value={monto} onChange={(e) => setMonto(e.target.value)} required /><small>El subtotal de la factura; el IVA y las retenciones se calculan abajo.</small></label>}
         <label className="campo">Forma de pago prevista
           <select name="forma_pago" defaultValue={c?.forma_pago ?? "transferencia"}>
             {Object.entries(NOMBRE_FORMA_PAGO).map(([k, t]) => <option key={k} value={k}>{t}</option>)}
@@ -65,7 +66,8 @@ export function FormCompromiso({ c, sucursales, proveedores, hoy, sucursalInicia
         <label className="campo">Desde<input name="inicio" type="date" defaultValue={d?.inicio ?? hoy} required readOnly={fijo} /><small>La primera fecha que falta por pagar, no el inicio del contrato.</small></label>
         <label className="campo">Hasta (opcional)<input name="fin" type="date" defaultValue={c?.fin ?? ""} /><small>Cuando termina el contrato.</small></label>
       </div>
-      <fieldset className="seccion"><legend>Impuestos</legend>
+      <label className="casilla"><input type="checkbox" name="monto_variable" value="si" checked={variable} onChange={(e) => { setVariable(e.target.checked); if (!e.target.checked && variable) setImp(impuestosPorConcepto(concepto)); }} /> El monto cambia cada periodo (luz, agua, teléfono por consumo)</label>
+      {variable ? <p className="saldo-nota">Sin importe ni impuestos: en Pagos sale como previsto en $0.00 y se paga el monto de cada factura.</p> : <fieldset className="seccion"><legend>Impuestos</legend>
         <div className="rejilla">
           <label className="campo">IVA<select name="iva" value={imp.iva === 0 ? "0" : "16"} onChange={(e) => setImp({ ...imp, iva: e.target.value === "0" ? 0 : 0.16, retIva: e.target.value === "0" ? "ninguna" : imp.retIva })}><option value="16">16 %</option><option value="0">0 % o exento</option></select></label>
           <label className="campo">Retención de IVA<select name="ret_iva" value={imp.retIva} disabled={imp.iva === 0} onChange={(e) => setImp({ ...imp, retIva: e.target.value as Impuestos["retIva"] })}><option value="ninguna">Ninguna</option><option value="dos_tercios">2/3 del IVA</option></select>{imp.iva === 0 && <input type="hidden" name="ret_iva" value="ninguna" />}</label>
@@ -79,7 +81,7 @@ export function FormCompromiso({ c, sucursales, proveedores, hoy, sucursalInicia
           {t.retencion_isr > 0 && <><dt>Retención ISR</dt><dd>−{pesos(t.retencion_isr)}</dd></>}
           <dt>Total a pagar</dt><dd><strong>{pesos(t.total)}</strong></dd>
         </dl>
-      </fieldset>
+      </fieldset>}
       <label className="casilla"><input type="checkbox" name="requiere_servicio" value="si" checked={requiere} onChange={(e) => setRequiere(e.target.checked)} /> Comprobar que el servicio se hizo (fecha, nota y foto)</label>
       <button className="boton" type="submit">Guardar compromiso</button>
     </form>

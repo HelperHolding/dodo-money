@@ -49,7 +49,7 @@ export function CalendarioPagos({ hoy, porDia, previstos={}, filtros={}, rangoIn
         {semanasDelMes(mes.anio, mes.mes).flat().map((d, i) => {
           if (!d) return <span key={`h${i}`} aria-hidden="true" />;
           const facturas = porDia[d] ?? [], ps = previstos[d] ?? [];
-          const total = facturas.reduce((s, f) => s + f.saldo, 0) + ps.reduce((s, p) => s + p.monto, 0);
+          const total = facturas.reduce((s, f) => s + f.saldo, 0) + ps.reduce((s, p) => s + (p.variable ? 0 : p.monto), 0);
           const vencidas = facturas.some((f) => f.vencida) || ps.some((p) => p.vencido);
           const hay = facturas.length + ps.length > 0;
           return (
@@ -69,7 +69,7 @@ export function CalendarioPagos({ hoy, porDia, previstos={}, filtros={}, rangoIn
             {previstosLista.length > 0 && <div className="tarjetas">{previstosLista.map((p) => (
               <article key={`${p.compromisoId}-${p.vence}`} className="tarjeta" data-alerta={p.vencido ? "si" : undefined}>
                 <div className="tarjeta-encabezado"><div><h3><Link href={`/compras/pagos/compromisos/${p.compromisoId}#fecha-${p.vence}`}>{p.titulo}</Link></h3>
-                  <p>Vence {fechaTexto(p.vence)} · sin factura todavía</p></div><strong>{pesos(p.monto)}</strong></div>
+                  <p>Vence {fechaTexto(p.vence)} · sin factura todavía</p>{p.variable && <p className="saldo-nota">Monto variable: paga el de la factura</p>}</div><strong>{pesos(p.variable ? 0 : p.monto)}</strong></div>
                 <span className="insignia" data-tono={p.vencido ? "peligro" : "info"}>{p.vencido ? "Previsto vencido" : "Previsto"}</span>
               </article>))}</div>}
             {lista.length > 0 && <TablaFacturasPago filas={lista}/>}

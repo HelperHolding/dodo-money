@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { calcularGasto } from "./gastoManual.ts";
-import { compromisoDesdeFactura, impuestosDe, ventanaCompromisos, avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "./compromisos.ts";
+import { CONCEPTOS, REQUIERE_SERVICIO, compromisoDesdeFactura, impuestosDe, ventanaCompromisos, avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "./compromisos.ts";
 
 const fecha = (x: Partial<FechaCompromiso> = {}): FechaCompromiso => ({
   compromiso_id: "c1", vence: "2026-11-01", fecha_id: null, factura_id: null, factura_estado: null, factura_saldo: null,
@@ -53,7 +53,7 @@ test("previstos por día de pago: sin factura vigente ni omisión", () => {
   const datos = new Map([["c1", { monto: 45000, titulo: "Renta · Zapopan" }]]);
   const r = previstosPorDia(fs, datos, "2026-10-28", (v) => (v === "2026-11-01" ? "2026-10-30" : v));
   assert.deepEqual(Object.keys(r).sort(), ["2026-10-01", "2026-10-30"]);
-  assert.deepEqual(r["2026-10-30"], [{ compromisoId: "c1", vence: "2026-11-01", fechaPago: "2026-10-30", monto: 45000, titulo: "Renta · Zapopan", vencido: false }]);
+  assert.deepEqual(r["2026-10-30"], [{ compromisoId: "c1", vence: "2026-11-01", fechaPago: "2026-10-30", monto: 45000, titulo: "Renta · Zapopan", vencido: false, variable: false }]);
   assert.equal(r["2026-10-01"][0].vencido, true);
 });
 
@@ -68,8 +68,8 @@ test("filtros de Pagos: sucursal, proveedor y oficina", () => {
 test("leer el formulario", () => {
   const base: Record<string, string> = { sucursal_id: "s1", concepto: "renta", descripcion: "", proveedor_id: "p1", monto_estimado: "$45,000.50", forma_pago: "transferencia", unidad: "mes", cada: "1", dia_mes: "31", inicio: "2026-11-30", fin: "", requiere_servicio: "", iva: "16", ret_iva: "dos_tercios", ret_isr: "diez" };
   const leer = (x: Record<string, string>) => leerCompromiso((c) => x[c] ?? "");
-  assert.deepEqual(leer(base), { datos: { ...base, monto_estimado: "45000.50", requiere_servicio: "false", iva: "0.16" } });
-  assert.deepEqual(leer({ ...base, unidad: "semana" }), { datos: { ...base, monto_estimado: "45000.50", unidad: "semana", dia_mes: "", requiere_servicio: "false", iva: "0.16" } });
+  assert.deepEqual(leer(base), { datos: { ...base, monto_estimado: "45000.50", requiere_servicio: "false", iva: "0.16", monto_variable: "false" } });
+  assert.deepEqual(leer({ ...base, unidad: "semana" }), { datos: { ...base, monto_estimado: "45000.50", unidad: "semana", dia_mes: "", requiere_servicio: "false", iva: "0.16", monto_variable: "false" } });
   assert.equal((leer({ ...base, requiere_servicio: "si" }) as { datos: Record<string, string> }).datos.requiere_servicio, "true");
   assert.deepEqual(leer({ ...base, monto_estimado: "0" }), { error: "Escribe el monto estimado (mayor a cero)." });
   assert.deepEqual(leer({ ...base, concepto: "otro" }), { error: "Describe el compromiso (al menos 3 letras)." });
@@ -127,4 +127,37 @@ test("factura → compromiso: concepto por la descripción; si no se reconoce, O
   assert.equal(compromisoDesdeFactura(factura, "Arrendamiento local 4").concepto, "renta");
   const otro = compromisoDesdeFactura(factura, "  Monitoreo de alarma  ");
   assert.deepEqual([otro.concepto, otro.descripcion], ["otro", "Monitoreo de alarma"]);
+});
+
+test("internet y teléfono: conceptos sin comprobación de servicio", () => {
+  assert.equal(CONCEPTOS.internet, "Internet");
+  assert.equal(CONCEPTOS.telefono, "Teléfono");
+  assert.equal(REQUIERE_SERVICIO.internet, false);
+  assert.equal(REQUIERE_SERVICIO.telefono, false);
+  assert.equal(tituloCompromiso({ concepto: "telefono", descripcion: null }, "Zapopan"), "Teléfono · Zapopan");
+});
+
+test("factura → compromiso: internet y teléfono por la descripción, sin romper los demás", () => {
+  assert.equal(compromisoDesdeFactura(factura, "Servicio de INTERNET fibra 200 Mbps").concepto, "internet");
+  assert.equal(compromisoDesdeFactura(factura, "Paquete Internet y telefonía").concepto, "internet");
+  assert.equal(compromisoDesdeFactura(factura, "Línea telefónica local").concepto, "telefono");
+  assert.equal(compromisoDesdeFactura(factura, "Servicio de teléfono").concepto, "telefono");
+  assert.equal(compromisoDesdeFactura(factura, "Renta del local").concepto, "renta");
+  assert.equal(compromisoDesdeFactura(factura, "Fumigación").concepto, "fumigacion");
+});
+
+test("leer el formulario: monto variable no pide monto ni impuestos", () => {
+  const base: Record<string, string> = { sucursal_id: "s1", concepto: "telefono", descripcion: "", proveedor_id: "p1", monto_estimado: "", forma_pago: "transferencia", unidad: "mes", cada: "1", dia_mes: "5", inicio: "2026-11-05", fin: "", requiere_servicio: "", iva: "", ret_iva: "", ret_isr: "", monto_variable: "si" };
+  const leer = (x: Record<string, string>) => leerCompromiso((c) => x[c] ?? "");
+  assert.deepEqual(leer(base), { datos: { ...base, requiere_servicio: "false", iva: "0", ret_iva: "ninguna", ret_isr: "ninguna", monto_variable: "true" } });
+  // Aunque llegue un monto o impuestos, no se guardan.
+  assert.equal((leer({ ...base, monto_estimado: "500", iva: "16" }) as { datos: Record<string, string> }).datos.monto_estimado, "");
+  // Sin la casilla, el monto sigue siendo obligatorio.
+  assert.deepEqual(leer({ ...base, monto_variable: "" }), { error: "Escribe el monto estimado (mayor a cero)." });
+});
+
+test("previstos de monto variable: monto 0 y marcados como variables", () => {
+  const datos = new Map([["c1", { monto: 899, titulo: "Teléfono · Zapopan", variable: true }], ["c2", { monto: 45000, titulo: "Renta · Zapopan", variable: false }]]);
+  const r = previstosPorDia([fecha(), fecha({ compromiso_id: "c2" })], datos, "2026-10-28", (v) => v);
+  assert.deepEqual(r["2026-11-01"].map((p) => [p.titulo, p.monto, p.variable]), [["Teléfono · Zapopan", 0, true], ["Renta · Zapopan", 45000, false]]);
 });
