@@ -4,6 +4,7 @@ import { leerPaginas } from "./paginas";
 import { ErrorDodo, tokenDeAcceso as resolverToken, type Almacen } from "./tokens";
 import type { RecepcionApi } from "./recepciones";
 import type { VentaApi } from "./ventas";
+import type { ExistenciaApi } from "../inventario";
 
 export { ErrorDodo };
 
@@ -71,6 +72,20 @@ export async function ventasDelDia(token: string, unitId: string, ventana: { fro
     return { items: r.sales ?? [], fin: r.isEndOfListReached };
   }).catch((e) => { throw new ErrorDodo((e as Error).message); });
   return [...new Map(ventas.map((v) => [v.orderId, v])).values()];
+}
+
+/**
+ * Existencias actuales de insumos (Warehouse balances) de hasta 30 unidades, incluidas las estimadas (sin revisión
+ * de inventario). https://docs.dodois.io/docs/english-documentation/u4g3vpceyccao-accounting-warehouse-balances
+ */
+export async function existenciasDe(token: string, unitIds: readonly string[]): Promise<ExistenciaApi[]> {
+  if (!unitIds.length) return [];
+  if (unitIds.length > 30) throw new ErrorDodo("Máximo 30 sucursales por consulta de existencias.");
+  return leerPaginas(async (skip) => {
+    const r = await getDodo<{ stocks: ExistenciaApi[]; isEndOfListReached: boolean }>(token,
+      `${API}/dodopizza/mx/accounting/inventory-stocks?units=${unitIds.join(",")}&includeUnconfirmed=true&skip=${skip}&take=1000`);
+    return { items: r.stocks ?? [], fin: r.isEndOfListReached };
+  }).catch((e) => { throw new ErrorDodo((e as Error).message); });
 }
 
 /** Recepciones de insumos de una unidad en una ventana, página por página; las líneas iguales se conservan. */
