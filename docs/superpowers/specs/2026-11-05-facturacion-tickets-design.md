@@ -22,7 +22,7 @@ Dentro:
 
 Fuera (fases posteriores):
 - Factura global automática (Facturapi la soporta desde recibos).
-- Otras razones sociales o sucursales con su propio CSD. El modelo guarda `razon_social_id` para no cerrarse a esto.
+- Otras razones sociales o sucursales con su propio CSD. La tabla `facturacion_sucursales` deja la puerta abierta.
 - Número corto del pedido (#23) como dato de búsqueda; requiere confirmar si el scope `orders` de Dodo IS lo trae.
 
 ## Flujo del cliente — `/facturar`
@@ -39,7 +39,7 @@ Página pública (sin sesión), con marca Dodo y diseño pensado primero para m�
 2. **Datos fiscales.**
    - RFC, nombre o razón social, régimen fiscal, código postal, uso del CFDI (filtrado por régimen según el catálogo del SAT) y correo.
    - Opción de subir la constancia de situación fiscal para llenar los campos, reutilizando la lectura de `leerConstanciaSubida` de Compras.
-   - Si el pedido se pagó con tarjeta (`pago = 'tarjeta'`), el cliente elige crédito (04) o débito (28). Efectivo se factura como 01; en línea u otro como 04, a confirmar con el contador.
+   - Si el pedido se pagó con tarjeta (`pago = 'tarjeta'`), el cliente elige crédito (04) o débito (28). Si se pagó en línea (`pago = 'en_linea'`), también se le pregunta. Efectivo se factura como 01. Los pedidos con `pago = 'otro'` no se facturan en el portal.
 3. **Timbrado.** Se timbra en Facturapi y se muestran botones para descargar el PDF y el XML. Facturapi envía ambos al correo capturado.
 
 ### Reglas
@@ -50,6 +50,7 @@ Página pública (sin sesión), con marca Dodo y diseño pensado primero para m�
   - los pedidos cancelados;
   - `tipo = 'personal'`;
   - los pedidos con `agregador` (Rappi y otros), que se concilian aparte;
+  - los pedidos con `pago = 'otro'`;
   - los RFC genéricos `XAXX010101000` y `XEXX010101000`.
 - Anti-abuso: límite de intentos de búsqueda por IP (por ejemplo, 10 por cada 10 minutos). La búsqueda no revela nada si no coinciden fecha, hora y total.
 
@@ -63,7 +64,7 @@ Tabla `facturas_clientes`:
 |---|---|
 | `id` uuid pk | |
 | `pedido_id` text → `pedidos(dodo_id)` | índice único parcial `where estado <> 'cancelada'` |
-| `razon_social_id` uuid → `razones_sociales` | emisor |
+| `rfc_emisor` text → `razones_sociales(rfc)` | emisor, tomado de `facturacion_sucursales` |
 | `rfc`, `nombre`, `regimen_fiscal`, `codigo_postal`, `uso_cfdi`, `correo` | receptor |
 | `forma_pago` text | 01 / 04 / 28 |
 | `subtotal`, `iva`, `total` numeric(12,2) | `total` = `pedidos.total` |
@@ -71,6 +72,8 @@ Tabla `facturas_clientes`:
 | `facturapi_id`, `uuid`, `serie`, `folio` | se llenan al timbrar |
 | `error` text | último mensaje de Facturapi |
 | `creada`, `timbrada_en`, `cancelada_en`, `motivo_cancelacion`, `cancelada_por` | |
+
+Tabla `facturacion_sucursales(sucursal_id, rfc_emisor)`: qué sucursales facturan y con qué RFC. Arranca con Mariano Otero → HCM260306B93, fijada por RFC porque `razon_social_sucursales` liga Zapopan-1 a CMS230321FI8 (SITRU). La tabla `facturacion_intentos` guarda el hash de la IP para el límite de búsquedas.
 
 RLS: `select` para admin y corporativo; sin `insert`, `update` ni `delete` para usuarios ni anon.
 
@@ -91,12 +94,12 @@ El servidor las llama con el cliente de `lib/supabase/admin.ts`.
 ### UI
 
 - `app/facturar/`: los tres pasos, con server actions y sin datos en la URL.
-- `app/finanzas/facturacion/`: lista del mes en tarjetas, siguiendo la preferencia del proyecto por tarjetas sobre tablas anchas. Admin y corporativo ven la lista. Solo admin cancela (motivos SAT 01 a 04) y reenvía. Botón "Excel del mes" con fecha, ticket, RFC, nombre, subtotal, IVA, total, UUID y estado.
+- `app/finanzas/facturacion/`: lista del mes en tarjetas, siguiendo la preferencia del proyecto por tarjetas sobre tablas anchas. Admin y corporativo ven la lista. Solo admin cancela, con los motivos SAT 02 y 03, que no requieren sustitución; refacturar con sustitución (01) queda fuera de esta fase. Después de cancelar, el cliente puede volver a facturar el ticket y reenvía. Botón "Excel del mes" con fecha, ticket, RFC, nombre, subtotal, IVA, total, UUID y estado.
 
 ## Errores
 
 - Facturapi rechaza los datos (RFC, nombre o CP no coinciden con el SAT): se ejecuta `liberar` y el cliente ve el mensaje y corrige.
-- Timeout o respuesta desconocida: la fila se queda en `en_proceso` y la oficina la ve como "por confirmar". Antes de reintentar se consulta Facturapi para no timbrar doble; el mecanismo exacto (búsqueda por pedido o llave de idempotencia) se verifica en la documentación de Facturapi durante el plan.
+- Timeout o respuesta desconocida: la fila se queda en `en_proceso` y la oficina la ve como "por confirmar". Antes de reintentar se consulta Facturapi para no timbrar doble; se manda `idempotency_key` y `external_id` iguales al id de la fila, y el reintento busca por `external_id`.
 - La suma de conceptos no cuadra o el pedido no tiene productos: no se timbra, y el cliente ve un mensaje con el correo de facturación.
 
 ## Pruebas
