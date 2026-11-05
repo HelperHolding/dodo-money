@@ -39,7 +39,7 @@ function textosDePdf(datos: Uint8Array): Texto[] {
   const b = Buffer.from(datos.buffer, datos.byteOffset, datos.byteLength);
   const crudo = b.toString("latin1");
   const textos: Texto[] = [];
-  let pos = 0, pagina = 0;
+  let pos = 0, pagina = 0, inflados = 0;
   for (;;) {
     const inicio = crudo.indexOf("stream", pos);
     if (inicio < 0) break;
@@ -51,7 +51,9 @@ function textosDePdf(datos: Uint8Array): Texto[] {
     if (fin < 0) break;
     pos = fin + 9;
     let contenido: string;
-    try { contenido = inflateSync(b.subarray(ini, fin)).toString("latin1"); } catch { contenido = crudo.slice(ini, fin); }
+    // Un PDF ajeno puede traer un flujo que se expande sin fin: se limita cada flujo y el total por archivo.
+    try { const sal = inflateSync(b.subarray(ini, fin), { maxOutputLength: 4 * 1024 * 1024 }); inflados += sal.length; contenido = sal.toString("latin1"); } catch { contenido = crudo.slice(ini, fin); }
+    if (inflados > 20 * 1024 * 1024) break;
     if (!contenido.includes("BT") || !/\bT[jJ]\b/.test(contenido)) continue;
     pagina++;
     let x = 0, y = 0;
