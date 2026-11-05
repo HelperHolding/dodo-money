@@ -4,10 +4,10 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaMX, hora, pesos } from "@/lib/formato";
 import { puedeEditarFinanzas } from "@/lib/roles";
-import { cancelarFactura, reenviarFactura } from "./acciones";
+import { cancelarFactura, reenviarFactura, revisarFactura } from "./acciones";
 import { limitesMes } from "./mes";
 
-const ESTADO: Record<string, string> = { timbrada: "Timbrada", cancelada: "Cancelada", en_proceso: "Por confirmar", error: "Rechazada" };
+const ESTADO: Record<string, string> = { timbrada: "Timbrada", cancelada: "Cancelada", en_proceso: "Por confirmar", error: "Sin timbrar" };
 
 export default async function FacturacionTickets({ searchParams }: { searchParams: Promise<{ mes?: string; ok?: string; error?: string }> }) {
   const { supabase, perfil } = await obtenerPerfil(), q = await searchParams;
@@ -37,6 +37,12 @@ export default async function FacturacionTickets({ searchParams }: { searchParam
         <p className="saldo-nota">{fechaMX(f.creada)} {hora(f.creada)} · Ticket {f.pedido_id}{f.serie ? ` · ${f.serie}-${f.folio}` : ""}</p>
         <p><strong>{ESTADO[f.estado] ?? f.estado}</strong>{f.estado === "cancelada" && f.motivo_cancelacion ? ` · motivo ${f.motivo_cancelacion}` : ""}{f.error ? ` · ${f.error}` : ""}</p>
         {f.uuid && <p className="saldo-nota" style={{ fontSize: "0.75rem", wordBreak: "break-all" }}>{f.uuid}</p>}
+        {edita && f.estado === "en_proceso" && (
+          <form action={revisarFactura} className="acciones">
+            <input type="hidden" name="id" value={f.id} />
+            <BotonEnviar className="boton boton-secundario boton-compacto" pendiente="Revisando…">Revisar en Facturapi</BotonEnviar>
+          </form>
+        )}
         {edita && f.estado === "timbrada" && <>
           <form action={cancelarFactura} className="acciones">
             <input type="hidden" name="id" value={f.id} />

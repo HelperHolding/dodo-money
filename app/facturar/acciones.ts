@@ -11,10 +11,16 @@ import { baseFacturacion, facturapi, sucursalFacturacion } from "@/lib/facturaci
 
 export type Ticket = { pedido: string; fecha: string; hora: string; total: number; pago: PagoPedido; productos: { nombre: string; precio: number }[] };
 export type EstadoBusqueda = { error?: string; ticket?: Ticket; facturado?: { factura: string; correo: string } };
-export type EstadoFactura = { error?: string; listo?: { id: string; token: string; uuid: string }; procesando?: boolean; facturado?: { factura: string; correo: string } };
+export type EstadoFactura = { error?: string; listo?: { id: string; token: string; uuid: string; correoEnviado: boolean }; procesando?: boolean; facturado?: { factura: string; correo: string } };
 
 const FALLA = `No pudimos completar la solicitud. Intenta de nuevo en unos minutos o escríbenos a ${CORREO_FACTURACION}.`;
 const MAX_CONSTANCIA = 1024 * 1024;
+
+/** Solo mensaje y código: el `details` de PostgREST puede traer RFC, nombre o correo. */
+const registrar = (e: unknown) => {
+  const x = (e ?? {}) as { message?: unknown; code?: unknown };
+  console.error("facturar:", { message: typeof x.message === "string" ? x.message : String(e), code: x.code });
+};
 
 const ipHash = async () => {
   const h = await headers();
@@ -29,7 +35,7 @@ export async function buscarTicket(_: EstadoBusqueda, fd: FormData): Promise<Est
     const sucursal = await sucursalFacturacion();
     const { data, error } = await crearClienteAdmin().rpc("facturacion_buscar_ticket", { p_ip: await ipHash(), p_sucursal: sucursal.id, p_fecha: fecha, p_hora: hora, p_total: total });
     if (error) {
-      console.error("facturar:", error);
+      registrar(error);
       return { error: `No pudimos buscar el ticket. Intenta de nuevo o escríbenos a ${CORREO_FACTURACION}.` };
     }
     const r = (data as { resultado: ResultadoBusqueda; pedido_id: string; fecha: string; hora: string; total: number; pago: PagoPedido; productos: Ticket["productos"]; factura_id: string; correo: string }[] | null)?.[0];
@@ -38,13 +44,20 @@ export async function buscarTicket(_: EstadoBusqueda, fd: FormData): Promise<Est
     if (r.resultado !== "ok") return { error: mensajeBusqueda(r.resultado) };
     return { ticket: { pedido: r.pedido_id, fecha: r.fecha, hora: r.hora.slice(0, 5), total: Number(r.total), pago: r.pago, productos: r.productos.map((p) => ({ nombre: p.nombre, precio: Number(p.precio) })) } };
   } catch (e) {
-    console.error("facturar:", e);
+    registrar(e);
     return { error: FALLA };
   }
 }
 
 export async function leerConstanciaCliente(fd: FormData): Promise<{ datos?: { rfc: string; nombre: string; codigo_postal: string | null; regimen: string | null }; error?: string }> {
   try {
+    // Leer el PDF es costoso y la acción es pública: límite propio por IP, antes de tocar el archivo.
+    const { data: permitido, error: errLimite } = await crearClienteAdmin().rpc("facturacion_registrar_intento", { p_ip: await ipHash(), p_tipo: "constancia" });
+    if (errLimite) {
+      registrar(errLimite);
+      return { error: FALLA };
+    }
+    if (permitido === false) return { error: mensajeBusqueda("limite") };
     const a = fd.get("constancia");
     if (!(a instanceof File) || a.size === 0) return { error: "Elige el PDF de tu constancia." };
     if (a.size > MAX_CONSTANCIA) return { error: "La constancia pesa más de 1 MB." };
@@ -52,7 +65,7 @@ export async function leerConstanciaCliente(fd: FormData): Promise<{ datos?: { r
     if ("error" in c) return { error: c.error };
     return { datos: { rfc: c.datos.rfc, nombre: c.datos.razon_social, codigo_postal: c.datos.codigo_postal, regimen: regimenPropuesto(c.datos) } };
   } catch (e) {
-    console.error("facturar:", e);
+    registrar(e);
     return { error: FALLA };
   }
 }
@@ -78,18 +91,27 @@ export async function facturar(_: EstadoFactura, fd: FormData): Promise<EstadoFa
     switch (r.estado) {
       case "timbrada": {
         // Al recuperar una reserva atorada puede regresar una factura timbrada con datos de otra persona: no se entrega.
-        const { data, error } = await crearClienteAdmin().from("facturas_clientes").select("rfc").eq("id", r.id).single();
+        const { data, error } = await crearClienteAdmin().from("facturas_clientes").select("rfc, facturapi_id").eq("id", r.id).single();
         if (error) throw new Error(error.message);
         if (data.rfc !== v.datos.rfc) return await yaFacturado(fd);
-        return { listo: { id: r.id, token: r.token, uuid: r.uuid } };
+        // Facturapi no envía el correo al timbrar: se manda aquí, sin que una falla impida entregar la factura.
+        let correoEnviado = false;
+        try {
+          const e = await facturapi().enviarCorreo(data.facturapi_id as string, v.datos.correo);
+          correoEnviado = e.ok;
+          if (!e.ok) console.error("facturar: correo no enviado:", e.mensaje);
+        } catch (e) {
+          registrar(e);
+        }
+        return { listo: { id: r.id, token: r.token, uuid: r.uuid, correoEnviado } };
       }
-      case "rechazada": return { error: `El SAT rechazó los datos: ${r.mensaje} Revisa que coincidan con tu constancia.` };
+      case "rechazada": return { error: `El SAT rechazó los datos: ${r.mensaje} Revisa que coincidan con tu constancia. Si tus datos son correctos, escríbenos a ${CORREO_FACTURACION}.` };
       case "procesando": return { procesando: true };
       case "ya_facturado": return await yaFacturado(fd);
       case "no_facturable": return { error: mensajeBusqueda(r.mensaje === "plazo" ? "fuera_de_plazo" : "no_facturable") };
     }
   } catch (e) {
-    console.error("facturar:", e);
+    registrar(e);
     return { error: FALLA };
   }
 }
@@ -104,7 +126,7 @@ export async function reenviar(fd: FormData): Promise<{ ok?: boolean; error?: st
     const r = await facturapi().enviarCorreo(data.facturapi_id as string, data.correo as string);
     return r.ok ? { ok: true } : { error: "No pudimos reenviarla. Intenta más tarde." };
   } catch (e) {
-    console.error("facturar:", e);
+    registrar(e);
     return { error: FALLA };
   }
 }

@@ -74,7 +74,7 @@ function Facturacion({ ticket, datos, regimenes, fiscales, setFiscales }: {
     const base = `/facturar/descargar?f=${factura.listo.id}&t=${factura.listo.token}`;
     return (
       <section className={s.tarjeta}>
-        <Aviso ok="¡Listo! Te enviamos la factura a tu correo." />
+        <Aviso ok={factura.listo.correoEnviado ? "¡Listo! Te enviamos la factura a tu correo." : "¡Listo! Descárgala aquí; si no te llega el correo, usa Reenviar."} />
         <p className={s.folio}>Folio fiscal<br /><strong>{factura.listo.uuid}</strong></p>
         <a className={s.boton} href={`${base}&formato=pdf`}>Descargar PDF</a>
         <a className={s.botonSecundario} href={`${base}&formato=xml`}>Descargar XML</a>
@@ -133,7 +133,7 @@ function Facturacion({ ticket, datos, regimenes, fiscales, setFiscales }: {
         </fieldset>
       )}
       <Aviso error={factura.error} />
-      {factura.procesando && <p className={s.aviso}>Estamos timbrando tu factura. Vuelve a intentar en 2 minutos con los mismos datos; no se duplicará.</p>}
+      {factura.procesando && <p className={s.aviso}>Estamos timbrando tu factura. Vuelve a intentar en unos minutos con los mismos datos; no se duplicará.</p>}
       <button className={s.boton} disabled={emitiendo}>{emitiendo ? "Facturando…" : "Facturar"}</button>
     </form>
   );

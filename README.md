@@ -316,17 +316,18 @@ Variables de entorno (solo servidor, en Vercel):
 - Solo tickets del mes en curso, en hora de Ciudad de México. Los de meses anteriores ya van en la factura global.
 - No se facturan en el portal: pedidos cancelados, comidas del personal, pedidos de Rappi u otros agregadores (se concilian aparte) ni pedidos con pago "otro".
 - No se acepta el RFC genérico (`XAXX010101000` ni `XEXX010101000`).
-- Límite de 10 búsquedas por IP cada 10 minutos.
+- Límite de 10 búsquedas por IP cada 10 minutos y, aparte, 10 lecturas de constancia por IP cada 10 minutos (columna `tipo` de `facturacion_intentos`, incluida en la misma migración).
+- Al timbrar, el portal envía la factura al correo capturado (Facturapi no lo hace solo). Si el envío falla, el cliente igual puede descargarla y usar "Reenviar".
 - Un ticket, una factura. Si ya está facturado, el portal ofrece reenviarla al correo original. Para cambiar el RFC, la oficina cancela primero.
 - Forma de pago: efectivo 01; tarjeta o pago en línea, el cliente elige crédito (04) o débito (28).
 
-**Oficina.** En Finanzas → Facturación de tickets, el admin cancela una factura con motivo 02 o 03 (no hay sustitución) y el cliente puede volver a facturar el ticket. Corporativo consulta. El botón "Excel del mes" genera la lista de lo facturado por ticket para que el contador la reste de la factura global.
+**Oficina.** En Finanzas → Facturación de tickets, el admin cancela una factura con motivo 02 o 03 (no hay sustitución) y el cliente puede volver a facturar el ticket. Si Facturapi ya canceló pero el registro aquí falló, basta volver a pulsar Cancelar: no se llama de nuevo a Facturapi. Corporativo consulta. El botón "Excel del mes" genera la lista de lo facturado por ticket para que el contador la reste de la factura global.
 
 **Factura "Por confirmar".** Significa que la fila quedó reservada, pero Facturapi no respondió o aún está timbrando. No hay que cancelar nada todavía:
 
-1. Buscar en el panel de Facturapi la factura con `external_id` igual al id de la fila.
-2. Si Facturapi la tiene, el cliente vuelve a intentar con los mismos datos y el portal la confirma sin timbrar de nuevo.
-3. Si Facturapi no la tiene, el reintento libera la reserva después de 2 minutos y timbra una sola vez más.
+1. El admin pulsa "Revisar en Facturapi" en la tarjeta: busca la factura por `external_id` (el id de la fila). Si existe la confirma; si no existe y la fila tiene más de 10 minutos, libera el ticket; si sigue timbrándose, avisa que se revise más tarde.
+2. También se reconcilia sola cuando el cliente vuelve a intentar con los mismos datos: confirma sin timbrar de nuevo.
+3. Si Facturapi no la tiene, el reintento libera la reserva después de 10 minutos y timbra una sola vez más.
 
 **Claves SAT.** La clave de producto `90101501` y la unidad `E48` son constantes en `lib/facturacion/conceptos.ts`. Están pendientes de confirmación del contador; si cambian, se ajustan ahí en un PR.
 
