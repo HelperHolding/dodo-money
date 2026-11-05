@@ -90,7 +90,7 @@ export type DatosProveedor = {
 };
 
 /** Cuentas del P&L válidas para un proveedor (igual que lib/finanzas/cuentas.ts y el check de la base). */
-const CUENTAS_PL_PROVEEDOR = ["repartidores", "marketing_agregadores", "marketing", "renta", "servicios", "mantenimiento", "consumibles_equipo", "otros", "insumos", "inversiones"];
+const CUENTAS_PL_PROVEEDOR = ["repartidores", "marketing_agregadores", "marketing", "renta", "servicios", "mantenimiento", "consumibles_equipo", "otros", "insumos", "inversiones", "regalias"];
 
 type Resultado<T> = { datos: T } | { error: string };
 

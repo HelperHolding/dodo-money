@@ -21,11 +21,11 @@ export async function cuentasPL(supabase:SupabaseClient,p:Periodo,sucursal?:stri
   const vistas=cargas.map(d=>vistaPL(d,sucursal));
   const sucursales=cargas[0]?.porSucursal??[];
   const filas:FilaCuenta[]=vistas[0]?.filas.filter(f=>f.tipo!=='detalle').map(f=>({clave:f.clave,nombre:f.nombre,tipo:f.tipo,celdas:[]}))??[];
-  filas.push({clave:'memo_insumos',nombre:'Compras de insumos · fuera del resultado',tipo:'memo',celdas:[]},{clave:'memo_inversiones',nombre:'Inversiones · fuera del resultado',tipo:'memo',celdas:[]});
+  filas.push({clave:'memo_insumos',nombre:'Compras de insumos · fuera del resultado',tipo:'memo',celdas:[]},{clave:'memo_inversiones',nombre:'Inversiones · fuera del resultado',tipo:'memo',celdas:[]},{clave:'memo_regalias',nombre:'Regalías facturadas · fuera del resultado',tipo:'memo',celdas:[]});
   for(const [i,d] of cargas.entries()){
     const vista=vistas[i];
     for(const fila of filas){
-      const monto=fila.clave==='memo_insumos'?vista.entrada.memos.insumos:fila.clave==='memo_inversiones'?vista.entrada.memos.inversiones:vista.filas.find(f=>f.clave===fila.clave)?.monto??null;
+      const monto=fila.clave==='memo_insumos'?vista.entrada.memos.insumos:fila.clave==='memo_inversiones'?vista.entrada.memos.inversiones:fila.clave==='memo_regalias'?vista.entrada.memos.regalias:vista.filas.find(f=>f.clave===fila.clave)?.monto??null;
       const detalleDe=(clave:string):AportacionPL[]=>(vista.suc?[vista.suc]:d.porSucursal).flatMap(s=>(d.detalle.get(`${s.id}|${clave}`)??[]).map(item=>({...item,nota:`${s.nombre}${item.nota?` · ${item.nota}`:''}`})));
       const total=detalleTotal(fila.clave,vista.filas,detalleDe);
       const items=total.length?total:detalleDe(fila.clave);

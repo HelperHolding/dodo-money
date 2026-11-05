@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { pesos, porcentaje } from "@/lib/formato";
-import { NOMBRE_CUENTA } from "@/lib/finanzas/cuentas";
+import { CUENTAS_MEMO, NOMBRE_MEMO, type CuentaMemo } from "@/lib/finanzas/cuentas";
 import type { Columnas } from "@/lib/finanzas/periodo";
 import type { EntradaPL, FilaPL } from "@/lib/finanzas/pl";
 import { SECCIONES } from "@/lib/finanzas/secciones";
@@ -9,7 +9,6 @@ import { Importe } from "./Importe";
 import { referenciaHelper } from '@/lib/finanzas/catalogoHelper';
 
 export type Detalle = { texto: string; monto: number; href?: string; nota?: string }[];
-const NOMBRE_MEMO = { insumos: NOMBRE_CUENTA.insumos, inversiones: NOMBRE_CUENTA.inversiones } as const;
 
 export const desplegable = (items: Detalle, rotulo: string) =>
   items.length > 0 && (
@@ -31,7 +30,7 @@ export const desplegable = (items: Detalle, rotulo: string) =>
 export function TablaPL({ r, columnas, impresa = false, ajustado = null, sinHistoria = false, rotuloMonto = "Real", captura }: {
   r: {
     filas: FilaPL[]; entrada: EntradaPL; anterior: ReadonlyMap<string, number | null> | null; acumulado: ReadonlyMap<string, number | null>;
-    detalleDe: (renglon: string) => Detalle; memoDetalle: (cuenta: "insumos" | "inversiones") => Detalle;
+    detalleDe: (renglon: string) => Detalle; memoDetalle: (cuenta: CuentaMemo) => Detalle;
   };
   /** Encabezados de las comparaciones (mes o semana). */
   columnas: Columnas;
@@ -116,7 +115,7 @@ export function TablaPL({ r, columnas, impresa = false, ajustado = null, sinHist
           ))}
           <tbody>
             <tr className="pl-seccion pl-memo"><th colSpan={columnasTotal} scope="rowgroup">Memo</th></tr>
-            {(["insumos", "inversiones"] as const).map((m) => informativo(m, NOMBRE_MEMO[m], r.entrada.memos[m], r.memoDetalle(m)))}
+            {CUENTAS_MEMO.map((m) => informativo(m, NOMBRE_MEMO[m], r.entrada.memos[m], r.memoDetalle(m)))}
           </tbody>
         </table>
       </div>

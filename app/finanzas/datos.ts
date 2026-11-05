@@ -5,6 +5,7 @@ import { leerConciliaciones } from "@/app/ventas/conciliacion/datos";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { comisionesCobro, comisionRappi, regalias, type DiaVenta, type Vigente } from "@/lib/finanzas/comisiones";
 import { cobrosReclasificados, enResultado, facturasAGastos, faltantesDe, partesFactura, sumarGastos } from "@/lib/finanzas/gastos";
+import { CUENTAS_MEMO, esCuentaMemo, type CuentaMemo, type Memos } from "@/lib/finanzas/cuentas";
 import { conceptosNomina, realDelMes, costoPuesto, nominaPeriodo, plantillaVigente, type AjusteMes, type Puesto, type NominaReal } from "@/lib/finanzas/nomina";
 import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
 import { acumuladoDe, anteriorDe, columnasComparativo, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
@@ -30,8 +31,9 @@ type Fila = { sucursal_id: string | null };
 type Detalle = import("@/lib/finanzas/reporteCuentas").AportacionPL[];
 const de = <T extends Fila>(filas: readonly T[], id: string | null) => filas.filter((f) => f.sucursal_id === id);
 const centavos = (n: number) => Math.round(n * 100) / 100;
-/** Renglón del P&L donde cae una cuenta (memo e "insumos/inversiones" no son renglón: van al memo). */
-const renglonDe = (cuenta: string | null) => (cuenta && cuenta !== "insumos" && cuenta !== "inversiones" ? cuenta : cuenta ? `memo_${cuenta}` : "otros");
+/** Renglón del P&L donde cae una cuenta (las cuentas memo —insumos, inversiones, regalías— no son renglón: van al memo). */
+const renglonDe = (cuenta: string | null) => (esCuentaMemo(cuenta) ? `memo_${cuenta}` : cuenta || "otros");
+const sumarMemos = (...partes: Memos[]): Memos => Object.fromEntries(CUENTAS_MEMO.map((m) => [m, centavos(partes.reduce((t, p) => t + (p[m] ?? 0), 0))])) as Memos;
 /** Textos con que se anotan las comisiones de cobro en el detalle de "Otros"; el formato de asesores las separa por estos textos. */
 const TEXTO_COBRO = { dlocal: "Comisión dLocal (pagos en la app, sin Rappi)", netpay: "Comisión NetPay (terminal, sin Rappi)" } as const;
 const esComisionCobro = (texto: string) => texto === TEXTO_COBRO.dlocal || texto === TEXTO_COBRO.netpay;
@@ -267,7 +269,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       mermaProductos:merma.monto,mermaInsumos:merma.insumosMonto,mermaProductosPendiente:merma.parcial,mermaInsumosPendiente:merma.insumosParcial,
       nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia },
       gastos: sumarGastos(f.gastos, caja.gastos), sinCuenta: centavos(f.sinCuenta + caja.sinCuenta),
-      agregadores, comisionesCobro: cobro.total, faltantes, regalias: regaliasPeriodo, memos: {insumos:centavos(f.memos.insumos+caja.memos.insumos),inversiones:centavos(f.memos.inversiones+caja.memos.inversiones)},
+      agregadores, comisionesCobro: cobro.total, faltantes, regalias: regaliasPeriodo, memos: sumarMemos(f.memos, caja.memos),
     };
 
     const avisos: string[] = [];
@@ -313,7 +315,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     for(const x of facturasOf){
       const conceptos=x.conceptos.filter(c=>Number(c.importe)>0);
       partesFactura(x,x.parte.fraccion).forEach((p,i)=>{
-        if(p.cuenta==='insumos'||p.cuenta==='inversiones')return;
+        if(esCuentaMemo(p.cuenta))return;
         anotar(s.id,'oficina',`Oficina · ${x.serie??''}${x.folio??''} · ${p.concepto??x.nombre_emisor}`,p.monto*proporcionOficina,
           {clave:conceptos[i]?`concepto:${conceptos[i].id}`:`factura:${x.id}`,fecha:x.fecha_emision,proveedor:x.nombre_emisor,uuid:x.uuid??x.uuid_manual,rfc:x.rfc_receptor,
            href:`/compras/facturas/${x.id}`,nota:`Devengado por cobertura y reparto de oficina según venta neta: ${(proporcionOficina*100).toFixed(4)} %`});
@@ -323,7 +325,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   }
 
   const entrada = { ...sumarEntradas(porSucursal.map((s) => s.entrada)), oficina };
-  entrada.memos = { insumos: centavos(entrada.memos.insumos + fOf.memos.insumos), inversiones: centavos(entrada.memos.inversiones + fOf.memos.inversiones) };
+  entrada.memos = sumarMemos(entrada.memos, fOf.memos);
   const ctx: ContextoMeta = {
     ventaNeta: entrada.ventaNeta,
     ventaRappi: centavos(porSucursal.reduce((t, s) => t + s.ctx.ventaRappi, 0)),
@@ -395,7 +397,7 @@ export async function plConHistoria(supabase: SupabaseClient, p: Periodo, sucurs
     acumuladoAjustado: pctDe(sinMetas(acumAj)),
     columnas: COLUMNAS[p.tipo],
     detalleDe: (renglon: string) => (vista.suc ? d.detalle.get(`${vista.suc.id}|${renglon}`) ?? [] : []),
-    memoDetalle: (cuenta: "insumos" | "inversiones") => (vista.suc ? d.detalle.get(`${vista.suc.id}|memo_${cuenta}`) ?? [] : []),
+    memoDetalle: (cuenta: CuentaMemo) => (vista.suc ? d.detalle.get(`${vista.suc.id}|memo_${cuenta}`) ?? [] : []),
   };
 }
 

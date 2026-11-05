@@ -31,7 +31,7 @@ const E: EntradaPL = {
   nomina: { cocina: 20000, gerencia: 8000 },
   gastos: { renta: 9000, servicios: 4500, marketing: 3000, otros: 500 },
   sinCuenta: 200, agregadores: 0, comisionesCobro: 1300, faltantes: 150, regalias: 5000, oficina: 4000,
-  memos: { insumos: 28000, inversiones: 15000 },
+  memos: { insumos: 28000, inversiones: 15000, regalias: 4800 },
 };
 const CTX = { ventaNeta: 100000, ventaRappi: 20000, plantilla: { cocina: 19000, gerencia: 8000 } };
 
@@ -72,12 +72,13 @@ test("venta 0: los % quedan en null (mes sin ventas importadas)", () => {
 });
 
 test("sumarEntradas: consolidado", () => {
-  const s = sumarEntradas([E, { ...E, gastos: { renta: 1000 }, memos: { insumos: 1, inversiones: 0 } }]);
+  const s = sumarEntradas([E, { ...E, gastos: { renta: 1000 }, memos: { insumos: 1, inversiones: 0, regalias: 0.1 } }]);
   assert.equal(s.ventaNeta, 200000);
   assert.equal(s.gastos.renta, 10000);
   assert.equal(s.gastos.servicios, 4500);
   assert.equal(s.merma, null);
   assert.equal(s.memos.insumos, 28001);
+  assert.equal(s.memos.regalias, 4800.1);
 });
 
 test("escalarMetas: solo el monto fijo se reparte por días", () => {

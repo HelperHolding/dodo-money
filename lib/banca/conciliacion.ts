@@ -60,7 +60,7 @@ const esNomina = (m: MovimientoBanco) => m.cargo > 0 && /SPEI/i.test(textoDe(m))
 
 export const conceptoDeCuenta = (cuenta: CuentaPl | null): Concepto =>
   cuenta === "renta" ? "renta" : cuenta === "servicios" ? "servicios"
-    : cuenta === "marketing" || cuenta === "marketing_agregadores" ? "marketing" : cuenta === "inversiones" ? "capex" : "proveedores";
+    : cuenta === "marketing" || cuenta === "marketing_agregadores" ? "marketing" : cuenta === "inversiones" ? "capex" : cuenta === "regalias" ? "regalias" : "proveedores";
 
 const REGLAS_TEXTO: readonly { patron: RegExp; lado: "cargo" | "abono" | "ambos"; concepto: Concepto; nota: string }[] = [
   { patron: /^\*?(IVA de )?Com\.|Comisi[oó]n Administraci[oó]n/i, lado: "cargo", concepto: "comisiones_bancarias", nota: "Comisión bancaria (regla de texto)." },
