@@ -27,6 +27,23 @@ test("avisa si el nombre trae el régimen de capital", () => {
   assert.match((validarDatosFiscales({ ...BASE, nombre: "CLIENTE SA DE CV" }, "tarjeta", REG) as { error: string }).error, /sin "S\.A\. de C\.V\."/);
 });
 
+test("régimen de capital: marca solo sufijos inequívocos al final del nombre", () => {
+  for (const nombre of ["X S.A.S.", "X SAS DE CV", "X S.A.P.I. DE C.V.", "X S. DE R.L. DE C.V.", "X S.C.", "CLIENTE SA DE CV", "X S.A. DE C.V.", "X SAPI DE CV", "X S.A.B. DE C.V.", "X S.N.C.", "X S. DE R.L."]) {
+    assert.match((validarDatosFiscales({ ...BASE, nombre }, "tarjeta", REG) as { error: string }).error, /sin "S\.A\. de C\.V\."/, nombre);
+  }
+  for (const nombre of ["LUÍSA MARTINEZ", "ELÍSA", "JUAN PEREZ SA", "TACOS EL AC", "ANA PEREZ", "X SAS", "X SA", "X SC"]) {
+    assert.ok("datos" in validarDatosFiscales({ ...BASE, nombre }, "tarjeta", REG), nombre);
+  }
+});
+
+test("uso del CFDI vacío pide elegirlo", () => {
+  assert.deepEqual(validarDatosFiscales({ ...BASE, uso_cfdi: "" }, "tarjeta", REG), { error: "Elige el uso del CFDI." });
+});
+
+test("pago 'otro' no se factura aquí", () => {
+  assert.deepEqual(validarDatosFiscales(BASE, "otro", REG), { error: "Este ticket no se puede facturar aquí. Escríbenos a facturacion@dodopizza.mx." });
+});
+
 test("uso del CFDI según régimen: 605 solo S01", () => {
   assert.deepEqual(usosPermitidos("601"), ["G03", "S01"]);
   assert.deepEqual(usosPermitidos("605"), ["S01"]);

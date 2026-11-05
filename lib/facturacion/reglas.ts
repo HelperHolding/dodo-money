@@ -16,7 +16,9 @@ const MORAL = new Set(["601", "603", "607", "610", "620", "622", "623", "624", "
 const FISICA = new Set(["605", "606", "607", "608", "610", "611", "612", "614", "615", "616", "621", "622", "625", "626", "629", "630"]);
 // c_UsoCFDI G03 según el SAT; S01 aplica a todos.
 const CON_G03 = new Set(["601", "603", "606", "612", "620", "621", "622", "623", "624", "625", "626"]);
-const CAPITAL = /\b(S\.?\s?A\.?|S\.?\s?DE\s?R\.?\s?L\.?|S\.?\s?C\.?|A\.?\s?C\.?|S\.?\s?A\.?\s?P\.?\s?I\.?)(\s?DE\s?C\.?\s?V\.?)?\s*$/i;
+// Solo sufijos inequívocos al final del nombre (ya en mayúsculas). Las formas sin puntos (SA, SC, AC, SAS) no se marcan:
+// el SAT rechaza lo incorrecto y no bloqueamos a una persona física con apellido igual. Sin \b, porque no trata Í o Ñ como letras.
+const CAPITAL = /(?:^|[^A-ZÑÁÉÍÓÚÜ&0-9])(?:DE\s+(?:C\.?\s?V\.?|R\.?\s?L\.?)|S\.A\.(?:S\.|B\.|P\.I\.)?|S\.C\.|S\.N\.C\.)\s*$/;
 
 export const usosPermitidos = (regimen: string): UsoCfdi[] => (CON_G03.has(regimen) ? ["G03", "S01"] : ["S01"]);
 export const pideTipoTarjeta = (pago: PagoPedido) => pago === "tarjeta" || pago === "en_linea";
@@ -35,13 +37,15 @@ export function validarDatosFiscales(
   const rfc = limpio(e.rfc).toUpperCase().replace(/[\s-]/g, "");
   const nombre = limpio(e.nombre).toUpperCase();
   const regimen = limpio(e.regimen_fiscal), cp = limpio(e.codigo_postal), uso = limpio(e.uso_cfdi), correo = limpio(e.correo).toLowerCase();
+  if (pago === "otro") return { error: `Este ticket no se puede facturar aquí. Escríbenos a ${CORREO_FACTURACION}.` };
   if (GENERICOS.has(rfc)) return { error: "Ese es el RFC de público en general. Para facturar a tu nombre escribe tu propio RFC." };
   if (!RFC.test(rfc)) return { error: "Revisa el RFC: son 12 caracteres para empresas y 13 para personas." };
   if (!nombre) return { error: "Escribe el nombre o la razón social tal como aparece en tu constancia." };
   if (CAPITAL.test(nombre)) return { error: 'Escribe la razón social sin "S.A. de C.V." ni el régimen de capital, como aparece en tu constancia.' };
-  if (!(regimen in regimenes)) return { error: "Elige tu régimen fiscal." };
+  if (!Object.hasOwn(regimenes, regimen)) return { error: "Elige tu régimen fiscal." };
   if (!(rfc.length === 12 ? MORAL : FISICA).has(regimen)) return { error: `El régimen ${regimen} no corresponde a ${rfc.length === 12 ? "una empresa" : "una persona física"}. Revisa tu constancia.` };
   if (!/^[0-9]{5}$/.test(cp)) return { error: "El código postal son 5 dígitos, el de tu constancia." };
+  if (!uso) return { error: "Elige el uso del CFDI." };
   if (!(usosPermitidos(regimen) as string[]).includes(uso)) return { error: "Ese uso del CFDI no aplica a tu régimen fiscal." };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) return { error: "Revisa tu correo." };
   const t = e.tarjeta === "credito" || e.tarjeta === "debito" ? e.tarjeta : null;
