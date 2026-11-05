@@ -145,6 +145,7 @@ test("conceptoDeCuenta y documentosRpc", () => {
   assert.equal(conceptoDeCuenta("servicios"), "servicios");
   assert.equal(conceptoDeCuenta("marketing_agregadores"), "marketing");
   assert.equal(conceptoDeCuenta("inversiones"), "capex");
+  assert.equal(conceptoDeCuenta("regalias"), "regalias");
   assert.equal(conceptoDeCuenta(null), "proveedores");
   assert.deepEqual(documentosRpc([
     { tipo: "pago", id: "p", monto: 1, texto: "" }, { tipo: "venta_dia", id: "v", monto: 1, texto: "" },

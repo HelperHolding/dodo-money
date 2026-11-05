@@ -1,5 +1,9 @@
 /** Arma el P&L con los renglones del modelo de Dodo a partir de los montos del mes, y lo compara contra las metas. */
-import type { CuentaGasto } from "./cuentas";
+import type { CuentaGasto, CuentaMemo, Memos } from "./cuentas";
+
+/** Igual que CUENTAS_MEMO de ./cuentas (aquí solo se importan tipos para que las pruebas corran sin compilar). */
+const CUENTAS_MEMO: readonly CuentaMemo[] = ["insumos", "inversiones", "regalias"];
+const memosVacios = (): Memos => ({ insumos: 0, inversiones: 0, regalias: 0 });
 
 export type ClaveRenglon =
   | "venta_bruta" | "venta_bruta_dodo" | "venta_bruta_rappi" | "venta_neta_dodo" | "venta_neta_rappi" | "alimento_dodo" | "alimento_rappi"
@@ -75,14 +79,15 @@ export type EntradaPL = {
   agregadores: number; comisionesCobro: number; faltantes: number; regalias: number;
   /** Oficina central: prorrateada en la sucursal; completa en el consolidado. */
   oficina: number;
-  memos: { insumos: number; inversiones: number };
+  /** Fuera del resultado: compras de insumos, inversiones y regalías facturadas (las regalías del resultado son las calculadas). */
+  memos: Memos;
 };
 
 export const entradaVacia = (): EntradaPL => ({
   canales: { dodo: { bruta: 0, brutaSinIva: 0, neta: 0, alimento: 0 }, rappi: { bruta: 0, brutaSinIva: 0, neta: 0, alimento: 0 } },
   ventaNeta: 0, descuentos: 0, alimento: 0, merma: null, mermaPendiente: false, nomina: { cocina: 0, gerencia: 0 }, gastos: {}, sinCuenta: 0,
   mermaProductos:null,mermaInsumos:null,mermaProductosPendiente:false,mermaInsumosPendiente:false,
-  agregadores: 0, comisionesCobro: 0, faltantes: 0, regalias: 0, oficina: 0, memos: { insumos: 0, inversiones: 0 },
+  agregadores: 0, comisionesCobro: 0, faltantes: 0, regalias: 0, oficina: 0, memos: memosVacios(),
 });
 
 const centavos = (n: number) => Math.round(n * 100) / 100;
@@ -108,11 +113,11 @@ export function sumarEntradas(entradas: readonly EntradaPL[]): EntradaPL {
     for (const [k, v] of Object.entries(e.gastos) as [CuentaGasto, number][]) s.gastos[k] = centavos((s.gastos[k] ?? 0) + v);
     s.sinCuenta += e.sinCuenta; s.agregadores += e.agregadores; s.comisionesCobro += e.comisionesCobro;
     s.faltantes += e.faltantes; s.regalias += e.regalias; s.oficina += e.oficina;
-    s.memos.insumos += e.memos.insumos; s.memos.inversiones += e.memos.inversiones;
+    for (const m of CUENTAS_MEMO) s.memos[m] += e.memos[m] ?? 0;
   }
   for (const k of ["ventaNeta", "descuentos", "alimento", "sinCuenta", "agregadores", "comisionesCobro", "faltantes", "regalias", "oficina"] as const) s[k] = centavos(s[k]);
   s.nomina = { cocina: centavos(s.nomina.cocina), gerencia: centavos(s.nomina.gerencia) };
-  s.memos = { insumos: centavos(s.memos.insumos), inversiones: centavos(s.memos.inversiones) };
+  for (const m of CUENTAS_MEMO) s.memos[m] = centavos(s.memos[m]);
   if (s.merma !== null) s.merma = centavos(s.merma);
   return s;
 }

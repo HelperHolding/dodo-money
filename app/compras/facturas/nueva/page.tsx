@@ -25,10 +25,12 @@ export default async function NuevoGastoManual({ searchParams }: { searchParams:
         .maybeSingle<Pick<Compromiso, "concepto" | "descripcion" | "monto_estimado" | "iva" | "ret_iva" | "ret_isr">>(),
     ]);
     // Renglón e impuestos del compromiso ("Renta octubre 2026"); solo se ajusta lo que cambió ese mes.
+    // Monto variable (sin monto): el importe y los impuestos se capturan de la factura.
     const mes = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${vence}T00:00:00Z`)).replace(" de ", " ");
+    const fijo = c && c.monto_estimado !== null ? c : null;
     inicial = { proveedor, sucursal, compromiso, vence, revision: data?.revision ?? 0,
-      importe: c ? String(c.monto_estimado) : "", descripcion: c ? `${c.concepto === "otro" && c.descripcion ? c.descripcion : CONCEPTOS[c.concepto]} ${mes}` : "",
-      impuestos: c ? impuestosDe(c) : { iva: 0.16, retIva: "ninguna", retIsr: "ninguna" } };
+      importe: fijo ? String(fijo.monto_estimado) : "", descripcion: c ? `${c.concepto === "otro" && c.descripcion ? c.descripcion : CONCEPTOS[c.concepto]} ${mes}` : "",
+      impuestos: fijo ? impuestosDe(fijo) : { iva: 0.16, retIva: "ninguna", retIsr: "ninguna" } };
   }
   const [{ data: proveedores }, { data: sucursales }] = await Promise.all([
     supabase.from("proveedores").select("id, razon_social, nombre_comercial, sucursal_id, cuenta_pl, cubre_meses, cubre_inicio").eq("activo", true).order("razon_social")

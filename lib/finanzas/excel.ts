@@ -53,7 +53,7 @@ export function hojaPL(r: {
     ];
   }, {
     venta: [["Descuentos (informativo)", contable(r.entrada.descuentos)]],
-    memo: [["Compras de insumos", contable(r.entrada.memos.insumos)], ["Inversiones", contable(r.entrada.memos.inversiones)]],
+    memo: [["Compras de insumos", contable(r.entrada.memos.insumos)], ["Inversiones", contable(r.entrada.memos.inversiones)], ["Regalías facturadas", contable(r.entrada.memos.regalias)]],
   }, arriba.length);
   return [{ nombre: "Contra meta", filas: [...arriba, ...cuerpo.filas], negritas: [0, 4], estilos: cuerpo.estilos,
     anchos: [32, 16, 12, ...(aj ? [16, 16, 12] : []), 16, 12, 16, 18, 18] }];
@@ -82,6 +82,7 @@ export function hojaComparativo(r: { titulo: string; periodo: string; generado: 
     memo: [
       ["Compras de insumos", ...todas.flatMap((c) => [contable(c.entrada.memos.insumos), null])],
       ["Inversiones", ...todas.flatMap((c) => [contable(c.entrada.memos.inversiones), null])],
+      ["Regalías facturadas", ...todas.flatMap((c) => [contable(c.entrada.memos.regalias), null])],
     ],
   }, arriba.length);
   return [{ nombre: "Comparativo", filas: [...arriba, ...cuerpo.filas], negritas: [0, 4], estilos: cuerpo.estilos, anchos: [32, ...todas.flatMap(() => [16, 9])] }];
