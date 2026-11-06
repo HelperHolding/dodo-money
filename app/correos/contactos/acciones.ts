@@ -1,4 +1,5 @@
 "use server";
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { puedeEditarCorreos } from "@/lib/roles";
@@ -7,6 +8,7 @@ import { volver } from "../../compras/servidor";
 import { mensajeDe } from "../datos";
 
 const R = "/correos/contactos";
+const huellaDe = (...p: string[]) => createHash("sha256").update(p.join("|")).digest("hex").slice(0, 32);
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
 async function cliente() {
   const { supabase, perfil } = await obtenerPerfil();
@@ -24,13 +26,15 @@ export async function importarCsv(fd: FormData) {
   const etiquetaExtra = texto(fd, "etiquetaExtra").toLowerCase();
   const conEtiqueta = filas.map((f) => ({ ...f, etiquetas: etiquetaExtra ? [...new Set([...f.etiquetas, etiquetaExtra])] : f.etiquetas }));
   const origen = texto(fd, "origen") || "CSV";
+  const huella = huellaDe(contenido, origen, etiquetaExtra);
+  if (confirmar && texto(fd, "huella") !== huella) volver(R, "error", "El archivo cambió; vuelve a revisarlo.");
   const { data, error } = await sb.rpc("correo_importar_contactos", { p_filas: conEtiqueta, p_origen: origen, p_confirmar: confirmar });
   if (error) volver(R, "error", mensajeDe(error));
   const r = data as { nuevos: number; existentes: number; bajas: number; invalidos: number };
   const resumen = `${r.nuevos} nuevos, ${r.existentes} ya existían (se suman etiquetas), ${r.bajas} dados de baja (no se reactivan), ${r.invalidos} inválidos.`;
   if (confirmar) { revalidatePath("/correos", "layout"); volver(R, "ok", `Importado: ${resumen}`); }
   // Previa: la página reenvía el contenido (guardado en el navegador) para confirmar sin volver a subir el archivo.
-  volver(`${R}?previa=${encodeURIComponent(resumen)}&origen=${encodeURIComponent(origen)}&etiquetaExtra=${encodeURIComponent(etiquetaExtra)}`, "ok", "Revisa el resumen y confirma.");
+  volver(`${R}?previa=${encodeURIComponent(resumen)}&origen=${encodeURIComponent(origen)}&etiquetaExtra=${encodeURIComponent(etiquetaExtra)}&huella=${huella}`, "ok", "Revisa el resumen y confirma.");
 }
 
 export async function guardarContacto(fd: FormData) {

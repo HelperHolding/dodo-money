@@ -25,7 +25,7 @@ export function leerCsvContactos(texto: string): { filas: Fila[]; error?: string
     const email = normalizar(c[iC] ?? "");
     if (email === "") continue;
     const etiquetas = iE >= 0 ? (c[iE] ?? "").split(/[;,]/).map(normalizar).filter(Boolean) : [];
-    const nombre = iN >= 0 && c[iN] ? c[iN] : null;
+    const nombre = iN >= 0 && c[iN] ? Array.from(c[iN]).slice(0, 160).join("") : null;
     const previa = porCorreo.get(email);
     if (!previa) { porCorreo.set(email, { email, nombre, etiquetas: [...new Set(etiquetas)] }); continue; }
     previa.nombre ??= nombre;

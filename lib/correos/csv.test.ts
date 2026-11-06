@@ -25,3 +25,9 @@ test("csv: acepta 'Correo electrónico' (con o sin acento, cualquier caja) como 
     assert.deepEqual(leerCsvContactos(`${cab};Nombre\nA@B.com;Ana`).filas, [{ email: "a@b.com", nombre: "Ana", etiquetas: [] }], cab);
   }
 });
+
+test("csv: el nombre se recorta a 160 caracteres", () => {
+  const r = leerCsvContactos(`correo;nombre
+a@x.mx;${"ñ".repeat(200)}`);
+  assert.equal(Array.from(r.filas[0].nombre ?? "").length, 160);
+});
