@@ -222,10 +222,9 @@ evento `apertura` (si el token existe). Estadística: envíos con al menos una a
 
 ## 8. Datos iniciales
 
-La migración carga los 249 contactos de la apertura (tabla de n8n `Dodo_Apertura_2026_10_22`) con
-`origen = 'Apertura 22 oct'` y etiqueta `apertura-2026-10-22`. Los datos van en un archivo de semilla separado
-(`supabase/semillas/correo_contactos_apertura.sql`) para que la migración no lleve correos de clientes en el diff
-principal. Las campañas pasadas no se migran.
+Los 249 contactos de la apertura se exportan de la tabla de n8n `Dodo_Apertura_2026_10_22` a CSV y se cargan con
+**Importar CSV** de la propia sección, con la etiqueta `apertura-2026-10-22`. Así los correos de clientes no quedan en
+el repositorio. Las campañas pasadas no se migran.
 
 ## 9. Pruebas
 
