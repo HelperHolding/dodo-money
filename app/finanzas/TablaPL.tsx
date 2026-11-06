@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { pesos, porcentaje } from "@/lib/formato";
 import { CUENTAS_MEMO, NOMBRE_MEMO, type CuentaMemo } from "@/lib/finanzas/cuentas";
 import type { Columnas } from "@/lib/finanzas/periodo";
-import type { EntradaPL, FilaPL } from "@/lib/finanzas/pl";
+import { esDetalleNomina, type EntradaPL, type FilaPL } from "@/lib/finanzas/pl";
 import { SECCIONES } from "@/lib/finanzas/secciones";
 import { Importe } from "./Importe";
 import { referenciaHelper } from '@/lib/finanzas/catalogoHelper';
@@ -108,7 +108,7 @@ export function TablaPL({ r, columnas, impresa = false, ajustado = null, sinHist
           {SECCIONES.map((s) => (
             <tbody key={s.clave}>
               <tr className={`pl-seccion pl-${s.clave}`}><th colSpan={columnasTotal} scope="rowgroup">{s.nombre}</th></tr>
-              {s.renglones.map((c) => de.get(c)).filter((f): f is FilaPL => Boolean(f)).map(renglon)}
+              {s.renglones.map((c) => de.get(c)).filter((f): f is FilaPL => Boolean(f) && !(esDetalleNomina(f!.clave) && !f!.monto && !aj?.get(f!.clave)?.monto)).map(renglon)}
               {s.clave === "venta" && informativo("descuentos", "Descuentos (informativo)", r.entrada.descuentos, [])}
               {s.total && de.has(s.total) && renglon(de.get(s.total)!)}
             </tbody>
