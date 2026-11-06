@@ -13,9 +13,11 @@ const SMTP = { id: "PIYhrRSVazBc0OGo", name: "SMTP account" }; // la de las camp
 const http = (name, ruta, cuerpo, pos) => ({ id: randomUUID(), name, type: "n8n-nodes-base.httpRequest", typeVersion: 4.2, position: pos,
   parameters: { method: "POST", url: APP + ruta, authentication: "genericCredentialType", genericAuthType: "httpHeaderAuth",
     sendBody: true, specifyBody: "json", jsonBody: cuerpo, options: { timeout: 30000 } } });
-const clasificar = `const ok = !$json.error && Array.isArray($json.accepted) && $json.accepted.map(String).map(x=>x.toLowerCase()).includes(String($('Uno por uno').item.json.para).toLowerCase());
+const clasificar = `const src = $('Uno por uno').item;
+if (!src?.json?.envio_id) throw new Error('Falta envio_id del lote');
+const ok = !$json.error && Array.isArray($json.accepted) && $json.accepted.map(String).map(x=>x.toLowerCase()).includes(String(src.json.para).toLowerCase());
 const detalle = ok ? null : String($json.error?.message ?? $json.error ?? $json.response ?? 'Resultado incierto').slice(0, 1500);
-return { json: { envio_id: $('Uno por uno').item.json.envio_id, aceptado: ok, message_id: $json.messageId ?? null, detalle } };`;
+return { json: { envio_id: src.json.envio_id, aceptado: ok, message_id: $json.messageId ?? null, detalle } };`;
 const flujo = {
   name: NOMBRE,
   nodes: [
@@ -26,7 +28,7 @@ const flujo = {
       parameters: { fromEmail: "Dodo Pizza México <hola@dodopizza.mx>", toEmail: "={{ $json.para }}", subject: "={{ $json.asunto }}", emailFormat: "both", text: "={{ $json.texto }}", html: "={{ $json.html }}",
         options: { appendAttribution: false, replyTo: "hola@dodopizza.mx" } } },
     { id: randomUUID(), name: "Clasificar", type: "n8n-nodes-base.code", typeVersion: 2, position: [880, 0], parameters: { mode: "runOnceForEachItem", jsCode: clasificar } },
-    http("Reportar", "/api/correos/resultado", "={{ JSON.stringify($json) }}", [1100, 0]),
+    { ...http("Reportar", "/api/correos/resultado", "={{ JSON.stringify($json) }}", [1100, 0]), retryOnFail: true, maxTries: 3, waitBetweenTries: 2000, onError: "continueRegularOutput" },
     { id: randomUUID(), name: "Pausa", type: "n8n-nodes-base.wait", typeVersion: 1.1, position: [1320, 0], parameters: { resume: "timeInterval", amount: 5, unit: "seconds" } },
   ],
   connections: {

@@ -2,7 +2,7 @@
   "name": "Correos dodo-money",
   "nodes": [
     {
-      "id": "af1ce10e-f5bd-4e0c-a3d8-da5eaad9e440",
+      "id": "1755f3e7-557e-409f-ad2f-3f3c9f30a851",
       "name": "Cada minuto",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "fd724366-e7bf-4b83-b8c4-d5fd09b23db6",
+      "id": "aa8a2a5d-9b1e-4101-9c14-2290a86c660d",
       "name": "Pedir lote",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -44,7 +44,7 @@
       }
     },
     {
-      "id": "f9b6c501-4cb3-4565-bd50-b695cf565652",
+      "id": "417ea52c-7455-4f80-98d7-9d9d2e697e2d",
       "name": "Uno por uno",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
@@ -58,7 +58,7 @@
       }
     },
     {
-      "id": "46f2f1dc-c8bb-4699-8ca8-84e80da6d752",
+      "id": "4713b577-219b-4895-ab11-24739d557661",
       "name": "Enviar correo",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
@@ -87,7 +87,7 @@
       }
     },
     {
-      "id": "8c9ad0fc-a249-4afb-90e4-24ceb040e68b",
+      "id": "30028376-fa08-4ab4-80a2-e434018162e2",
       "name": "Clasificar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -97,11 +97,11 @@
       ],
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const ok = !$json.error && Array.isArray($json.accepted) && $json.accepted.map(String).map(x=>x.toLowerCase()).includes(String($('Uno por uno').item.json.para).toLowerCase());\nconst detalle = ok ? null : String($json.error?.message ?? $json.error ?? $json.response ?? 'Resultado incierto').slice(0, 1500);\nreturn { json: { envio_id: $('Uno por uno').item.json.envio_id, aceptado: ok, message_id: $json.messageId ?? null, detalle } };"
+        "jsCode": "const src = $('Uno por uno').item;\nif (!src?.json?.envio_id) throw new Error('Falta envio_id del lote');\nconst ok = !$json.error && Array.isArray($json.accepted) && $json.accepted.map(String).map(x=>x.toLowerCase()).includes(String(src.json.para).toLowerCase());\nconst detalle = ok ? null : String($json.error?.message ?? $json.error ?? $json.response ?? 'Resultado incierto').slice(0, 1500);\nreturn { json: { envio_id: src.json.envio_id, aceptado: ok, message_id: $json.messageId ?? null, detalle } };"
       }
     },
     {
-      "id": "4383f983-1ad9-4e36-b0e9-d6e420701443",
+      "id": "55520067-3181-43b3-907d-6e09114d7b21",
       "name": "Reportar",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -120,10 +120,14 @@
         "options": {
           "timeout": 30000
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
     },
     {
-      "id": "9f1dd58a-b0b3-4972-9b03-238c6d8ef93c",
+      "id": "b10998c6-1bbe-449b-bccc-7377db0cbe45",
       "name": "Pausa",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
