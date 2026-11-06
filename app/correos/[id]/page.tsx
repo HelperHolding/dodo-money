@@ -4,7 +4,7 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { puedeEditarCorreos } from "@/lib/roles";
 import { estadisticas } from "@/lib/correos/estadisticas";
 import { NOMBRE_ESTADO } from "@/lib/correos/tipos";
-import { cambiarEstado } from "../acciones";
+import { cambiarEstado, duplicarCampana } from "../acciones";
 import { esperandoN8n, leerCampana, leerEnviosYEventos } from "../datos";
 import { fechaHoraMX } from "../formato";
 import styles from "../correos.module.css";
@@ -19,12 +19,13 @@ export default async function Campana({ params, searchParams }: { params: Promis
   const c = await leerCampana(supabase, id); if (!c) notFound();
   const [{ envios, eventos }, sinN8n] = await Promise.all([leerEnviosYEventos(supabase, id), esperandoN8n(supabase)]);
   const s = estadisticas(envios, eventos), editar = puedeEditarCorreos(perfil.rol);
-  const q = (sp.q ?? "").trim().toLowerCase(), lista = envios.filter((e) => !e.es_prueba && e.email.toLowerCase().includes(q)).slice(0, 500);
+  const q = (sp.q ?? "").trim().toLowerCase(), coinciden = envios.filter((e) => !e.es_prueba && e.email.toLowerCase().includes(q)), lista = coinciden.slice(0, 500);
   return <>
     {sp.error && <p className={styles.alerta}>{sp.error}</p>}{sp.ok && <p>{sp.ok}</p>}
     <header className={styles.cabecera}><div><span className={styles[c.estado]}>{NOMBRE_ESTADO[c.estado]}</span><h1>{c.nombre}</h1><p>{c.asunto}</p>
       <small>{c.programada_para && `Programada: ${fechaHoraMX(c.programada_para)}`}{c.terminada_en && ` · Terminó: ${fechaHoraMX(c.terminada_en)}`}</small></div>
       {editar && <div className={styles.fila}>
+        <form action={duplicarCampana}><input type="hidden" name="id" value={c.id} /><button type="submit" className="boton">Duplicar</button></form>
         {(c.estado === "borrador" || c.estado === "programada") && <Link className="boton" href={`/correos/${c.id}/editar`}>Editar</Link>}
         {c.estado === "enviando" && <Boton id={c.id} accion="detener" texto="Detener" />}
         {c.estado === "detenida" && <Boton id={c.id} accion="reanudar" texto="Reanudar" />}
@@ -42,6 +43,7 @@ export default async function Campana({ params, searchParams }: { params: Promis
     {s.porEnlace.length > 0 && <section><h2>Clics por enlace</h2><ul>{s.porEnlace.map((e) => <li key={e.enlace}>{e.enlace}: {e.personas}</li>)}</ul></section>}
     {s.porHora.length > 0 && <section><h2>Actividad por hora</h2><ul>{s.porHora.map((h) => <li key={h.hora}>{h.hora}: {h.aperturas} aperturas · {h.clics} clics</li>)}</ul></section>}
     <section><header className={styles.cabecera}><h2>Destinatarios</h2><a className="boton" href={`/correos/${c.id}/csv`}>Descargar CSV</a></header>
+      {coinciden.length > 500 && <p><small>Mostrando 500 de {coinciden.length}. Usa la búsqueda o descarga el CSV.</small></p>}
       <form><input name="q" defaultValue={sp.q} placeholder="Buscar correo" /></form>
       <div className={styles.tarjetas}>{lista.map((e) => <div key={e.id} className={styles.tarjeta}>
         <strong>{e.email}</strong><span>{e.estado}</span>

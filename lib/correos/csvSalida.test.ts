@@ -6,7 +6,7 @@ test("csv salida: BOM, encabezados, comillas y sin pruebas", () => {
   const c = csvDestinatarios(
     [{ id: "a", email: "a@m.com", es_prueba: false, estado: "aceptado", enviado_en: "2026-11-07T18:00:00Z", detalle: 'dijo "ok"' }, { id: "p", email: "p@m.com", es_prueba: true, estado: "aceptado", enviado_en: null, detalle: null }],
     { a: { abrio: "2026-11-07T18:05:00Z", clic: null } });
-  assert.equal(c, '﻿correo,estado,enviado,abrio,clic,detalle\r\na@m.com,aceptado,2026-11-07T18:00:00Z,2026-11-07T18:05:00Z,,"dijo ""ok"""\r\n');
+  assert.equal(c, '﻿correo,estado,enviado,abrio,clic,detalle\r\na@m.com,aceptado,2026-11-07 12:00,2026-11-07 12:05,,"dijo ""ok"""\r\n');
 });
 test("csv salida: neutraliza fórmulas de hoja de cálculo", () => {
   const c = csvDestinatarios([

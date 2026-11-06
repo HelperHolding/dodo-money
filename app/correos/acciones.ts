@@ -5,7 +5,7 @@ import { puedeEditarCorreos } from "@/lib/roles";
 import { limpiarHtml } from "@/lib/correos/html";
 import { volver } from "../compras/servidor";
 import { etiquetaDeFormulario } from "@/lib/correos/etiqueta";
-import { mensajeDe } from "./datos";
+import { leerCampana, mensajeDe } from "./datos";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
 /** Solo rutas internas de un solo "/" (evita redirecciones a otros sitios desde un campo oculto). */
@@ -52,4 +52,15 @@ export async function mandarPrueba(fd: FormData) {
   const { data, error } = await sb.rpc("correo_mandar_prueba", { p_id: id, p_correos: correos });
   if (error) volver(ruta, "error", mensajeDe(error));
   volver(ruta, "ok", `Prueba en camino a ${data} correo${data === 1 ? "" : "s"}; llega en menos de un minuto.`);
+}
+
+export async function duplicarCampana(fd: FormData) {
+  const id = texto(fd, "id"), ruta = `/correos/${id}`;
+  const sb = await cliente(ruta);
+  const c = await leerCampana(sb, id);
+  if (!c) volver("/correos", "error", "No existe la campaña.");
+  const { data, error } = await sb.rpc("correo_guardar_campana", { p: { nombre: `Copia de ${c!.nombre}`.slice(0, 120), asunto: c!.asunto, html: c!.html, etiqueta: c!.etiqueta } });
+  if (error) volver(ruta, "error", mensajeDe(error));
+  revalidatePath("/correos", "layout");
+  volver(`/correos/${data}/editar`, "ok", "Campaña duplicada.");
 }
