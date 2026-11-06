@@ -19,3 +19,9 @@ test("csv: Excel (BOM, ;, mayúsculas, espacios/NBSP/ZWSP) importa igual que la 
     { email: "luis@mail.com", nombre: "Luis", etiquetas: ["vip"] },
   ]);
 });
+
+test("csv: acepta 'Correo electrónico' (con o sin acento, cualquier caja) como columna de correo", () => {
+  for (const cab of ["Correo electrónico", "CORREO ELECTRONICO", "correo electrónico"]) {
+    assert.deepEqual(leerCsvContactos(`${cab};Nombre\nA@B.com;Ana`).filas, [{ email: "a@b.com", nombre: "Ana", etiquetas: [] }], cab);
+  }
+});

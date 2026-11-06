@@ -23,7 +23,7 @@ export function estadisticas(envios: Envio[], eventos: Evento[]): Estadisticas {
     }
     horas.set(horaMX(ev.creado_en), h);
   }
-  const aceptados = reales.filter((e) => e.estado === "aceptado").length, valores = Object.values(porEnvio);
+  const aceptados = reales.filter((e) => e.estado === "aceptado").length, valores = reales.filter((x) => x.estado === "aceptado").map((x) => porEnvio[x.id]);
   const abrieron = valores.filter((v) => v.abrio).length, clics = valores.filter((v) => v.clic).length;
   return {
     destinatarios: reales.length, aceptados, problema: reales.filter((e) => e.estado === "problema").length,

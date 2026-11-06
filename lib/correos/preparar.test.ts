@@ -28,3 +28,10 @@ test("preparar: píxel y pie de baja antes de </body>; sin </body> van al final"
   assert.match(r.texto, /^S\n/);
   assert.match(r.texto, /Darte de baja: https:\/\/app\.test\/baja\/t/);
 });
+
+test("preparar: data-href no se reescribe y &#38; / &#x26; se decodifican", () => {
+  const r = prepararCorreo(`<a data-href="https://dodopizza.mx/no" href="https://dodopizza.mx/si?x=1&#38;y=2&#x26;z=3">A</a>`, "t", B, "S");
+  assert.match(r.html, /data-href="https:\/\/dodopizza\.mx\/no"/);
+  const u = new URL(/ href="([^"]+)"/.exec(r.html)![1]);
+  assert.equal(u.searchParams.get("u"), "https://dodopizza.mx/si?x=1&y=2&z=3");
+});

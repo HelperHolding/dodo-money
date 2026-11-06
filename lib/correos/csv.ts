@@ -16,8 +16,8 @@ export function leerCsvContactos(texto: string): { filas: Fila[]; error?: string
   const lineas = texto.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
   if (!lineas.length) return { filas: [], error: "El archivo está vacío." };
   const sep = (lineas[0].match(/;/g)?.length ?? 0) > (lineas[0].match(/,/g)?.length ?? 0) ? ";" : ",";
-  const cab = celdas(lineas[0], sep).map((c) => c.toLowerCase());
-  const iC = cab.findIndex((c) => c === "correo" || c === "email" || c === "e-mail"), iN = cab.indexOf("nombre"), iE = cab.indexOf("etiquetas");
+  const cab = celdas(lineas[0], sep).map((c) => c.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase());
+  const iC = cab.findIndex((c) => c === "correo" || c === "email" || c === "e-mail" || c === "correo electronico"), iN = cab.indexOf("nombre"), iE = cab.indexOf("etiquetas");
   if (iC < 0) return { filas: [], error: "Falta la columna correo (o email)." };
   const porCorreo = new Map<string, Fila>();
   for (const l of lineas.slice(1)) {

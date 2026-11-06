@@ -22,3 +22,10 @@ test("estadísticas: los envíos de prueba no aparecen ni en porEnvio ni en enla
   const s = estadisticas([env("p", "aceptado", true)], [ev("p", "clic", "2026-11-07T18:00:00Z", "https://dodopizza.mx/x"), ev("p", "baja", "2026-11-07T18:01:00Z")]);
   assert.deepEqual([s.destinatarios, s.abrieron, s.clics, s.bajas, s.porEnlace.length, s.porHora.length, Object.keys(s.porEnvio).length], [0, 0, 0, 0, 0, 0, 0]);
 });
+
+test("estadísticas: aperturas de envíos no aceptados no cuentan, el porcentaje no pasa de 100%", () => {
+  const s = estadisticas([env("a", "aceptado"), env("e", "pendiente"), env("d", "problema")],
+    [ev("a", "apertura", "2026-11-07T18:00:00Z"), ev("e", "clic", "2026-11-07T18:01:00Z", "https://dodopizza.mx/"), ev("d", "apertura", "2026-11-07T18:02:00Z")]);
+  assert.deepEqual([s.destinatarios, s.aceptados, s.abrieron, s.clics], [3, 1, 1, 0]);
+  assert.equal(s.pctApertura, 1); assert.equal(s.pctClic, 0);
+});
