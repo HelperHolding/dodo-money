@@ -1,4 +1,4 @@
-export type Rol = "operacion" | "encargado" | "gerente" | "admin" | "corporativo";
+export type Rol = "operacion" | "encargado" | "gerente" | "admin" | "corporativo" | "marketing";
 export type TipoCaja = "venta" | "cambios" | "boveda" | "caja_chica" | "corporativo";
 export type TipoTurno = "matutino" | "vespertino";
 export type MomentoArqueo = "inicio" | "traspaso" | "cierre";
