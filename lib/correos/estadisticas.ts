@@ -9,13 +9,14 @@ const horaMX = (iso: string) => {
 const sinUtm = (u: string) => { try { const x = new URL(u); [...x.searchParams.keys()].filter((k) => k.startsWith("utm_")).forEach((k) => x.searchParams.delete(k)); return x.toString().replace(/\?$/, ""); } catch { return u; } };
 /** Números de una campaña. Sin pruebas; clics sospechosos fuera; un clic real también cuenta como apertura. */
 export function estadisticas(envios: Envio[], eventos: Evento[]): Estadisticas {
-  const reales = envios.filter((e) => !e.es_prueba), ids = new Set(reales.map((e) => e.id));
+  const reales = envios.filter((e) => !e.es_prueba), ids = new Set(reales.map((e) => e.id)), acept = new Set(reales.filter((e) => e.estado === "aceptado").map((e) => e.id));
   const porEnvio: Estadisticas["porEnvio"] = Object.fromEntries(reales.map((e) => [e.id, { abrio: null, clic: null }]));
   const enlaces = new Map<string, Set<string>>(), horas = new Map<string, { aperturas: number; clics: number }>(), bajas = new Set<string>();
   for (const ev of [...eventos].sort((a, b) => a.creado_en.localeCompare(b.creado_en))) {
     if (!ids.has(ev.envio_id) || ev.sospechoso) continue;
-    const p = porEnvio[ev.envio_id], h = horas.get(horaMX(ev.creado_en)) ?? { aperturas: 0, clics: 0 };
     if (ev.tipo === "baja") { bajas.add(ev.envio_id); continue; }
+    if (!acept.has(ev.envio_id)) continue;
+    const p = porEnvio[ev.envio_id], h = horas.get(horaMX(ev.creado_en)) ?? { aperturas: 0, clics: 0 };
     if (!p.abrio) { p.abrio = ev.creado_en; h.aperturas++; }
     if (ev.tipo === "clic") {
       if (!p.clic) { p.clic = ev.creado_en; h.clics++; }

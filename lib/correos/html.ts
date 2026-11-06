@@ -1,6 +1,6 @@
 const BLOQUES = /<(script|iframe|object)\b[\s\S]*?<\/\1\s*>/gi;
 const SIN_CIERRE = /<(?:script|iframe|object)\b[\s\S]*$/i;
-const ETIQUETA = /<[a-zA-Z](?:"[^"]*"|'[^']*'|[^'">])*>/g;
+const ETIQUETA = /<[a-zA-Z](?:"[^"]*"|'[^']*'|[^>])*>/g;
 const ATRIBUTO = /[\s\/"']*([^\s"'<>\/=]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s>]*))?/y;
 const URL_ATRIBUTOS = new Set(["href", "src", "action", "formaction", "xlink:href", "background", "poster"]);
 const NOMBRADAS: Record<string, string> = { colon: ":", tab: "\t", newline: "\n", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
@@ -23,14 +23,20 @@ function limpiarEtiqueta(tag: string): { tag: string; quitados: number } {
   const nombre = /^<[^\s\/>]*/.exec(tag)![0];
   const cortes: [number, number, string][] = [];
   ATRIBUTO.lastIndex = nombre.length;
+  let fin = nombre.length;
   for (let m = ATRIBUTO.exec(tag); m; m = ATRIBUTO.exec(tag)) {
+    fin = ATRIBUTO.lastIndex;
     const inicio = m.index + m[0].length - m[0].replace(/^[\s\/"']*/, "").length;
     const attr = m[1].toLowerCase(), valor = m[2] ?? "";
     if (/^on/.test(attr) || attr === "srcdoc") cortes.push([inicio, m.index + m[0].length, ""]);
     else if (URL_ATRIBUTOS.has(attr) && peligroso(valor)) cortes.push([inicio, m.index + m[0].length, `${m[1]}="#"`]);
   }
+  // Falla cerrado: si no se pudo leer toda la etiqueta, o aún parece ejecutable, se quita completa.
+  if (!/^[\s/]*>$/.test(tag.slice(fin))) return { tag: "", quitados: 1 };
   let r = tag;
   for (const [a, b, nuevo] of cortes.reverse()) r = r.slice(0, a) + nuevo + r.slice(b);
+  const sinValores = r.replace(/"[^"]*"|'[^']*'/g, '""'); // el texto de un valor entre comillas no es un atributo
+  if (/[\s/"'=<]on[a-z]+\s*=/i.test(sinValores) ||/(?:javascript|vbscript):/.test(valorNavegador(r))) return { tag: "", quitados: 1 };
   return { tag: r, quitados: cortes.length };
 }
 

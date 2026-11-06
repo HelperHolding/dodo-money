@@ -29,3 +29,11 @@ test("estadísticas: aperturas de envíos no aceptados no cuentan, el porcentaje
   assert.deepEqual([s.destinatarios, s.aceptados, s.abrieron, s.clics], [3, 1, 1, 0]);
   assert.equal(s.pctApertura, 1); assert.equal(s.pctClic, 0);
 });
+
+test("estadísticas: porEnlace y porHora solo usan envíos aceptados (personas <= clics)", () => {
+  const s = estadisticas([env("a", "aceptado"), env("e", "pendiente"), env("d", "problema")],
+    [ev("a", "clic", "2026-11-07T18:00:00Z", "https://dodopizza.mx/x"), ev("e", "clic", "2026-11-07T18:01:00Z", "https://dodopizza.mx/x"),
+     ev("d", "apertura", "2026-11-07T22:02:00Z")]);
+  assert.deepEqual(s.porEnlace, [{ enlace: "https://dodopizza.mx/x", personas: 1 }]);
+  assert.deepEqual(s.porHora.map((h) => [h.hora, h.aperturas, h.clics]), [["2026-11-07 12:00", 1, 1]]);
+});
