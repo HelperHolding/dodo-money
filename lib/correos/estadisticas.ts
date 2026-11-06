@@ -35,3 +35,8 @@ export function estadisticas(envios: Envio[], eventos: Evento[]): Estadisticas {
     porEnvio,
   };
 }
+/** Lo que «reintentar» regresará a pendiente (problema y contacto aún activo) y cuántos de ellos vencieron sin respuesta de n8n, así que pudieron haber salido. */
+export function reintentables(envios: Envio[]): { total: number; quizaSalieron: number } {
+  const r = envios.filter((e) => !e.es_prueba && e.estado === "problema" && e.contacto?.estado === "activo");
+  return { total: r.length, quizaSalieron: r.filter((e) => (e.detalle ?? "").startsWith("Sin respuesta de n8n;")).length };
+}

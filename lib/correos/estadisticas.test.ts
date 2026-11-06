@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { estadisticas } from "./estadisticas.ts";
+import { estadisticas, reintentables } from "./estadisticas.ts";
 const env = (id: string, estado: "aceptado" | "problema" | "pendiente", es_prueba = false) => ({ id, email: id + "@m.com", es_prueba, estado, enviado_en: "2026-11-07T18:00:00Z", detalle: null });
 const ev = (envio_id: string, tipo: "apertura" | "clic" | "baja", creado_en: string, enlace: string | null = null, sospechoso = false) => ({ envio_id, tipo, enlace, sospechoso, creado_en });
 
@@ -36,4 +36,13 @@ test("estadísticas: porEnlace y porHora solo usan envíos aceptados (personas <
      ev("d", "apertura", "2026-11-07T22:02:00Z")]);
   assert.deepEqual(s.porEnlace, [{ enlace: "https://dodopizza.mx/x", personas: 1 }]);
   assert.deepEqual(s.porHora.map((h) => [h.hora, h.aperturas, h.clics]), [["2026-11-07 12:00", 1, 1]]);
+});
+
+test("reintentables: solo problema con contacto activo; cuenta los que vencieron sin respuesta de n8n", () => {
+  const p = (id: string, contacto: "activo" | "baja" | "rebote" | null, detalle: string | null = "550 5.1.1", es_prueba = false) =>
+    ({ ...env(id, "problema", es_prueba), detalle, contacto: contacto && { estado: contacto } });
+  const r = reintentables([p("a", "activo"), p("b", "activo", "Sin respuesta de n8n; puede haber salido, revisar antes de reintentar."), p("c", "rebote"), p("d", "baja", "Sin respuesta de n8n; x"),
+    p("e", null), p("f", "activo", null, true), { ...env("g", "aceptado"), contacto: { estado: "activo" as const } }]);
+  assert.deepEqual(r, { total: 2, quizaSalieron: 1 });
+  assert.deepEqual(reintentables([env("x", "problema")]), { total: 0, quizaSalieron: 0 }); // sin dato de contacto (no editor): nada
 });

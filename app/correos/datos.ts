@@ -17,8 +17,8 @@ export async function esperandoN8n(sb: SupabaseClient): Promise<boolean> {
   const u = data?.ultima_consulta ? Date.parse(data.ultima_consulta) : 0; return Date.now() - u > 10 * 60_000;
 }
 export async function leerEtiquetas(sb: SupabaseClient): Promise<string[]> {
-  const { data } = await sb.from("correo_contactos").select("etiquetas").eq("estado", "activo").limit(20000);
-  return [...new Set((data ?? []).flatMap((r) => r.etiquetas as string[]))].sort();
+  const filas = await leerPaginas<{ etiquetas: string[] }>((d, h) => sb.from("correo_contactos").select("etiquetas").eq("estado", "activo").order("id").range(d, h));
+  return [...new Set(filas.flatMap((r) => r.etiquetas))].sort();
 }
 const PAGINA = 1000;
 /** PostgREST corta cada consulta en max_rows (1000): se piden páginas hasta que una venga corta. */
@@ -31,8 +31,9 @@ async function leerPaginas<T>(pedir: (desde: number, hasta: number) => PromiseLi
     if ((data ?? []).length < PAGINA) return todo;
   }
 }
+/** Envíos sin token (no hay permiso de leerlo). `contacto` solo llega a quien edita correos; para el resto es null por RLS. */
 export async function leerEnviosYEventos(sb: SupabaseClient, campana: string): Promise<{ envios: Envio[]; eventos: Evento[] }> {
-  const envios = await leerPaginas<Envio>((d, h) => sb.from("correo_envios").select("id,email,es_prueba,estado,enviado_en,detalle").eq("campana_id", campana).order("id").range(d, h));
+  const envios = await leerPaginas<Envio>((d, h) => sb.from("correo_envios").select("id,email,es_prueba,estado,enviado_en,detalle,contacto:correo_contactos(estado)").eq("campana_id", campana).order("id").range(d, h).returns<Envio[]>());
   const eventos: Evento[] = [];
   for (let i = 0; i < envios.length; i += 100) {
     const ids = envios.slice(i, i + 100).map((e) => e.id);

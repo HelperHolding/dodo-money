@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { puedeEditarCorreos } from "@/lib/roles";
-import { estadisticas } from "@/lib/correos/estadisticas";
+import { estadisticas, reintentables } from "@/lib/correos/estadisticas";
 import { NOMBRE_ESTADO } from "@/lib/correos/tipos";
 import { cambiarEstado, duplicarCampana } from "../acciones";
 import { esperandoN8n, leerCampana, leerEnviosYEventos } from "../datos";
@@ -18,7 +18,7 @@ export default async function Campana({ params, searchParams }: { params: Promis
   const { id } = await params, sp = await searchParams, { supabase, perfil } = await obtenerPerfil();
   const c = await leerCampana(supabase, id); if (!c) notFound();
   const [{ envios, eventos }, sinN8n] = await Promise.all([leerEnviosYEventos(supabase, id), esperandoN8n(supabase)]);
-  const s = estadisticas(envios, eventos), editar = puedeEditarCorreos(perfil.rol);
+  const s = estadisticas(envios, eventos), editar = puedeEditarCorreos(perfil.rol), reintentar = reintentables(envios);
   const q = (sp.q ?? "").trim().toLowerCase(), coinciden = envios.filter((e) => !e.es_prueba && e.email.toLowerCase().includes(q)), lista = coinciden.slice(0, 500);
   return <>
     {sp.error && <p className={styles.alerta}>{sp.error}</p>}{sp.ok && <p>{sp.ok}</p>}
@@ -29,7 +29,10 @@ export default async function Campana({ params, searchParams }: { params: Promis
         {(c.estado === "borrador" || c.estado === "programada") && <Link className="boton" href={`/correos/${c.id}/editar`}>Editar</Link>}
         {c.estado === "enviando" && <Boton id={c.id} accion="detener" texto="Detener" />}
         {c.estado === "detenida" && <Boton id={c.id} accion="reanudar" texto="Reanudar" />}
-        {s.problema > 0 && c.estado !== "cancelada" && <Boton id={c.id} accion="reintentar" texto={`Reintentar ${s.problema} con problema`} />}
+        {reintentar.total > 0 && c.estado !== "cancelada" && <>
+          <Boton id={c.id} accion="reintentar" texto={`Reintentar ${reintentar.total} con problema`} />
+          {reintentar.quizaSalieron > 0 && <small className={styles.alerta}>{reintentar.quizaSalieron} de estos pudieron haber salido; revisa antes de reintentar.</small>}
+        </>}
       </div>}
     </header>
     {sinN8n && (c.estado === "enviando" || c.estado === "programada") && <p className={styles.alerta}>Esperando a n8n: no ha pedido correos en más de 10 minutos.</p>}
