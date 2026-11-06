@@ -144,15 +144,35 @@ test('correos: resultados cierran la campaña; rebote marca contacto; vencidos p
 test('correos: detenida no entrega; baja entre armado y envío se omite',async()=>{
  const db=await nueva();
  try{
-  const a=await contacto(db,'a@m.com');await contacto(db,'b@m.com');
+  const ids={a:await contacto(db,'a@m.com'),b:await contacto(db,'b@m.com')};
   const c=await campana(db,U.mkt);await accion(db,U.mkt,c,'programar',null);
-  await lote(db,1); // arma la lista y reserva 1
+  const [primero]=await lote(db,1); // arma la lista y reserva 1 (cuál, no está garantizado)
+  const otro=primero.para==='a@m.com'?'b@m.com':'a@m.com';
   await accion(db,U.mkt,c,'detener');
   assert.deepEqual(await lote(db,8),[]);
   await accion(db,U.mkt,c,'reanudar');
-  await rpc(db,U.mkt,`select public.correo_baja_manual($1)`,[a]);
-  const r=await lote(db,8);
-  assert.ok(r.every(x=>x.para!=='a@m.com'));
+  await rpc(db,U.mkt,`select public.correo_baja_manual($1)`,[ids[otro[0]]]);
+  assert.deepEqual(await lote(db,8),[]);
+  const [e]=await sql(db,`select estado,detalle from correo_envios where email=$1`,[otro]);
+  assert.equal(e.estado,'problema');assert.match(e.detalle,/se dio de baja/);
+ }finally{await db.close();}
+});
+
+test('correos: un éxito tardío tras el barrido de vencidos queda aceptado',async()=>{
+ const db=await nueva();
+ try{
+  await contacto(db,'a@m.com');
+  const c=await campana(db,U.mkt);await accion(db,U.mkt,c,'programar',null);
+  const [x]=await lote(db,8);
+  await sql(db,`update correo_envios set reservado_en=now()-interval '16 minutes'`);
+  await lote(db,8);
+  assert.equal((await sql(db,`select estado from correo_envios`))[0].estado,'problema');
+  await sql(db,`select public.correo_registrar_resultado($1,true,'<tarde@x>',null,false)`,[x.envio_id]);
+  const [e]=await sql(db,`select estado,enviado_en,message_id from correo_envios`);
+  assert.equal(e.estado,'aceptado');assert.ok(e.enviado_en);assert.equal(e.message_id,'<tarde@x>');
+  // un fallo tardío sí se ignora
+  await sql(db,`select public.correo_registrar_resultado($1,false,null,'x',false)`,[x.envio_id]);
+  assert.equal((await sql(db,`select estado from correo_envios`))[0].estado,'aceptado');
  }finally{await db.close();}
 });
 

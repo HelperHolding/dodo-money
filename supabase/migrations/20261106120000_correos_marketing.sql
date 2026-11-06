@@ -279,8 +279,8 @@ begin
   update public.correo_envios e set estado = 'problema', detalle = 'El contacto se dio de baja o rebotó antes del envío.'
     from public.correo_contactos k where e.estado = 'pendiente' and not e.es_prueba and k.id = e.contacto_id and k.estado <> 'activo';
   with elegidos as (
-    select e.id from public.correo_envios e join public.correo_campanas c on c.id = e.campana_id
-    where e.estado = 'pendiente' and (e.es_prueba and c.estado <> 'cancelada' or not e.es_prueba and c.estado = 'enviando')
+    select e.id from public.correo_envios e join public.correo_campanas c on c.id = e.campana_id left join public.correo_contactos k on k.id = e.contacto_id
+    where e.estado = 'pendiente' and (e.es_prueba or k.estado = 'activo') and (e.es_prueba and c.estado <> 'cancelada' or not e.es_prueba and c.estado = 'enviando')
     order by e.es_prueba desc, c.iniciada_en nulls first, e.creado_en, e.id
     limit n for update of e skip locked),
   reservados as (
@@ -300,7 +300,8 @@ declare e public.correo_envios;
 begin
   update public.correo_envios set estado = case when p_aceptado then 'aceptado' else 'problema' end, enviado_en = case when p_aceptado then now() end,
     message_id = left(p_message_id, 300), detalle = left(coalesce(p_detalle, case when p_aceptado then 'Aceptado por SMTP; no confirma entrega a bandeja.' end), 1500)
-    where id = p_envio and estado = 'procesando' returning * into e;
+    where id = p_envio and (estado = 'procesando' or (p_aceptado and estado = 'problema' and detalle like 'Sin respuesta de n8n;%'))
+    returning * into e; -- un éxito tardío, después del barrido de 15 min, se acepta para que reintentar no lo duplique
   if e.id is null then return; end if;
   if not p_aceptado and p_rebote and e.contacto_id is not null then
     update public.correo_contactos set estado = 'rebote', actualizado_en = now() where id = e.contacto_id and estado = 'activo';
