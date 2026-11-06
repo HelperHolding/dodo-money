@@ -34,7 +34,7 @@ export default async function Contactos({ searchParams }: { searchParams: Promis
     {sp.error && <p className={styles.alerta}>{sp.error}</p>}{sp.ok && <p>{sp.ok}</p>}
     {error && <p className={styles.alerta}>No se pudo leer la lista de contactos.</p>}
     <header className={styles.cabecera}><h1>Contactos</h1><span>{activos ?? 0} activos</span></header>
-    <Importar previa={sp.previa ?? null} huella={sp.huella ?? ""} origen={sp.origen ?? ""} etiquetaExtra={sp.etiquetaExtra ?? ""} />
+    <Importar key={sp.huella ?? ""} previa={sp.previa ?? null} huella={sp.huella ?? ""} origen={sp.origen ?? ""} etiquetaExtra={sp.etiquetaExtra ?? ""} />
     <form className={styles.fila} action={guardarContacto}>
       <h2>Agregar contacto</h2>
       <label>Correo<input name="email" type="email" required /></label><label>Nombre<input name="nombre" maxLength={160} /></label>

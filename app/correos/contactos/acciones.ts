@@ -8,7 +8,7 @@ import { volver } from "../../compras/servidor";
 import { mensajeDe } from "../datos";
 
 const R = "/correos/contactos";
-const huellaDe = (...p: string[]) => createHash("sha256").update(p.join("|")).digest("hex").slice(0, 32);
+const huellaDe = (...p: string[]) => createHash("sha256").update(JSON.stringify(p)).digest("hex").slice(0, 32);
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
 async function cliente() {
   const { supabase, perfil } = await obtenerPerfil();
