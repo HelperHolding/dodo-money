@@ -19,6 +19,25 @@ function filasHoja(hoja: Hoja) {
 const indiceColumna = (v: string) => [...v].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0);
 const numero = (v: unknown): number => typeof v === "number" ? v : typeof v === "string" && /^\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : NaN;
 
+/**
+ * Nombres con que se reconoce cada sucursal en el Excel: el de la app y, si la sucursal está ligada a Dodo IS, el de su
+ * unidad allá (el Excel trae "Unidad/Tienda" con el nombre de Dodo IS, p. ej. "Zapopan-1"). Un nombre de Dodo IS que ya
+ * usa otra sucursal o que se repite entre unidades no se agrega.
+ */
+export function nombresParaMermas(sucursales: readonly { id: string; nombre: string; dodois_unit_id?: string | null }[],
+  unidades: readonly { id?: unknown; name?: unknown }[]): { id: string; nombre: string }[] {
+  const lista = sucursales.map((s) => ({ id: s.id, nombre: s.nombre }));
+  const usados = new Set(lista.map((s) => normal(s.nombre)));
+  for (const s of sucursales) {
+    if (!s.dodois_unit_id) continue;
+    const nombre = texto(unidades.find((u) => texto(u.id) === s.dodois_unit_id)?.name);
+    if (!nombre || usados.has(normal(nombre)) || unidades.filter((u) => normal(u.name) === normal(nombre)).length !== 1) continue;
+    lista.push({ id: s.id, nombre });
+    usados.add(normal(nombre));
+  }
+  return lista;
+}
+
 /** Exportación española de Bajas: todas las razones, por días y sin IVA. Los productos terminados se valoran aparte para el P&L. */
 export function leerMermasDodo(hojas: readonly Hoja[], sucursales: readonly { id: string; nombre: string }[], hoy: string): LecturaMermas {
   const filas: MermaDodo[] = [], dias = new Map<string, DiaMerma>(), errores: string[] = [], porSucursal = new Map(sucursales.map((s) => [normal(s.nombre), s.id]));
