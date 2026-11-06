@@ -113,3 +113,12 @@ test("errores claros: imagen, no es constancia, no es PDF", () => {
   assert.deepEqual(leerConstancia(pdfFalso([[[100, 700, "FACTURA ELECTRÓNICA"], [100, 680, "RFC: CDE210510AB1"]]])), { error: NO_ES_CONSTANCIA });
   assert.deepEqual(leerConstancia(new TextEncoder().encode("hola, no soy un PDF")), { error: NO_ES_PDF });
 });
+
+test("un flujo que se expande sin límite no tumba la lectura: regresa un error rápido", () => {
+  const bomba = deflateSync(Buffer.alloc(10 * 1024 * 1024));
+  const pdf = Buffer.concat([Buffer.from("%PDF-1.4\nstream\n", "latin1"), bomba, Buffer.from("\nendstream\n", "latin1")]);
+  const t0 = Date.now();
+  const r = leerConstancia(pdf);
+  assert.ok("error" in r);
+  assert.ok(Date.now() - t0 < 5000);
+});
