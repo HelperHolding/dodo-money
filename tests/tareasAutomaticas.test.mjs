@@ -186,5 +186,7 @@ test('tareas automáticas: la prueba SQL de Sebastián termina en PRUEBAS OK',as
   // Todo se revirtió: ninguna regla quedó prendida ni hay tareas.
   assert.equal((await db.query(`select count(*)::int n from tareas`)).rows[0].n,0);
   assert.equal((await db.query(`select count(*)::int n from tarea_reglas where activa`)).rows[0].n,0);
+  // Y no gastó números: la siguiente tarea real sigue siendo la T-001.
+  assert.equal(Number((await db.query(`select nextval('public.tareas_numero') n`)).rows[0].n),1);
  }finally{await db.close();}
 });
