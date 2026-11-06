@@ -5,6 +5,9 @@ import type { Presentacion } from "./secciones";
 
 export type ColumnaPL = { etiqueta: string; filas: FilaPL[]; entrada: EntradaPL };
 
+/** Igual que esDetalleNomina de ./pl (aquí solo se importan tipos). En Excel el desglose no lleva sangría: se marca con «·». */
+const detalleNomina = (clave: string) => /^nomina_(cocina|gerencia)_/.test(clave);
+const nombreExcel = (clave: string, nombre: string) => (detalleNomina(clave) ? `   · ${nombre}` : nombre);
 const contable = (n: number | null): Celda => (n === null ? null : { valor: n, formato: "contable" });
 const pct = (n: number | null | undefined): Celda => (n === null || n === undefined ? null : { valor: n, formato: "porcentaje" });
 
@@ -44,9 +47,10 @@ export function hojaPL(r: {
     const f = de.get(clave);
     if (!f) return null;
     const a = aj?.get(clave);
+    if (detalleNomina(clave) && !f.monto && !a?.monto) return null;
     const ajuste = a && a.monto !== null && f.monto !== null ? Math.round((a.monto - f.monto) * 100) / 100 : null;
     return [
-      f.nombre, f.monto === null ? "Sin dato" : contable(f.monto), pct(f.pct),
+      nombreExcel(clave, f.nombre), f.monto === null ? "Sin dato" : contable(f.monto), pct(f.pct),
       ...(aj ? [ajuste ? contable(ajuste) : null, contable(a?.monto ?? f.monto), pct(a?.pct ?? f.pct)] : []),
       contable(f.meta), pct(f.metaPct), f.sinCapturar ? "Sin capturar" : contable(f.diferencia),
       r.anterior ? pct(r.anterior.get(f.clave)) : null, pct(r.acumulado.get(f.clave)),
@@ -76,7 +80,8 @@ export function hojaComparativo(r: { titulo: string; periodo: string; generado: 
   const arriba = encabezado(`P&L comparativo · ${r.titulo}`, r.periodo, r.generado, ["Renglón", ...todas.flatMap((c) => [c.etiqueta, "%"])]);
   const cuerpo = porSecciones(pre, (clave) => {
     const fs = todas.map((c) => c.filas.find((f) => f.clave === clave));
-    return fs[0] ? [r.total.filas.find(f=>f.clave===clave)?.nombre ?? fs[0].nombre, ...fs.flatMap((f) => [contable(f?.monto ?? null), pct(f?.pct)])] : null;
+    if (detalleNomina(clave) && !fs.some((f) => f?.monto)) return null;
+    return fs[0] ? [nombreExcel(clave, r.total.filas.find(f=>f.clave===clave)?.nombre ?? fs[0].nombre), ...fs.flatMap((f) => [contable(f?.monto ?? null), pct(f?.pct)])] : null;
   }, {
     venta: [["Descuentos (informativo)", ...todas.flatMap((c) => [contable(c.entrada.descuentos), null])]],
     memo: [

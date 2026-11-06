@@ -5,6 +5,7 @@ import { RecepcionesDodo } from "../RecepcionesDodo";
 import {randomUUID} from 'node:crypto';
 import {guardarUuidManualFactura} from '../acciones';
 import {ConvertirPrefactura} from "../ConvertirPrefactura";
+import {SustituirCfdi} from "../SustituirCfdi";
 import {OrigenPrefactura} from "../OrigenPrefactura";
 import {AdjuntarDocumento,AdjuntosCompra} from "../../adjuntos/Componentes";
 import {avanceFactura,type RecepcionFactura} from "@/lib/compras/recepcionFactura";
@@ -109,6 +110,10 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const [urlXml, urlPdf] = await Promise.all([firmar(f.xml_ruta), firmar(f.pdf_ruta)]);
   // Compromiso fijo al que ya está ligada (si hay): en lugar de "Hacer compromiso", el enlace a ese compromiso.
   const { data: compromisoLigado } = await supabase.from("compromiso_fechas").select("compromiso_id").eq("factura_id", id).maybeSingle<{ compromiso_id: string }>();
+  // CFDI anteriores de esta misma factura (sustituciones confirmadas), con sus archivos originales.
+  const { data: sustituciones } = await supabase.from("cfdi_sustituciones").select("id,uuid_anterior,original,motivo,confirmado_en,perfiles!usuario_id(nombre)").eq("factura_id", id).not("confirmado_en", "is", null).order("confirmado_en", { ascending: false })
+    .returns<{ id: string; uuid_anterior: string; original: { serie: string | null; folio: string | null; fecha_emision: string; total: number; xml_ruta: string | null; pdf_ruta: string | null }; motivo: string; confirmado_en: string; perfiles: { nombre: string } | null }[]>();
+  const anteriores = await Promise.all((sustituciones ?? []).map(async (x) => ({ ...x, urlXml: await firmar(x.original.xml_ruta), urlPdf: await firmar(x.original.pdf_ruta) })));
   const { data: cancelacion } = await supabase.from("factura_cancelaciones").select("motivo, creado_en, ordenes, perfiles!usuario_id(nombre)").eq("factura_id", id).maybeSingle<{motivo:string;creado_en:string;ordenes:string[];perfiles:{nombre:string}|null}>();
   const [auditoria,programaciones,notas] = await Promise.all([
    supabase.from("facturas").select("creado_en,revisada_en,revision_nota,cancelada_en,motivo_cancelacion,creador:perfiles!creado_por(nombre),revisor:perfiles!revisada_por(nombre),cancelador:perfiles!cancelada_por(nombre)").eq("id",id).maybeSingle<{creado_en:string;revisada_en:string|null;revision_nota:string|null;cancelada_en:string|null;motivo_cancelacion:string|null;creador:{nombre:string}|null;revisor:{nombre:string}|null;cancelador:{nombre:string}|null}>(),
@@ -160,6 +165,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           <BotonEnviar>Guardar UUID manual</BotonEnviar>
         </form></div></details>}
         {edita&&f.origen==='manual'&&f.tipo==='ingreso'&&f.estado!=='cancelada'&&!f.sustituido_por&&<ConvertirPrefactura id={f.id}/>}
+        {edita&&perfil.rol==='admin'&&f.origen==='cfdi'&&f.tipo==='ingreso'&&!f.sustituido_por&&f.uuid&&<SustituirCfdi id={f.id} uuid={f.uuid} folio={`${f.serie??''}${f.folio??''}`||'Sin folio'}/>}
         {edita && f.tipo === "ingreso" && opcionesOrden.filter(o=>ligadas.includes(o.id)&&o.estado==="confirmada").map(o=><Link key={o.id} className="boton boton-secundario" href={`/compras/ordenes/${o.id}?recibir=1#recepcion-orden`}>Registrar recepción{ligadas.length>1?` · ${o.folio}`:""}</Link>)}
         {edita && <details><summary>Programar / revisar</summary>      {edita && (
         <section className="seccion">
@@ -234,6 +240,12 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       )}
       </div>
       <Aviso ok={ok} error={error} /><TareasDelDocumento supabase={supabase} tipo="factura" id={id} rol={perfil.rol} hoy={hoyCalendarioMX()} />
+      {anteriores.length > 0 && <section className="seccion" aria-labelledby="t-cfdi-anteriores"><h2 id="t-cfdi-anteriores">CFDI anteriores</h2>
+        <p className="saldo-nota">Esta factura cambió de CFDI. Pagos, órdenes y recepciones se conservaron en el mismo registro.</p>
+        <ul className="lista-simple">{anteriores.map((x) => <li key={x.id}><strong>{x.original.serie ?? ""}{x.original.folio ?? "Sin folio"}</strong> · UUID {x.uuid_anterior} · emitido {fechaTexto(x.original.fecha_emision)} · {pesos(Number(x.original.total))}
+          {x.urlXml && <> · <a href={x.urlXml} target="_blank" rel="noreferrer">XML anterior</a></>}{x.urlPdf && <> · <a href={x.urlPdf} target="_blank" rel="noreferrer">PDF anterior</a></>}
+          <br /><small>Sustituido el {new Date(x.confirmado_en).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} por {x.perfiles?.nombre ?? "Administración"} · {x.motivo}</small></li>)}</ul>
+      </section>}
       {f.estado === "cancelada" && <section className="seccion"><h2>Cancelación registrada</h2><p>{f.motivo_cancelacion}</p><p>Este registro ya no cuenta como gasto en el P&amp;L ni como pago pendiente.</p>{cancelacion && <><p>{cancelacion.perfiles?.nombre ?? "Administración"} · {new Date(cancelacion.creado_en).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })}</p><p>Importe original: <strong>{pesos(f.total)}</strong></p>{cancelacion.ordenes.length > 0 && <p>Órdenes anteriormente vinculadas: {cancelacion.ordenes.map((orden, i) => <Fragment key={orden}>{i > 0 && " · "}<Link href={`/compras/ordenes/${orden}`}>Ver orden {i + 1}</Link></Fragment>)}</p>}</>}</section>}
 
       <div className="detalle-con-lado compra-ficha-lado"><div className="detalle-principal">

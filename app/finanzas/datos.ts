@@ -12,7 +12,7 @@ import { valorVigente, type Parametro } from "@/lib/finanzas/parametros";
 import { acumuladoDe, anteriorDe, columnasComparativo, COLUMNAS, diasEntre, mesesDelRango, rangosPorMes, type Periodo, type Rango } from "@/lib/finanzas/periodo";
 import {
   avisosSinCapturar, calcularPL, resumenCanalPL, entradaVacia, escalarMetas, INICIO_FECHA, sumarEntradas, sumarMetas,
-  type ContextoMeta, type EntradaPL, type FilaPL, type Meta,
+  type ConceptoNominaPL, type ContextoMeta, type DesgloseNomina, type EntradaPL, type FilaPL, type Meta,
 } from "@/lib/finanzas/pl";
 import type { ColumnaPL } from "@/lib/finanzas/excel";
 import { formatoAsesores, type FormatoAsesores } from "@/lib/finanzas/formatoAsesores";
@@ -216,23 +216,33 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     for (const g of cc) anotar(s.id, renglonDe(g.cuenta_pl), `Gasto${g.informativo?" informativo · ya pagado":""} · ${g.concepto} · ${g.fecha}${g.cuenta_pl ? "" : " · sin cuenta"}`, Number(g.monto),{clave:`gasto:${g.id}`,fecha:g.fecha,proveedor:g.proveedor??undefined,uuid:g.uuid_cfdi,href:"/caja-chica",nota:g.informativo?"Informativo: ya cuadrado en corte; no vuelve a descontar efectivo":undefined});
 
     const nomina = nominaPeriodo(puestos, ajustes, s.id, meses, reales);
+    const nominaDesglose: DesgloseNomina = { cocina: {}, gerencia: {} };
     for (const m of meses) {
       const real = realDelMes(reales, s.id, m.mes);
       if (real) {
         for (const e of real.empleados) for (const [clave, nombre] of Object.entries(conceptosNomina)) {
           const monto = Number(e[clave as keyof typeof conceptosNomina] ?? 0);
-          if (monto) anotar(s.id, `nomina_${e.renglon}`, `${e.nombre} · ${e.puesto} · ${nombre}${proporcion(m.mes, monto)}`, monto * m.fraccion, { href: `/finanzas/nomina?mes=${m.mes}`, nota: `${real.fuente}${e.nota ? ` · ${e.nota}` : ""}` });
+          if (!monto) continue;
+          const extra = { href: `/finanzas/nomina?mes=${m.mes}`, nota: `${real.fuente}${e.nota ? ` · ${e.nota}` : ""}` };
+          const texto = `${e.nombre} · ${e.puesto} · ${nombre}${proporcion(m.mes, monto)}`;
+          anotar(s.id, `nomina_${e.renglon}`, texto, monto * m.fraccion, extra);
+          // El ajuste del reporte no tiene concepto propio: cae en «Ajustes y plantilla estimada».
+          const concepto: ConceptoNominaPL = clave === "ajuste" ? "otros" : clave as ConceptoNominaPL;
+          anotar(s.id, `nomina_${e.renglon}_${concepto}`, texto, monto * m.fraccion, extra);
+          if (concepto !== "otros") nominaDesglose[e.renglon][concepto] = (nominaDesglose[e.renglon][concepto] ?? 0) + monto * m.fraccion;
         }
       }
       for (const p of real ? [] : plantillaVigente(puestos, s.id, m.fin)) {
-        anotar(s.id, `nomina_${p.renglon}`,
-          `${p.puesto} · ${p.personas} × (${pesos(Number(p.sueldo))} + ${(Number(p.pct_cargas) * 100).toFixed(2)} % de cargas${Number(p.bono) ? ` + bono ${pesos(Number(p.bono))}` : ""})${proporcion(m.mes, costoPuesto(p))}`,
-          costoPuesto(p) * m.fraccion);
+        const texto = `${p.puesto} · ${p.personas} × (${pesos(Number(p.sueldo))} + ${(Number(p.pct_cargas) * 100).toFixed(2)} % de cargas${Number(p.bono) ? ` + bono ${pesos(Number(p.bono))}` : ""})${proporcion(m.mes, costoPuesto(p))}`;
+        anotar(s.id, `nomina_${p.renglon}`, texto, costoPuesto(p) * m.fraccion);
+        anotar(s.id, `nomina_${p.renglon}_otros`, `Plantilla estimada · ${texto}`, costoPuesto(p) * m.fraccion);
       }
       for (const a of de(ajustes, s.id).filter((a) => a.mes.slice(0, 7) === m.mes)) {
         anotar(s.id, `nomina_${a.renglon}`, `Ajuste · ${a.concepto}${proporcion(m.mes, Number(a.monto))}`, Number(a.monto) * m.fraccion);
+        anotar(s.id, `nomina_${a.renglon}_otros`, `Ajuste · ${a.concepto}${proporcion(m.mes, Number(a.monto))}`, Number(a.monto) * m.fraccion);
       }
     }
+    for (const r of ["cocina", "gerencia"] as const) for (const c of Object.keys(nominaDesglose[r]) as ConceptoNominaPL[]) nominaDesglose[r][c] = centavos(nominaDesglose[r][c] ?? 0);
 
     const agregadores = centavos(comisionRappi(diasVenta.filter(d=>!fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta)), vigente)+efecto.comision);
     anotar(s.id, "agregadores", 'Comisión Rappi: reportes financieros por lote + estimación de días sin reporte', agregadores);
@@ -273,7 +283,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       ventaNeta, descuentos: centavos(renglones.reduce((t, r) => t + r.importe_sin_descuento - r.importe, 0)-datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta)).reduce((t,o)=>t+Number(o.bruto)-Number(o.subtotal_restaurante),0)-fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta).reduce((t,m)=>t+m.aliado+m.dar,0)),
       alimento: c.total.costo, merma: merma.monto===null&&merma.insumosMonto===null?null:centavos((merma.monto??0)+(merma.insumosMonto??0)), mermaPendiente: merma.parcial||merma.insumosParcial,
       mermaProductos:merma.monto,mermaInsumos:merma.insumosMonto,mermaProductosPendiente:merma.parcial,mermaInsumosPendiente:merma.insumosParcial,
-      nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia },
+      nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia }, nominaDesglose,
       gastos: sumarGastos(f.gastos, caja.gastos), sinCuenta: centavos(f.sinCuenta + caja.sinCuenta),
       agregadores, comisionesCobro: cobro.total, faltantes, regalias: regaliasPeriodo, memos: sumarMemos(f.memos, caja.memos),
     };

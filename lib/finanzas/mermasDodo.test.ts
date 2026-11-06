@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { leerMermasDodo, resumirMermas } from "./mermasDodo.ts";
+import { leerMermasDodo, nombresParaMermas, resumirMermas } from "./mermasDodo.ts";
 const razones="Fecha de caducidad pasada,Deterioro del producto,Embalaje dañado,Factor humano,Marketing,Fecha de caducidad pasada de escaparate,Deterioro de productos por escaparates";
 const sucursales=[{id:"s1",nombre:"Zapopan-1"}];
 function insumos(cambios:Record<string,string|number>={}) {return {nombre:"Zapopan-1",celdas:new Map(Object.entries({A2:"Unidad/Tienda",C2:"Zapopan-1",A3:"Motivo de la deducción",C3:razones,A4:"Periodo",C4:"21/09/2026 : 23/09/2026",A5:"Tipo de informe",C5:"Por fechas",A7:"ID",B7:"Suministros",E7:"Precio (Sin IVA)",F7:"Costar (Sin IVA)",G7:"21 de septiembre",H7:"22 de septiembre",I7:"23 de septiembre",B8:"Ingrediente",A9:123,B9:"Queso",C9:"Kg",D9:3,E9:0.333,F9:1,G9:1,H9:1,I9:1,...cambios}))};}
@@ -19,4 +19,23 @@ test("cobertura distingue hoja de productos vacía, ausente y periodo parcial",(
  assert.deepEqual(vacia.errores,[]);assert.ok(vacia.dias.every(d=>d.productos_completos===true));
  const parcial=leer([insumos(),productos({D4:"21/09/2026-21/09/2026"})]);
  assert.deepEqual(parcial.errores,[]);assert.deepEqual(parcial.dias.map(d=>d.productos_completos),[true,false,false]);
+});
+
+test("mermas: reconoce la sucursal por el nombre de su unidad ligada en Dodo IS", () => {
+  const app = [{ id: "s1", nombre: "Dodo La Calma (Dodo-1)", dodois_unit_id: "u1" }, { id: "s2", nombre: "Dodo Belisario (Dodo-4)", dodois_unit_id: null }];
+  const unidades = [{ id: "u1", name: "Zapopan-1" }, { id: "u9", name: "Office" }];
+  const nombres = nombresParaMermas(app, unidades);
+  assert.deepEqual(nombres, [{ id: "s1", nombre: "Dodo La Calma (Dodo-1)" }, { id: "s2", nombre: "Dodo Belisario (Dodo-4)" }, { id: "s1", nombre: "Zapopan-1" }]);
+  const r = leerMermasDodo([insumos(), productos()], nombres, "2026-10-06");
+  assert.deepEqual(r.errores, []);
+  assert.ok(r.dias.length > 0 && r.dias.every((d) => d.sucursal_id === "s1"));
+  // Sin la unidad ligada, el nombre de Dodo IS no se reconoce.
+  assert.match(leerMermasDodo([insumos()], nombresParaMermas(app, []), "2026-10-06").errores.join(" "), /Zapopan-1/);
+});
+
+test("mermas: no agrega nombres de Dodo IS repetidos o que ya usa otra sucursal", () => {
+  const unidades = [{ id: "u1", name: "Zapopan-1" }, { id: "u2", name: "zapopan-1" }];
+  assert.deepEqual(nombresParaMermas([{ id: "s1", nombre: "La Calma", dodois_unit_id: "u1" }], unidades), [{ id: "s1", nombre: "La Calma" }]);
+  const otra = nombresParaMermas([{ id: "s1", nombre: "La Calma", dodois_unit_id: "u1" }, { id: "s2", nombre: "Zapopan-1", dodois_unit_id: null }], [{ id: "u1", name: "Zapopan-1" }]);
+  assert.deepEqual(otra, [{ id: "s1", nombre: "La Calma" }, { id: "s2", nombre: "Zapopan-1" }]);
 });
