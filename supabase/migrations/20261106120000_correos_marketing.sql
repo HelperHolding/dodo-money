@@ -260,3 +260,82 @@ revoke all on function public.correo_guardar_contacto(jsonb), public.correo_impo
   public.correo_contar_destinatarios(text), public.correo_guardar_campana(jsonb), public.correo_cambiar_estado(uuid,text,timestamptz), public.correo_mandar_prueba(uuid,text[]) from public, anon;
 grant execute on function public.correo_guardar_contacto(jsonb), public.correo_importar_contactos(jsonb,text,boolean), public.correo_baja_manual(uuid),
   public.correo_contar_destinatarios(text), public.correo_guardar_campana(jsonb), public.correo_cambiar_estado(uuid,text,timestamptz), public.correo_mandar_prueba(uuid,text[]) to authenticated;
+
+create function public.correo_tomar_lote(p_lote int) returns jsonb language plpgsql security definer set search_path='' as $$
+declare n int := least(greatest(coalesce(p_lote,8),1),8); r jsonb;
+begin
+  update public.correo_estado_n8n set ultima_consulta = now() where id = 1;
+  -- Campañas cuya hora llegó: se arma la lista con los contactos activos de ese momento.
+  with listas as (
+    update public.correo_campanas set estado = 'enviando', iniciada_en = coalesce(iniciada_en, now()), actualizado_en = now()
+    where estado = 'programada' and programada_para <= now() returning id, etiqueta)
+  insert into public.correo_envios(campana_id, contacto_id, email)
+    select l.id, k.id, k.email from listas l join public.correo_contactos k on k.estado = 'activo' and (l.etiqueta is null or l.etiqueta = any(k.etiquetas))
+  on conflict do nothing;
+  -- Reservados sin respuesta: pudieron haber salido; no se reintentan solos.
+  update public.correo_envios set estado = 'problema', detalle = 'Sin respuesta de n8n; puede haber salido, revisar antes de reintentar.'
+    where estado = 'procesando' and reservado_en < now() - interval '15 minutes';
+  -- Pendientes de contactos que ya no están activos: no salen.
+  update public.correo_envios e set estado = 'problema', detalle = 'El contacto se dio de baja o rebotó antes del envío.'
+    from public.correo_contactos k where e.estado = 'pendiente' and not e.es_prueba and k.id = e.contacto_id and k.estado <> 'activo';
+  with elegidos as (
+    select e.id from public.correo_envios e join public.correo_campanas c on c.id = e.campana_id
+    where e.estado = 'pendiente' and (e.es_prueba and c.estado <> 'cancelada' or not e.es_prueba and c.estado = 'enviando')
+    order by e.es_prueba desc, c.iniciada_en nulls first, e.creado_en, e.id
+    limit n for update of e skip locked),
+  reservados as (
+    update public.correo_envios e set estado = 'procesando', reservado_en = now() from elegidos where e.id = elegidos.id
+    returning e.id, e.token, e.email, e.es_prueba, e.campana_id, e.creado_en)
+  select coalesce(jsonb_agg(jsonb_build_object('envio_id', r.id, 'token', r.token, 'para', r.email, 'es_prueba', r.es_prueba,
+      'asunto', case when r.es_prueba then '[PRUEBA] ' else '' end || c.asunto, 'html', c.html, 'campana_nombre', c.nombre)
+      order by r.es_prueba desc, r.creado_en, r.id), '[]'::jsonb)
+    into r from reservados r join public.correo_campanas c on c.id = r.campana_id;
+  update public.correo_campanas c set estado = 'enviada', terminada_en = now(), actualizado_en = now()
+    where c.estado = 'enviando' and not exists (select 1 from public.correo_envios e where e.campana_id = c.id and not e.es_prueba and e.estado in ('pendiente','procesando'));
+  return r;
+end $$;
+
+create function public.correo_registrar_resultado(p_envio uuid, p_aceptado boolean, p_message_id text, p_detalle text, p_rebote boolean) returns void language plpgsql security definer set search_path='' as $$
+declare e public.correo_envios;
+begin
+  update public.correo_envios set estado = case when p_aceptado then 'aceptado' else 'problema' end, enviado_en = case when p_aceptado then now() end,
+    message_id = left(p_message_id, 300), detalle = left(coalesce(p_detalle, case when p_aceptado then 'Aceptado por SMTP; no confirma entrega a bandeja.' end), 1500)
+    where id = p_envio and estado = 'procesando' returning * into e;
+  if e.id is null then return; end if;
+  if not p_aceptado and p_rebote and e.contacto_id is not null then
+    update public.correo_contactos set estado = 'rebote', actualizado_en = now() where id = e.contacto_id and estado = 'activo';
+  end if;
+  update public.correo_campanas c set estado = 'enviada', terminada_en = now(), actualizado_en = now()
+    where c.id = e.campana_id and c.estado = 'enviando' and not exists (select 1 from public.correo_envios x where x.campana_id = c.id and not x.es_prueba and x.estado in ('pendiente','procesando'));
+end $$;
+
+create function public.correo_registrar_evento(p_token text, p_tipo text, p_enlace text, p_agente text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare e public.correo_envios; nombre text;
+begin
+  if p_tipo not in ('apertura','clic') then raise exception 'Tipo inválido.'; end if;
+  select * into e from public.correo_envios where token = p_token;
+  if e.id is null then return null; end if;
+  insert into public.correo_eventos(envio_id, tipo, enlace, agente, sospechoso)
+    values (e.id, p_tipo, left(p_enlace, 500), left(p_agente, 300), p_tipo = 'clic' and (e.enviado_en is null or now() - e.enviado_en < interval '10 seconds'));
+  select c.nombre into nombre from public.correo_campanas c where c.id = e.campana_id;
+  return jsonb_build_object('campana_nombre', nombre);
+end $$;
+
+create function public.correo_baja_por_token(p_token text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare e public.correo_envios; correo text;
+begin
+  select * into e from public.correo_envios where token = p_token;
+  if e.id is null then return null; end if;
+  if e.contacto_id is not null then
+    update public.correo_contactos set estado = 'baja', fecha_baja = coalesce(fecha_baja, now()), actualizado_en = now() where id = e.contacto_id and estado <> 'baja';
+    if found then insert into public.correo_eventos(envio_id, tipo) values (e.id, 'baja'); end if;
+  end if;
+  correo := left(e.email, 1) || '***@' || split_part(e.email, '@', 2);
+  return jsonb_build_object('email', correo);
+end $$;
+
+revoke all on function public.correo_tomar_lote(int), public.correo_registrar_resultado(uuid,boolean,text,text,boolean),
+  public.correo_registrar_evento(text,text,text,text), public.correo_baja_por_token(text) from public, anon, authenticated;
+grant execute on function public.correo_tomar_lote(int), public.correo_registrar_resultado(uuid,boolean,text,text,boolean),
+  public.correo_registrar_evento(text,text,text,text), public.correo_baja_por_token(text) to service_role;
+grant select, insert, update on public.correo_envios, public.correo_eventos, public.correo_contactos, public.correo_campanas, public.correo_estado_n8n to service_role;

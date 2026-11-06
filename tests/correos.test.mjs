@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {U,como,nueva} from './correosBase.mjs';
+import {U,como,nueva,servicio} from './correosBase.mjs';
 export const rechaza=(p,re)=>assert.rejects(p,e=>{assert.match(e.message,re);return true;});
 const v=async(db,id,sql)=>{await como(db,id);return (await db.query(sql)).rows[0];};
 
@@ -93,5 +93,98 @@ test('correos: BOM, NBSP y tabulador se recortan; invisibles en medio se rechaza
   assert.deepEqual(previa,{nuevos:1,existentes:1,bajas:0,invalidos:0});
   await como(db,U.mkt);
   assert.deepEqual((await db.query(`select email from correo_contactos order by email`)).rows.map(r=>r.email),['ana@mail.com','luis@mail.com']);
+ }finally{await db.close();}
+});
+
+const lote=async(db,n=8)=>{await servicio(db);try{return (await db.query(`select public.correo_tomar_lote($1) r`,[n])).rows[0].r;}finally{await db.exec('reset role');}};
+const sql=async(db,q,a=[])=>{await servicio(db);try{return (await db.query(q,a)).rows;}finally{await db.exec('reset role');}};
+
+test('correos: el lote arranca la campaña, excluye bajas y no repite',async()=>{
+ const db=await nueva();
+ try{
+  for(const e of ['a@m.com','b@m.com','c@m.com'])await contacto(db,e);
+  const x=await contacto(db,'x@m.com');await rpc(db,U.mkt,`select public.correo_baja_manual($1)`,[x]);
+  const c=await campana(db,U.mkt);await accion(db,U.mkt,c,'programar',null);
+  await rpc(db,U.mkt,`select public.correo_mandar_prueba($1,$2)`,[c,['p@m.com']]);
+  const r1=await lote(db,2);
+  assert.equal(r1[0].para,'p@m.com');assert.equal(r1[0].es_prueba,true);assert.equal(r1[0].asunto,'[PRUEBA] Go Big · Dodo');
+  assert.equal(r1.length,2);
+  const r2=await lote(db,8);
+  assert.equal(r2.length,2);
+  const todos=[...r1,...r2].map(x=>x.para).sort();
+  assert.deepEqual(todos,['a@m.com','b@m.com','c@m.com','p@m.com']);
+  assert.equal((await sql(db,`select estado from correo_campanas where id=$1`,[c]))[0].estado,'enviando');
+  assert.deepEqual(await lote(db,8),[]);
+ }finally{await db.close();}
+});
+
+test('correos: resultados cierran la campaña; rebote marca contacto; vencidos pasan a problema',async()=>{
+ const db=await nueva();
+ try{
+  await contacto(db,'a@m.com');await contacto(db,'b@m.com');
+  const c=await campana(db,U.mkt);await accion(db,U.mkt,c,'programar',null);
+  const L=await lote(db,8);const a=L.find(x=>x.para==='a@m.com'),b=L.find(x=>x.para==='b@m.com'); // el orden dentro del lote no está garantizado
+  await sql(db,`select public.correo_registrar_resultado($1,true,'<id@x>',null,false)`,[a.envio_id]);
+  await sql(db,`select public.correo_registrar_resultado($1,false,null,'550 no existe',true)`,[b.envio_id]);
+  await sql(db,`select public.correo_registrar_resultado($1,true,null,null,false)`,[a.envio_id]); // repetido: se ignora
+  assert.equal((await sql(db,`select estado from correo_campanas where id=$1`,[c]))[0].estado,'enviada');
+  assert.equal((await sql(db,`select estado from correo_contactos where email='b@m.com'`))[0].estado,'rebote');
+  // Vencido
+  await contacto(db,'v@m.com');const c2=await campana(db,U.mkt,{nombre:'Dos'});await accion(db,U.mkt,c2,'programar',null);
+  await lote(db,8);await sql(db,`update correo_envios set reservado_en=now()-interval '16 minutes' where campana_id=$1`,[c2]);
+  await lote(db,8);
+  const [v]=await sql(db,`select estado,detalle from correo_envios where campana_id=$1`,[c2]);
+  assert.equal(v.estado,'problema');assert.match(v.detalle,/Sin respuesta de n8n/);
+  // Reintentar no revive al rebotado
+  await accion(db,U.mkt,c,'reintentar');
+  assert.equal((await sql(db,`select count(*)::int n from correo_envios where campana_id=$1 and estado='pendiente'`,[c]))[0].n,0);
+ }finally{await db.close();}
+});
+
+test('correos: detenida no entrega; baja entre armado y envío se omite',async()=>{
+ const db=await nueva();
+ try{
+  const a=await contacto(db,'a@m.com');await contacto(db,'b@m.com');
+  const c=await campana(db,U.mkt);await accion(db,U.mkt,c,'programar',null);
+  await lote(db,1); // arma la lista y reserva 1
+  await accion(db,U.mkt,c,'detener');
+  assert.deepEqual(await lote(db,8),[]);
+  await accion(db,U.mkt,c,'reanudar');
+  await rpc(db,U.mkt,`select public.correo_baja_manual($1)`,[a]);
+  const r=await lote(db,8);
+  assert.ok(r.every(x=>x.para!=='a@m.com'));
+ }finally{await db.close();}
+});
+
+test('correos: eventos por token; clic sospechoso y baja idempotente',async()=>{
+ const db=await nueva();
+ try{
+  await contacto(db,'a@m.com');const c=await campana(db,U.mkt);await accion(db,U.mkt,c,'programar',null);
+  const [e]=await lote(db,8);
+  await sql(db,`select public.correo_registrar_resultado($1,true,null,null,false)`,[e.envio_id]);
+  const r=(await sql(db,`select public.correo_registrar_evento($1,'clic','https://dodopizza.mx/','UA') r`,[e.token]))[0].r;
+  assert.deepEqual(r,{campana_nombre:'Go Big'});
+  await sql(db,`update correo_envios set enviado_en=now()-interval '1 minute'`);
+  await sql(db,`select public.correo_registrar_evento($1,'apertura',null,'UA')`,[e.token]);
+  await sql(db,`select public.correo_registrar_evento($1,'clic','https://dodopizza.mx/','UA')`,[e.token]);
+  assert.deepEqual((await sql(db,`select tipo,sospechoso from correo_eventos order by id`)).map(x=>[x.tipo,x.sospechoso]),[['clic',true],['apertura',false],['clic',false]]);
+  assert.equal((await sql(db,`select public.correo_registrar_evento('nada','apertura',null,null) r`))[0].r,null);
+  assert.deepEqual((await sql(db,`select public.correo_baja_por_token($1) r`,[e.token]))[0].r,{email:'a***@m.com'});
+  await sql(db,`select public.correo_baja_por_token($1)`,[e.token]);
+  assert.equal((await sql(db,`select estado from correo_contactos`))[0].estado,'baja');
+  assert.equal((await sql(db,`select count(*)::int n from correo_eventos where tipo='baja'`))[0].n,1);
+  await como(db,U.mkt);await rechaza(db.query(`select public.correo_tomar_lote(8)`),/permission denied/);
+ }finally{await db.close();}
+});
+
+test('correos: campaña sin destinatarios elegibles se cierra al tomar lote',async()=>{
+ const db=await nueva();
+ try{
+  const a=await contacto(db,'a@m.com',['zapopan']);
+  const c=await campana(db,U.mkt,{etiqueta:'zapopan'});await accion(db,U.mkt,c,'programar',null);
+  await rpc(db,U.mkt,`select public.correo_baja_manual($1)`,[a]); // todos se dan de baja antes de arrancar
+  assert.deepEqual(await lote(db,8),[]);
+  const [r]=await sql(db,`select estado,terminada_en from correo_campanas where id=$1`,[c]);
+  assert.equal(r.estado,'enviada');assert.ok(r.terminada_en);
  }finally{await db.close();}
 });
