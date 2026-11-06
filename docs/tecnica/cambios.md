@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-06 · Compras: sustituir el CFDI de una factura · 20261106120000 · pendiente de Supabase
+
+Administración puede reemplazar el CFDI de una factura vigente con el XML que el proveedor volvió a timbrar, y opcionalmente con su PDF. Se conserva el mismo registro con pagos, órdenes y recepciones; cambian UUID, folio, fecha, datos fiscales y archivos. Si el total cambia, se acepta explícitamente como en 0067. El CFDI anterior queda completo en `cfdi_sustituciones` y en la sección «CFDI anteriores». Las notas de crédito ligadas bloquean la sustitución. Los REP del UUID anterior se conservan y la app avisa que hace falta uno del UUID nuevo. Un trigger impide volver a registrar un UUID sustituido. Detalle en [sustitucion-cfdi.md](sustitucion-cfdi.md). Prueba SQL en PGlite, con las funciones reales de registro de factura, estado y UUID manual.
+
 ## 2026-11-03 · Aperturas: actividades dentro de una categoría · 20261103120000 · pendiente de Supabase
 
 Actividades y validaciones técnicas pueden llevar categoría del plano (por ejemplo, "Instalar luminarias" en Iluminación), al darlas de alta o desde su detalle. La migración quita la restricción `apertura_items_categoria_compra` y el candado de `actualizar_apertura_item` y `agregar_apertura_item`; el resto de las funciones queda igual. En el Checklist, lo que tiene categoría aparece y cuenta dentro del grupo de su categoría, no suelto en su etapa; las tarjetas de Equipo y compras y su lista filtrada por categoría también lo incluyen (listo = actividad completada o equipo instalado o verificado). Prueba SQL en PGlite.
