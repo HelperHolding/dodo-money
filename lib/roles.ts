@@ -4,7 +4,7 @@ export const SOLO_CONSULTA = "Corporativo solo puede consultar.";
 
 /** Cómo se muestra cada puesto. Operación es el puesto base: cocina y caja, sin abrir turno. */
 export const NOMBRE_ROL: Record<Rol, string> = {
-  operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo",
+  operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo", marketing: "Marketing",
 };
 
 /** Un usuario desactivado (baja) no entra a la app; la base de datos ya le rechaza todo. */
@@ -39,6 +39,10 @@ export const puedeEditarCompras = (rol: Rol) => rol === "admin";
 /** P&L y nómina: admin y corporativo ven; solo admin captura. */
 export const puedeVerFinanzas = (rol: Rol) => rol === "admin" || rol === "corporativo";
 export const puedeEditarFinanzas = (rol: Rol) => rol === "admin";
+/** Correos de marketing: marketing y admin crean y mandan campañas; corporativo consulta estadísticas. */
+export const puedeVerCorreos = (rol: Rol) => rol === "marketing" || rol === "admin" || rol === "corporativo";
+export const puedeEditarCorreos = (rol: Rol) => rol === "marketing" || rol === "admin";
+export const esMarketing = (rol: Rol) => rol === "marketing";
 /** Confirmar lo recibido de activos fijos, servicios y otros (los consumibles se reciben en Dodo IS). */
 export const puedeRecibirCompras = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
 /** Salidas de efectivo a corporativo de todas las sucursales: un admin las recoge y corporativo las recibe. */
@@ -68,6 +72,9 @@ export type Menu = { inicio: Enlace; grupos: GrupoMenu[] };
 
 /** Menú lateral: el mismo en toda la app, con grupos plegables. Cada puesto ve solo lo suyo. */
 export function menuLateral(rol: Rol): Menu {
+  const correos: GrupoMenu = { titulo: "Correos", enlaces: [{ href: "/correos", texto: "Campañas" }, ...(puedeEditarCorreos(rol) ? [{ href: "/correos/contactos", texto: "Contactos" }] : [])] };
+  // Marketing solo usa Correos.
+  if (esMarketing(rol)) return { inicio: { href: "/correos", texto: "Campañas" }, grupos: [correos] };
   const corporativo = esCorporativo(rol);
   const grupos: GrupoMenu[] = [{
     titulo: "Sucursal",
@@ -149,6 +156,7 @@ export function menuLateral(rol: Rol): Menu {
     titulo: "Conocimiento",
     enlaces: [{ href: "/conocimiento", texto: "Manuales y Q&A" }, ...(puedeVerVentas(rol) ? [{ href: "/asistente", texto: "Asistente IA" }] : [])],
   });
+  if (puedeVerCorreos(rol)) grupos.push(correos);
   return {
     inicio: corporativo ? { href: "/corporativo", texto: "Vista general" } : { href: "/", texto: "Inicio" },
     grupos,
@@ -157,6 +165,7 @@ export function menuLateral(rol: Rol): Menu {
 
 /** Barra inferior en celular: los 3 destinos que cada puesto usa más (el 4º botón abre el menú completo). */
 export function accesosRapidos(rol: Rol): Enlace[] {
+  if (rol === "marketing") return [{ href: "/correos", texto: "Campañas" }, { href: "/correos/contactos", texto: "Contactos" }, { href: "/correos/nueva", texto: "Nueva" }];
   const inicio: Enlace = puedeVerVistaGeneral(rol) ? { href: "/corporativo", texto: "General" } : { href: "/", texto: "Inicio" };
   if (rol === "admin") return [inicio, { href: "/ventas", texto: "Ventas" }, { href: "/compras/documentos", texto: "Compras" }];
   if (rol === "corporativo") return [inicio, { href: "/ventas", texto: "Ventas" }, { href: "/finanzas", texto: "Finanzas" }];

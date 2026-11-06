@@ -19,8 +19,8 @@ export function InvitarUsuario({sucursales}:{sucursales:{id:string;nombre:string
     <form action={invitarUsuario} className={styles.editor}>
       <label>Nombre<input name="nombre" required minLength={2} maxLength={160}/></label><label>Correo<input name="correo" type="email" autoComplete="off" required maxLength={254}/></label>
       <label>Rol<select name="rol" value={rol} onChange={e=>setRol(e.target.value)}>{Object.entries(NOMBRE_ROL).map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></label>
-      <label>Sucursal<select name="sucursal_id" required={rol!=="corporativo"} disabled={rol==="corporativo"}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
-      <p className={styles.nota}>{["admin","corporativo"].includes(rol)?"Este rol tiene acceso general a todas las sucursales.":"El usuario tendrá acceso únicamente a la sucursal asignada."} Recibirá un correo para crear su contraseña.</p><Enviar/>
+      <label>Sucursal<select name="sucursal_id" required={!["corporativo","marketing"].includes(rol)} disabled={["corporativo","marketing"].includes(rol)}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
+      <p className={styles.nota}>{rol==="marketing"?"Marketing solo entra a Correos: campañas, contactos y estadísticas.":["admin","corporativo"].includes(rol)?"Este rol tiene acceso general a todas las sucursales.":"El usuario tendrá acceso únicamente a la sucursal asignada."} Recibirá un correo para crear su contraseña.</p><Enviar/>
     </form>
   </Cajon>
   </>;

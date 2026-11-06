@@ -1,0 +1,75 @@
+-- Correos de marketing: puesto marketing, contactos, campañas, envíos por n8n y seguimiento (spec 2026-11-05).
+-- Ojo: el valor nuevo del enum no se puede usar en esta misma transacción; siempre se compara mi_rol()::text.
+alter type public.rol_usuario add value if not exists 'marketing';
+
+-- Corporativo y marketing son de oficina central: sin sucursal. Los demás puestos, con sucursal.
+alter table public.perfiles drop constraint perfiles_corporativo_sin_sucursal;
+alter table public.perfiles add constraint perfiles_sin_sucursal
+  check ((rol::text in ('corporativo','marketing')) = (sucursal_id is null));
+
+create function public.puede_ver_correos() returns boolean language sql stable security definer set search_path='' as
+$$select coalesce(public.mi_rol()::text in ('marketing','admin','corporativo'),false)$$;
+create function public.puede_editar_correos() returns boolean language sql stable security definer set search_path='' as
+$$select coalesce(public.mi_rol()::text in ('marketing','admin'),false)$$;
+revoke all on function public.puede_ver_correos(),public.puede_editar_correos() from public,anon;
+grant execute on function public.puede_ver_correos(),public.puede_editar_correos() to authenticated;
+
+-- <invitaciones>
+-- Administración e invitaciones aceptan el puesto marketing (sin sucursal), igual que corporativo.
+create or replace function public.administrar_usuario(p_id uuid,p_original jsonb,p_nombre text,p_rol text,p_sucursal uuid,p_activo boolean,p_motivo text) returns void
+language plpgsql security definer set search_path='' as $$
+declare v public.perfiles; v_antes jsonb; v_despues jsonb;
+begin
+ -- Serializa cambios de administración para proteger el último administrador incluso en paralelo.
+ perform pg_advisory_xact_lock(575701);
+ if not exists(select 1 from public.perfiles where id=auth.uid() and activo and not debe_cambiar_contrasena and rol::text='admin') then raise exception 'Solo administración gestiona usuarios.';end if;
+ if p_nombre is null or length(trim(p_nombre)) not between 2 and 160 then raise exception 'Escribe un nombre de 2 a 160 caracteres.';end if;
+ if p_motivo is null or length(trim(p_motivo)) not between 5 and 1000 then raise exception 'Escribe un motivo de 5 a 1000 caracteres.';end if;
+ if p_activo is null or p_rol is null or p_rol not in ('operacion','encargado','gerente','admin','corporativo','marketing') then raise exception 'Rol o estado inválido.';end if;
+ if p_rol in ('corporativo','marketing') then p_sucursal:=null;
+ elsif p_sucursal is null or not exists(select 1 from public.sucursales where id=p_sucursal) then raise exception 'Selecciona una sucursal válida.';end if;
+ select * into v from public.perfiles where id=p_id for update;
+ if not found then raise exception 'Usuario no encontrado.';end if;
+ v_antes:=jsonb_build_object('id',v.id,'nombre',v.nombre,'rol',v.rol,'sucursal_id',v.sucursal_id,'activo',v.activo,'debe_cambiar_contrasena',v.debe_cambiar_contrasena);
+ v_despues:=v_antes||jsonb_build_object('nombre',trim(p_nombre),'rol',p_rol,'sucursal_id',p_sucursal,'activo',p_activo);
+ -- Repetición del mismo envío: no duplica el historial.
+ if v_antes=v_despues then return;end if;
+ if p_original is distinct from v_antes then raise exception 'El usuario cambió desde que abriste la pantalla. Recarga antes de guardar.';end if;
+ if p_id=auth.uid() and (p_rol<>'admin' or not p_activo) then raise exception 'No puedes quitarte el acceso de administración.';end if;
+ if v.rol::text='admin' and v.activo and not v.debe_cambiar_contrasena and (p_rol<>'admin' or not p_activo)
+ and not exists(select 1 from public.perfiles where id<>p_id and rol::text='admin' and activo and not debe_cambiar_contrasena) then raise exception 'Debe permanecer un administrador activo.';end if;
+ update public.perfiles set nombre=trim(p_nombre),rol=p_rol::public.rol_usuario,sucursal_id=p_sucursal,activo=p_activo where id=p_id;
+ insert into public.usuarios_historial(usuario_id,autor_id,motivo,antes,despues) values(p_id,auth.uid(),trim(p_motivo),v_antes,v_despues);
+end $$;
+revoke all on function public.administrar_usuario(uuid,jsonb,text,text,uuid,boolean,text) from public,anon;
+grant execute on function public.administrar_usuario(uuid,jsonb,text,text,uuid,boolean,text) to authenticated;
+create or replace function public.preparar_invitacion_usuario(p_id uuid,p_envio uuid,p_correo text,p_nombre text,p_rol text,p_sucursal uuid) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare v public.usuarios_invitaciones;
+begin
+ if not exists(select 1 from public.perfiles where id=auth.uid() and activo and not debe_cambiar_contrasena and rol::text='admin') then raise exception 'Solo administración invita usuarios.';end if;
+ perform pg_advisory_xact_lock(585801);
+ if p_id is null or p_envio is null then raise exception 'Identificador de envío requerido.';end if;
+ select * into v from public.usuarios_invitaciones where id=p_id for update;
+ if not found then
+  p_correo:=lower(trim(p_correo));
+  if p_correo is null or length(p_correo)>254 or p_correo !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then raise exception 'Correo inválido.';end if;
+  if p_nombre is null or length(trim(p_nombre)) not between 2 and 160 then raise exception 'Nombre inválido.';end if;
+  if p_rol is null or p_rol not in ('operacion','encargado','gerente','admin','corporativo','marketing') then raise exception 'Rol inválido.';end if;
+  if p_rol in ('corporativo','marketing') then p_sucursal:=null;
+  elsif p_sucursal is null or not exists(select 1 from public.sucursales where id=p_sucursal) then raise exception 'Selecciona una sucursal válida.';end if;
+  if exists(select 1 from public.usuarios_invitaciones where correo=p_correo) then raise exception 'Ya hay una invitación para ese correo. Reenvíala desde la lista.';end if;
+  if exists(select 1 from auth.users where lower(email)=p_correo) then raise exception 'Ese correo ya tiene una cuenta. Administra el usuario existente.';end if;
+  insert into public.usuarios_invitaciones(id,correo,nombre,rol,sucursal_id,creado_por) values(p_id,p_correo,trim(p_nombre),p_rol::public.rol_usuario,p_sucursal,auth.uid()) returning * into v;
+  insert into public.usuarios_invitaciones_historial(invitacion_id,autor_id,evento) values(p_id,auth.uid(),'Alta solicitada');
+ end if;
+ if v.estado='aceptada' then raise exception 'La persona ya creó su contraseña.';end if;
+ if v.reservado_hasta>now() then raise exception 'Espera un minuto antes de reenviar la invitación.';end if;
+ if v.usuario_id is not null and not exists(select 1 from public.perfiles where id=v.usuario_id and activo and debe_cambiar_contrasena) then raise exception 'La cuenta no está activa o ya completó su contraseña.';end if;
+ update public.usuarios_invitaciones set envio_id=p_envio,envio_por=auth.uid(),reservado_hasta=now()+interval '1 minute' where id=p_id;
+ insert into public.usuarios_invitaciones_historial(invitacion_id,autor_id,evento) values(p_id,auth.uid(),'Envío solicitado');
+ return jsonb_build_object('id',v.id,'correo',v.correo,'usuario_id',v.usuario_id);
+end $$;
+revoke all on function public.preparar_invitacion_usuario(uuid,uuid,text,text,text,uuid) from public,anon;
+grant execute on function public.preparar_invitacion_usuario(uuid,uuid,text,text,text,uuid) to authenticated;
+-- </invitaciones>
