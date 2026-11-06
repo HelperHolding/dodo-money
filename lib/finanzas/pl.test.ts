@@ -10,6 +10,17 @@ test("merma de productos e insumos descuenta una sola vez; meta compara total y 
  assert.match(filas.find(f=>f.clave==="merma_insumos")!.nombre,/pendiente/);
  const total=sumarEntradas([e,e]);assert.equal(total.mermaInsumos,200);assert.equal(total.mermaProductos,80);assert.equal(total.merma,280);assert.equal(total.mermaInsumosPendiente,true);
 });
+test("nómina desglosada por concepto: suma el renglón, no cambia el EBITDA y el resto va a ajustes",()=>{
+ const ctx={ventaNeta:1000,ventaRappi:0,plantilla:{cocina:0,gerencia:0}};
+ const base={...entradaVacia(),ventaNeta:1000,nomina:{cocina:300,gerencia:120}};
+ const e:EntradaPL={...base,nominaDesglose:{cocina:{sueldo:200,imss:40,cesantia:30,retiro:5,impuesto:4,infonavit:10,bono:6},gerencia:{sueldo:100}}};
+ const filas=calcularPL(e,[],ctx),m=(k:string)=>filas.find(f=>f.clave===k)!.monto;
+ assert.equal(m("nomina_cocina_sueldo"),200);assert.equal(m("nomina_cocina_otros"),5);assert.equal(m("nomina_gerencia_otros"),20);
+ const detalle=filas.filter(f=>f.clave.startsWith("nomina_cocina_")).reduce((t,f)=>t+(f.monto??0),0);assert.equal(Math.round(detalle*100)/100,300);
+ assert.equal(m("ebitda"),calcularPL(base,[],ctx).find(f=>f.clave==="ebitda")!.monto);
+ assert.equal(calcularPL(base,[],ctx).find(f=>f.clave==="nomina_cocina_otros")!.monto,300);
+ assert.equal(sumarEntradas([e,e]).nominaDesglose!.cocina.imss,80);
+});
 
 test("finDeMes", () => {
   assert.equal(finDeMes("2026-10"), "2026-10-31");
