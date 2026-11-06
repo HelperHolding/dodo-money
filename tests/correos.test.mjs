@@ -135,9 +135,17 @@ test('correos: resultados cierran la campaña; rebote marca contacto; vencidos p
   await lote(db,8);
   const [v]=await sql(db,`select estado,detalle from correo_envios where campana_id=$1`,[c2]);
   assert.equal(v.estado,'problema');assert.match(v.detalle,/Sin respuesta de n8n/);
-  // Reintentar no revive al rebotado
-  await accion(db,U.mkt,c,'reintentar');
+  // Reintentar no revive al rebotado: sin nada que regresar a pendiente, avisa y la campaña sigue enviada
+  await rechaza(accion(db,U.mkt,c,'reintentar'),/No hay envíos con problema que reintentar/);
   assert.equal((await sql(db,`select count(*)::int n from correo_envios where campana_id=$1 and estado='pendiente'`,[c]))[0].n,0);
+  const [cc]=await sql(db,`select estado,terminada_en from correo_campanas where id=$1`,[c]);
+  assert.equal(cc.estado,'enviada');assert.ok(cc.terminada_en);
+  // El vencido (contacto activo) sí se reintenta y reabre la campaña
+  assert.equal((await sql(db,`select estado from correo_campanas where id=$1`,[c2]))[0].estado,'enviada');
+  await accion(db,U.mkt,c2,'reintentar');
+  assert.equal((await sql(db,`select estado from correo_envios where campana_id=$1`,[c2]))[0].estado,'pendiente');
+  const [c2b]=await sql(db,`select estado,terminada_en from correo_campanas where id=$1`,[c2]);
+  assert.equal(c2b.estado,'enviando');assert.equal(c2b.terminada_en,null);
  }finally{await db.close();}
 });
 
@@ -206,5 +214,56 @@ test('correos: campaña sin destinatarios elegibles se cierra al tomar lote',asy
   assert.deepEqual(await lote(db,8),[]);
   const [r]=await sql(db,`select estado,terminada_en from correo_campanas where id=$1`,[c]);
   assert.equal(r.estado,'enviada');assert.ok(r.terminada_en);
+ }finally{await db.close();}
+});
+
+test('correos: la sesión del usuario no lee el token de los envíos; el resto de columnas sí',async()=>{
+ const db=await nueva();
+ try{
+  const c=await campana(db,U.mkt);await rpc(db,U.mkt,`select public.correo_mandar_prueba($1,$2)`,[c,['p@m.com']]);
+  for(const id of [U.mkt,U.corp,U.admin]){
+   await como(db,id);
+   await rechaza(db.query(`select token from correo_envios`),/permission denied/);
+   await rechaza(db.query(`select * from correo_envios`),/permission denied/);
+   assert.equal((await db.query(`select id,campana_id,contacto_id,email,es_prueba,estado,reservado_en,enviado_en,message_id,detalle,creado_en from correo_envios`)).rows.length,1,id);
+  }
+  await db.exec('reset role');
+  const anon=(await db.query(`select count(*)::int n from information_schema.role_table_grants where grantee='anon' and table_name like 'correo%'`)).rows[0].n;
+  assert.equal(anon,0);
+  assert.equal((await sql(db,`select count(*)::int n from correo_envios where token is not null`))[0].n,1); // n8n (service_role) sí
+ }finally{await db.close();}
+});
+
+test('correos: el correo de un contacto siempre se guarda en minúsculas',async()=>{
+ const db=await nueva();
+ try{
+  await rechaza(db.exec(`insert into correo_contactos(email) values('Ana@Mail.com')`),/correo_contactos_email_check/);
+  await db.exec(`insert into correo_contactos(email) values('ana@mail.com')`);
+ }finally{await db.close();}
+});
+
+test('correos: importar 20 000 filas es en conjunto (rápido) y respeta conteos y primera aparición',async()=>{
+ const db=await nueva();
+ try{
+  await contacto(db,'c0@m.com',['vieja']);await contacto(db,'c1@m.com');
+  const b=await contacto(db,'c2@m.com');await rpc(db,U.mkt,`select public.correo_baja_manual($1)`,[b]);
+  // 19 990 válidas (c0..c19989, incluye 3 ya existentes, una de baja), 5 repetidas y 5 inválidas = 20 000
+  const filas=Array.from({length:19990},(_,i)=>({email:`C${i}@m.com`,nombre:`N${i}`,etiquetas:['lote']}));
+  filas.push(...Array.from({length:5},(_,i)=>({email:` c${i+10}@M.com `,nombre:'Repetido',etiquetas:['otra']})));
+  filas.push(...Array.from({length:5},()=>({email:'sin-arroba'})));
+  assert.equal(filas.length,20000);
+  const t0=performance.now();
+  const r=(await rpc(db,U.mkt,`select public.correo_importar_contactos($1::jsonb,'grande.csv',true) r`,[JSON.stringify(filas)])).r;
+  const ms=performance.now()-t0;
+  console.log(`importar 20 000 filas: ${Math.round(ms)} ms`);
+  assert.deepEqual(r,{nuevos:19987,existentes:2,bajas:1,invalidos:5});
+  assert.ok(ms<3000,`tardó ${Math.round(ms)} ms`);
+  await como(db,U.mkt);
+  assert.equal((await db.query(`select count(*)::int n from correo_contactos`)).rows[0].n,19990);
+  const una=async e=>(await db.query(`select nombre,etiquetas,estado,origen from correo_contactos where email=$1`,[e])).rows[0];
+  assert.deepEqual(await una('c10@m.com'),{nombre:'N10',etiquetas:['lote'],estado:'activo',origen:'grande.csv'}); // vale la primera aparición
+  assert.deepEqual((await una('c0@m.com')).etiquetas,['lote','vieja']);
+  assert.deepEqual(await una('c2@m.com'),{nombre:null,etiquetas:[],estado:'baja',origen:'manual'}); // la baja no se toca
+  await rechaza(rpc(db,U.mkt,`select public.correo_importar_contactos($1::jsonb,'x',false)`,[JSON.stringify([...filas,{email:'uno@m.com'}])]),/de 1 a 20 000/);
  }finally{await db.close();}
 });

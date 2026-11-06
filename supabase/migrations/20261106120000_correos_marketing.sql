@@ -1,5 +1,8 @@
 -- Correos de marketing: puesto marketing, contactos, campañas, envíos por n8n y seguimiento (spec 2026-11-05).
--- Ojo: el valor nuevo del enum no se puede usar en esta misma transacción; siempre se compara mi_rol()::text.
+-- Ojo: el valor nuevo del enum no se puede usar en esta misma transacción (PG >= 12 sí permite agregarlo dentro de ella);
+-- por eso siempre se compara mi_rol()::text.
+begin;
+set local lock_timeout = '5s';
 alter type public.rol_usuario add value if not exists 'marketing';
 
 -- Corporativo y marketing son de oficina central: sin sucursal. Los demás puestos, con sucursal.
@@ -76,7 +79,7 @@ grant execute on function public.preparar_invitacion_usuario(uuid,uuid,text,text
 
 create table public.correo_contactos(
   id uuid primary key default gen_random_uuid(),
-  email text not null unique check (email ~ '^[\x21-\x7e]+$' and email ~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$'),
+  email text not null unique check (email = lower(email) and email ~ '^[\x21-\x7e]+$' and email ~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$'),
   nombre text check (nombre is null or length(nombre) <= 160),
   etiquetas text[] not null default '{}',
   estado text not null default 'activo' check (estado in ('activo','baja','rebote')),
@@ -127,7 +130,10 @@ create policy correo_campanas_ver on public.correo_campanas for select to authen
 create policy correo_envios_ver on public.correo_envios for select to authenticated using (public.puede_ver_correos());
 create policy correo_eventos_ver on public.correo_eventos for select to authenticated using (public.puede_ver_correos());
 create policy correo_estado_n8n_ver on public.correo_estado_n8n for select to authenticated using (public.puede_ver_correos());
-grant select on public.correo_contactos, public.correo_campanas, public.correo_envios, public.correo_eventos, public.correo_estado_n8n to authenticated;
+revoke all on public.correo_contactos, public.correo_campanas, public.correo_envios, public.correo_eventos, public.correo_estado_n8n from anon, authenticated;
+grant select on public.correo_contactos, public.correo_campanas, public.correo_eventos, public.correo_estado_n8n to authenticated;
+-- El token abre el seguimiento y la baja de un destinatario: la sesión del usuario no lo lee (solo n8n, con service_role).
+grant select (id, campana_id, contacto_id, email, es_prueba, estado, reservado_en, enviado_en, message_id, detalle, creado_en) on public.correo_envios to authenticated;
 
 create function public.correo_exigir_editor() returns void language plpgsql stable security definer set search_path='' as $$
 begin if not public.puede_editar_correos() then raise exception 'Solo marketing o administración puede hacer esto.'; end if; end $$;
@@ -161,25 +167,31 @@ begin
 end $$;
 
 create function public.correo_importar_contactos(p_filas jsonb, p_origen text, p_confirmar boolean) returns jsonb language plpgsql security definer set search_path='' as $$
-declare f jsonb; e text; vistos text[] := '{}'; r jsonb := '{"nuevos":0,"existentes":0,"bajas":0,"invalidos":0}'; previo text;
+declare r jsonb;
 begin
   perform public.correo_exigir_editor();
   if jsonb_typeof(p_filas) <> 'array' or jsonb_array_length(p_filas) > 20000 then raise exception 'El archivo debe tener de 1 a 20 000 contactos.'; end if;
-  for f in select * from jsonb_array_elements(p_filas) loop
-    e := public.correo_normalizar_email(f->>'email');
-    if e !~ '^[\x21-\x7e]+$' or e !~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$' then r := jsonb_set(r,'{invalidos}',to_jsonb((r->>'invalidos')::int+1)); continue; end if;
-    if e = any(vistos) then continue; end if;
-    vistos := vistos || e;
-    select estado into previo from public.correo_contactos where email = e;
-    if previo is null then r := jsonb_set(r,'{nuevos}',to_jsonb((r->>'nuevos')::int+1));
-    elsif previo in ('baja','rebote') then r := jsonb_set(r,'{bajas}',to_jsonb((r->>'bajas')::int+1)); continue;
-    else r := jsonb_set(r,'{existentes}',to_jsonb((r->>'existentes')::int+1)); end if;
-    if p_confirmar then
-      insert into public.correo_contactos(email, nombre, etiquetas, origen) values (e, nullif(btrim(f->>'nombre'),''), public.correo_etiquetas(f->'etiquetas'), left(coalesce(nullif(btrim(p_origen),''),'CSV'),120))
-      on conflict (email) do update set etiquetas = array(select distinct x from unnest(public.correo_contactos.etiquetas || excluded.etiquetas) x order by 1),
-        nombre = coalesce(public.correo_contactos.nombre, excluded.nombre), actualizado_en = now();
-    end if;
-  end loop;
+  -- En conjunto y no fila por fila: con 20 000 filas, un ciclo con "= any(vistos)" rozaba el statement_timeout de 8 s.
+  -- Un correo repetido en el archivo cuenta una vez y vale su primera aparición; cada inválido cuenta, aunque se repita.
+  with filas as (
+    select x.e, x.e ~ '^[\x21-\x7e]+$' and x.e ~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$' as ok, t.f, t.i
+    from jsonb_array_elements(p_filas) with ordinality as t(f, i), lateral (select public.correo_normalizar_email(t.f->>'email') e) x),
+  unicas as (
+    select distinct on (u.e) u.e, u.f, k.estado previo from filas u left join public.correo_contactos k on k.email = u.e
+    where u.ok order by u.e, u.i),
+  alta as (
+    insert into public.correo_contactos(email, nombre, etiquetas, origen)
+      select e, nullif(btrim(f->>'nombre'),''), public.correo_etiquetas(f->'etiquetas'), left(coalesce(nullif(btrim(p_origen),''),'CSV'),120)
+      from unicas where p_confirmar and (previo is null or previo not in ('baja','rebote'))
+    on conflict (email) do update set etiquetas = array(select distinct x from unnest(public.correo_contactos.etiquetas || excluded.etiquetas) x order by 1),
+      nombre = coalesce(public.correo_contactos.nombre, excluded.nombre), actualizado_en = now()
+    returning 1)
+  select jsonb_build_object(
+      'nuevos', (select count(*) from unicas where previo is null),
+      'existentes', (select count(*) from unicas where previo not in ('baja','rebote')),
+      'bajas', (select count(*) from unicas where previo in ('baja','rebote')),
+      'invalidos', (select count(*) from filas where not ok))
+    into r;
   return r;
 end $$;
 
@@ -237,6 +249,7 @@ begin
     if c.estado not in ('enviada','detenida','enviando') then raise exception 'Esta campaña aún no tiene envíos que reintentar.'; end if;
     update public.correo_envios e set estado = 'pendiente', reservado_en = null, detalle = null
       from public.correo_contactos k where e.campana_id = p_id and not e.es_prueba and e.estado = 'problema' and k.id = e.contacto_id and k.estado = 'activo';
+    if not found then raise exception 'No hay envíos con problema que reintentar.'; end if;
     update public.correo_campanas set estado = 'enviando', terminada_en = null, actualizado_en = now() where id = p_id and estado = 'enviada';
   else raise exception 'Acción inválida.';
   end if;
@@ -340,3 +353,5 @@ revoke all on function public.correo_tomar_lote(int), public.correo_registrar_re
 grant execute on function public.correo_tomar_lote(int), public.correo_registrar_resultado(uuid,boolean,text,text,boolean),
   public.correo_registrar_evento(text,text,text,text), public.correo_baja_por_token(text) to service_role;
 grant select, insert, update on public.correo_envios, public.correo_eventos, public.correo_contactos, public.correo_campanas, public.correo_estado_n8n to service_role;
+
+commit;
