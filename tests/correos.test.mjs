@@ -82,3 +82,16 @@ test('correos: prueba a máximo 5 correos válidos',async()=>{
   assert.deepEqual((await db.query(`select email,es_prueba,estado from correo_envios order by email`)).rows,[{email:'otro@mail.com',es_prueba:true,estado:'pendiente'},{email:'scervera@dodopizza.mx',es_prueba:true,estado:'pendiente'}]);
  }finally{await db.close();}
 });
+
+test('correos: BOM, NBSP y tabulador se recortan; invisibles en medio se rechazan',async()=>{
+ const db=await nueva();
+ try{
+  const a=await contacto(db,'ana@mail.com');
+  for(const raro of ['﻿ana@mail.com','ana@mail.com ','\tAna@Mail.com\t','​ana@mail.com​']) assert.equal(await contacto(db,raro),a,JSON.stringify(raro));
+  await rechaza(contacto(db,'an​a@mail.com'),/Correo inválido/);
+  const previa=(await rpc(db,U.mkt,`select public.correo_importar_contactos($1::jsonb,'x.csv',true) r`,[JSON.stringify([{email:'﻿ana@mail.com'},{email:'luis@mail.com '},{email:'\tLUIS@mail.com'}])])).r;
+  assert.deepEqual(previa,{nuevos:1,existentes:1,bajas:0,invalidos:0});
+  await como(db,U.mkt);
+  assert.deepEqual((await db.query(`select email from correo_contactos order by email`)).rows.map(r=>r.email),['ana@mail.com','luis@mail.com']);
+ }finally{await db.close();}
+});

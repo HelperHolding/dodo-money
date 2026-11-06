@@ -76,7 +76,7 @@ grant execute on function public.preparar_invitacion_usuario(uuid,uuid,text,text
 
 create table public.correo_contactos(
   id uuid primary key default gen_random_uuid(),
-  email text not null unique check (email = lower(btrim(email)) and email ~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$'),
+  email text not null unique check (email ~ '^[\x21-\x7e]+$' and email ~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$'),
   nombre text check (nombre is null or length(nombre) <= 160),
   etiquetas text[] not null default '{}',
   estado text not null default 'activo' check (estado in ('activo','baja','rebote')),
@@ -132,9 +132,12 @@ grant select on public.correo_contactos, public.correo_campanas, public.correo_e
 create function public.correo_exigir_editor() returns void language plpgsql stable security definer set search_path='' as $$
 begin if not public.puede_editar_correos() then raise exception 'Solo marketing o administración puede hacer esto.'; end if; end $$;
 
+create function public.correo_normalizar_email(p text) returns text language sql immutable set search_path='' as $$
+select lower(regexp_replace(coalesce(p,''), '^[\s ﻿​]+|[\s ﻿​]+$', '', 'g'))$$;
+
 create function public.correo_email_valido(p text) returns text language plpgsql immutable set search_path='' as $$
-declare e text := lower(btrim(coalesce(p,'')));
-begin if e !~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$' then raise exception 'Correo inválido: %', left(coalesce(p,''),80); end if; return e; end $$;
+declare e text := public.correo_normalizar_email(p);
+begin if e !~ '^[\x21-\x7e]+$' or e !~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$' then raise exception 'Correo inválido: %', left(coalesce(p,''),80); end if; return e; end $$;
 
 create function public.correo_etiquetas(p jsonb) returns text[] language sql immutable set search_path='' as $$
 select coalesce(array(select distinct lower(btrim(x)) from jsonb_array_elements_text(coalesce(p,'[]'::jsonb)) x where btrim(x) <> '' order by 1), '{}')$$;
@@ -163,8 +166,8 @@ begin
   perform public.correo_exigir_editor();
   if jsonb_typeof(p_filas) <> 'array' or jsonb_array_length(p_filas) > 20000 then raise exception 'El archivo debe tener de 1 a 20 000 contactos.'; end if;
   for f in select * from jsonb_array_elements(p_filas) loop
-    e := lower(btrim(coalesce(f->>'email','')));
-    if e !~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$' then r := jsonb_set(r,'{invalidos}',to_jsonb((r->>'invalidos')::int+1)); continue; end if;
+    e := public.correo_normalizar_email(f->>'email');
+    if e !~ '^[\x21-\x7e]+$' or e !~ '^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$' then r := jsonb_set(r,'{invalidos}',to_jsonb((r->>'invalidos')::int+1)); continue; end if;
     if e = any(vistos) then continue; end if;
     vistos := vistos || e;
     select estado into previo from public.correo_contactos where email = e;
@@ -252,7 +255,7 @@ begin
   return n;
 end $$;
 
-revoke all on function public.correo_exigir_editor(), public.correo_email_valido(text), public.correo_etiquetas(jsonb) from public, anon, authenticated;
+revoke all on function public.correo_exigir_editor(), public.correo_normalizar_email(text), public.correo_email_valido(text), public.correo_etiquetas(jsonb) from public, anon, authenticated;
 revoke all on function public.correo_guardar_contacto(jsonb), public.correo_importar_contactos(jsonb,text,boolean), public.correo_baja_manual(uuid),
   public.correo_contar_destinatarios(text), public.correo_guardar_campana(jsonb), public.correo_cambiar_estado(uuid,text,timestamptz), public.correo_mandar_prueba(uuid,text[]) from public, anon;
 grant execute on function public.correo_guardar_contacto(jsonb), public.correo_importar_contactos(jsonb,text,boolean), public.correo_baja_manual(uuid),
