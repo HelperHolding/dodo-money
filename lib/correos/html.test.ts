@@ -100,3 +100,55 @@ test("html: Canva con <style>, comentarios condicionales y de revelado queda id�
   assert.equal(r.quitados, 0);
   assert.equal(r.html, html);
 });
+
+test("html: comilla dentro de un valor sin comillas no esconde atributos vivos", () => {
+  const casos: [string, string][] = [
+    [`<a b=x"  c=">" onclick=alert(1)>z</a>`, `<a b="x&quot;" c="&gt;">z</a>`],
+    [`<a b=x' c='>' onclick=alert(1)>z</a>`, `<a b="x'" c="&gt;">z</a>`],
+    [`<img alt=a" src=">" onerror=alert(1)>`, `<img alt="a&quot;" src="&gt;">`],
+    [`<a href=x" title=">" href=javascript:alert(1)>`, `<a href="x&quot;" title="&gt;" href="#">`],
+  ];
+  for (const [entrada, salida] of casos) {
+    const r = limpiarHtml(entrada);
+    assert.equal(r.quitados, 1, entrada);
+    assert.equal(r.html, salida, entrada);
+  }
+});
+
+test("html: estados del tokenizador (comentarios raros, cierre con atributos, texto crudo, object, condicionales)", () => {
+  const casos: [string, string, number][] = [
+    [`<!DOCTYPE html><![CDATA[x]]><?php x ?><!--><!---><p>ok</p>`, `<!DOCTYPE html><p>ok</p>`, 4],
+    [`<p>ok</p><!-- sin cierre <img src=x onerror=alert(1)>`, `<p>ok</p>`, 1],
+    [`<!-- a --!><img src=x onerror=alert(1)>`, `<img src="x">`, 2],
+    [`<style onload=alert(1)>a{}</STYLE >`, `<style>a{}</STYLE >`, 1],
+    [`<title>x</title foo=">"><img src=x onerror=alert(1)>`, `<title>x</title><img src="x">`, 2],
+    [`<p>a</p></p onclick=x>`, `<p>a</p></p>`, 1],
+    [`<<script>x</script>img src=x onerror=alert(1)>`, `&lt;img src=x onerror=alert(1)>`, 1],
+    [`<object data=x><img src=y onerror=z><object></object><p>dentro</p></object><p>fuera</p>`, `<p>fuera</p>`, 1],
+    [`<!--[if mso]><a title="--><img src=x onerror=alert(1)>"><![endif]--><p>ok</p>`, `<p>ok</p>`, 1],
+    [`<p>ok</p><!--[if mso]><p>sin cierre`, `<p>ok</p>`, 1],
+    [`<!--[if mso]><img src=x onerror=alert(1)><![endif]-->`, `<!--[if mso]><img src="x"><![endif]-->`, 1],
+    [`<meta http-equiv="Refresh" content="0;url=javascript:alert(1)"><meta charset="utf-8">`, `<meta charset="utf-8">`, 1],
+    [`<svg><animate attributeName=href values=javascript:alert(1) /></svg>`, `<svg></svg>`, 1],
+    [`<a href=" &#14;java&#x09;script:x" lowsrc="vbscript:y">z</a>`, `<a href="#" lowsrc="#">z</a>`, 2],
+    [`<p>a < b</p>`, `<p>a &lt; b</p>`, 0],
+  ];
+  for (const [entrada, salida, n] of casos) {
+    const r = limpiarHtml(entrada);
+    assert.equal(r.html, salida, entrada);
+    assert.equal(r.quitados, n, entrada);
+  }
+});
+
+test("html: entradas adversarias de 100 000 caracteres terminan en tiempo lineal", () => {
+  const entradas = [
+    "<a" + "\"'".repeat(50000), "<!--".repeat(25000), "<a ".repeat(33334), "<a<".repeat(33334), "<style></".repeat(11112),
+    "<!--[if a]>".repeat(9091), "</a x='".repeat(14286), "<p title='>'>".repeat(7693), "<!-- --".repeat(14286), "<a b=\"".repeat(16667),
+  ];
+  for (const entrada of entradas) {
+    const t = performance.now();
+    limpiarHtml(entrada);
+    const ms = performance.now() - t;
+    assert.ok(ms < 200, `${entrada.slice(0, 12)}… tardó ${ms.toFixed(0)} ms`);
+  }
+});
