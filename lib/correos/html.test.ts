@@ -152,3 +152,57 @@ test("html: entradas adversarias de 100 000 caracteres terminan en tiempo lineal
     assert.ok(ms < 200, `${entrada.slice(0, 12)}… tardó ${ms.toFixed(0)} ms`);
   }
 });
+
+test("html: atributo sin valor seguido de un nombre que empieza con = no se vuelve su valor al reescribir", () => {
+  const casos: [string, string, number][] = [
+    [`<a href/=javascript:alert(1) onclick=x>z</a>`, `<a href="">z</a>`, 2],
+    [`<a href / =javascript:alert(1) onclick=x>z</a>`, `<a href="">z</a>`, 2],
+    [`<a href/="javascript:alert(1)" onclick=x>z</a>`, `<a href="">z</a>`, 2],
+    [`<a onclick=x href/=javascript:a()>z</a>`, `<a href="">z</a>`, 2],
+    [`<form action/=javascript:alert(1) onsubmit=x>`, `<form action="">`, 2],
+    [`<img src=y =x onerror=alert(1) alt>`, `<img src="y" alt="">`, 2],
+  ];
+  for (const [entrada, salida, n] of casos) {
+    const r = limpiarHtml(entrada);
+    assert.equal(r.html, salida, entrada);
+    assert.equal(r.quitados, n, entrada);
+  }
+});
+
+test("html: el condicional revelado con <!-- --> o <!----> queda idéntico", () => {
+  for (const html of [`<!--[if !mso]><!-- --><p>x</p><!--<![endif]-->`, `<!--[if !mso]><!----><p>x</p><!--<![endif]-->`, `<!--[if !mso]><!--><p>x</p><!--<![endif]-->`]) {
+    const r = limpiarHtml(html);
+    assert.equal(r.html, html);
+    assert.equal(r.quitados, 0);
+  }
+});
+
+test("html: limpiar dos veces no cambia nada (todos los vectores conocidos)", () => {
+  const vectores = [
+    `<!--[if mso]><v:roundrect href="https://dodopizza.mx"/><![endif]--><img src=x onerror="alert(1)"><script>alert(2)</script><a href="javascript:alert(3)">x</a><a href="https://dodopizza.mx" onclick='y()'>ok</a>`,
+    `<a href="javascript:alert('x')">x</a>`, `<img/onerror=alert(1) src=x>`, `<img src="x"onerror="alert(1)">`, `<a href=javascript:alert(1)>x</a>`,
+    `<a href="java&#115;cript:alert(1)">x</a>`, `<a href="jav&#x61;script:alert(1)">x</a>`, `<a href="java\tscript:alert(1)">x</a>`, `<a href="javascript&colon;alert(1)">x</a>`,
+    `<p>hola</p><script>alert(1)`, `<scr<script>x</script>ipt>alert(1)</script>`, `<form action="javascript:x()"><button formaction="vbscript:y">z</button></form>`,
+    `<img src=x' onerror=alert(1)>`, `<img src=x" onerror=alert(1)>`, `<img src=y =x onerror=alert(1)>`, `<img src=y ="x" onerror=alert(1)>`, `<img src=y <x onerror=alert(1)>`,
+    `<a href=x' href=javascript:a()>x</a>`, `<img title="a>b" onerror=alert(1)>`, `<a href="x" title=y' href=jav&#x61;script:a()>x</a>`,
+    `<!--<img src="--><img src=x onerror=alert(1)>">`, `<title><a title="</title><img src=x onerror=alert(1)>"></title>`, `<style><a title="</style><img src=x onerror=alert(1)>"></style>`,
+    `<textarea><a title="</textarea><img src=x onerror=alert(1)>"></textarea>`, `<noscript><a title="</noscript><img src=x onerror=alert(1)>"></noscript>`, `<xmp><a title="</xmp><img src=x onerror=alert(1)>"></xmp>`,
+    `<a title="<b>x</b>" onclick=y()>z</a>`, `<!-- uno --><scr<!-- x -->ipt>alert(1)</script>`, `<scr<img onerror=x>ipt>alert(1)</script>`,
+    `<!--[if mso]> --!> <img src=x onerror=alert(1)> <![endif]-->`, `<!--[if mso]><a href="javascript:alert(1)">x</a><![endif]-->`, `<p>x</p><plaintext><img onerror=alert(1)>`,
+    `<a data="javascript:alert(1)" srcset="a.png 1x,javascript:alert(2)">x</a>`,
+    `<a b=x"  c=">" onclick=alert(1)>z</a>`, `<a b=x' c='>' onclick=alert(1)>z</a>`, `<img alt=a" src=">" onerror=alert(1)>`, `<a href=x" title=">" href=javascript:alert(1)>`,
+    `<!DOCTYPE html><![CDATA[x]]><?php x ?><!--><!---><p>ok</p>`, `<p>ok</p><!-- sin cierre <img src=x onerror=alert(1)>`, `<!-- a --!><img src=x onerror=alert(1)>`,
+    `<style onload=alert(1)>a{}</STYLE >`, `<title>x</title foo=">"><img src=x onerror=alert(1)>`, `<p>a</p></p onclick=x>`, `<<script>x</script>img src=x onerror=alert(1)>`,
+    `<object data=x><img src=y onerror=z><object></object><p>dentro</p></object><p>fuera</p>`, `<!--[if mso]><a title="--><img src=x onerror=alert(1)>"><![endif]--><p>ok</p>`,
+    `<p>ok</p><!--[if mso]><p>sin cierre`, `<!--[if mso]><img src=x onerror=alert(1)><![endif]-->`, `<meta http-equiv="Refresh" content="0;url=javascript:alert(1)"><meta charset="utf-8">`,
+    `<svg><animate attributeName=href values=javascript:alert(1) /></svg>`, `<a href=" &#14;java&#x09;script:x" lowsrc="vbscript:y">z</a>`, `<p>a < b</p>`,
+    `<a href/=javascript:alert(1) onclick=x>z</a>`, `<a href / =javascript:alert(1) onclick=x>z</a>`, `<a href/="javascript:alert(1)" onclick=x>z</a>`,
+    `<a onclick=x href/=javascript:a()>z</a>`, `<form action/=javascript:alert(1) onsubmit=x>`, `<!--[if !mso]><!-- --><p>x</p><!--<![endif]-->`,
+  ];
+  for (const x of vectores) {
+    const una = limpiarHtml(x).html, dos = limpiarHtml(una);
+    assert.equal(dos.quitados, 0, x);
+    assert.equal(dos.html, una, x);
+    assert.doesNotMatch(una, /<[^>]*\son[a-z]+\s*=|href\s*=\s*["']?\s*javascript/i, x);
+  }
+});

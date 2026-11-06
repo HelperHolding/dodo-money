@@ -20,7 +20,7 @@ const URL_ATRIBUTOS = new Set(["href", "src", "action", "formaction", "xlink:hre
 const NOMBRADAS: Record<string, string> = { colon: ":", tab: "\t", newline: "\n", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 /** Comentarios condicionales de Outlook: abre oculto, abre revelado y cierra revelado. */
 const CONDICIONAL_OCULTO = /<!--\[if [a-z0-9 !()&|]+\]>/iy;
-const CONDICIONAL_REVELADO = /<!--\[if [a-z0-9 !()&|]+\]><!-->/iy;
+const CONDICIONAL_REVELADO = /<!--\[if [a-z0-9 !()&|]+\]><!--(?:[ \t]*--)?>/iy; // `<!-->`, `<!-- -->` o `<!---->`
 const CIERRE_REVELADO = "<!--<![endif]-->";
 const CIERRE_OCULTO = "<![endif]-->";
 
@@ -122,15 +122,19 @@ function limpiarAtributos(atributos: Atributo[]): { atributos: Atributo[]; cambi
     else if (URL_ATRIBUTOS.has(nombre) && a.valor !== null && urlPeligrosa(a.valor, nombre === "srcset")) { cambios++; quedan.push({ nombre: a.nombre, valor: "#" }); }
     else quedan.push(a);
   }
-  return { atributos: quedan, cambios };
+  if (cambios === 0) return { atributos: quedan, cambios };
+  // La etiqueta se va a reescribir: un nombre raro (`=javascript:…` tras `href/`) se leería distinto al reescribirlo.
+  const seguros = quedan.filter((a) => !/[="'<`]/.test(a.nombre));
+  return { atributos: seguros, cambios: cambios + quedan.length - seguros.length };
 }
 
 /**
- * Reescribe una etiqueta modificada con valores entre comillas dobles. El valor va tal como venía: sus
- * referencias `&...` ya están escritas y se resuelven igual; solo se escapan `"`, `<` y `>`.
+ * Reescribe una etiqueta modificada con valores entre comillas dobles (también los atributos sin valor,
+ * para que nada que siga pueda leerse como su valor). El valor va tal como venía: sus referencias `&...`
+ * ya están escritas y se resuelven igual; solo se escapan `"`, `<` y `>`.
  */
 function serializar(nombre: string, atributos: Atributo[], autocierre: boolean): string {
-  const attrs = atributos.map((a) => (a.valor === null ? ` ${a.nombre}` : ` ${a.nombre}="${a.valor.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}"`));
+  const attrs = atributos.map((a) => ` ${a.nombre}="${(a.valor ?? "").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}"`);
   return `<${nombre}${attrs.join("")}${autocierre ? " /" : ""}>`;
 }
 
