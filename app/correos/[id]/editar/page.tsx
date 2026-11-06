@@ -28,6 +28,6 @@ export default async function Editar({ params, searchParams }: { params: Promise
         <button type="submit" className="boton">{accion === "borrador" ? "Regresar a borrador" : "Cancelar campaña"}</button>
       </form>)}
     </div>}
-    <FormCampana campana={campana} etiquetas={etiquetas} conteos={conteos} />
+    <FormCampana key={`${campana.id}:${campana.nombre}:${campana.asunto}:${campana.etiqueta}:${campana.html.length}`} campana={campana} etiquetas={etiquetas} conteos={conteos} />
   </>;
 }

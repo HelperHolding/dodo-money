@@ -1,23 +1,24 @@
 "use client";
 import { useState } from "react";
 import type { Campana } from "@/lib/correos/tipos";
+import { TODOS, opcionesEtiqueta } from "@/lib/correos/etiqueta";
 import styles from "./correos.module.css";
 import { cambiarEstado, guardarCampana, mandarPrueba } from "./acciones";
 
 export function FormCampana({ campana, etiquetas, conteos }: { campana: Campana | null; etiquetas: string[]; conteos: Record<string, number> }) {
   const [html, setHtml] = useState(campana?.html ?? "");
-  const [etiqueta, setEtiqueta] = useState(campana?.etiqueta ?? "");
+  const [etiqueta, setEtiqueta] = useState(campana?.etiqueta ?? TODOS);
   const [cuando, setCuando] = useState("ahora");
   return <div className={styles.columnas}>
     <form action={guardarCampana} className={styles.panel}>
       {campana && <input type="hidden" name="id" value={campana.id} />}
       <label>Nombre interno<input name="nombre" required maxLength={120} defaultValue={campana?.nombre} /></label>
       <label>Asunto<input name="asunto" required maxLength={150} defaultValue={campana?.asunto} /></label>
-      <label>Archivo HTML de Canva<input type="file" name="archivo" accept=".html,text/html" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setHtml(await f.text()); }} /></label>
+      <label>Archivo HTML de Canva<input type="file" accept=".html,text/html" onChange={async (e) => { const el = e.target, f = el.files?.[0]; if (f) { setHtml(await f.text()); el.value = ""; } }} /></label>
       <label>O pega el HTML<textarea name="html" rows={8} value={html} onChange={(e) => setHtml(e.target.value)} /></label>
       <label>A quién va<select name="etiqueta" value={etiqueta} onChange={(e) => setEtiqueta(e.target.value)}>
-        <option value="">Toda la base ({conteos[""] ?? 0})</option>
-        {etiquetas.map((t) => <option key={t} value={t}>{t} ({conteos[t] ?? 0})</option>)}
+        <option value={TODOS}>Toda la base ({conteos[""] ?? 0})</option>
+        {opcionesEtiqueta(etiquetas, campana?.etiqueta ?? null).map((t) => <option key={t} value={t}>{t} ({conteos[t] ?? 0})</option>)}
       </select></label>
       <button type="submit" className="boton">Guardar</button>
     </form>

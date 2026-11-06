@@ -4,6 +4,7 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { puedeEditarCorreos } from "@/lib/roles";
 import { limpiarHtml } from "@/lib/correos/html";
 import { volver } from "../compras/servidor";
+import { etiquetaDeFormulario } from "@/lib/correos/etiqueta";
 import { mensajeDe } from "./datos";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
@@ -20,14 +21,12 @@ const isoMX = (local: string) => (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(local) 
 export async function guardarCampana(fd: FormData) {
   const id = texto(fd, "id") || null, ruta = id ? `/correos/${id}/editar` : "/correos/nueva";
   const sb = await cliente(ruta);
-  const archivo = fd.get("archivo");
-  let html = texto(fd, "html");
-  if (archivo instanceof File && archivo.size > 0) {
-    if (archivo.size > 500_000) volver(ruta, "error", "El archivo HTML pesa más de 500 KB.");
-    html = (await archivo.text()).trim();
-  }
+  const html = String(fd.get("html") ?? "").trim();
+  if (html.length > 500_000) volver(ruta, "error", "El HTML pasa de 500 000 caracteres.");
+  const etiqueta = etiquetaDeFormulario(String(fd.get("etiqueta") ?? ""));
+  if (etiqueta === undefined) volver(ruta, "error", "Elige a quién va la campaña.");
   const limpio = limpiarHtml(html);
-  const { data, error } = await sb.rpc("correo_guardar_campana", { p: { id, nombre: texto(fd, "nombre"), asunto: texto(fd, "asunto"), html: limpio.html, etiqueta: texto(fd, "etiqueta") || null } });
+  const { data, error } = await sb.rpc("correo_guardar_campana", { p: { id, nombre: texto(fd, "nombre"), asunto: texto(fd, "asunto"), html: limpio.html, etiqueta } });
   if (error) volver(ruta, "error", mensajeDe(error));
   revalidatePath("/correos", "layout");
   volver(`/correos/${data}/editar`, "ok", limpio.quitados ? `Guardada. Se quitaron ${limpio.quitados} partes con scripts que los correos bloquean.` : "Guardada.");

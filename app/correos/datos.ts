@@ -20,13 +20,23 @@ export async function leerEtiquetas(sb: SupabaseClient): Promise<string[]> {
   const { data } = await sb.from("correo_contactos").select("etiquetas").eq("estado", "activo").limit(20000);
   return [...new Set((data ?? []).flatMap((r) => r.etiquetas as string[]))].sort();
 }
-export async function leerEnviosYEventos(sb: SupabaseClient, campana: string): Promise<{ envios: Envio[]; eventos: Evento[] }> {
-  const { data: envios, error } = await sb.from("correo_envios").select("id,email,es_prueba,estado,enviado_en,detalle").eq("campana_id", campana).limit(50000);
-  if (error) throw new Error(error.message);
-  const ids = (envios ?? []).map((e) => e.id); const eventos: Evento[] = [];
-  for (let i = 0; i < ids.length; i += 500) {
-    const { data } = await sb.from("correo_eventos").select("envio_id,tipo,enlace,sospechoso,creado_en").in("envio_id", ids.slice(i, i + 500)).limit(100000);
-    eventos.push(...((data ?? []) as Evento[]));
+const PAGINA = 1000;
+/** PostgREST corta cada consulta en max_rows (1000): se piden páginas hasta que una venga corta. */
+async function leerPaginas<T>(pedir: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
+  const todo: T[] = [];
+  for (let desde = 0; ; desde += PAGINA) {
+    const { data, error } = await pedir(desde, desde + PAGINA - 1);
+    if (error) throw new Error(error.message);
+    todo.push(...(data ?? []));
+    if ((data ?? []).length < PAGINA) return todo;
   }
-  return { envios: (envios ?? []) as Envio[], eventos };
+}
+export async function leerEnviosYEventos(sb: SupabaseClient, campana: string): Promise<{ envios: Envio[]; eventos: Evento[] }> {
+  const envios = await leerPaginas<Envio>((d, h) => sb.from("correo_envios").select("id,email,es_prueba,estado,enviado_en,detalle").eq("campana_id", campana).order("id").range(d, h));
+  const eventos: Evento[] = [];
+  for (let i = 0; i < envios.length; i += 100) {
+    const ids = envios.slice(i, i + 100).map((e) => e.id);
+    eventos.push(...await leerPaginas<Evento>((d, h) => sb.from("correo_eventos").select("id,envio_id,tipo,enlace,sospechoso,creado_en").in("envio_id", ids).order("id").range(d, h)));
+  }
+  return { envios, eventos };
 }
