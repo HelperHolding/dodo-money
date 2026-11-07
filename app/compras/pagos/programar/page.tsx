@@ -8,13 +8,16 @@ import { fechaTexto, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { nombreFactura, type EstadoFactura } from "@/lib/compras/facturas";
 import { diaDePagoSugerido, NOMBRE_DIA, proximoDiaDePago, textoDia } from "@/lib/compras/diasPago";
 import { agruparPorDiaDePago } from "@/lib/compras/pagos";
+import { leerRazonesSociales } from "@/lib/compras/razonesSociales";
+import { subtotalesPorRazon } from "@/lib/compras/subtotalRazon";
+import { SubtotalesRazon } from "../SubtotalesRazon";
 import { puedeEditarCompras } from "@/lib/roles";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { diasDePago } from "../../servidor";
 import { programarPagos } from "../acciones";
 
 type Factura = {
-  id: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null;
+  id: string; rfc_receptor: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null;
   pago_programado_forma:FormaPago|null; estado: EstadoFactura; proveedor_id: string; proveedores: { razon_social: string; nombre_comercial: string | null } | null;
 };
 
@@ -23,13 +26,15 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
   const { proveedor = "", ok, error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
   const hoy = hoyCalendarioMX();
-  const [dias, facturas, { data: proveedores }] = await Promise.all([
+  const [dias, facturas, { data: proveedores }, razones] = await Promise.all([
     diasDePago(supabase),
     leerTodo<Factura>((d, h) => supabase.from("facturas_saldo")
-      .select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el,pago_programado_forma, estado, proveedor_id, proveedores(razon_social, nombre_comercial)")
+      .select("id, rfc_receptor, uuid, serie, folio, saldo, vence_el, pago_programado_el,pago_programado_forma, estado, proveedor_id, proveedores(razon_social, nombre_comercial)")
       .eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).order("vence_el").order("id").range(d, h).returns<Factura[]>()),
     supabase.from("proveedores").select("id, razon_social, nombre_comercial").order("razon_social").returns<{ id: string; razon_social: string; nombre_comercial: string | null }[]>(),
+    leerRazonesSociales(supabase),
   ]);
+  const empresas = new Map(razones.map((e) => [e.rfc, e.razon_social]));
   const edita = puedeEditarCompras(perfil.rol);
   const visibles = facturas
     .filter((f) => Number(f.saldo) > 0 && (!proveedor || f.proveedor_id === proveedor))
@@ -56,6 +61,7 @@ export default async function ProgramarPagos({ searchParams }: { searchParams: P
       {grupos.map((g) => (
         <section key={g.dia} className="seccion">
           <h2>{textoDia(g.dia)} · {g.facturas.length} {g.facturas.length === 1 ? "factura" : "facturas"} · {pesos(g.total)}</h2>
+          <SubtotalesRazon grupos={subtotalesPorRazon(g.facturas.map((f) => ({ monto: Number(f.saldo), rfc: f.rfc_receptor, empresa: empresas.get(f.rfc_receptor) })))} />
           <form action={programarPagos} className="formulario">
             <input type="hidden" name="volver" value={proveedor ? `?proveedor=${proveedor}` : ""} />
             <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
