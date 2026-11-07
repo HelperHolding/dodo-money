@@ -1,6 +1,8 @@
 import { ConInfo } from "@/components/ConInfo";
 import {leerRazonesSociales} from '@/lib/compras/razonesSociales';
 import {TablaFacturasPago} from './TablaFacturasPago';
+import {SubtotalesRazon} from './SubtotalesRazon';
+import {subtotalesPorRazon} from '@/lib/compras/subtotalRazon';
 import {validarFiltroCorrida} from '@/lib/compras/corridaPagos';
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
@@ -29,7 +31,7 @@ type Factura = {
 };
 type Pago = { id: string; fecha: string; monto: number; forma: FormaPago; referencia: string | null; anulado_en: string | null; proveedores: { razon_social: string; nombre_comercial: string | null } | null };
 type Liga = { factura_id: string; ordenes_compra: { sucursal_id: string | null } | null };
-type Aplicacion = { pago_id: string; factura_id: string; monto: number; facturas: { sucursal_id: string | null } | null; pagos: { fecha: string; anulado_en: string | null; proveedor_id: string } };
+type Aplicacion = { pago_id: string; factura_id: string; monto: number; facturas: { sucursal_id: string | null; rfc_receptor: string | null } | null; pagos: { fecha: string; anulado_en: string | null; proveedor_id: string } };
 
 export default async function Pagos({ searchParams }: { searchParams: Promise<{ proveedor?: string; sucursal?: string; complemento?: string; ok?: string; error?: string;desde?:string;hasta?:string }> }) {
   const { proveedor = "", sucursal = "", complemento, ok, error,desde,hasta } = await searchParams;
@@ -50,7 +52,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
       .eq("falta_complemento", true).order("vence_el").returns<Factura[]>(),
     // Lo aplicado en el mes, para que "Pagado este mes" respete los filtros.
     leerTodo<Aplicacion>((d, h) => supabase.from("pago_aplicaciones")
-      .select("pago_id, factura_id, monto, facturas(sucursal_id), pagos!inner(fecha, anulado_en, proveedor_id)")
+      .select("pago_id, factura_id, monto, facturas(sucursal_id, rfc_receptor), pagos!inner(fecha, anulado_en, proveedor_id)")
       .gte("pagos.fecha", `${hoy.slice(0, 7)}-01`).order("id").range(d, h).returns<Aplicacion[]>()),
   ]);
 
@@ -98,6 +100,9 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const aplicadas = aplicacionesMes.filter((a) => (!proveedor || a.pagos.proveedor_id === proveedor)
     && (!sucursal || deSucursalId(a.factura_id, a.facturas?.sucursal_id ?? null, sucursal)));
   const pagado = pagadoDelMes(aplicadas.map((a) => ({ pago_id: a.pago_id, fecha: a.pagos.fecha, monto: Number(a.monto), anulado: !!a.pagos.anulado_en })), hoy);
+  // Pagado por razón social: lo aplicado a facturas de cada empresa, sin pagos anulados.
+  const pagadoPorRazon = subtotalesPorRazon(aplicadas.filter((a) => !a.pagos.anulado_en && a.pagos.fecha.slice(0, 7) === hoy.slice(0, 7)).map((a) => ({ monto: Number(a.monto), rfc: a.facturas?.rfc_receptor, empresa: empresas.get(a.facturas?.rfc_receptor ?? "") })));
+  const porRazon = (fs: Factura[]) => subtotalesPorRazon(fs.map((f) => ({ monto: Number(f.saldo), rfc: f.rfc_receptor, empresa: empresas.get(f.rfc_receptor) })));
   const idsDelFiltro = new Set(aplicadas.map((a) => a.pago_id));
   const pagosVisibles = proveedor || sucursal ? pagos.filter((p) => idsDelFiltro.has(p.id)) : pagos;
   const nombre = (f: Factura) => nombreFactura(f);
@@ -120,6 +125,8 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
 
 
   const Tarjetas = ({ lista }: { lista: Factura[] }) => (
+    <>
+    <SubtotalesRazon grupos={porRazon(lista)} />
     <div className="tarjetas">
       {lista.map((f) => (
         <article key={f.id} className="tarjeta factura-tarjeta" data-alerta={vencida(f, hoy) ? "si" : undefined}>
@@ -144,6 +151,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
         </article>
       ))}
     </div>
+    </>
   );
 
   return (
@@ -221,6 +229,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
 
       <Plegable id="t-pagos" titulo="Pagos de este mes" resumen={pesos(pagado.monto)}>
         {!pagosVisibles.length && <p className="vacio">Aún no hay pagos este mes.</p>}
+        <SubtotalesRazon grupos={pagadoPorRazon} unidad={["factura pagada", "facturas pagadas"]} />
         <div className="tarjetas">
           {pagosVisibles.map((p) => (
             <article key={p.id} className="tarjeta" data-alerta={p.anulado_en ? "si" : undefined}>
