@@ -27,3 +27,10 @@ test('pagos: un compromiso de monto variable sale en $0.00 con su nota y no suma
  assert.match(html,/Teléfono · Zapopan/);assert.match(html,/\$0\.00/);assert.match(html,/Monto variable: paga el de la factura/);
  assert.match(html,/aria-label="[^"]*\$60\.00[^"]*1 previstos"/);
 });
+test('pagos: la tabla muestra el subtotal por razón social, con lo no identificado al final',()=>{
+ const filas=[fila,{...fila,id:'f2',saldo:40.5},{...fila,id:'f3',saldo:1000,empresa:'HELPER HOLDING',rfcReceptor:'HHO010101AAA'},{...fila,id:'f4',saldo:5000,empresa:undefined,rfcReceptor:undefined}];
+ const html=renderToStaticMarkup(React.createElement(TablaFacturasPago,{filas}));
+ const bloque=html.slice(html.indexOf('subtotales-razon'),html.indexOf('pagos-tabla-marco'));
+ assert.match(bloque,/aria-label="Subtotal por razón social"/);
+ assert.match(bloque,/HELPER HOLDING.*HHO010101AAA · 1 factura.*\$1,000\.00.*COMERCIALIZADORA MASTER SITRU.*CMS230321FI8 · 2 facturas.*\$100\.50.*Razón social por identificar.*1 factura.*\$5,000\.00/);
+});
