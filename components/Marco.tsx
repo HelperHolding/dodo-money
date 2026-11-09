@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MenuLateral } from "@/components/MenuLateral";
 import { MigasDePan } from "@/components/MigasDePan";
+import { PestanasArea } from "@/components/PestanasArea";
 import { cerrarSesion } from "@/app/login/actions";
 import { accesosRapidos, menuLateral, NOMBRE_ROL } from "@/lib/roles";
 import { contarMisTareas } from "@/app/tareas/datos";
@@ -49,7 +50,7 @@ export async function Marco({ perfil, titulo, detalle, aviso, children }: {
       />
       <div className="marco-contenido">
         {aviso}
-        <main className="pagina"><MigasDePan menu={menu} />{children}</main>
+        <main className="pagina"><MigasDePan menu={menu} /><PestanasArea menu={menu} />{children}</main>
       </div>
     </div>
   );

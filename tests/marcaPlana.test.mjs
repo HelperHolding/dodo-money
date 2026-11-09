@@ -29,6 +29,9 @@ test('el brandbook manda en los tokens', () => {
   const css = leer('app/marca.css');
   assert.match(css, /--papel-2:\s*#f9f1e6/i);
   assert.match(css, /--display:\s*var\(--fuente-archivo/);
+  // Fondo de página beige (referencia «Centro operativo»): tarjetas blancas sobre beige
+  assert.match(css, /--fondo-pagina:\s*var\(--papel-2\)/);
+  assert.match(css, /\.marco-contenido \{[^}]*background: var\(--fondo-pagina\)/);
   // En celular la primera columna fija (globals) no rompe el encabezado beige de la tabla
   assert.match(css, /thead th:first-child \{ background: var\(--papel-2\); \}/);
   // El acceso dividido sigue el papel del tema (blanco de día, casi negro de noche), no --blanco fijo

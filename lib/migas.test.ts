@@ -19,7 +19,7 @@ test("pantallas anidadas y altas", () => {
   assert.equal(texto(comparar), "Compras › Compras y facturas(/compras/documentos) › Orden(/compras/ordenes/0c5d2f0e-0000-4000-8000-000000000001) › Comparar");
   assert.deepEqual(comparar.regresar, { texto: "Orden", href: "/compras/ordenes/0c5d2f0e-0000-4000-8000-000000000001" });
   assert.equal(texto(migas("/ventas/costos/cargar", admin)), "Ventas › Costeo(/ventas/costos) › Cargar costos");
-  assert.equal(texto(migas("/checklists/amasado", menuLateral("gerente"))), "Sucursal › Checklists(/checklists) › Amasado de masa");
+  assert.equal(texto(migas("/checklists/amasado", menuLateral("gerente"))), "Operación diaria › Checklists(/checklists) › Amasado de masa");
 });
 
 test("pantalla del menú: solo migas, sin botón de regresar", () => {
@@ -35,7 +35,7 @@ test("fuera del menú o en el inicio: nada", () => {
 
 test("el detalle de un turno no lleva botón genérico (la página regresa a los turnos de su fecha)", () => {
   const r = migas("/turnos/0c5d2f0e-0000-4000-8000-000000000002", menuLateral("gerente"));
-  assert.equal(texto(r), "Sucursal › Turnos(/turnos) › Turno");
+  assert.equal(texto(r), "Operación diaria › Turnos(/turnos) › Turno");
   assert.equal(r.regresar, null);
 });
 

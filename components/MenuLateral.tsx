@@ -6,17 +6,12 @@ import { useEffect, useState } from "react";
 import { BuscadorPaginas } from "@/components/BuscadorPaginas";
 import { Icono, type NombreIcono } from "@/components/Icono";
 import { InterruptorLuz } from "@/components/InterruptorLuz";
-import { enlaceActivo, enlacesDelMenu, grupoAbierto, type Enlace, type Menu } from "@/lib/roles";
+import { areaActiva, enlaceActivo, SECCIONES, type Enlace, type Menu } from "@/lib/roles";
 
 /** Texto para lectores de pantalla del contador del menú. */
 const etiquetaContador = ({ n, urgente }: { n: number; urgente: boolean }) =>
   `${n} ${n === 1 ? "pendiente" : "pendientes"}${urgente ? ", con vencidas" : ""}`;
 
-/** Icono de cada grupo del menú (por título; un grupo nuevo sin icono se muestra sin él). */
-const ICONO_GRUPO: Record<string, NombreIcono> = {
-  Sucursal: "tienda", Efectivo: "cartera", Ventas: "grafica", Compras: "carrito", Finanzas: "banco",
-  "Proyectos y admin.": "maletin", Conocimiento: "libro", Catálogos: "lista", Tareas: "lista",
-};
 /** Icono de cada acceso rápido de la barra inferior. */
 const ICONO_ACCESO: Record<string, NombreIcono> = {
   "/": "casa", "/corporativo": "casa", "/arqueo": "billete", "/checklists": "lista", "/ventas": "grafica",
@@ -24,7 +19,8 @@ const ICONO_ACCESO: Record<string, NombreIcono> = {
 };
 
 /**
- * Menú lateral con grupos plegables. En computadora queda fijo a la izquierda;
+ * Menú lateral por áreas (ícono + nombre) agrupadas en secciones; las páginas de cada área van como pestañas
+ * arriba de la página (PestanasArea). En computadora queda fijo a la izquierda;
  * en celular se abre como cajón con el botón de menú y se cierra al elegir una opción.
  * En celular, además, una barra inferior con los accesos que el puesto usa más y el botón del menú completo.
  */
@@ -32,16 +28,11 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
   menu: Menu; titulo: string; cabecera: React.ReactNode; pie: React.ReactNode; accesos: readonly Enlace[];
 }) {
   const ruta = usePathname();
-  const actual = enlaceActivo(ruta, enlacesDelMenu(menu));
-  const grupoActual = grupoAbierto(menu, ruta);
-  const [abiertos, setAbiertos] = useState<string[]>(grupoActual ? [grupoActual] : []);
+  const areaActual = areaActiva(menu, ruta)?.titulo;
   const [cajon, setCajon] = useState(false);
 
-  // Al cambiar de página: se abre el grupo de la página nueva y se cierra el cajón.
-  useEffect(() => {
-    if (grupoActual) setAbiertos((a) => (a.includes(grupoActual) ? a : [...a, grupoActual]));
-    setCajon(false);
-  }, [ruta, grupoActual]);
+  // Al cambiar de página se cierra el cajón.
+  useEffect(() => { setCajon(false); }, [ruta]);
 
   useEffect(() => {
     if (!cajon) return;
@@ -50,9 +41,6 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
     return () => window.removeEventListener("keydown", alTeclear);
   }, [cajon]);
 
-  const alternar = (grupo: string, abierto: boolean) =>
-    setAbiertos((a) => (abierto ? (a.includes(grupo) ? a : [...a, grupo]) : a.filter((g) => g !== grupo)));
-  const marcar = (href: string) => (href === actual ? "page" : undefined);
   const accesoActual = enlaceActivo(ruta, accesos);
 
   return (
@@ -74,20 +62,29 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
         <div className="lateral-buscar"><BuscadorPaginas menu={menu} /></div>
         <div className="lateral-luz"><InterruptorLuz /></div>
         <nav className="lateral-nav" aria-label="Secciones">
-          <Link className="lateral-enlace" href={menu.inicio.href} aria-current={marcar(menu.inicio.href)}>{menu.inicio.texto}</Link>
-          {menu.grupos.map((g) => (
-            <details key={g.titulo} className="lateral-grupo" open={abiertos.includes(g.titulo)}
-              onToggle={(e) => alternar(g.titulo, e.currentTarget.open)}>
-              <summary>{ICONO_GRUPO[g.titulo] && <Icono nombre={ICONO_GRUPO[g.titulo]} tamano={18} />}<span>{g.titulo}</span></summary>
-              <ul>
-                {g.enlaces.map((e) => (
-                  <li key={e.href}>
-                    <Link className="lateral-enlace" href={e.href} aria-current={marcar(e.href)}>{e.texto}{e.contador && <span className="contador-menu" data-urgente={e.contador.urgente || undefined}><span aria-hidden="true">{e.contador.n}</span><span className="solo-lector">{etiquetaContador(e.contador)}</span></span>}</Link>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ))}
+          {SECCIONES.map((s) => {
+            const areas = menu.grupos.filter((g) => g.seccion === s);
+            if (!areas.length) return null;
+            return (
+              <div key={s} className="lateral-seccion">
+                <p className="lateral-seccion-titulo">{s}</p>
+                <ul>
+                  {areas.map((a) => {
+                    const pendientes = a.enlaces.reduce((n, e) => n + (e.contador?.n ?? 0), 0);
+                    const urgente = a.enlaces.some((e) => e.contador?.urgente);
+                    return (
+                      <li key={a.titulo}>
+                        <Link className="lateral-enlace lateral-area" href={a.enlaces[0].href} aria-current={a.titulo === areaActual ? "page" : undefined}>
+                          <Icono nombre={a.icono} tamano={18} /><span>{a.titulo}</span>
+                          {pendientes > 0 && <span className="contador-menu" data-urgente={urgente || undefined}><span aria-hidden="true">{pendientes}</span><span className="solo-lector">{etiquetaContador({ n: pendientes, urgente })}</span></span>}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
         </nav>
         <div className="lateral-pie">{pie}</div>
       </aside>
