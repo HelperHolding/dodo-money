@@ -1,5 +1,7 @@
+// @ts-expect-error Node strip-types requiere extensión explícita.
 import {separarDesglose,type Periodo} from './calculos.ts';
 import type {TipoDesglose} from './extraer.ts';
+// @ts-expect-error Node strip-types requiere extensión explícita.
 import {ventasMensuales} from './graficasReporte.ts';
 /** Mes actual hasta hoy; meses anteriores completos. No se consulta un mes futuro. */
 export function periodoInicioVentas(pedido:string|undefined,hoy:string):Periodo{
