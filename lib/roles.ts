@@ -123,6 +123,11 @@ export function menuLateral(rol: Rol): Menu {
       ...(puedeEditarCompras(rol) ? [{ href: "/compras/cargar", texto: "Cargar Excel" }] : []),
     ] : []),
     ...area("Inventario", "lista", "Operación", compras ? [{ href: "/inventario", texto: "Insumos Dodo IS" }, { href: "/inventario/uniformes", texto: "Uniformes" }] : []),
+    // Mantenimiento junta los activos (con su calendario mensual) y los compromisos fijos (extractor, minisplits, renta…).
+    ...area("Mantenimiento", "reloj", "Operación", compras ? [
+      { href: "/activos", texto: "Activos y calendario" },
+      { href: "/compras/pagos/compromisos", texto: "Compromisos fijos" },
+    ] : []),
     ...area("P&L", "documento", "Finanzas", finanzas ? [
       { href: "/finanzas", texto: "P&L" },
       { href: "/finanzas/flujo", texto: "Flujo de efectivo" },
@@ -142,7 +147,6 @@ export function menuLateral(rol: Rol): Menu {
       { href: "/compras/razones-sociales", texto: "Razones sociales" },
     ] : []),
     ...area("Aperturas", "ubicacion", "Proyectos", compras ? [{ href: "/aperturas", texto: "Aperturas" }] : []),
-    ...area("Activos", "maletin", "Proyectos", compras ? [{ href: "/activos", texto: "Activos" }] : []),
     ...area("Cumplimiento", "calendario", "Proyectos", compras ? [{ href: "/cumplimiento", texto: "Calendario de cumplimiento" }] : []),
     ...area("Usuarios y sucursales", "info", "Proyectos", rol === "admin" ? [{ href: "/administracion/usuarios", texto: "Usuarios y sucursales" }] : []),
     ...correos,
