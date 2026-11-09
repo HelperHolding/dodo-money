@@ -29,6 +29,8 @@ test('el brandbook manda en los tokens', () => {
   const css = leer('app/marca.css');
   assert.match(css, /--papel-2:\s*#f9f1e6/i);
   assert.match(css, /--display:\s*var\(--fuente-archivo/);
+  // En celular la primera columna fija (globals) no rompe el encabezado beige de la tabla
+  assert.match(css, /thead th:first-child \{ background: var\(--papel-2\); \}/);
 });
 
 test('el encabezado usa la D oficial plana y el interruptor no enciende nada', () => {
