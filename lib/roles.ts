@@ -144,7 +144,7 @@ export function menuLateral(rol: Rol): Menu {
     ...area("Aperturas", "ubicacion", "Proyectos", compras ? [{ href: "/aperturas", texto: "Aperturas" }] : []),
     ...area("Activos", "maletin", "Proyectos", compras ? [{ href: "/activos", texto: "Activos" }] : []),
     ...area("Cumplimiento", "calendario", "Proyectos", compras ? [{ href: "/cumplimiento", texto: "Calendario de cumplimiento" }] : []),
-    ...area("Usuarios y sucursales", "nombre", "Proyectos", rol === "admin" ? [{ href: "/administracion/usuarios", texto: "Usuarios y sucursales" }] : []),
+    ...area("Usuarios y sucursales", "info", "Proyectos", rol === "admin" ? [{ href: "/administracion/usuarios", texto: "Usuarios y sucursales" }] : []),
     ...correos,
     ...area("Conocimiento", "brillo", "Inteligencia", [{ href: "/conocimiento", texto: "Manuales y Q&A" }, ...(puedeVerVentas(rol) ? [{ href: "/asistente", texto: "Asistente IA" }] : [])]),
   ];
