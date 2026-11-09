@@ -1,7 +1,7 @@
 # Correos de marketing
 
 ## Instalación (una vez)
-1. Sebastián corre `supabase/migrations/20261106120000_correos_marketing.sql` en producción y comparte el resultado.
+1. Sebastián corre `supabase/migrations/20261109120000_correos_marketing.sql` en producción y comparte el resultado.
 2. Vercel: `CORREOS_API_KEY` (valor largo aleatorio) y, si se necesitan, `CORREOS_DOMINIOS_EXTRA` (p. ej. `instagram.com,wa.me`). Redeploy.
 3. n8n: credencial *Header Auth* «dodo-money correos» con nombre `x-api-key` y el mismo valor.
    `node --env-file=scripts/n8n/.env scripts/n8n/flujo-correos.mjs`, elegir la credencial en «Pedir lote» y «Reportar», y activar.

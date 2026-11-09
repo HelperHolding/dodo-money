@@ -9,7 +9,21 @@ export type ClaveRenglon =
   | "venta_bruta" | "venta_bruta_dodo" | "venta_bruta_rappi" | "venta_neta_dodo" | "venta_neta_rappi" | "alimento_dodo" | "alimento_rappi"
   | "venta_neta" | "rappi_fuera_base" | "rappi_excedente" | "rappi_ajustes" | "alimento" | "merma" | "merma_productos" | "merma_insumos" | "nomina_cocina" | "nomina_gerencia" | "repartidores" | "agregadores"
   | "marketing_agregadores" | "marketing" | "renta" | "servicios" | "mantenimiento" | "consumibles_equipo"
-  | "regalias" | "otros" | "ebitda_tienda" | "oficina" | "ebitda" | "margen_bruto";
+  | "regalias" | "otros" | "ebitda_tienda" | "oficina" | "ebitda" | "margen_bruto"
+  | `nomina_${"cocina" | "gerencia"}_${ConceptoNominaPL}`;
+
+/** Desglose de cada nómina en el P&L. «otros» junta el ajuste del reporte, la plantilla estimada y los ajustes del mes. */
+export const CONCEPTOS_NOMINA_PL = [
+  ["sueldo", "Sueldos"], ["bono", "Otras percepciones (bonos, vacaciones, aguinaldo)"], ["imss", "IMSS patronal"],
+  ["retiro", "Retiro SAR"], ["cesantia", "Cesantía y vejez"], ["infonavit", "Infonavit"], ["impuesto", "Impuesto sobre nómina"],
+  ["otros", "Ajustes y plantilla estimada"],
+] as const;
+export type ConceptoNominaPL = (typeof CONCEPTOS_NOMINA_PL)[number][0];
+export type DesgloseNomina = Record<"cocina" | "gerencia", Partial<Record<ConceptoNominaPL, number>>>;
+const detallesNomina = (renglon: "cocina" | "gerencia") =>
+  CONCEPTOS_NOMINA_PL.map(([c, nombre]) => ({ clave: `nomina_${renglon}_${c}` as ClaveRenglon, nombre, tipo: "detalle" as const }));
+/** Los renglones del desglose de nómina en cero no se muestran (casi siempre faltan percepciones extra o ajustes). */
+export const esDetalleNomina = (clave: string) => /^nomina_(cocina|gerencia)_/.test(clave);
 
 export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "venta" | "gasto" | "total" | "detalle" }[] = [
   { clave: "venta_neta", nombre: "Venta neta", tipo: "venta" },
@@ -25,7 +39,9 @@ export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "v
   { clave: "merma_insumos", nombre: "Merma de insumos", tipo: "detalle" },
   { clave: "margen_bruto", nombre: "Margen bruto", tipo: "total" },
   { clave: "nomina_cocina", nombre: "Nómina cocina", tipo: "gasto" },
+  ...detallesNomina("cocina"),
   { clave: "nomina_gerencia", nombre: "Nómina gerencia", tipo: "gasto" },
+  ...detallesNomina("gerencia"),
   { clave: "repartidores", nombre: "Repartidores", tipo: "gasto" },
   { clave: "agregadores", nombre: "Comisión de agregadores", tipo: "gasto" },
   { clave: "rappi_ajustes", nombre: "Rappi · compensaciones y cancelaciones", tipo: "gasto" },
@@ -72,6 +88,8 @@ export type EntradaPL = {
   mermaProductos: number | null; mermaInsumos: number | null;
   mermaProductosPendiente: boolean; mermaInsumosPendiente: boolean;
   nomina: { cocina: number; gerencia: number };
+  /** Lo mismo que `nomina`, por concepto. */
+  nominaDesglose?: DesgloseNomina;
   /** Gastos sin IVA por cuenta: facturas (− notas de crédito), caja chica y gastos del mes. */
   gastos: Partial<Record<CuentaGasto, number>>;
   /** Facturas y caja chica sin cuenta asignada: van a "Otros". */
@@ -110,6 +128,11 @@ export function sumarEntradas(entradas: readonly EntradaPL[]): EntradaPL {
     for(const k of ["mermaProductos","mermaInsumos"] as const)if(e[k]!==null)s[k]=centavos((s[k]??0)+e[k]);
     if (e.merma !== null) s.merma = (s.merma ?? 0) + e.merma;
     s.nomina.cocina += e.nomina.cocina; s.nomina.gerencia += e.nomina.gerencia;
+    if (e.nominaDesglose) {
+      s.nominaDesglose ??= { cocina: {}, gerencia: {} };
+      for (const r of ["cocina", "gerencia"] as const) for (const [c, v] of Object.entries(e.nominaDesglose[r]) as [ConceptoNominaPL, number][])
+        s.nominaDesglose[r][c] = centavos((s.nominaDesglose[r][c] ?? 0) + v);
+    }
     for (const [k, v] of Object.entries(e.gastos) as [CuentaGasto, number][]) s.gastos[k] = centavos((s.gastos[k] ?? 0) + v);
     s.sinCuenta += e.sinCuenta; s.agregadores += e.agregadores; s.comisionesCobro += e.comisionesCobro;
     s.faltantes += e.faltantes; s.regalias += e.regalias; s.oficina += e.oficina;
@@ -162,6 +185,12 @@ export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMe
     consumibles_equipo: g("consumibles_equipo"), regalias: e.regalias,
     otros: centavos(g("otros") + e.sinCuenta + e.comisionesCobro + e.faltantes), oficina: e.oficina,
   };
+  for (const r of ["cocina", "gerencia"] as const) {
+    // Sin desglose (entradas antiguas o de prueba) todo el renglón cae en «otros», para que el detalle siempre sume el total.
+    const d = e.nominaDesglose?.[r] ?? {};
+    const conocido = CONCEPTOS_NOMINA_PL.filter(([c]) => c !== "otros").reduce((t, [c]) => t + (d[c] ?? 0), 0);
+    for (const [c] of CONCEPTOS_NOMINA_PL) montos[`nomina_${r}_${c}`] = c === "otros" ? centavos(e.nomina[r] - conocido) : centavos(d[c] ?? 0);
+  }
   const gastosTienda = RENGLONES.filter((r) => r.tipo === "gasto" && r.clave !== "oficina");
   const sumaTienda = gastosTienda.reduce((s, r) => s + (montos[r.clave] ?? 0), 0);
   montos.ebitda_tienda = centavos(e.ventaNeta + (e.rappiFueraBase??0) + (e.rappiExcedente??0) - sumaTienda);

@@ -1,7 +1,7 @@
 import { porcentaje } from "@/lib/formato";
 import { CUENTAS_MEMO, NOMBRE_MEMO } from "@/lib/finanzas/cuentas";
 import type { ColumnaPL } from "@/lib/finanzas/excel";
-import { RENGLONES, type ClaveRenglon } from "@/lib/finanzas/pl";
+import { esDetalleNomina, RENGLONES, type ClaveRenglon } from "@/lib/finanzas/pl";
 import { SECCIONES } from "@/lib/finanzas/secciones";
 import { Importe } from "./Importe";
 import { referenciaHelper } from '@/lib/finanzas/catalogoHelper';
@@ -36,7 +36,7 @@ export function TablaComparativo({ columnas, total }: { columnas: ColumnaPL[]; t
           {SECCIONES.map((s) => (
             <tbody key={s.clave}>
               <tr className={`pl-seccion pl-${s.clave}`}><th colSpan={ancho} scope="rowgroup"><span className="pl-seccion-nombre">{s.nombre}</span></th></tr>
-              {s.renglones.map((c) => renglon(c, false))}
+              {s.renglones.filter((c) => !esDetalleNomina(c) || todas.some((t) => t.filas.find((f) => f.clave === c)?.monto)).map((c) => renglon(c, false))}
               {s.clave === "venta" && simple("descuentos", "Descuentos (informativo)", (c) => c.entrada.descuentos)}
               {s.total && renglon(s.total, true)}
             </tbody>

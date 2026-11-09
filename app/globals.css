@@ -1277,6 +1277,14 @@ button.ap-check-marca:hover { box-shadow:0 0 0 3px var(--dato-pista); }
 .pagos-tabla .acciones { gap:6px; }
 .pagos-tabla .boton { font-size:.8rem; padding:8px 10px; white-space:normal; max-width:100%; text-align:center; overflow-wrap:anywhere; }
 .pagos-uuid { overflow-wrap:anywhere; font-size:.85rem; }
+/* Subtotal por razón social: tarjetas compactas sobre cada lista de Pagos. */
+.subtotales-razon { display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(min(100%, 240px), 1fr)); margin:0 0 16px; }
+.subtotal-razon { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:10px 14px; background:var(--superficie); border:1px solid var(--linea); border-radius:var(--r-md); min-width:0; }
+.subtotal-razon[data-alerta="si"] { border-color:var(--alerta); }
+.subtotal-razon dt { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.subtotal-razon-nombre { font-weight:700; font-size:var(--t-sm); overflow-wrap:anywhere; }
+.subtotal-razon small { color:var(--tinta-2); font-size:.8rem; }
+.subtotal-razon dd { margin:0; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
 
 
 /* ─── Insignias de estado (PLAN-REDISENO §4.4): un solo tamaño y forma para todos los sistemas de "badge" ─── */

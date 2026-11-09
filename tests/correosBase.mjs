@@ -21,6 +21,6 @@ export const U={admin:'00000000-0000-0000-0000-0000000000a1',corp:'00000000-0000
 export const como=async(db,id)=>{await db.exec('reset role');await db.query(`select set_config('request.jwt.claims',$1,false)`,[JSON.stringify({sub:id,role:'authenticated'})]);await db.exec('set role authenticated');};
 export const servicio=async(db)=>{await db.exec('reset role');await db.query(`select set_config('request.jwt.claims','',false)`);await db.exec('set role service_role');};
 // La migración real menos las funciones de invitación (sus tablas no existen en el stub): se cortan entre marcas.
-export const migracion=()=>load('supabase/migrations/20261106120000_correos_marketing.sql').replace(/-- <invitaciones>[\s\S]*?-- <\/invitaciones>/,'');
+export const migracion=()=>load('supabase/migrations/20261109120000_correos_marketing.sql').replace(/-- <invitaciones>[\s\S]*?-- <\/invitaciones>/,'');
 export const nueva=async()=>{const db=new PGlite();await db.exec(BASE);await db.exec(migracion());
  await db.exec(`insert into perfiles values('${U.mkt}','Mariana','marketing',null,true,false)`);return db;};
