@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Manrope } from "next/font/google";
 import "./globals.css";
-import "./sucursal.css";
+import "./marca.css";
 
 // Manrope servida desde el propio sitio: sin parpadeo de fuente ni petición a Google en cada visita.
 const manrope = Manrope({ subsets: ["latin"], display: "swap", variable: "--fuente-manrope" });

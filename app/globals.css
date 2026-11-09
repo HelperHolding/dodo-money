@@ -8,7 +8,7 @@
   --papel: #ffffff;
   --papel-2: #f4f4f4;
   --blanco: #ffffff;
-  /* Superficies (el tema de sucursal las vuelve cristal; ver app/sucursal.css) */
+  /* Superficies (tokens de marca y modo noche: ver app/marca.css) */
   --superficie: var(--blanco);         /* tarjetas y secciones */
   --superficie-solida: var(--blanco);  /* menús, modales y columnas fijas: nunca transparentes */
   --campo: var(--blanco);              /* campos y botones secundarios */
