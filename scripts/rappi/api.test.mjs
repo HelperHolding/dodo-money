@@ -102,3 +102,22 @@ test("sinRechazoSuelto: si nadie la espera no hay rechazo suelto; si se espera, 
     process.off("unhandledRejection", anotar);
   }
 });
+
+import { tiendasPermitidas, elegirTienda, nombreCache, fechaDeCache } from "./api.mjs";
+test("tiendas: principal primero, Turbo de RAPPI_TIENDAS, sin repetidos ni basura", () => {
+  assert.deepEqual(tiendasPermitidas("MX1930494033, MX1930486109,,x1,", "MX1930486109"), ["MX1930486109", "MX1930494033"]);
+  assert.deepEqual(tiendasPermitidas(undefined, "MX1930486109"), ["MX1930486109"]);
+  const t = ["MX1930486109", "MX1930494033"];
+  assert.equal(elegirTienda(undefined, t), "MX1930486109");
+  assert.equal(elegirTienda("", t), "MX1930486109");
+  assert.equal(elegirTienda(" MX1930494033 ", t), "MX1930494033");
+  assert.throws(() => elegirTienda("MX999", t), /RAPPI_TIENDAS/);
+});
+test("caché por tienda: la principal conserva el nombre viejo y la limpieza reconoce ambas", () => {
+  assert.equal(nombreCache("MX1930486109", "2026-11-09", "MX1930486109"), "cache-2026-11-09.json");
+  assert.equal(nombreCache("MX1930494033", "2026-11-09", "MX1930486109"), "cache-MX1930494033-2026-11-09.json");
+  assert.equal(fechaDeCache("cache-2026-11-09.json"), "2026-11-09");
+  assert.equal(fechaDeCache("cache-MX1930494033-2026-11-09.json"), "2026-11-09");
+  assert.equal(fechaDeCache("cache-2026-11-09.json.tmp"), null);
+  assert.equal(fechaDeCache("sesion.json"), null);
+});

@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-09 · Rappi: pedidos de Rappi Turbo · sin migración
+
+Rappi Turbo es otra tienda del Portal Aliados («Dodo Pizza - Turbo», `MX1930494033`, misma dirección y cocina que La Calma) y sus pedidos no entraban: el extractor solo leía `MX1930486109`. Ahora el extractor acepta `tienda` en `/sincronizar` (lista permitida: `RAPPI_TIENDA` más `RAPPI_TIENDAS`) y guarda su caché por tienda; la principal conserva el nombre de archivo de antes. El flujo `Rappi_Ventas_Diarias` arma una vuelta por tienda en «Por tienda», llama al extractor de una en una (lote de 1, para que la segunda no salga «ocupado») y resume y avisa por tienda; el webhook «Probar» acepta `{"tienda": "MX…"}`. La app ya admitía varias tiendas por sucursal (`rappi_tiendas`): la primera importación de Turbo la liga a Dodo La Calma (Dodo-1). La cuenta del extractor (`RAPPI_USUARIO`) debe tener acceso a la tienda Turbo en el portal. Pruebas en `scripts/rappi/api.test.mjs` y `tests/n8nRappi.test.mjs`.
+
 ## 2026-11-06 · Compras: sustituir el CFDI de una factura · 20261106120000 · pendiente de Supabase
 
 Administración puede reemplazar el CFDI de una factura vigente con el XML que el proveedor volvió a timbrar, y opcionalmente con su PDF. Se conserva el mismo registro con pagos, órdenes y recepciones; cambian UUID, folio, fecha, datos fiscales y archivos. Si el total cambia, se acepta explícitamente como en 0067. El CFDI anterior queda completo en `cfdi_sustituciones` y en la sección «CFDI anteriores». Las notas de crédito ligadas bloquean la sustitución. Los REP del UUID anterior se conservan y la app avisa que hace falta uno del UUID nuevo. Un trigger impide volver a registrar un UUID sustituido. Detalle en [sustitucion-cfdi.md](sustitucion-cfdi.md). Prueba SQL en PGlite, con las funciones reales de registro de factura, estado y UUID manual.

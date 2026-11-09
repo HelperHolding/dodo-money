@@ -1,5 +1,5 @@
 // Servicio del extractor Rappi para el servidor de n8n (contenedor Docker).
-// n8n lo llama con POST /sincronizar {fecha?, revisar?, cache?, repasar?} y recibe el mismo resultado que armaba el nodo "Leer Rappi":
+// n8n lo llama con POST /sincronizar {tienda?, fecha?, revisar?, cache?, repasar?} y recibe el mismo resultado que armaba el nodo "Leer Rappi":
 // {fecha, tienda, estado, mensaje, ordenes, renglones, omitidas, revisar, cuerpo}. El envío a la app lo hace n8n.
 //
 // La sesión vive en ESTADO (storageState de Playwright: cookies + localStorage). Se sube una vez desde la PC
@@ -13,19 +13,22 @@
 //
 // La sesión del login clásico dura 24 h: con RAPPI_USUARIO / RAPPI_PASSWORD el servicio vuelve a entrar solo (login.mjs).
 //
-// Variables: EXTRACTOR_KEY (header x-api-key), RAPPI_TIENDA, ESTADO (default /datos/sesion.json), PUERTO (3100),
-// RAPPI_USUARIO, RAPPI_PASSWORD, RAPPI_PAIS (default México).
+// Varias tiendas: Rappi Turbo es otra tienda del portal (MX1930494033) con la misma sesión. n8n pide una tienda por
+// vuelta (la app guarda una tienda por envío); sin "tienda" se lee RAPPI_TIENDA. RAPPI_TIENDAS lista las adicionales.
+//
+// Variables: EXTRACTOR_KEY (header x-api-key), RAPPI_TIENDA (principal), RAPPI_TIENDAS (adicionales, separadas por coma),
+// ESTADO (default /datos/sesion.json), PUERTO (3100), RAPPI_USUARIO, RAPPI_PASSWORD, RAPPI_PAIS (default México).
 import { createServer } from "node:http";
 import { existsSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium } from "playwright-core";
-import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso, esperarHasta, sinRechazoSuelto } from "./api.mjs";
+import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso, esperarHasta, sinRechazoSuelto, tiendasPermitidas, elegirTienda, nombreCache, fechaDeCache } from "./api.mjs";
 import { iniciarSesion } from "./login.mjs";
 
 const PORTAL = "https://restaurantes.rappi.com";
-const { EXTRACTOR_KEY, RAPPI_TIENDA = "MX1930486109", ESTADO = "/datos/sesion.json", PUERTO = "3100", CHROMIUM, RAPPI_USUARIO, RAPPI_PASSWORD, RAPPI_PAIS } = process.env;
+const { EXTRACTOR_KEY, RAPPI_TIENDA = "MX1930486109", RAPPI_TIENDAS, ESTADO = "/datos/sesion.json", PUERTO = "3100", CHROMIUM, RAPPI_USUARIO, RAPPI_PASSWORD, RAPPI_PAIS } = process.env;
 if (!EXTRACTOR_KEY) { console.error("Falta EXTRACTOR_KEY"); process.exit(1); }
-const NUM = RAPPI_TIENDA.slice(2);
+const TIENDAS = tiendasPermitidas(RAPPI_TIENDAS, RAPPI_TIENDA);
 
 const hoyMX = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date());
 const restarDias = (fecha, n) => { const d = new Date(`${fecha}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
@@ -34,19 +37,20 @@ const DIAS_CACHE = 10; // cubre el repaso de 7 días con margen
 
 // Caché por día de órdenes terminadas (sin datos personales: es el mismo cuerpo que se manda a la app).
 const DATOS = dirname(ESTADO);
-const archivoCache = (fecha) => join(DATOS, `cache-${fecha}.json`);
-const leerCache = (fecha) => { try { return JSON.parse(readFileSync(archivoCache(fecha), "utf8")); } catch { return {}; } };
-function guardarCache(fecha, cache) {
-  const tmp = archivoCache(fecha) + ".tmp";
-  writeFileSync(tmp, JSON.stringify(cache)); renameSync(tmp, archivoCache(fecha));
-  for (const f of readdirSync(DATOS)) { const m = /^cache-(\d{4}-\d{2}-\d{2})\.json$/.exec(f); if (m && m[1] < restarDias(hoyMX(), DIAS_CACHE)) unlinkSync(join(DATOS, f)); }
+const archivoCache = (tienda, fecha) => join(DATOS, nombreCache(tienda, fecha, RAPPI_TIENDA));
+const leerCache = (tienda, fecha) => { try { return JSON.parse(readFileSync(archivoCache(tienda, fecha), "utf8")); } catch { return {}; } };
+function guardarCache(tienda, fecha, cache) {
+  const tmp = archivoCache(tienda, fecha) + ".tmp";
+  writeFileSync(tmp, JSON.stringify(cache)); renameSync(tmp, archivoCache(tienda, fecha));
+  for (const f of readdirSync(DATOS)) { const dia = fechaDeCache(f); if (dia && dia < restarDias(hoyMX(), DIAS_CACHE)) unlinkSync(join(DATOS, f)); }
 }
 
 // Una corrida a la vez: dos navegadores sobre la misma sesión se pisarían el storageState.
 let enCurso = null;
 
-async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
-  const base = { fecha, tienda: RAPPI_TIENDA, revisar, ordenes: 0, renglones: 0, omitidas: [], cuerpo: null };
+async function sincronizar({ tienda, fecha, revisar, usarCache, repasar = 0 }) {
+  const NUM = tienda.slice(2);
+  const base = { fecha, tienda, revisar, ordenes: 0, renglones: 0, omitidas: [], cuerpo: null };
   const navegador = await chromium.launch({ headless: true, ...(CHROMIUM ? { executablePath: CHROMIUM } : {}) });
   try {
     // Sin sesión guardada se arranca vacío y se entra con el login automático.
@@ -74,7 +78,7 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
     let vencida = { ...base, estado: "sesion_expirada", mensaje: "Rappi cerró la sesión: corre rappi:login --exportar en la PC y sube el archivo al servidor." };
 
     // Si la sesión venció (o no hay), se vuelve a entrar con el login automático antes de darla por perdida.
-    const historial = `${PORTAL}/orders/history?storeIds=${RAPPI_TIENDA}&tab=orders`;
+    const historial = `${PORTAL}/orders/history?storeIds=${tienda}&tab=orders`;
     let relogin = false;
     if (!(await abrir(historial, /Mostrando/))) {
       const l = await iniciarSesion(pagina, { portal: PORTAL, datos: DATOS, usuario: RAPPI_USUARIO, password: RAPPI_PASSWORD, pais: RAPPI_PAIS });
@@ -109,8 +113,8 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
       try {
         // Se arma antes de navegar para no perder la respuesta; si abrir() falla o devuelve false, nadie la espera.
         const json = sinRechazoSuelto(pagina.waitForResponse((r) => r.url().includes(`/orders/partner/status/v2/store/${NUM}/orders/${id}`) && r.ok(), { timeout: 60_000 }).then((r) => r.json()));
-        if (!(await abrir(`${PORTAL}/orders/history/${NUM}/${id}?storeIds=${RAPPI_TIENDA}`, "Total sugerido a facturar"))) return false;
-        const r = ordenDesdeApi(await json, RAPPI_TIENDA);
+        if (!(await abrir(`${PORTAL}/orders/history/${NUM}/${id}?storeIds=${tienda}`, "Total sugerido a facturar"))) return false;
+        const r = ordenDesdeApi(await json, tienda);
         if (!r) return true; // sigue en curso
         if (r.orden.fecha !== dia) throw Error(`Orden ${id}: es del ${r.orden.fecha}.`);
         const previo = cache[id]?.orden?.estado;
@@ -123,7 +127,7 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
 
     // Día principal. En curso: se saltan. Terminadas en caché (vueltas en vivo): se reutilizan. El resto se abre.
     // Sin caché (cierre) se abre todo, pero la caché se lee igual para detectar cambios de estado.
-    const cache = leerCache(fecha);
+    const cache = leerCache(tienda, fecha);
     const plan = planearVuelta(items, fecha, usarCache ? cache : {});
     for (const r of plan.reusar) { ordenes.push(r.orden); productos.push(...r.productos); }
     for (const id of plan.abrir) if (!(await abrirOrden(id, fecha, cache))) return vencida;
@@ -131,7 +135,7 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
     // Repaso de días anteriores: solo órdenes cuyo estado cambió.
     const caches = new Map([[fecha, cache]]);
     for (const dia of diasRepaso) {
-      const c = leerCache(dia); caches.set(dia, c);
+      const c = leerCache(tienda, dia); caches.set(dia, c);
       const p = planearRepaso(items, dia, c);
       Object.assign(c, p.base);
       for (const id of p.abrir) if (!(await abrirOrden(id, dia, c))) return vencida;
@@ -139,7 +143,7 @@ async function sincronizar({ fecha, revisar, usarCache, repasar = 0 }) {
 
     // Guarda la sesión renovada (escritura atómica para no dejar un archivo a medias) y las cachés.
     writeFileSync(`${ESTADO}.tmp`, JSON.stringify(await contexto.storageState())); renameSync(`${ESTADO}.tmp`, ESTADO);
-    if (!revisar) for (const [dia, c] of caches) guardarCache(dia, c);
+    if (!revisar) for (const [dia, c] of caches) guardarCache(tienda, dia, c);
     const estado = omitidas.length || cortado ? "error" : ordenes.length ? "ok" : "sin_ordenes";
     const textoCambios = cambios.length ? ` Cambios de estado: ${cambios.map((c) => `#${c.rappi_id} (${c.fecha}) ${c.de} → ${c.a}`).join(", ")}.` : "";
     return { ...base, estado, enCurso: plan.enCurso, cambios, relogin, cortado, mensaje: `${relogin ? "Sesión renovada con login automático. " : ""}${cortado ? `El historial se cortó antes de llegar a ${masAntigua}: pueden faltar órdenes; la siguiente vuelta lo reintenta. ` : ""}Leídas ${ordenes.length} órdenes (${plan.abrir.length} abiertas, ${plan.reusar.length} de caché), ${productos.length} renglones; en curso ${plan.enCurso}; omitidas ${omitidas.length}.${diasRepaso.length ? ` Repaso de ${diasRepaso.length} días.` : ""}${textoCambios}`, ordenes: ordenes.length, renglones: productos.length, omitidas, cuerpo: ordenes.length ? { ordenes, productos } : null };
@@ -160,11 +164,13 @@ createServer(async (req, res) => {
   let texto = ""; for await (const c of req) { texto += c; if (texto.length > 10_000) return responder(res, 413, { error: "Cuerpo muy grande" }); }
   let datos = {}; try { datos = texto ? JSON.parse(texto) : {}; } catch { return responder(res, 400, { error: "JSON inválido" }); }
   const fecha = datos.fecha === "hoy" ? hoyMX() : /^\d{4}-\d{2}-\d{2}$/.test(String(datos.fecha ?? "")) ? datos.fecha : ayerMX();
+  let tienda;
+  try { tienda = elegirTienda(datos.tienda, TIENDAS); } catch (e) { return responder(res, 400, { error: e.message }); }
   // Si una vuelta anterior sigue corriendo, esta se salta sin error: la siguiente la cubre.
-  if (enCurso) return responder(res, 200, { fecha, tienda: RAPPI_TIENDA, estado: "ocupado", mensaje: "Ya había una corrida en curso; esta vuelta se saltó.", ordenes: 0, renglones: 0, omitidas: [], cuerpo: null });
+  if (enCurso) return responder(res, 200, { fecha, tienda, estado: "ocupado", mensaje: "Ya había una corrida en curso; esta vuelta se saltó.", ordenes: 0, renglones: 0, omitidas: [], cuerpo: null });
   const repasar = Number.isInteger(datos.repasar) ? Math.min(Math.max(datos.repasar, 0), 7) : 0;
-  enCurso = sincronizar({ fecha, revisar: datos.revisar === true, usarCache: datos.cache === true, repasar });
+  enCurso = sincronizar({ tienda, fecha, revisar: datos.revisar === true, usarCache: datos.cache === true, repasar });
   try { responder(res, 200, await enCurso); }
-  catch (e) { responder(res, 200, { fecha, tienda: RAPPI_TIENDA, estado: "error", mensaje: `Falla del extractor: ${String(e?.message ?? e).slice(0, 300)}`, ordenes: 0, renglones: 0, omitidas: [], cuerpo: null }); }
+  catch (e) { responder(res, 200, { fecha, tienda, estado: "error", mensaje: `Falla del extractor: ${String(e?.message ?? e).slice(0, 300)}`, ordenes: 0, renglones: 0, omitidas: [], cuerpo: null }); }
   finally { enCurso = null; }
 }).listen(Number(PUERTO), () => console.log(`Extractor Rappi escuchando en :${PUERTO}`));
