@@ -35,6 +35,14 @@ test('el brandbook manda en los tokens', () => {
   assert.match(css, /\.login\.login-dividida \{ background: var\(--papel\); \}/);
 });
 
+test('los títulos en mayúsculas dejan aire para los acentos (CONCILIACIÓN, ÓRDENES)', () => {
+  const css = leer('app/marca.css');
+  const regla = css.match(/text-transform: uppercase; line-height: ([\d.]+);/);
+  assert.ok(regla, 'no encontré la regla de títulos en mayúsculas');
+  // Brandbook: 90–110 %, el extremo alto cuando hay acentos o ascendentes; en español casi siempre los hay
+  assert.ok(Number(regla[1]) >= 1.05, `line-height ${regla[1]} encima los acentos de la línea de abajo`);
+});
+
 test('el encabezado usa la D oficial plana y el interruptor no enciende nada', () => {
   const enc = leer('components/EncabezadoPagina.tsx');
   assert.match(enc, /\/marca\/dodo-d-naranja\.svg/);
