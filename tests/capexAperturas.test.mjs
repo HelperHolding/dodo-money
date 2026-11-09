@@ -219,3 +219,29 @@ test('capex: histórico agrupa por categoría, excluye lo que no es CAPEX y admi
   await assert.rejects(db.query(`select public.guardar_capex_equivalencia('X','Nueva','otros')`),/Solo administración/);
  }finally{await db.close();}
 });
+
+test('capex: corporativo lee y no escribe; gerente no ve nada',async()=>{
+ const db=await preparar();
+ try{
+  await como(db,ADMIN);
+  await db.query('select public.aprobar_capex_presupuesto($1,0,$2::jsonb,$3)',[P1,JSON.stringify({obra_civil:1}),'Presupuesto inicial']);
+  await db.exec('grant select on all tables in schema public to authenticated');
+  await como(db,CORP);await db.exec('set role authenticated');
+  assert.equal((await db.query('select count(*)::int n from capex_resumen')).rows[0].n,10);
+  await assert.rejects(db.query(`insert into capex_asignaciones(factura_id,proyecto_id,categoria,monto,creado_por) values(gen_random_uuid(),'${P1}','otros',1,'${CORP}')`),/permission denied/);
+  await assert.rejects(db.query(`delete from capex_presupuestos`),/permission denied/);
+  await db.exec('reset role');
+  await como(db,GER);await db.exec('set role authenticated');
+  assert.equal((await db.query('select count(*)::int n from capex_presupuestos')).rows[0].n,0);
+  assert.equal((await db.query('select count(*)::int n from capex_categorias')).rows[0].n,0);
+  await db.exec('reset role');
+ }finally{await db.close();}
+});
+
+test('capex: la prueba de producción termina en PRUEBAS OK y no deja cambios',async()=>{
+ const db=await preparar();
+ try{
+  await assert.rejects(db.exec(load('supabase/pruebas/20261109180000_capex_aperturas.sql')),e=>{assert.match(e.message,/^PRUEBAS OK/);return true;});
+  assert.equal((await db.query('select count(*)::int n from capex_presupuestos')).rows[0].n,0);
+ }finally{await db.close();}
+});
