@@ -186,3 +186,36 @@ test('capex: una factura de dos órdenes no deja comprometido negativo',async()=
   assert.equal(f.facturado,1500);
  }finally{await db.close();}
 });
+
+test('capex: equivalencias cubren todos los pares de la carga de Zapopan-1',async()=>{
+ const db=await preparar();
+ try{
+  const carga=load('supabase/cargas/inversion_zapopan_1.sql');
+  const pares=new Set([...carga.matchAll(/"tipo": "([^"]*)", "categoria": "([^"]*)"/g)].map(m=>m[1]+'|'+m[2]));
+  assert.equal(pares.size,23);
+  const filas=(await db.query('select tipo,categoria_origen from capex_equivalencias_historico')).rows.map(r=>r.tipo+'|'+r.categoria_origen);
+  assert.deepEqual([...filas].sort(),[...pares].sort());
+ }finally{await db.close();}
+});
+
+test('capex: histórico agrupa por categoría, excluye lo que no es CAPEX y admin ajusta',async()=>{
+ const db=await preparar();
+ try{
+  const detalles=[
+   {id:'D1',tipo:'1. CAPEX – Activo fijo',categoria:'Mobiliario',monto:1000},
+   {id:'D2',tipo:'1. CAPEX – Activo fijo',categoria:'Equipo de cocina mayor',monto:2000.5},
+   {id:'D3',tipo:'3. Gastos preoperativos',categoria:'Renta',monto:500},
+   {id:'D4',tipo:'X',categoria:'Nueva',monto:300}];
+  await db.query(`insert into inversion_apertura_fuentes(sucursal_id,nombre,fecha,total,datos) values($1,'Zoho','2026-08-01',3800.5,$2::jsonb)`,[S2,JSON.stringify({detalles})]);
+  const hist=async()=>Object.fromEntries((await db.query('select categoria,monto::float8 m from capex_historico order by categoria')).rows.map(r=>[r.categoria,r.m]));
+  assert.deepEqual(await hist(),{equipo_cocina:2000.5,mobiliario:1000,otros:300});
+  await como(db,ADMIN);
+  await db.query(`select public.guardar_capex_equivalencia('X','Nueva','tecnologia')`);
+  assert.deepEqual(await hist(),{equipo_cocina:2000.5,mobiliario:1000,tecnologia:300});
+  await db.query(`select public.guardar_capex_equivalencia('X','Nueva',null)`);
+  assert.deepEqual(await hist(),{equipo_cocina:2000.5,mobiliario:1000});
+  await assert.rejects(db.query(`select public.guardar_capex_equivalencia('X','Nueva','pisos')`),/Categoría inválida/);
+  await como(db,CORP);
+  await assert.rejects(db.query(`select public.guardar_capex_equivalencia('X','Nueva','otros')`),/Solo administración/);
+ }finally{await db.close();}
+});

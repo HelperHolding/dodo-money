@@ -170,4 +170,61 @@ left join ord on ord.proyecto_id=l.proyecto_id and ord.categoria=l.categoria;
 revoke all on public.capex_resumen from public,anon,authenticated;
 grant select on public.capex_resumen to authenticated;
 
+-- Equivalencia de la clasificación de las fuentes históricas. categoria null = no es CAPEX (preoperativos, depósitos).
+create table public.capex_equivalencias_historico(
+ tipo text not null,categoria_origen text not null,
+ categoria text references public.capex_categorias(clave),
+ primary key(tipo,categoria_origen)
+);
+insert into public.capex_equivalencias_historico(tipo,categoria_origen,categoria) values
+ ('1. CAPEX – Activo fijo','Equipo tecnológico','tecnologia'),
+ ('1. CAPEX – Activo fijo','Equipo de cocina mayor','equipo_cocina'),
+ ('1. CAPEX – Activo fijo','Instalaciones y materiales menores de obra','instalaciones'),
+ ('1. CAPEX – Activo fijo','Obra civil e instalaciones (contratista general)','obra_civil'),
+ ('1. CAPEX – Activo fijo','Carpintería, decoración y cortinas','obra_civil'),
+ ('1. CAPEX – Activo fijo','Señalética y logotipos','senaletica'),
+ ('1. CAPEX – Activo fijo','Mobiliario','mobiliario'),
+ ('1. CAPEX – Activo fijo','Aluminio, cristal y fachada','obra_civil'),
+ ('1. CAPEX – Activo fijo','Aire acondicionado y extracción (HVAC)','instalaciones'),
+ ('1. CAPEX – Activo fijo','Acabados (pisos, azulejo, pintura)','obra_civil'),
+ ('2. Equipo menor','Accesorios tecnológicos','tecnologia'),
+ ('2. Equipo menor','Limpieza, higiene y seguridad','smallware'),
+ ('2. Equipo menor','Utensilios de cocina (smallwares)','smallware'),
+ ('2. Equipo menor','Oficina, papelería durable e identificación','otros'),
+ ('3. Gastos preoperativos','Licencias, permisos y protección civil','proyecto_permisos'),
+ ('3. Gastos preoperativos','Consumibles (limpieza, papelería, agua)',null),
+ ('3. Gastos preoperativos','Traslados y viáticos',null),
+ ('3. Gastos preoperativos','Insumos, bebidas y pruebas de producto',null),
+ ('3. Gastos preoperativos','Servicios (luz, internet, gas, mensajería)',null),
+ ('3. Gastos preoperativos','Nómina y bonos',null),
+ ('3. Gastos preoperativos','Renta',null),
+ ('4. Depósitos y fondos','Depósitos en garantía',null),
+ ('4. Depósitos y fondos','Fondo de caja chica',null);
+
+create function public.guardar_capex_equivalencia(p_tipo text,p_origen text,p_categoria text) returns void
+language plpgsql security definer set search_path='' as $$
+begin
+ if not public.edita_finanzas() then raise exception 'Solo administración ajusta equivalencias.';end if;
+ if length(trim(coalesce(p_tipo,'')))=0 or length(trim(coalesce(p_origen,'')))=0 then raise exception 'Tipo y categoría de origen son obligatorios.';end if;
+ if p_categoria is not null and not exists(select 1 from public.capex_categorias where clave=p_categoria) then raise exception 'Categoría inválida.';end if;
+ insert into public.capex_equivalencias_historico(tipo,categoria_origen,categoria) values(p_tipo,p_origen,p_categoria)
+ on conflict(tipo,categoria_origen) do update set categoria=excluded.categoria;
+end $$;
+
+-- Importe tal como viene en la fuente contable (sin desglose de IVA). Par sin equivalencia → otros.
+create view public.capex_historico with(security_invoker=true) as
+select f.id fuente_id,f.sucursal_id,f.nombre,f.fecha,coalesce(e.categoria,'otros') categoria,round(sum((d->>'monto')::numeric),2) monto
+from public.inversion_apertura_fuentes f
+cross join lateral jsonb_array_elements(f.datos->'detalles') d
+left join public.capex_equivalencias_historico e on e.tipo=d->>'tipo' and e.categoria_origen=d->>'categoria'
+where e.tipo is null or e.categoria is not null
+group by f.id,f.sucursal_id,f.nombre,f.fecha,coalesce(e.categoria,'otros');
+
+alter table public.capex_equivalencias_historico enable row level security;
+create policy ver_capex_equivalencias on public.capex_equivalencias_historico for select using(public.ve_finanzas());
+revoke all on public.capex_equivalencias_historico,public.capex_historico from public,anon,authenticated;
+grant select on public.capex_equivalencias_historico,public.capex_historico to authenticated;
+revoke all on function public.guardar_capex_equivalencia(text,text,text) from public,anon;
+grant execute on function public.guardar_capex_equivalencia(text,text,text) to authenticated;
+
 commit;
