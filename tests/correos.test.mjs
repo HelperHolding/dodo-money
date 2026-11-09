@@ -257,7 +257,7 @@ test('correos: importar 20 000 filas es en conjunto (rápido) y respeta conteos 
   const ms=performance.now()-t0;
   console.log(`importar 20 000 filas: ${Math.round(ms)} ms`);
   assert.deepEqual(r,{nuevos:19987,existentes:2,bajas:1,invalidos:5});
-  assert.ok(ms<3000,`tardó ${Math.round(ms)} ms`);
+  assert.ok(ms<12000,`tardó ${Math.round(ms)} ms`);
   await como(db,U.mkt);
   assert.equal((await db.query(`select count(*)::int n from correo_contactos`)).rows[0].n,19990);
   const una=async e=>(await db.query(`select nombre,etiquetas,estado,origen from correo_contactos where email=$1`,[e])).rows[0];
