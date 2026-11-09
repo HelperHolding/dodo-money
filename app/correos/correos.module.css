@@ -1,0 +1,15 @@
+.cabecera{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.tarjetas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.tarjeta{display:flex;flex-direction:column;gap:4px;padding:16px;border:1px solid var(--borde,#ddd);border-radius:12px;color:inherit;text-decoration:none;background:var(--superficie,#fff)}
+.alerta{color:#b42318;font-weight:600}
+.borrador,.programada,.enviando,.detenida,.enviada,.cancelada{align-self:flex-start;font-size:12px;padding:2px 8px;border-radius:999px;background:#eee}
+.enviando{background:#fff4d6}.enviada{background:#dcfae6}.detenida,.cancelada{background:#fee4e2}
+.columnas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.columnas{grid-template-columns:1fr}}
+.panel{display:flex;flex-direction:column;gap:12px}
+.panel label{display:flex;flex-direction:column;gap:4px}
+.fila{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--borde,#ddd)}
+.previa{width:100%;height:640px;border:1px solid var(--borde,#ddd);border-radius:8px;background:#fff}
+.numeros{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.numeros div{padding:12px;border-radius:12px;background:var(--superficie,#fff);border:1px solid var(--borde,#ddd)}
+.numeros strong{display:block;font-size:24px}

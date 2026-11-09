@@ -12,7 +12,7 @@ test('corte diario: encargado de sucursal puede cerrar sin ampliar otros permiso
 import {
   accesosRapidos, enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeRecibirSalida, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
-  puedeVerFinanzas, puedeEditarFinanzas, puedeCambiarSucursal, puedeVerVistaGeneral } from "./roles.ts";
+  puedeVerFinanzas, puedeEditarFinanzas, puedeCambiarSucursal, puedeVerVistaGeneral, puedeVerCorreos, puedeEditarCorreos } from "./roles.ts";
 
 test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () => {
   assert.equal(esCorporativo("corporativo"), true);
@@ -73,8 +73,8 @@ test("menú lateral: cada puesto ve solo sus grupos", () => {
   assert.deepEqual(grupos("operacion"), ["Sucursal", "Tareas", "Conocimiento"]);
   assert.deepEqual(grupos("encargado"), ["Sucursal", "Tareas", "Conocimiento"]);
   assert.deepEqual(grupos("gerente"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Conocimiento"]);
-  assert.deepEqual(grupos("admin"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Compras", "Inventario", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
-  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Compras", "Inventario", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Compras", "Inventario", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento", "Correos"]);
+  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Compras", "Inventario", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento", "Correos"]);
   assert.deepEqual(grupo("corporativo", "Inventario"), ["/inventario", "/inventario/uniformes"]);
   assert.deepEqual(grupo("operacion", "Tareas"), ["/tareas"]);
   assert.deepEqual(grupo("encargado", "Tareas"), ["/tareas", "/tareas/tablero"]);
@@ -159,7 +159,7 @@ test("aviso de productos sin costo: admin y corporativo lo ven; gerente, encarga
 });
 
 test("nombre de cada puesto como se muestra en la app", () => {
-  assert.deepEqual(NOMBRE_ROL, { operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo" });
+  assert.deepEqual(NOMBRE_ROL, { operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo", marketing: "Marketing" });
 });
 
 test("un usuario desactivado no entra", () => {
@@ -201,4 +201,18 @@ test("accesos rápidos del celular: 3 por puesto y todos están en su menú", ()
   }
   assert.deepEqual(accesosRapidos("gerente").map((a) => a.href), ["/", "/arqueo", "/ventas"]);
   assert.deepEqual(accesosRapidos("admin").map((a) => a.href), ["/corporativo", "/ventas", "/compras/documentos"]);
+});
+
+test("marketing: solo la sección Correos; corporativo consulta", () => {
+  assert.equal(NOMBRE_ROL.marketing, "Marketing");
+  for (const rol of ["marketing", "admin"] as const) { assert.equal(puedeVerCorreos(rol), true); assert.equal(puedeEditarCorreos(rol), true); }
+  assert.equal(puedeVerCorreos("corporativo"), true); assert.equal(puedeEditarCorreos("corporativo"), false);
+  for (const rol of ["gerente", "encargado", "operacion"] as const) assert.equal(puedeVerCorreos(rol), false);
+  const menu = menuLateral("marketing");
+  assert.deepEqual(menu.inicio, { href: "/correos", texto: "Campañas" });
+  assert.deepEqual(menu.grupos.map((g) => g.titulo), ["Correos"]);
+  assert.deepEqual(menuLateral("admin").grupos.find((g) => g.titulo === "Correos")?.enlaces.map((e) => e.href), ["/correos", "/correos/contactos"]);
+  assert.deepEqual(menuLateral("corporativo").grupos.find((g) => g.titulo === "Correos")?.enlaces.map((e) => e.href), ["/correos"]);
+  assert.deepEqual(accesosRapidos("marketing").map((e) => e.href), ["/correos", "/correos/contactos", "/correos/nueva"]);
+  for (const rol of ["gerente", "operacion"] as const) assert.equal(menuLateral(rol).grupos.some((g) => g.titulo === "Correos"), false);
 });

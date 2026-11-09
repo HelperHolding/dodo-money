@@ -10,3 +10,8 @@ test("rutas sin sesión: login, invitación, reportes automáticos, la sincroniz
     assert.equal(rutaSinSesion(r), false, r);
   }
 });
+
+test("correos: seguimiento, n8n y baja sin sesión; la sección no", () => {
+  for (const r of ["/api/correos/siguiente", "/api/correos/resultado", "/api/correos/a/tok", "/api/correos/c/tok", "/baja/tok"]) assert.equal(rutaSinSesion(r), true, r);
+  for (const r of ["/correos", "/correos/contactos", "/bajas"]) assert.equal(rutaSinSesion(r), false, r);
+});
