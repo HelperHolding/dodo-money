@@ -10,6 +10,7 @@
   --papel-2: #f9f1e6;
   --display: var(--fuente-archivo, "Archivo"), var(--fuente);
   --dodo-naranja: #ff4e00;
+  --fondo-pagina: var(--papel-2);   /* contenido sobre beige; las tarjetas van blancas encima */
 }
 
 /* ─── Noche: fondos sólidos casi negros, texto beige, naranja en acciones. Solo con el marco o el acceso:
@@ -28,6 +29,7 @@ html[data-luz="noche"]:has(.marco, .login) {
   --accion-tinte: rgb(255 154 92 / .14);
   --accion-suave: rgb(255 120 40 / .22);
   --accion-suave-borde: rgb(255 140 70 / .4);
+  --fondo-pagina: #121212;
   --cuadra-fondo: rgb(60 190 130 / .18); --cuadra-texto: #8be3b8; --cuadra-borde: rgb(60 190 130 / .4);
   --alerta-fondo: rgb(240 90 80 / .2); --alerta-texto: #ffb8b0; --alerta-borde: rgb(240 90 80 / .45);
   --aviso-fondo: rgb(240 180 60 / .18); --aviso-texto: #ffd27a;
@@ -59,7 +61,7 @@ html[data-luz="noche"]:has(.marco) .tabla-pl { --pl-barra: #5a4636; }
   .marco { background: linear-gradient(90deg, #000 0 260px, var(--accion) 260px 264px, transparent 264px); }
 }
 .lateral, .franja-movil { background: #000; }
-.marco-contenido { min-height: 100vh; background: var(--papel); overflow-x: clip; }
+.marco-contenido { min-height: 100vh; background: var(--fondo-pagina); overflow-x: clip; }
 
 /* Interruptor sol / luna */
 /* Buscador, interruptor y menú con aire entre sí (antes quedaban pegados) */
@@ -90,7 +92,7 @@ a, a:hover { text-decoration: none !important; }
 
 
 /* ─── Superficies planas: tarjeta blanca, línea fina, sin sombra ─── */
-:is(.seccion, .tarjeta, .ap-panel, .zona-plegable, .error-pagina) { border-radius: var(--r-md); box-shadow: none; }
+:is(.seccion, .tarjeta, .ap-panel, .zona-plegable, .error-pagina) { border-radius: var(--r-lg); box-shadow: none; }
 .compra-grupo, .compra-barra, :where(.pagina, .panel-admin) > .indicadores-marco:where(:has(> h2, > p)) {
   background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); padding: 14px 16px;
 }
