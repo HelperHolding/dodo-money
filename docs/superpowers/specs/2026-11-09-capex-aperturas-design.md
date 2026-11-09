@@ -128,10 +128,12 @@ Prorrateo: si una factura se reparte 60/40, su pago y su IVA se reparten igual.
 
 ### 3.5 Histórico (`inversion_apertura_fuentes`)
 
-Tabla `public.capex_equivalencias_historico(tipo text, categoria_origen text, categoria → capex_categorias,
-primary key(tipo, categoria_origen))`, editable por admin con `guardar_capex_equivalencia`. La migración carga una
-equivalencia inicial para los pares `tipo/categoria` que ya existen en `datos->'detalles'`; lo que no tenga equivalencia
-cae en `otros`.
+Tabla `public.capex_equivalencias_historico(tipo text, categoria_origen text, categoria → capex_categorias null,
+primary key(tipo, categoria_origen))`, editable por admin con `guardar_capex_equivalencia`. `categoria` null significa
+"no es CAPEX": la fuente de Zapopan-1 también trae gastos preoperativos y depósitos, que no deben sumarse. La migración
+carga la equivalencia de los 23 pares `tipo/categoria` de `supabase/cargas/inversion_zapopan_1.sql` (CAPEX y equipo
+menor → su categoría; licencias y permisos → `proyecto_permisos`; el resto de preoperativos y los depósitos → null).
+Un par sin equivalencia cae en `otros`.
 
 Vista `public.capex_historico`: por sucursal × categoría, Σ de `monto` de los detalles de la fuente, tal como viene
 (los detalles traen un solo monto sin desglose de IVA). La tarjeta lo rotula "importe de la fuente contable" y no se
