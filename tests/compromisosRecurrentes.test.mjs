@@ -10,6 +10,8 @@ const pruebasRetenciones=load('supabase/pruebas/20261029120000_compromisos_reten
 const cumplimiento=load('supabase/migrations/20261029150000_calendario_cumplimiento.sql');
 const internet=load('supabase/migrations/20261104120000_compromisos_internet_monto_variable.sql');
 const pruebasInternet=load('supabase/pruebas/20261104120000_compromisos_internet_monto_variable.sql');
+const extractor=load('supabase/migrations/20261109180000_compromisos_extractor_minisplits.sql');
+const pruebasExtractor=load('supabase/pruebas/20261109180000_compromisos_extractor_minisplits.sql');
 
 // Lo mínimo de Supabase y de Compras que usa la migración; la prueba SQL que corre Sebastián se ejecuta completa.
 const BASE=`create role anon;create role authenticated;create schema auth;create schema storage;
@@ -82,7 +84,7 @@ const ADMIN=`select set_config('request.jwt.claims','{"sub":"00000000-0000-0000-
 async function montarTodo(){
  const db=new PGlite();
  await db.exec(BASE);await db.exec(BASE_CUMPLIMIENTO);
- await db.exec(migracion);await db.exec(retenciones);await db.exec(cumplimiento);await db.exec(internet);
+ await db.exec(migracion);await db.exec(retenciones);await db.exec(cumplimiento);await db.exec(internet);await db.exec(extractor);
  return db;
 }
 
@@ -117,5 +119,14 @@ test('compromisos: monto variable — sin monto solo si es variable; se puede ca
   await db.query(`select public.guardar_compromiso($1,1,$2::jsonb)`,[id,datos({monto_variable:'false',monto_estimado:'650',ret_iva:'ninguna',ret_isr:'ninguna'})]);
   const fijo=await leer();assert.equal(fijo.monto_variable,false);assert.equal(Number(fijo.monto_estimado),650);assert.equal(fijo.iva,0.16);assert.equal(fijo.revision,2);
   await assert.rejects(db.exec(`update compromisos set monto_estimado=null where id='${id}'`),/compromisos_monto_variable/);
+ }finally{await db.close();}
+});
+
+test('compromisos: extractor y minisplits — la prueba SQL termina en PRUEBAS OK y las anteriores siguen pasando',async()=>{
+ const db=await montarTodo();
+ try{
+  for(const p of [pruebasExtractor,pruebasInternet,pruebasRetenciones,pruebas])
+   await assert.rejects(db.exec(p),e=>{assert.match(e.message,/^PRUEBAS OK$/);return true;});
+  assert.equal((await db.query(`select count(*)::int n from pg_constraint where conrelid='compromisos'::regclass and pg_get_constraintdef(oid) like '%fumigacion%'`)).rows[0].n,1);
  }finally{await db.close();}
 });
