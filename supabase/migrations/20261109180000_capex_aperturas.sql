@@ -90,7 +90,7 @@ begin
   select f.sucursal_id,f.estado::text,f.subtotal-f.descuento into s,est,tope from public.facturas f where f.id=p_documento for update;
  elsif p_tipo='orden' then
   select o.sucursal_id,o.estado::text into s,est from public.ordenes_compra o where o.id=p_documento for update;
-  select coalesce(sum(r.cantidad*r.precio),0) into tope from public.orden_renglones r where r.orden_id=p_documento;
+  select coalesce(sum(round(r.cantidad*r.precio,2)),0) into tope from public.orden_renglones r where r.orden_id=p_documento;
  else raise exception 'Tipo inválido.';end if;
  if est is null then raise exception 'El documento no existe.';end if;
  if est='cancelada' then raise exception 'No se asigna un documento cancelado.';end if;

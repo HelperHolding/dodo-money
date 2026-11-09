@@ -26,7 +26,7 @@ const BASE=`create role anon;create role authenticated;create schema auth;
  create type estado_factura as enum ('por_pagar','parcial','pagada','cancelada');
  create table proveedores(id uuid primary key default gen_random_uuid(),razon_social text not null);
  create table ordenes_compra(id uuid primary key,folio text,proveedor_id uuid references proveedores(id),sucursal_id uuid references sucursales(id),estado estado_orden not null default 'borrador');
- create table orden_renglones(id uuid primary key default gen_random_uuid(),orden_id uuid not null references ordenes_compra(id),cantidad numeric(12,3) not null check(cantidad>0),precio numeric(12,2) not null default 0 check(precio>=0));
+ create table orden_renglones(id uuid primary key default gen_random_uuid(),orden_id uuid not null references ordenes_compra(id),cantidad numeric(12,3) not null check(cantidad>0),precio numeric(14,4) not null default 0 check(precio>=0));
  create table facturas(id uuid primary key,uuid text not null unique,folio text,tipo tipo_factura not null,proveedor_id uuid references proveedores(id),sucursal_id uuid references sucursales(id),uuid_relacionado text,
   subtotal numeric(14,2) not null,descuento numeric(14,2) not null default 0,total numeric(14,2) not null check(total>=0),estado estado_factura not null default 'por_pagar');
  create table factura_ordenes(factura_id uuid not null references facturas(id),orden_id uuid not null references ordenes_compra(id),primary key(factura_id,orden_id));
@@ -243,5 +243,16 @@ test('capex: la prueba de producción termina en PRUEBAS OK y no deja cambios',a
  try{
   await assert.rejects(db.exec(load('supabase/pruebas/20261109180000_capex_aperturas.sql')),e=>{assert.match(e.message,/^PRUEBAS OK/);return true;});
   assert.equal((await db.query('select count(*)::int n from capex_presupuestos')).rows[0].n,0);
+ }finally{await db.close();}
+});
+
+test('capex: el tope de una orden redondea cada renglón a centavos como la pantalla',async()=>{
+ const db=await preparar();
+ try{
+  await orden(db,'40000000-0000-0000-0000-000000000071',S1,'confirmada',[[1,1234.5678],[3,0.3333]]);
+  await como(db,ADMIN);
+  // Pantalla: 1234.57 + 1.00 = 1235.57; sin redondear el tope sería 1235.5677.
+  await asignar(db,'orden','40000000-0000-0000-0000-000000000071',[{proyecto_id:P1,categoria:'equipo_cocina',monto:1235.57}]);
+  await assert.rejects(asignar(db,'orden','40000000-0000-0000-0000-000000000071',[{proyecto_id:P1,categoria:'equipo_cocina',monto:1235.58}]),/pasa el subtotal/);
  }finally{await db.close();}
 });
