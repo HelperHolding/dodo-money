@@ -1,14 +1,14 @@
 .pagina { max-width: 1600px; margin-inline: auto; }
 :global(.pagina):has(> .pagina) { max-width: none; width: 100%; padding-inline: clamp(16px,2vw,28px); }
-.aviso { display: flex; align-items: center; gap: .65rem; color: var(--tinta-2); margin-block: 1.25rem 1.5rem; width: fit-content; padding: 8px 14px; border-radius: 12px; background: var(--superficie); backdrop-filter: var(--desenfoque, none); -webkit-backdrop-filter: var(--desenfoque, none); }
+.aviso { display: flex; align-items: center; gap: .65rem; color: var(--tinta-2); margin-block: 1.25rem 1.5rem; width: fit-content; padding: 8px 14px; border-radius: 12px; background: var(--superficie); }
 .indicadores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-.indicador, .panel, .fuente { border: 1px solid var(--linea); border-radius: 12px; background: var(--superficie); padding: 1.4rem; backdrop-filter: var(--desenfoque, none); -webkit-backdrop-filter: var(--desenfoque, none); }
+.indicador, .panel, .fuente { border: 1px solid var(--linea); border-radius: 12px; background: var(--superficie); padding: 1.4rem; }
 .indicador { border-top: 3px solid var(--accion); }
 .indicador h2 { font-size: .95rem; color: var(--tinta-2); margin: 0 0 .8rem; }
 .indicador strong { font-size: 1.9rem; letter-spacing: -.04em; }
 .indicador p, .fuente p, .encabezado p, .nota { color: var(--tinta-2); font-size: .9rem; line-height: 1.6; }
 .indicador p { margin-bottom: 0; }
-.pestanas { display: flex; flex-wrap: wrap; gap: .35rem; border: 1px solid var(--linea); border-radius: 14px; padding: .4rem; margin-bottom: 1.5rem; width: fit-content; max-width: 100%; background: var(--superficie); backdrop-filter: var(--desenfoque, none); -webkit-backdrop-filter: var(--desenfoque, none); }
+.pestanas { display: flex; flex-wrap: wrap; gap: .35rem; border: 1px solid var(--linea); border-radius: 14px; padding: .4rem; margin-bottom: 1.5rem; width: fit-content; max-width: 100%; background: var(--superficie); }
 .pestanas a { padding: .65rem 1rem; border-radius: 8px; text-decoration: none; color: var(--tinta-2); }
 .pestanas a[aria-current="page"] { background: var(--accion-suave); color: var(--accion-oscuro); font-weight: 700; }
 .pestanas a:hover { background: var(--papel-2); }
