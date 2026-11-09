@@ -22,3 +22,7 @@ test('cada origen tiene su color de la paleta validada', () => {
   const css = leer('app/marca.css');
   for (const c of ['mostrador', 'app', 'sitio', 'centro_llamadas', 'agregador', 'rappi']) assert.match(css, new RegExp(`\\.cat-${c} \\{ --cat: var\\(--dato-`), c);
 });
+
+test('en celular las cifras de los KPIs caben (sin recortarse)', () => {
+  assert.match(leer('app/marca.css'), /@media \(max-width: 640px\) \{ \.seccion\.inicio-ventas \{ padding: [^}]+\} \.seccion\.inicio-ventas \.inicio-ventas-kpis strong \{ font-size: 1\.2rem;/);
+});

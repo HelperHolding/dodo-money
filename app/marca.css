@@ -637,6 +637,8 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .inicio-historial-cabecera { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .inicio-historial h2 { font-family: var(--display); font-weight: 800; font-size: clamp(1.8rem, 3.4vw, 2.6rem); line-height: 1.05; }
 .inicio-historial-modo { justify-self: center; }
+@media (max-width: 640px) { .seccion.inicio-ventas { padding: 18px 14px; } .seccion.inicio-ventas .inicio-ventas-kpis strong { font-size: 1.2rem; overflow-wrap: anywhere; } }
+.inicio-historial .segmentos [aria-current="page"] { background: var(--accion); color: var(--accion-texto); }
 .linea-historial { margin: 0; }
 .linea-historial svg { width: 100%; height: auto; display: block; }
 .linea-historial-guia { stroke: var(--linea); stroke-width: 1; }
