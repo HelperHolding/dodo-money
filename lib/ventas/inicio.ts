@@ -54,3 +54,13 @@ export function historialVentas(venta:Record<string,number>,hasta:string,modo:'s
   clave:k,rotulo:modo==='semanal'?`${Number(k.slice(8))} ${MESES[Number(k.slice(5,7))-1]}`:k,total,parcial:k===actual,
  }));
 }
+
+export type ParametrosDashboard={fecha?:string;ventas_mes:string;ventas_sucursal:string;hist:string;alcance:string};
+/** URL del inicio con los filtros del dashboard; sirve para navegar sin recargar y para reemplazar la URL al cambiar el historial. */
+export function urlDashboard(ruta:string,base:ParametrosDashboard,cambios:Partial<ParametrosDashboard>={}):string{
+ const p={...base,...cambios};
+ const q=new URLSearchParams({...(p.fecha?{fecha:p.fecha}:{}),ventas_mes:p.ventas_mes,ventas_sucursal:p.ventas_sucursal,hist:p.hist,alcance:p.alcance});
+ return `${ruta}?${q}`;
+}
+/** Desde cuándo se lee la venta diaria del historial: todo lo importado, para cambiar de periodo sin volver a consultar. */
+export const DESDE_HISTORIAL='2000-01-01';

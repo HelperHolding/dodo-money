@@ -34,3 +34,10 @@ test('historial semanal y anual',()=>{
  assert.deepEqual(historialVentas(venta,'2026-11-09','semanal').map(p=>[p.clave,p.total,p.parcial]),[['2026-11-02',15,false],['2026-11-09',7,true]]);
  assert.deepEqual(historialVentas(venta,'2026-11-09','anual').map(p=>[p.clave,p.total,p.parcial]),[['2024',3,false],['2026',22,true]]);
 });
+
+import {urlDashboard} from './inicio.ts';
+test('url del dashboard: conserva mes, sucursal, periodo y alcance; fecha solo si hay',()=>{
+ const base={ventas_mes:'2026-11',ventas_sucursal:'todas',hist:'mensual',alcance:'red'};
+ assert.equal(urlDashboard('/corporativo',{...base,fecha:'2026-11-09'},{hist:'semanal'}),'/corporativo?fecha=2026-11-09&ventas_mes=2026-11&ventas_sucursal=todas&hist=semanal&alcance=red');
+ assert.equal(urlDashboard('/',base,{ventas_sucursal:'abc',alcance:'sucursal'}),'/?ventas_mes=2026-11&ventas_sucursal=abc&hist=mensual&alcance=sucursal');
+});
