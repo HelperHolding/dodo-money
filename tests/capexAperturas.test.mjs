@@ -71,3 +71,51 @@ test('capex: aprobar presupuesto crea revisiones completas y detecta conflictos'
   assert.equal((await db.query(`select has_function_privilege('anon','public.aprobar_capex_presupuesto(uuid,integer,jsonb,text)','EXECUTE') p`)).rows[0].p,false);
  }finally{await db.close();}
 });
+
+export const orden=async(db,id,sucursal,estado,renglones)=>{
+ await db.query('insert into ordenes_compra(id,folio,sucursal_id,estado) values($1,$2,$3,$4)',[id,'OC-'+id.slice(-4),sucursal,estado]);
+ for(const [cantidad,precio] of renglones)await db.query('insert into orden_renglones(orden_id,cantidad,precio) values($1,$2,$3)',[id,cantidad,precio]);
+};
+export const factura=async(db,id,sucursal,{tipo='ingreso',subtotal,descuento=0,total,estado='por_pagar',uuid_relacionado=null})=>
+ db.query('insert into facturas(id,uuid,folio,tipo,sucursal_id,subtotal,descuento,total,estado,uuid_relacionado) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[id,'U-'+id,'F-'+id.slice(-4),tipo,sucursal,subtotal,descuento,total,estado,uuid_relacionado]);
+export const asignar=(db,tipo,doc,renglones,motivo='Asignación de prueba')=>db.query('select public.guardar_capex_asignacion($1,$2,$3::jsonb,$4)',[tipo,doc,JSON.stringify(renglones),motivo]);
+const O1='40000000-0000-0000-0000-000000000001',O2='40000000-0000-0000-0000-000000000002',OF='40000000-0000-0000-0000-000000000003';
+const F1='50000000-0000-0000-0000-000000000001',FC='50000000-0000-0000-0000-000000000002';
+
+test('capex: asignar documentos valida sucursal, tope, cancelados, duplicados y deja historial',async()=>{
+ const db=await preparar();
+ try{
+  await orden(db,O1,S1,'confirmada',[[10,1000]]);
+  await orden(db,O2,S1,'confirmada',[[1,500],[3,0]]);
+  await orden(db,OF,null,'confirmada',[[1,100]]);
+  await factura(db,F1,S1,{subtotal:5000,descuento:500,total:5220});
+  await factura(db,FC,S1,{subtotal:100,total:116,estado:'cancelada'});
+  await como(db,ADMIN);
+  await asignar(db,'orden',O1,[{proyecto_id:P1,categoria:'obra_civil',monto:6000},{proyecto_id:P1,categoria:'instalaciones',monto:4000,nota:'Tablero'}]);
+  assert.equal((await db.query('select sum(monto)::float8 s from capex_asignaciones where orden_id=$1',[O1])).rows[0].s,10000);
+  await assert.rejects(asignar(db,'orden',O1,[{proyecto_id:P1,categoria:'obra_civil',monto:6000},{proyecto_id:P1,categoria:'instalaciones',monto:4000.01}]),/pasa el subtotal/);
+  await assert.rejects(asignar(db,'orden',O2,[{proyecto_id:P1,categoria:'otros',monto:500.01}]),/pasa el subtotal/);
+  await asignar(db,'orden',O2,[{proyecto_id:P1,categoria:'otros',monto:500}]);
+  await assert.rejects(asignar(db,'factura',F1,[{proyecto_id:P1,categoria:'otros',monto:4500.01}]),/pasa el subtotal/);
+  await asignar(db,'factura',F1,[{proyecto_id:P1,categoria:'otros',monto:4500}]);
+  await assert.rejects(asignar(db,'factura',F1,[{proyecto_id:P2,categoria:'otros',monto:1}]),/sucursal del documento/);
+  await assert.rejects(asignar(db,'factura',F1,[{proyecto_id:'no-es-uuid',categoria:'otros',monto:1}]),/sucursal del documento/);
+  await assert.rejects(asignar(db,'factura',F1,[{proyecto_id:P1,categoria:'pisos',monto:1}]),/Categoría inválida/);
+  await assert.rejects(asignar(db,'factura',F1,[{proyecto_id:P1,categoria:'otros',monto:0}]),/Monto inválido/);
+  await assert.rejects(asignar(db,'factura',F1,[{proyecto_id:P1,categoria:'otros',monto:'mil'}]),/Monto inválido/);
+  await assert.rejects(asignar(db,'factura',F1,[{proyecto_id:P1,categoria:'otros',monto:1},{proyecto_id:P1,categoria:'otros',monto:2}]),/Repetiste/);
+  await assert.rejects(asignar(db,'factura',FC,[{proyecto_id:P1,categoria:'otros',monto:1}]),/cancelado/);
+  await assert.rejects(asignar(db,'orden',OF,[{proyecto_id:P1,categoria:'otros',monto:1}]),/Oficina/);
+  await assert.rejects(asignar(db,'factura','50000000-0000-0000-0000-000000000099',[]),/El documento no existe/);
+  await assert.rejects(asignar(db,'factura',F1,[],'abc'),/motivo/);
+  await assert.rejects(asignar(db,'remision',F1,[]),/Tipo inválido/);
+  await asignar(db,'orden',O1,[],'Ya no es CAPEX');
+  assert.equal((await db.query('select count(*)::int n from capex_asignaciones where orden_id=$1',[O1])).rows[0].n,0);
+  const h=(await db.query(`select anterior,nuevo,motivo from capex_asignacion_historial where documento_tipo='orden' and documento_id=$1 order by fecha,id`,[O1])).rows;
+  assert.equal(h.length,2);
+  assert.equal(h[0].anterior.length,0);assert.equal(h[0].nuevo.length,2);
+  assert.equal(h[1].anterior.length,2);assert.equal(h[1].nuevo.length,0);assert.equal(h[1].motivo,'Ya no es CAPEX');
+  await como(db,CORP);
+  await assert.rejects(asignar(db,'factura',F1,[]),/Solo administración/);
+ }finally{await db.close();}
+});

@@ -52,4 +52,79 @@ grant select on public.capex_categorias,public.capex_presupuestos to authenticat
 revoke all on function public.aprobar_capex_presupuesto(uuid,integer,jsonb,text) from public,anon;
 grant execute on function public.aprobar_capex_presupuesto(uuid,integer,jsonb,text) to authenticated;
 
+create table public.capex_asignaciones(
+ id uuid primary key default gen_random_uuid(),
+ orden_id uuid references public.ordenes_compra(id),
+ factura_id uuid references public.facturas(id),
+ proyecto_id uuid not null references public.apertura_proyectos(id),
+ categoria text not null references public.capex_categorias(clave),
+ monto numeric(16,2) not null check(monto>0 and monto<1e12),
+ nota text check(nota is null or length(nota)<=500),
+ creado_por uuid not null references public.perfiles(id),
+ creado_en timestamptz not null default now(),
+ check(num_nonnulls(orden_id,factura_id)=1)
+);
+create unique index capex_asignacion_orden on public.capex_asignaciones(orden_id,proyecto_id,categoria) where orden_id is not null;
+create unique index capex_asignacion_factura on public.capex_asignaciones(factura_id,proyecto_id,categoria) where factura_id is not null;
+create index capex_asignacion_proyecto on public.capex_asignaciones(proyecto_id);
+
+create table public.capex_asignacion_historial(
+ id uuid primary key default gen_random_uuid(),
+ documento_tipo text not null check(documento_tipo in ('orden','factura')),
+ documento_id uuid not null,
+ anterior jsonb not null,nuevo jsonb not null,
+ motivo text not null check(length(trim(motivo)) between 5 and 2000),
+ usuario_id uuid not null references public.perfiles(id),
+ fecha timestamptz not null default now()
+);
+
+-- Reemplaza todos los renglones CAPEX de un documento. Lista vacía = quitar la marca.
+create function public.guardar_capex_asignacion(p_tipo text,p_documento uuid,p_renglones jsonb,p_motivo text) returns void
+language plpgsql security definer set search_path='' as $$
+declare s uuid;est text;tope numeric;suma numeric;ant jsonb;nue jsonb;
+begin
+ if not public.edita_finanzas() then raise exception 'Solo administración asigna CAPEX.';end if;
+ if length(trim(coalesce(p_motivo,''))) not between 5 and 2000 then raise exception 'Escribe el motivo del cambio.';end if;
+ if jsonb_typeof(p_renglones) is distinct from 'array' then raise exception 'Renglones inválidos.';end if;
+ if p_tipo='factura' then
+  select f.sucursal_id,f.estado::text,f.subtotal-f.descuento into s,est,tope from public.facturas f where f.id=p_documento for update;
+ elsif p_tipo='orden' then
+  select o.sucursal_id,o.estado::text into s,est from public.ordenes_compra o where o.id=p_documento for update;
+  select coalesce(sum(r.cantidad*r.precio),0) into tope from public.orden_renglones r where r.orden_id=p_documento;
+ else raise exception 'Tipo inválido.';end if;
+ if est is null then raise exception 'El documento no existe.';end if;
+ if est='cancelada' then raise exception 'No se asigna un documento cancelado.';end if;
+ if jsonb_array_length(p_renglones)>0 then
+  if s is null then raise exception 'Un documento de Oficina no se asigna a una apertura.';end if;
+  if exists(select 1 from jsonb_array_elements(p_renglones) r where jsonb_typeof(r)<>'object'
+   or not exists(select 1 from public.apertura_proyectos p where p.id::text=r->>'proyecto_id' and p.sucursal_id=s)) then raise exception 'El proyecto debe ser de la sucursal del documento.';end if;
+  if exists(select 1 from jsonb_array_elements(p_renglones) r where r->>'categoria' is null or r->>'categoria' not in (select clave from public.capex_categorias)) then raise exception 'Categoría inválida.';end if;
+  if exists(select 1 from jsonb_array_elements(p_renglones) r where case when jsonb_typeof(r->'monto')='number' then round((r->>'monto')::numeric,2)<=0 or (r->>'monto')::numeric>=1e12 else true end) then raise exception 'Monto inválido.';end if;
+  if exists(select 1 from jsonb_array_elements(p_renglones) r where length(coalesce(r->>'nota',''))>500) then raise exception 'La nota es demasiado larga.';end if;
+  if (select count(distinct (r->>'proyecto_id',r->>'categoria')) from jsonb_array_elements(p_renglones) r)<>jsonb_array_length(p_renglones) then raise exception 'Repetiste proyecto y categoría en el mismo documento.';end if;
+  select sum(round((r->>'monto')::numeric,2)) into suma from jsonb_array_elements(p_renglones) r;
+  if suma>tope then raise exception 'Lo asignado pasa el subtotal del documento.';end if;
+ end if;
+ select coalesce(jsonb_agg(to_jsonb(a) order by a.proyecto_id,a.categoria),'[]'::jsonb) into ant from public.capex_asignaciones a
+  where (p_tipo='factura' and a.factura_id=p_documento) or (p_tipo='orden' and a.orden_id=p_documento);
+ delete from public.capex_asignaciones a where (p_tipo='factura' and a.factura_id=p_documento) or (p_tipo='orden' and a.orden_id=p_documento);
+ insert into public.capex_asignaciones(orden_id,factura_id,proyecto_id,categoria,monto,nota,creado_por)
+ select case when p_tipo='orden' then p_documento end,case when p_tipo='factura' then p_documento end,
+  (r->>'proyecto_id')::uuid,r->>'categoria',round((r->>'monto')::numeric,2),nullif(trim(r->>'nota'),''),auth.uid()
+ from jsonb_array_elements(p_renglones) r;
+ select coalesce(jsonb_agg(to_jsonb(a) order by a.proyecto_id,a.categoria),'[]'::jsonb) into nue from public.capex_asignaciones a
+  where (p_tipo='factura' and a.factura_id=p_documento) or (p_tipo='orden' and a.orden_id=p_documento);
+ insert into public.capex_asignacion_historial(documento_tipo,documento_id,anterior,nuevo,motivo,usuario_id)
+ values(p_tipo,p_documento,ant,nue,trim(p_motivo),auth.uid());
+end $$;
+
+alter table public.capex_asignaciones enable row level security;
+alter table public.capex_asignacion_historial enable row level security;
+create policy ver_capex_asignaciones on public.capex_asignaciones for select using(public.ve_finanzas());
+create policy ver_capex_asignacion_historial on public.capex_asignacion_historial for select using(public.ve_finanzas());
+revoke all on public.capex_asignaciones,public.capex_asignacion_historial from public,anon,authenticated;
+grant select on public.capex_asignaciones,public.capex_asignacion_historial to authenticated;
+revoke all on function public.guardar_capex_asignacion(text,uuid,jsonb,text) from public,anon;
+grant execute on function public.guardar_capex_asignacion(text,uuid,jsonb,text) to authenticated;
+
 commit;
