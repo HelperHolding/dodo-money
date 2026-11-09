@@ -135,6 +135,7 @@ export function menuLateral(rol: Rol): Menu {
       { href: "/finanzas/parametros", texto: "Parámetros y metas" },
     ] : []),
     ...area("Banca", "banco", "Finanzas", finanzas ? [{ href: "/banca", texto: "Banca" }] : []),
+    ...area("CAPEX", "grafica", "Finanzas", finanzas ? [{ href: "/finanzas/capex", texto: "CAPEX de aperturas" }] : []),
     ...area("Nómina", "cartera", "Finanzas", finanzas ? [
       { href: "/finanzas/nomina", texto: "Nómina" },
       { href: "/finanzas/personal", texto: "Personal" },
