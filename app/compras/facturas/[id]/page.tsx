@@ -144,7 +144,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const dias = await diasDePago(supabase);
   const plazo = f.proveedores?.dias_entrega;
   const recepcionSugerida=fechaEsperada(hoy,plazo??null);
-  const conCapex = puedeVerFinanzas(perfil.rol) && await capexVisible(supabase, f.sucursal_id);
+  const conCapex = puedeVerFinanzas(perfil.rol) && await capexVisible(supabase, f.sucursal_id, "factura", f.id);
 
 
   return (

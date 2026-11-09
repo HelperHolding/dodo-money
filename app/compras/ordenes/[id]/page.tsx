@@ -101,7 +101,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
     supabase.from("articulo_proveedores").select("articulo_id").eq("proveedor_id", o.proveedor_id).returns<{ articulo_id: string }[]>(),
   ]);
   const preciosPorArticulo = Object.fromEntries((precios.data ?? []).map((p) => [p.articulo_id, Number(p.precio)]));
-  const conCapex = puedeVerFinanzas(perfil.rol) && await capexVisible(supabase, o.sucursal_id);
+  const conCapex = puedeVerFinanzas(perfil.rol) && await capexVisible(supabase, o.sucursal_id, "orden", o.id);
   const subtotalOrden = rs.reduce((a, r) => a + Math.round(Number(r.cantidad) * Number(r.precio) * 100), 0) / 100;
 
   return (

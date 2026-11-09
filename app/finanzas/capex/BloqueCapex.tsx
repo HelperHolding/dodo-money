@@ -1,14 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { pesos } from "@/lib/formato";
-import { CATEGORIAS_CAPEX, nombreCategoriaCapex, sugerirAsignacion, type RenglonCapex } from "@/lib/finanzas/capex";
+import { asignacionesAjenas, CATEGORIAS_CAPEX, nombreCategoriaCapex, sugerirAsignacion, type RenglonCapex } from "@/lib/finanzas/capex";
 import { guardarCapexDocumento } from "./acciones";
 
 type Props = { db: SupabaseClient; tipo: "orden" | "factura"; id: string; sucursalId: string | null; subtotal: number; cancelado: boolean; uuidRelacionado?: string | null; puedeEditar: boolean };
 
-export async function capexVisible(db: SupabaseClient, sucursalId: string | null) {
-  if (!sucursalId) return false;
-  const { count } = await db.from("apertura_proyectos").select("id", { count: "exact", head: true }).eq("sucursal_id", sucursalId);
-  return (count ?? 0) > 0;
+/** La pestaña aparece si la sucursal tiene apertura o si el documento ya tiene CAPEX (aunque después le hayan corregido la sucursal). */
+export async function capexVisible(db: SupabaseClient, sucursalId: string | null, tipo: "orden" | "factura", id: string) {
+  const [apertura, asignado] = await Promise.all([
+    sucursalId ? db.from("apertura_proyectos").select("id", { count: "exact", head: true }).eq("sucursal_id", sucursalId) : Promise.resolve({ count: 0 }),
+    db.from("capex_asignaciones").select("id", { count: "exact", head: true }).eq(tipo === "orden" ? "orden_id" : "factura_id", id),
+  ]);
+  return (apertura.count ?? 0) > 0 || (asignado.count ?? 0) > 0;
 }
 
 /** Bloque "CAPEX de apertura" en el detalle de una orden o factura de Compras. */
@@ -28,7 +31,8 @@ export async function BloqueCapex({ db, tipo, id, sucursalId, subtotal, cancelad
   const sugerido = renglones.length === 0;
   const filas = sugerido ? sugerirAsignacion({ subtotal, proyectos: ids, categoriasItems: (items ?? []).map((i) => i.categoria), base: base.map((b) => ({ ...b, monto: Number(b.monto) })) }) : renglones;
   const asignado = renglones.reduce((a, r) => a + Math.round(r.monto * 100), 0) / 100;
-  const nombre = (p: string) => (proyectos ?? []).find((x) => x.id === p)?.sucursales?.nombre ?? "Apertura";
+  const ajenas = asignacionesAjenas(renglones, ids);
+  const nombre = (p: string) => (proyectos ?? []).find((x) => x.id === p)?.sucursales?.nombre ?? "Apertura de otra sucursal";
   const vacias = Math.max(2, 4 - filas.length);
   const total = filas.length + vacias;
   return (
@@ -36,7 +40,13 @@ export async function BloqueCapex({ db, tipo, id, sucursalId, subtotal, cancelad
       <p>Asignado {pesos(asignado)} de {pesos(subtotal)} sin IVA · sin asignar {pesos(Math.max(0, subtotal - asignado))}. Lo que no se asigna no cuenta en el reporte de CAPEX.</p>
       {renglones.length > 0 && <ul>{renglones.map((r) => <li key={r.proyecto_id + r.categoria}>{nombre(r.proyecto_id)} · {nombreCategoriaCapex(r.categoria)} · {pesos(r.monto)}{r.nota && ` · ${r.nota}`}</li>)}</ul>}
       {cancelado && <p>Documento cancelado: no cuenta en el CAPEX.</p>}
-      {puedeEditar && !cancelado && <form action={guardarCapexDocumento} className="formulario">
+      {ajenas.length > 0 && <p className="aviso aviso-error">La sucursal de este documento cambió después de asignarlo: {ajenas.length === 1 ? "una asignación sigue" : `${ajenas.length} asignaciones siguen`} contando en una apertura de otra sucursal. {ids.length ? "Guárdala de nuevo con la apertura correcta" : "Quita la marca CAPEX"} para corregir el reporte.</p>}
+      {puedeEditar && !cancelado && ids.length === 0 && renglones.length > 0 && <form action={guardarCapexDocumento} className="formulario">
+        <input type="hidden" name="tipo" value={tipo} /><input type="hidden" name="documento" value={id} /><input type="hidden" name="filas" value={0} />
+        <label>Motivo<input name="motivo" required minLength={5} maxLength={2000} placeholder="Por qué se quita la marca CAPEX" /></label>
+        <button className="boton">Quitar marca CAPEX</button>
+      </form>}
+      {puedeEditar && !cancelado && ids.length > 0 && <form action={guardarCapexDocumento} className="formulario">
         {sugerido && filas.length > 0 && <p className="saldo-nota">Sugerencia sin guardar: revisa la categoría y el monto antes de guardar.</p>}
         <input type="hidden" name="tipo" value={tipo} /><input type="hidden" name="documento" value={id} /><input type="hidden" name="filas" value={total} />
         {Array.from({ length: total }, (_, i) => { const r = filas[i]; return <fieldset key={i}><legend>Renglón {i + 1}</legend>

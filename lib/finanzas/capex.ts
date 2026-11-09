@@ -96,3 +96,7 @@ export function leerRenglones(fd: FormData, filas: number): RenglonCapex[] {
   }
   return out;
 }
+
+/** Asignaciones cuya apertura ya no es de la sucursal del documento (p. ej. se corrigió la sucursal después de asignar). */
+export const asignacionesAjenas = (renglones: RenglonCapex[], proyectosSucursal: string[]): RenglonCapex[] =>
+  renglones.filter((r) => !proyectosSucursal.includes(r.proyecto_id));

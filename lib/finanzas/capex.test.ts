@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { CATEGORIAS_CAPEX, equivalenciaItem, leerRenglones, resumir, semaforo, sugerirAsignacion, type FilaCapex } from "./capex.ts";
+import { asignacionesAjenas, CATEGORIAS_CAPEX, equivalenciaItem, leerRenglones, resumir, semaforo, sugerirAsignacion, type FilaCapex } from "./capex.ts";
 
 const fila = (x: Partial<FilaCapex>): FilaCapex => ({ proyecto_id: "p", categoria: "otros", presupuesto: null, comprometido: 0, facturado: 0, pagado: 0, pagado_con_iva: 0, por_pagar_con_iva: 0, por_ejercer: null, desviacion: null, ...x });
 
@@ -59,4 +59,11 @@ test("leer renglones del formulario: formatos de pesos, renglones vacíos y mont
   assert.deepEqual(leerRenglones(fd, 3), [{ proyecto_id: "p", categoria: "obra_civil", monto: 1234.57, nota: "Anticipo" }, { proyecto_id: "p", categoria: "mobiliario", monto: 500, nota: null }]);
   fd.set("monto_1", "mil");
   assert.throws(() => leerRenglones(fd, 3), /renglón 2/);
+});
+
+test("asignaciones ajenas: las de una apertura que ya no es de la sucursal del documento", () => {
+  const r = (proyecto_id: string) => ({ proyecto_id, categoria: "otros", monto: 1 });
+  assert.deepEqual(asignacionesAjenas([r("p"), r("q")], ["p"]), [r("q")]);
+  assert.deepEqual(asignacionesAjenas([r("p")], []), [r("p")]);
+  assert.deepEqual(asignacionesAjenas([], ["p"]), []);
 });
