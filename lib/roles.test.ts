@@ -73,8 +73,8 @@ test("menú lateral: cada puesto ve solo sus áreas", () => {
   assert.deepEqual(grupos("operacion"), ["Inicio", "Tareas", "Operación diaria", "Conocimiento"]);
   assert.deepEqual(grupos("encargado"), ["Inicio", "Tareas", "Operación diaria", "Conocimiento"]);
   assert.deepEqual(grupos("gerente"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Conocimiento"]);
-  assert.deepEqual(grupos("admin"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "P&L", "Banca", "Nómina", "Catálogos", "Aperturas", "Activos", "Cumplimiento", "Usuarios y sucursales", "Correos", "Conocimiento"]);
-  assert.deepEqual(grupos("corporativo"), ["Vista general", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "P&L", "Banca", "Nómina", "Catálogos", "Aperturas", "Activos", "Cumplimiento", "Correos", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Usuarios y sucursales", "Correos", "Conocimiento"]);
+  assert.deepEqual(grupos("corporativo"), ["Vista general", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Correos", "Conocimiento"]);
   assert.deepEqual(grupo("corporativo", "Inventario"), ["/inventario", "/inventario/uniformes"]);
   assert.deepEqual(grupo("operacion", "Tareas"), ["/tareas"]);
   assert.deepEqual(grupo("encargado", "Tareas"), ["/tareas", "/tareas/tablero"]);
@@ -88,8 +88,8 @@ const FOTO: Record<R, string[]> = {
   operacion: ["/","/arqueo","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/tareas"],
   encargado: ["/","/arqueo","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/recepciones","/tareas","/tareas/tablero","/turnos"],
   gerente: ["/","/arqueo","/asistente","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/recepciones","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/rappi"],
-  admin: ["/","/activos","/administracion/usuarios","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/cargar","/compras/documentos","/compras/pagos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/correos/contactos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/costos","/ventas/dodois","/ventas/importar","/ventas/rappi"],
-  corporativo: ["/","/activos","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/documentos","/compras/pagos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/costos","/ventas/rappi"],
+  admin: ["/","/activos","/administracion/usuarios","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/cargar","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/correos/contactos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/costos","/ventas/dodois","/ventas/importar","/ventas/rappi"],
+  corporativo: ["/","/activos","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/costos","/ventas/rappi"],
   marketing: ["/correos","/correos/contactos"],
 };
 test("menú por áreas: cada puesto ve exactamente las mismas páginas que antes", () => {
@@ -116,6 +116,13 @@ test("areaActiva: rutas de detalle, alias y la raíz", () => {
   assert.equal(areaActiva(corp, "/corporativo")?.titulo, "Vista general");
   assert.equal(areaActiva(admin, "/finanzas/nomina")?.titulo, "Nómina");
   assert.equal(areaActiva(admin, "/banca/movimientos")?.titulo, "Banca");
+  // Mantenimiento junta activos (con su calendario) y compromisos recurrentes; Pagos sigue en Compras
+  assert.equal(areaActiva(admin, "/activos/abc")?.titulo, "Mantenimiento");
+  assert.equal(areaActiva(corp, "/compras/pagos/compromisos")?.titulo, "Mantenimiento");
+  assert.equal(areaActiva(admin, "/compras/pagos")?.titulo, "Compras");
+  assert.equal(areaActiva(admin, "/compras/pagos/reservas")?.titulo, "Compras");
+  for (const rol of ["admin", "corporativo"] as const) assert.deepEqual(menuLateral(rol).grupos.find((g) => g.titulo === "Mantenimiento")?.enlaces.map((e) => e.href), ["/activos", "/compras/pagos/compromisos"]);
+  for (const rol of ["gerente", "encargado", "operacion"] as const) assert.equal(menuLateral(rol).grupos.some((g) => g.titulo === "Mantenimiento"), false);
 });
 
 test("menú lateral: Inicio arriba; corporativo empieza en la vista general", () => {

@@ -43,7 +43,7 @@ test("programar pagos queda bajo Pagos", () => {
   assert.equal(texto(migas("/compras/pagos/programar", admin)), "Compras › Pagos(/compras/pagos) › Programar pagos");
 });
 
-test("compromisos fijos quedan bajo Pagos", () => {
-  assert.equal(texto(migas("/compras/pagos/compromisos", admin)), "Compras › Pagos(/compras/pagos) › Compromisos fijos");
-  assert.equal(texto(migas("/compras/pagos/compromisos/nuevo", admin)), "Compras › Pagos(/compras/pagos) › Compromisos fijos(/compras/pagos/compromisos) › Nuevo compromiso");
+test("compromisos fijos quedan bajo Mantenimiento", () => {
+  assert.equal(texto(migas("/compras/pagos/compromisos", admin)), "Mantenimiento › Compromisos fijos");
+  assert.equal(texto(migas("/compras/pagos/compromisos/nuevo", admin)), "Mantenimiento › Compromisos fijos(/compras/pagos/compromisos) › Nuevo compromiso");
 });
