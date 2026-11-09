@@ -31,6 +31,8 @@ test('el brandbook manda en los tokens', () => {
   assert.match(css, /--display:\s*var\(--fuente-archivo/);
   // En celular la primera columna fija (globals) no rompe el encabezado beige de la tabla
   assert.match(css, /thead th:first-child \{ background: var\(--papel-2\); \}/);
+  // El acceso dividido sigue el papel del tema (blanco de día, casi negro de noche), no --blanco fijo
+  assert.match(css, /\.login\.login-dividida \{ background: var\(--papel\); \}/);
 });
 
 test('el encabezado usa la D oficial plana y el interruptor no enciende nada', () => {

@@ -242,6 +242,7 @@ html[data-luz="noche"]:has(.marco) .esqueleto { background-color: #242424; }
 /* ─── Acceso: fondo beige liso y tarjeta blanca ─── */
 .login { background: var(--papel-2); }
 .login form, .login-tarjeta { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); padding: 24px; }
+.login.login-dividida { background: var(--papel); }
 
 /* ─── Tablero de Ventas: pantalla del periodo, gráficas en rejilla y detalles en mosaico ───
    Las rejillas se acomodan por el ancho del contenido (consultas de contenedor), no de la ventana: el menú lateral
