@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { destinoClic, dominiosExtra } from "@/lib/correos/destino";
 import { slug } from "@/lib/correos/tipos";
@@ -6,7 +6,11 @@ import { slug } from "@/lib/correos/tipos";
 export const dynamic = "force-dynamic";
 const ESPERA_MS = 2000;
 
-/** Clic: registra y redirige solo a dominios permitidos (si no, a dodopizza.mx). Nunca falla a la vista. */
+/**
+ * Clic: registra y redirige solo a dominios permitidos (si no, a dodopizza.mx). Nunca falla a la vista.
+ * Espera hasta 2 s el nombre de la campaña para la UTM; si la base tarda (función recién despertada), redirige igual
+ * y after() mantiene viva la función hasta que el clic quede guardado.
+ */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const u = req.nextUrl.searchParams.get("u");
   const extra = dominiosExtra();
@@ -16,7 +20,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     if (/^[0-9a-f]{64}$/.test(token)) {
       const previo = destinoClic(u, "correo", extra);
       const registro = Promise.resolve(crearClienteAdmin().rpc("correo_registrar_evento", { p_token: token, p_tipo: "clic", p_enlace: previo, p_agente: req.headers.get("user-agent") })).catch(() => null);
-      const res = await Promise.race([registro, new Promise<null>((r) => setTimeout(() => r(null), ESPERA_MS))]);
+      after(() => registro);
+      let reloj: ReturnType<typeof setTimeout> | undefined;
+      const res = await Promise.race([registro, new Promise<null>((r) => { reloj = setTimeout(() => r(null), ESPERA_MS); })]);
+      clearTimeout(reloj);
       const nombre = res?.data?.campana_nombre;
       if (nombre) campana = slug(String(nombre));
     }

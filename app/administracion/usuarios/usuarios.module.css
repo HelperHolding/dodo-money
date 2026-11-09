@@ -1,5 +1,5 @@
 /* Usuarios y sucursales: solo tokens de app/globals.css. */
-.panel { display: grid; gap: var(--e-4); padding: var(--e-5); border-radius: 18px; border: 1px solid var(--linea); background: var(--superficie); backdrop-filter: var(--desenfoque, none); -webkit-backdrop-filter: var(--desenfoque, none); }
+.panel { display: grid; gap: var(--e-4); padding: var(--e-5); border-radius: 18px; border: 1px solid var(--linea); background: var(--superficie); }
 
 .metricas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--e-3); }
 .metricas > div { display: flex; flex-direction: column; gap: 2px; padding: var(--e-4) var(--e-4); background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); color: var(--tinta-2); font-size: var(--t-sm); font-weight: 600; }

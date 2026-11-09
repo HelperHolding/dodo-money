@@ -11,6 +11,7 @@ test('seguimiento: píxel sin caché, clic con destino validado y baja con botó
 });
 test('seguimiento: píxel y clic nunca fallan a la vista del lector',()=>{
  const a=leer('app/api/correos/a/[token]/route.ts'),c=leer('app/api/correos/c/[token]/route.ts');
- for(const s of [a,c]){assert.match(s,/try\s*\{/);assert.match(s,/catch/);assert.match(s,/Promise\.race/);}
+ for(const s of [a,c]){assert.match(s,/try\s*\{/);assert.match(s,/catch/);assert.match(s,/after\(/,'el registro debe seguir después de responder');}
+ assert.match(c,/Promise\.race/);assert.doesNotMatch(a,/Promise\.race/,'el píxel no espera a la base');
  assert.match(c,/no-store/);
 });
