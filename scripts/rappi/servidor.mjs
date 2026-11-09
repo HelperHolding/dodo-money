@@ -22,7 +22,7 @@ import { createServer } from "node:http";
 import { existsSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium } from "playwright-core";
-import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso, esperarHasta, sinRechazoSuelto, tiendasPermitidas, elegirTienda, nombreCache, fechaDeCache } from "./api.mjs";
+import { ordenDesdeApi, fechaListado, planearVuelta, planearRepaso, esperarHasta, sinRechazoSuelto, tiendasPermitidas, elegirTienda, nombreCache, fechaDeCache, crearTurnos } from "./api.mjs";
 import { iniciarSesion } from "./login.mjs";
 
 const PORTAL = "https://restaurantes.rappi.com";
@@ -45,8 +45,8 @@ function guardarCache(tienda, fecha, cache) {
   for (const f of readdirSync(DATOS)) { const dia = fechaDeCache(f); if (dia && dia < restarDias(hoyMX(), DIAS_CACHE)) unlinkSync(join(DATOS, f)); }
 }
 
-// Una corrida a la vez: dos navegadores sobre la misma sesión se pisarían el storageState.
-let enCurso = null;
+// Una corrida a la vez; otra tienda espera su turno y la misma tienda empalmada se salta (ver crearTurnos).
+const turno = crearTurnos();
 
 async function sincronizar({ tienda, fecha, revisar, usarCache, repasar = 0 }) {
   const NUM = tienda.slice(2);
@@ -166,11 +166,11 @@ createServer(async (req, res) => {
   const fecha = datos.fecha === "hoy" ? hoyMX() : /^\d{4}-\d{2}-\d{2}$/.test(String(datos.fecha ?? "")) ? datos.fecha : ayerMX();
   let tienda;
   try { tienda = elegirTienda(datos.tienda, TIENDAS); } catch (e) { return responder(res, 400, { error: e.message }); }
-  // Si una vuelta anterior sigue corriendo, esta se salta sin error: la siguiente la cubre.
-  if (enCurso) return responder(res, 200, { fecha, tienda, estado: "ocupado", mensaje: "Ya había una corrida en curso; esta vuelta se saltó.", ordenes: 0, renglones: 0, omitidas: [], cuerpo: null });
   const repasar = Number.isInteger(datos.repasar) ? Math.min(Math.max(datos.repasar, 0), 7) : 0;
-  enCurso = sincronizar({ tienda, fecha, revisar: datos.revisar === true, usarCache: datos.cache === true, repasar });
-  try { responder(res, 200, await enCurso); }
-  catch (e) { responder(res, 200, { fecha, tienda, estado: "error", mensaje: `Falla del extractor: ${String(e?.message ?? e).slice(0, 300)}`, ordenes: 0, renglones: 0, omitidas: [], cuerpo: null }); }
-  finally { enCurso = null; }
+  try {
+    const r = await turno(tienda, () => sincronizar({ tienda, fecha, revisar: datos.revisar === true, usarCache: datos.cache === true, repasar }));
+    // La misma tienda ya estaba corriendo o en espera: esta vuelta se salta sin error y la siguiente la cubre.
+    if (r.ocupado) return responder(res, 200, { fecha, tienda, estado: "ocupado", mensaje: "Ya había una corrida de esta tienda en curso; esta vuelta se saltó.", ordenes: 0, renglones: 0, omitidas: [], cuerpo: null });
+    responder(res, 200, r.resultado);
+  } catch (e) { responder(res, 200, { fecha, tienda, estado: "error", mensaje: `Falla del extractor: ${String(e?.message ?? e).slice(0, 300)}`, ordenes: 0, renglones: 0, omitidas: [], cuerpo: null }); }
 }).listen(Number(PUERTO), () => console.log(`Extractor Rappi escuchando en :${PUERTO}`));

@@ -63,7 +63,8 @@ const nodes = [
   nodo("Probar (webhook)", "n8n-nodes-base.webhook", 2, [0, 200], { httpMethod: "POST", path: "rappi-ventas", authentication: "headerAuth", responseMode: "lastNode", options: {} }, { webhookId: id() }),
   // En vivo manda fecha "hoy" con caché; el cierre manda fecha vacía (= ayer) sin caché; el webhook manda su {fecha?, revisar?, tienda?}.
   nodo("Por tienda", "n8n-nodes-base.code", 2, [200, 200], { jsCode: porTienda }),
-  // Una petición a la vez (batchSize 1): el extractor solo corre una vuelta y respondería "ocupado" a la segunda tienda.
+  // El batching solo espacia el inicio de las peticiones (no espera la respuesta): las tiendas llegan juntas y el
+  // extractor las pone en turno (crearTurnos en scripts/rappi/api.mjs).
   nodo("Leer Rappi", "n8n-nodes-base.httpRequest", 4.2, [420, 100], {
     method: "POST", url: EXTRACTOR, ...headerAuth,
     sendBody: true, specifyBody: "json", jsonBody: "={{ JSON.stringify({ tienda: $json.tienda, fecha: $json.fecha, revisar: $json.revisar === true, cache: $json.cache === true, repasar: $json.repasar ?? 0 }) }}",

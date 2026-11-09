@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-09 · Rappi: Turbo ya no sale «ocupado» · sin migración
+
+En la primera vuelta del flujo con dos tiendas, Turbo siempre respondía «ocupado»: el batching del nodo HTTP de n8n solo espacia el inicio de las peticiones y no espera la respuesta, así que La Calma y Turbo llegaban juntas al extractor. Ahora el extractor pone las tiendas en turno (`crearTurnos` en `scripts/rappi/api.mjs`): otra tienda espera a que termine la que corre, y solo se salta con «ocupado» la misma tienda empalmada (vueltas de 15 min que se cruzan). Prueba en `scripts/rappi/api.test.mjs`.
+
 ## 2026-11-09 · Rappi: pedidos de Rappi Turbo · sin migración
 
 Rappi Turbo es otra tienda del Portal Aliados («Dodo Pizza - Turbo», `MX1930494033`, misma dirección y cocina que La Calma) y sus pedidos no entraban: el extractor solo leía `MX1930486109`. Ahora el extractor acepta `tienda` en `/sincronizar` (lista permitida: `RAPPI_TIENDA` más `RAPPI_TIENDAS`) y guarda su caché por tienda; la principal conserva el nombre de archivo de antes. El flujo `Rappi_Ventas_Diarias` arma una vuelta por tienda en «Por tienda», llama al extractor de una en una (lote de 1, para que la segunda no salga «ocupado») y resume y avisa por tienda; el webhook «Probar» acepta `{"tienda": "MX…"}`. La app ya admitía varias tiendas por sucursal (`rappi_tiendas`): la primera importación de Turbo la liga a Dodo La Calma (Dodo-1). La cuenta del extractor (`RAPPI_USUARIO`) debe tener acceso a la tienda Turbo en el portal. Pruebas en `scripts/rappi/api.test.mjs` y `tests/n8nRappi.test.mjs`.
