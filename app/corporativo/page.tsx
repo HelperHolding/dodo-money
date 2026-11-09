@@ -12,8 +12,8 @@ import { FranjaAlertas } from "@/app/cumplimiento/FranjaAlertas";
 import { leerAlertas } from "@/app/cumplimiento/datos";
 import { datosCorporativo } from "./datos";
 import { PanelVistaGeneral } from "./PanelVistaGeneral";
-export default async function Corporativo({ searchParams }: { searchParams: Promise<{ fecha?: string;ventas_mes?:string;ventas_sucursal?:string }> }) {
-  const { fecha: pedida,ventas_mes,ventas_sucursal } = await searchParams;
+export default async function Corporativo({ searchParams }: { searchParams: Promise<{ fecha?: string;ventas_mes?:string;ventas_sucursal?:string;hist?:string;alcance?:string }> }) {
+  const { fecha: pedida,ventas_mes,ventas_sucursal,hist,alcance } = await searchParams;
   const ahora = new Date();
   const hoy = diaOperativoMX(ahora);
   const fecha = fechaElegida(pedida, hoy);
@@ -36,5 +36,5 @@ export default async function Corporativo({ searchParams }: { searchParams: Prom
   const filas = ordenarSucursales(datos.map((d) => ({ ...d, alertas: alertasDeSucursal(d, fecha < hoy) })));
 
   return <>{alertasCumplimiento && <FranjaAlertas alertas={alertasCumplimiento} />}<PanelVistaGeneral fecha={fecha} hoy={hoy} filas={filas} efectivo={efectivo} proveedoresResumen={proveedoresResumen}
-    ventas={<DashboardVentasInicio supabase={supabase} rol={perfil.rol} mes={ventas_mes} sucursal={ventas_sucursal} porDefecto={null} ruta="/corporativo" fecha={fecha}/>} /></>;
+    ventas={<DashboardVentasInicio supabase={supabase} rol={perfil.rol} mes={ventas_mes} sucursal={ventas_sucursal} porDefecto={null} ruta="/corporativo" fecha={fecha} hist={hist} alcance={alcance}/>} /></>;
 }

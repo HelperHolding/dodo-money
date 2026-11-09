@@ -10,6 +10,7 @@
   --papel-2: #f9f1e6;
   --display: var(--fuente-archivo, "Archivo"), var(--fuente);
   --dodo-naranja: #ff4e00;
+  --fondo-pagina: var(--papel-2);   /* contenido sobre beige; las tarjetas van blancas encima */
 }
 
 /* ─── Noche: fondos sólidos casi negros, texto beige, naranja en acciones. Solo con el marco o el acceso:
@@ -28,6 +29,7 @@ html[data-luz="noche"]:has(.marco, .login) {
   --accion-tinte: rgb(255 154 92 / .14);
   --accion-suave: rgb(255 120 40 / .22);
   --accion-suave-borde: rgb(255 140 70 / .4);
+  --fondo-pagina: #121212;
   --cuadra-fondo: rgb(60 190 130 / .18); --cuadra-texto: #8be3b8; --cuadra-borde: rgb(60 190 130 / .4);
   --alerta-fondo: rgb(240 90 80 / .2); --alerta-texto: #ffb8b0; --alerta-borde: rgb(240 90 80 / .45);
   --aviso-fondo: rgb(240 180 60 / .18); --aviso-texto: #ffd27a;
@@ -59,7 +61,7 @@ html[data-luz="noche"]:has(.marco) .tabla-pl { --pl-barra: #5a4636; }
   .marco { background: linear-gradient(90deg, #000 0 260px, var(--accion) 260px 264px, transparent 264px); }
 }
 .lateral, .franja-movil { background: #000; }
-.marco-contenido { min-height: 100vh; background: var(--papel); overflow-x: clip; }
+.marco-contenido { min-height: 100vh; background: var(--fondo-pagina); overflow-x: clip; }
 
 /* Interruptor sol / luna */
 /* Buscador, interruptor y menú con aire entre sí (antes quedaban pegados) */
@@ -90,7 +92,7 @@ a, a:hover { text-decoration: none !important; }
 
 
 /* ─── Superficies planas: tarjeta blanca, línea fina, sin sombra ─── */
-:is(.seccion, .tarjeta, .ap-panel, .zona-plegable, .error-pagina) { border-radius: var(--r-md); box-shadow: none; }
+:is(.seccion, .tarjeta, .ap-panel, .zona-plegable, .error-pagina) { border-radius: var(--r-lg); box-shadow: none; }
 .compra-grupo, .compra-barra, :where(.pagina, .panel-admin) > .indicadores-marco:where(:has(> h2, > p)) {
   background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); padding: 14px 16px;
 }
@@ -611,6 +613,54 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   .horas-pico .mapa-calor-celda, .calendario-dia { transition: none; }
 }
 
+/* ─── Dashboard de inicio: orígenes y venta diaria lado a lado; historial con título grande ───
+   Colores de origen de la serie categórica validada; el nombre siempre va al lado (leyenda). */
+.cat-mostrador { --cat: var(--dato-1); }
+.cat-rappi { --cat: var(--dato-2); }
+.cat-app { --cat: var(--dato-3); }
+.cat-agregador { --cat: var(--dato-4); }
+.cat-sitio { --cat: var(--dato-otro); }
+.cat-centro_llamadas { --cat: var(--dato-sin); }
+.inicio-fila { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1100px) { .inicio-fila { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.inicio-tarjeta { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-lg); padding: 20px 22px; min-width: 0; }
+.inicio-tarjeta h3 { font-family: var(--display); font-weight: 700; font-size: 1.1rem; margin-bottom: 14px; }
+.inicio-origenes { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 16px; align-items: center; }
+@media (max-width: 640px) { .inicio-origenes { grid-template-columns: minmax(0, 1fr); } }
+.inicio-origenes .dona-leyenda { display: none; }
+.inicio-origenes-lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+.inicio-origenes-lista li { display: grid; gap: 2px; min-width: 0; }
+.inicio-origen-nombre { display: flex; align-items: center; gap: 6px; font-size: var(--t-sm); color: var(--tinta-2); }
+.inicio-origenes-lista strong { font-family: var(--display); font-size: 1.6rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.inicio-origenes-lista small { color: var(--tinta-3); }
+.inicio-historial { display: grid; gap: 12px; }
+.inicio-historial-cabecera { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.inicio-historial h2 { font-family: var(--display); font-weight: 800; font-size: clamp(1.8rem, 3.4vw, 2.6rem); line-height: 1.05; }
+.inicio-historial-modo { justify-self: center; }
+@media (max-width: 640px) { .seccion.inicio-ventas { padding: 18px 14px; } .seccion.inicio-ventas .inicio-ventas-kpis strong { font-size: 1.2rem; overflow-wrap: anywhere; } }
+.inicio-historial .segmentos [aria-current="page"] { background: var(--accion); color: var(--accion-texto); }
+.linea-historial { margin: 0; }
+.linea-historial svg { width: 100%; height: auto; display: block; }
+.linea-historial-guia { stroke: var(--linea); stroke-width: 1; }
+.linea-historial-eje { fill: var(--tinta-3); font-size: 12px; font-family: var(--fuente); }
+.linea-historial-trazo { fill: none; stroke: var(--accion); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.linea-historial-punto { fill: var(--accion); stroke: var(--superficie); stroke-width: 2; }
+.linea-historial-punto[data-parcial] { fill: var(--superficie); stroke: var(--accion); }
+
+/* ─── Menú por áreas: secciones con título pequeño y áreas con ícono; pestañas del área arriba de la página ─── */
+.lateral-seccion { padding: 10px 8px 2px; }
+.lateral-seccion ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.lateral-seccion-titulo { margin: 4px 8px 6px; font-size: var(--t-xs); font-weight: 600; color: var(--oscuro-texto-2); }
+.lateral-area { display: flex; align-items: center; gap: 10px; border-radius: var(--r-sm); }
+.lateral-area[aria-current="page"] { background: var(--oscuro-activo); color: var(--blanco); font-weight: 700; box-shadow: inset 3px 0 0 var(--accion); }
+.lateral-area .contador-menu { margin-left: auto; }
+.pestanas-area { display: flex; gap: 4px; margin: 0 0 16px; padding: 4px; width: fit-content; max-width: 100%; overflow-x: auto;
+  background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-full); scrollbar-width: none; }
+.pestanas-area a { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--r-full);
+  color: var(--tinta-2); font-weight: 600; font-size: var(--t-sm); white-space: nowrap; }
+.pestanas-area a:hover { background: var(--accion-tinte); color: var(--tinta); }
+.pestanas-area a[aria-current="page"] { background: var(--accion); color: var(--accion-texto); }
+
 /* ─── Celular ─── */
 @media (max-width: 900px) {
   .encabezado-titulo { gap: 12px; }
@@ -629,5 +679,6 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   .marco { background: none; }
   .marco-contenido, .login { background: #fff; }
   .encabezado-marca { display: none; }
+  .pestanas-area { display: none; }
   :is(.seccion, .tarjeta, .indicador, .saldo) { box-shadow: none; background: #fff; }
 }
