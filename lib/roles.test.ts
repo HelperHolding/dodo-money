@@ -73,8 +73,8 @@ test("menú lateral: cada puesto ve solo sus áreas", () => {
   assert.deepEqual(grupos("operacion"), ["Inicio", "Tareas", "Operación diaria", "Conocimiento"]);
   assert.deepEqual(grupos("encargado"), ["Inicio", "Tareas", "Operación diaria", "Conocimiento"]);
   assert.deepEqual(grupos("gerente"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Conocimiento"]);
-  assert.deepEqual(grupos("admin"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Usuarios y sucursales", "Correos", "Conocimiento"]);
-  assert.deepEqual(grupos("corporativo"), ["Vista general", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Correos", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "CAPEX", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Usuarios y sucursales", "Correos", "Conocimiento"]);
+  assert.deepEqual(grupos("corporativo"), ["Vista general", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "CAPEX", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Correos", "Conocimiento"]);
   assert.deepEqual(grupo("corporativo", "Inventario"), ["/inventario", "/inventario/uniformes"]);
   assert.deepEqual(grupo("operacion", "Tareas"), ["/tareas"]);
   assert.deepEqual(grupo("encargado", "Tareas"), ["/tareas", "/tareas/tablero"]);
