@@ -8,8 +8,9 @@ const leer = (r) => readFileSync(new URL(`../${r}`, import.meta.url), 'utf8');
 test('el dashboard trae orígenes, venta diaria e historial y ya no la tabla por canal', () => {
   const d = leer('components/DashboardVentasInicio.tsx');
   assert.match(d, /origenesPedidos\(/);
-  assert.match(d, /historialVentas\(/);
-  assert.match(d, /<LineaHistorial /);
+  assert.match(d, /<HistorialVentas /);
+  assert.match(leer('components/HistorialVentas.tsx'), /historialVentas\(/);
+  assert.match(leer('components/HistorialVentas.tsx'), /<LineaHistorial /);
   assert.match(d, /<BarrasVerticales /);
   assert.doesNotMatch(d, /Última fecha con datos/);
 });
@@ -42,4 +43,28 @@ test('la nota al pie dice que el historial incluye Rappi', () => {
 });
 test('el buscador de páginas no repite destinos (Inicio va arriba y dentro de su área)', () => {
   assert.match(leer('components/BuscadorPaginas.tsx'), /\.filter\(\(p, i, todas\) => todas\.findIndex\(\(x\) => x\.href === p\.href\) === i\)/);
+});
+
+// Sin recarga completa: el historial cambia de periodo en el navegador y pide al servidor solo el otro alcance;
+// los filtros de mes y sucursal navegan sin recargar y solo el dashboard muestra que está cargando.
+test('el historial es un componente del navegador: periodo al instante, alcance con acción del servidor, sin enlaces que recarguen', () => {
+  const h = leer('components/HistorialVentas.tsx');
+  assert.match(h, /^"use client";/);
+  assert.match(h, /useTransition/);
+  assert.match(h, /ventaHistorial\(/);
+  assert.match(h, /history\.replaceState/);
+  assert.doesNotMatch(h, /<a /);
+  assert.doesNotMatch(leer('components/DashboardVentasInicio.tsx'), /href=\{liga\(/);
+});
+test('la acción del historial solo responde a admin y corporativo', () => {
+  const a = leer('app/ventas/historialAcciones.ts');
+  assert.match(a, /^"use server";/);
+  assert.match(a, /veVentasDeTodas\(perfil\.rol\)/);
+});
+test('los filtros de mes y sucursal navegan sin recargar y marcan el dashboard como cargando', () => {
+  const f = leer('components/FiltrosDashboard.tsx');
+  assert.match(f, /^"use client";/);
+  assert.match(f, /router\.push\([^)]*\{ scroll: false \}\)/);
+  assert.match(f, /aria-busy/);
+  assert.match(leer('components/DashboardVentasInicio.tsx'), /<FiltrosDashboard /);
 });
