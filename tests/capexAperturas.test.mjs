@@ -119,3 +119,70 @@ test('capex: asignar documentos valida sucursal, tope, cancelados, duplicados y 
   await assert.rejects(asignar(db,'factura',F1,[]),/Solo administración/);
  }finally{await db.close();}
 });
+
+const fila=async(db,p,c)=>(await db.query(`select presupuesto::float8,comprometido::float8,facturado::float8,pagado::float8,pagado_con_iva::float8,por_pagar_con_iva::float8,por_ejercer::float8,desviacion::float8
+ from capex_resumen where proyecto_id=$1 and categoria=$2`,[p,c])).rows[0];
+const pagar=async(db,facturaId,monto,anulado=false)=>{const g=(await db.query('insert into pagos(monto,anulado_en) values($1,$2) returning id',[monto,anulado?new Date().toISOString():null])).rows[0].id;
+ await db.query('insert into pago_aplicaciones(pago_id,factura_id,monto) values($1,$2,$3)',[g,facturaId,monto]);};
+const id=(p,n)=>`${p}0000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+
+test('capex: resumen cruza presupuesto, órdenes, facturas, notas de crédito y pagos',async()=>{
+ const db=await preparar();
+ try{
+  await como(db,ADMIN);
+  await db.query('select public.aprobar_capex_presupuesto($1,0,$2::jsonb,$3)',[P1,JSON.stringify({obra_civil:10000,instalaciones:5000}),'Presupuesto inicial']);
+  await orden(db,id(4,11),S1,'confirmada',[[1,8000]]);
+  await asignar(db,'orden',id(4,11),[{proyecto_id:P1,categoria:'obra_civil',monto:8000}]);
+  await factura(db,id(5,11),S1,{subtotal:3000,total:3480});
+  await db.query('insert into factura_ordenes values($1,$2)',[id(5,11),id(4,11)]);
+  await asignar(db,'factura',id(5,11),[{proyecto_id:P1,categoria:'obra_civil',monto:3000}]);
+  await pagar(db,id(5,11),1740);
+  await factura(db,id(5,12),S1,{subtotal:2000,total:2320});
+  await asignar(db,'factura',id(5,12),[{proyecto_id:P1,categoria:'instalaciones',monto:2000}]);
+  await pagar(db,id(5,12),2320,true);
+  await factura(db,id(5,13),S1,{tipo:'egreso',subtotal:500,total:580,uuid_relacionado:id(5,11)});
+  await asignar(db,'factura',id(5,13),[{proyecto_id:P1,categoria:'obra_civil',monto:500}]);
+  await factura(db,id(5,14),S1,{subtotal:1000,total:1160});
+  await asignar(db,'factura',id(5,14),[{proyecto_id:P1,categoria:'obra_civil',monto:1000}]);
+  await db.query(`update facturas set estado='cancelada' where id=$1`,[id(5,14)]);
+  await orden(db,id(4,12),S1,'borrador',[[1,700]]);
+  await asignar(db,'orden',id(4,12),[{proyecto_id:P1,categoria:'instalaciones',monto:700}]);
+  // Total 0 (todo retenido): no debe dividir entre cero.
+  await factura(db,id(5,15),S1,{subtotal:100,total:0});
+  await asignar(db,'factura',id(5,15),[{proyecto_id:P1,categoria:'otros',monto:100}]);
+  assert.deepEqual(await fila(db,P1,'obra_civil'),{presupuesto:10000,comprometido:5000,facturado:2500,pagado:1500,pagado_con_iva:1740,por_pagar_con_iva:1160,por_ejercer:2500,desviacion:-2500});
+  assert.deepEqual(await fila(db,P1,'instalaciones'),{presupuesto:5000,comprometido:0,facturado:2000,pagado:0,pagado_con_iva:0,por_pagar_con_iva:2320,por_ejercer:3000,desviacion:-3000});
+  assert.deepEqual(await fila(db,P1,'otros'),{presupuesto:0,comprometido:0,facturado:100,pagado:0,pagado_con_iva:0,por_pagar_con_iva:0,por_ejercer:-100,desviacion:100});
+  assert.deepEqual(await fila(db,P1,'mobiliario'),{presupuesto:0,comprometido:0,facturado:0,pagado:0,pagado_con_iva:0,por_pagar_con_iva:0,por_ejercer:0,desviacion:0});
+  await db.query(`update ordenes_compra set estado='cerrada' where id=$1`,[id(4,11)]);
+  assert.equal((await fila(db,P1,'obra_civil')).comprometido,0);
+ }finally{await db.close();}
+});
+
+test('capex: reparto 60/40 prorratea pago e IVA; sin presupuesto no hay desviación',async()=>{
+ const db=await preparar();
+ try{
+  await como(db,ADMIN);
+  await factura(db,id(5,21),S2,{subtotal:10000,total:11600});
+  await asignar(db,'factura',id(5,21),[{proyecto_id:P2,categoria:'equipo_cocina',monto:6000},{proyecto_id:P2,categoria:'mobiliario',monto:4000}]);
+  await pagar(db,id(5,21),5800);
+  assert.deepEqual(await fila(db,P2,'equipo_cocina'),{presupuesto:null,comprometido:0,facturado:6000,pagado:3000,pagado_con_iva:3480,por_pagar_con_iva:3480,por_ejercer:null,desviacion:null});
+  assert.deepEqual(await fila(db,P2,'mobiliario'),{presupuesto:null,comprometido:0,facturado:4000,pagado:2000,pagado_con_iva:2320,por_pagar_con_iva:2320,por_ejercer:null,desviacion:null});
+ }finally{await db.close();}
+});
+
+test('capex: una factura de dos órdenes no deja comprometido negativo',async()=>{
+ const db=await preparar();
+ try{
+  await como(db,ADMIN);
+  await orden(db,id(4,31),S1,'confirmada',[[1,1000]]);
+  await orden(db,id(4,32),S1,'confirmada',[[1,1000]]);
+  for(const o of [id(4,31),id(4,32)])await asignar(db,'orden',o,[{proyecto_id:P1,categoria:'mobiliario',monto:1000}]);
+  await factura(db,id(5,31),S1,{subtotal:1500,total:1740});
+  for(const o of [id(4,31),id(4,32)])await db.query('insert into factura_ordenes values($1,$2)',[id(5,31),o]);
+  await asignar(db,'factura',id(5,31),[{proyecto_id:P1,categoria:'mobiliario',monto:1500}]);
+  const f=await fila(db,P1,'mobiliario');
+  assert.equal(f.comprometido,0);
+  assert.equal(f.facturado,1500);
+ }finally{await db.close();}
+});

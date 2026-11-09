@@ -127,4 +127,47 @@ grant select on public.capex_asignaciones,public.capex_asignacion_historial to a
 revoke all on function public.guardar_capex_asignacion(text,uuid,jsonb,text) from public,anon;
 grant execute on function public.guardar_capex_asignacion(text,uuid,jsonb,text) to authenticated;
 
+-- Presupuesto vs real por apertura y categoría. Sin IVA salvo las columnas *_con_iva.
+-- Una factura ligada a dos órdenes de la misma categoría se descuenta de ambas (comprometido puede quedar bajo, nunca negativo).
+create view public.capex_resumen with(security_invoker=true) as
+with pre as(
+ select p.proyecto_id,p.categoria,p.monto from public.capex_presupuestos p
+ where p.revision=(select max(x.revision) from public.capex_presupuestos x where x.proyecto_id=p.proyecto_id)
+),pag as(
+ select pa.factura_id,sum(pa.monto) pagado from public.pago_aplicaciones pa join public.pagos g on g.id=pa.pago_id
+ where g.anulado_en is null group by pa.factura_id
+),fac as(
+ select a.proyecto_id,a.categoria,
+  sum(case when f.tipo='egreso' then -a.monto else a.monto end) facturado,
+  sum(case when f.tipo='egreso' then -1 else 1 end*a.monto*f.total/nullif(f.subtotal-f.descuento,0)) facturado_con_iva,
+  sum(case when f.tipo='egreso' then 0 else a.monto*coalesce(pag.pagado,0)/nullif(f.subtotal-f.descuento,0) end) pagado_con_iva,
+  sum(case when f.tipo='egreso' then 0 else a.monto*coalesce(pag.pagado,0)/nullif(f.total,0) end) pagado
+ from public.capex_asignaciones a join public.facturas f on f.id=a.factura_id left join pag on pag.factura_id=f.id
+ where f.estado<>'cancelada' group by a.proyecto_id,a.categoria
+),ord as(
+ select a.proyecto_id,a.categoria,sum(greatest(0,a.monto-coalesce((
+  select sum(case when f.tipo='egreso' then -b.monto else b.monto end)
+  from public.factura_ordenes fo join public.facturas f on f.id=fo.factura_id and f.estado<>'cancelada'
+  join public.capex_asignaciones b on b.factura_id=f.id and b.proyecto_id=a.proyecto_id and b.categoria=a.categoria
+  where fo.orden_id=a.orden_id),0))) comprometido
+ from public.capex_asignaciones a join public.ordenes_compra o on o.id=a.orden_id
+ where o.estado='confirmada' group by a.proyecto_id,a.categoria
+),llaves as(
+ select proyecto_id,categoria from pre union select proyecto_id,categoria from fac union select proyecto_id,categoria from ord
+)
+select l.proyecto_id,l.categoria,pre.monto presupuesto,
+ round(coalesce(ord.comprometido,0),2) comprometido,
+ round(coalesce(fac.facturado,0),2) facturado,
+ round(coalesce(fac.pagado,0),2) pagado,
+ round(coalesce(fac.pagado_con_iva,0),2) pagado_con_iva,
+ round(coalesce(fac.facturado_con_iva,0)-coalesce(fac.pagado_con_iva,0),2) por_pagar_con_iva,
+ round(pre.monto-coalesce(ord.comprometido,0)-coalesce(fac.facturado,0),2) por_ejercer,
+ round(coalesce(ord.comprometido,0)+coalesce(fac.facturado,0)-pre.monto,2) desviacion
+from llaves l
+left join pre on pre.proyecto_id=l.proyecto_id and pre.categoria=l.categoria
+left join fac on fac.proyecto_id=l.proyecto_id and fac.categoria=l.categoria
+left join ord on ord.proyecto_id=l.proyecto_id and ord.categoria=l.categoria;
+revoke all on public.capex_resumen from public,anon,authenticated;
+grant select on public.capex_resumen to authenticated;
+
 commit;
