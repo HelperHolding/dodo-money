@@ -121,3 +121,16 @@ test("caché por tienda: la principal conserva el nombre viejo y la limpieza rec
   assert.equal(fechaDeCache("cache-2026-11-09.json.tmp"), null);
   assert.equal(fechaDeCache("sesion.json"), null);
 });
+import { crearTurnos } from "./api.mjs";
+test("turnos: otra tienda espera a que termine la primera; la misma tienda empalmada se salta", async () => {
+  const turno = crearTurnos(), orden = [];
+  const tarea = (nombre, ms) => async () => { orden.push(`inicia ${nombre}`); await new Promise((r) => setTimeout(r, ms)); orden.push(`termina ${nombre}`); return nombre; };
+  const [calma, turbo, otraCalma] = await Promise.all([turno("MX1", tarea("calma", 30)), turno("MX2", tarea("turbo", 5)), turno("MX1", tarea("calma2", 5))]);
+  assert.deepEqual(calma, { ocupado: false, resultado: "calma" });
+  assert.deepEqual(turbo, { ocupado: false, resultado: "turbo" });
+  assert.deepEqual(otraCalma, { ocupado: true });
+  assert.deepEqual(orden, ["inicia calma", "termina calma", "inicia turbo", "termina turbo"]);
+  // Un error no traba la fila: la siguiente corrida arranca y la tienda queda libre.
+  await assert.rejects(turno("MX1", async () => { throw new Error("falla"); }), /falla/);
+  assert.deepEqual(await turno("MX1", async () => "otra vez"), { ocupado: false, resultado: "otra vez" });
+});
