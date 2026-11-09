@@ -611,6 +611,20 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   .horas-pico .mapa-calor-celda, .calendario-dia { transition: none; }
 }
 
+/* ─── Menú por áreas: secciones con título pequeño y áreas con ícono; pestañas del área arriba de la página ─── */
+.lateral-seccion { padding: 10px 8px 2px; }
+.lateral-seccion ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.lateral-seccion-titulo { margin: 4px 8px 6px; font-size: var(--t-xs); font-weight: 600; color: var(--oscuro-texto-2); }
+.lateral-area { display: flex; align-items: center; gap: 10px; border-radius: var(--r-sm); }
+.lateral-area[aria-current="page"] { background: var(--oscuro-activo); color: var(--blanco); font-weight: 700; box-shadow: inset 3px 0 0 var(--accion); }
+.lateral-area .contador-menu { margin-left: auto; }
+.pestanas-area { display: flex; gap: 4px; margin: 0 0 16px; padding: 4px; width: fit-content; max-width: 100%; overflow-x: auto;
+  background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-full); scrollbar-width: none; }
+.pestanas-area a { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--r-full);
+  color: var(--tinta-2); font-weight: 600; font-size: var(--t-sm); white-space: nowrap; }
+.pestanas-area a:hover { background: var(--accion-tinte); color: var(--tinta); }
+.pestanas-area a[aria-current="page"] { background: var(--accion); color: var(--accion-texto); }
+
 /* ─── Celular ─── */
 @media (max-width: 900px) {
   .encabezado-titulo { gap: 12px; }
@@ -629,5 +643,6 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   .marco { background: none; }
   .marco-contenido, .login { background: #fff; }
   .encabezado-marca { display: none; }
+  .pestanas-area { display: none; }
   :is(.seccion, .tarjeta, .indicador, .saldo) { box-shadow: none; background: #fff; }
 }
