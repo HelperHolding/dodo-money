@@ -26,3 +26,20 @@ test('cada origen tiene su color de la paleta validada', () => {
 test('en celular las cifras de los KPIs caben (sin recortarse)', () => {
   assert.match(leer('app/marca.css'), /@media \(max-width: 640px\) \{ \.seccion\.inicio-ventas \{ padding: [^}]+\} \.seccion\.inicio-ventas \.inicio-ventas-kpis strong \{ font-size: 1\.2rem;/);
 });
+
+test('orígenes leen el desglose solo de POS: Rappi ya viene sumado como agregador en los días combinados', () => {
+  const d = leer('components/DashboardVentasInicio.tsx');
+  assert.match(d, /origenesPedidos\(desgloseDe\(d\.canales\.pos\.dias\)/);
+  assert.doesNotMatch(d, /origenesPedidos\(d\.dias/);
+});
+test('el historial se consulta en paralelo con las ventas del periodo', () => {
+  assert.match(leer('components/DashboardVentasInicio.tsx'), /Promise\.all\(\[datosVentas\(/);
+});
+test('la nota al pie dice que el historial incluye Rappi', () => {
+  const d = leer('components/DashboardVentasInicio.tsx');
+  assert.doesNotMatch(d, /El historial usa la venta diaria importada de Dodo IS\./);
+  assert.match(d, /El historial suma Dodo IS y el subtotal de Rappi/);
+});
+test('el buscador de páginas no repite destinos (Inicio va arriba y dentro de su área)', () => {
+  assert.match(leer('components/BuscadorPaginas.tsx'), /\.filter\(\(p, i, todas\) => todas\.findIndex\(\(x\) => x\.href === p\.href\) === i\)/);
+});

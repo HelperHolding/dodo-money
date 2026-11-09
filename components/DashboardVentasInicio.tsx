@@ -3,13 +3,15 @@ import type {SupabaseClient} from "@supabase/supabase-js";
 import {Dona} from "@/components/Dona";
 import {BarrasVerticales} from "@/components/BarrasVerticales";
 import {LineaHistorial} from "@/components/LineaHistorial";
-import {datosVentas,ventaDiariaDesde} from "@/app/ventas/datos";
+import {datosVentas,ventaDiariaDesde,type FilaDesglose} from "@/app/ventas/datos";
 import {periodoAnterior,resumenVentas,ventaPorDia} from "@/lib/ventas/calculos";
 import {historialVentas,origenesPedidos,periodoInicioVentas} from "@/lib/ventas/inicio";
 import {cambioRelativo} from "@/lib/ventas/tablero";
 import {hoyCalendarioMX,fechaTexto,diaYNumero,pesos,porcentaje} from "@/lib/formato";
 
 const sumarDiasISO=(f:string,n:number)=>{const x=new Date(`${f}T12:00:00Z`);x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);};
+/** Desglose por tipo de los días de POS (aplicarConciliaciones lo conserva aunque el tipo diga VentaDia). */
+const desgloseDe=(dias:readonly object[])=>dias.flatMap(x=>(x as {ventas_dia_desglose?:FilaDesglose[]}).ventas_dia_desglose??[]);
 const MODOS=[["semanal","Semanal"],["mensual","Mensual"],["anual","Anual"]] as const;
 
 /**
@@ -23,16 +25,17 @@ export async function DashboardVentasInicio({supabase,rol,mes,sucursal,porDefect
  const {data:sucursales,error}=await supabase.from("sucursales").select("id,nombre").order("nombre").returns<{id:string;nombre:string}[]>();
  if(error)throw error;
  const opciones=sucursales??[],seleccion=sucursal==="todas"?null:opciones.find(s=>s.id===(sucursal??porDefecto))?.id??null;
- const d=await datosVentas(supabase,seleccion,p,anterior),actual=resumenVentas(d.dias),previo=resumenVentas(d.anterior.dias);
+ // Historial: venta diaria de Dodo IS más el subtotal de Rappi, de la sucursal elegida o de toda la red. Se pide junto con el periodo.
+ const modo=hist==="semanal"||hist==="anual"?hist:"mensual",red=!seleccion||alcance==="red";
+ const desdeHist=modo==="anual"?"2000-01-01":modo==="semanal"?sumarDiasISO(p.hasta,-84):`${Number(p.hasta.slice(0,4))-1}${p.hasta.slice(4,7)}-01`;
+ const [d,ventaHist]=await Promise.all([datosVentas(supabase,seleccion,p,anterior),ventaDiariaDesde(supabase,red?null:seleccion,desdeHist)]);
+ const actual=resumenVentas(d.dias),previo=resumenVentas(d.anterior.dias);
  const titulo=seleccion?opciones.find(s=>s.id===seleccion)?.nombre:"Todas las sucursales";
  const enlace=new URLSearchParams({desde:p.desde,hasta:p.hasta,...(seleccion?{sucursal:seleccion}:{})}).toString();
  const kpis=[{nombre:"Venta total con IVA",actual:actual.total,previo:previo.total,moneda:true},{nombre:"Venta neta sin IVA",actual:actual.neta,previo:previo.neta,moneda:true},{nombre:"Pedidos registrados",actual:actual.pedidos,previo:previo.pedidos,moneda:false},{nombre:"Ticket promedio con IVA",actual:actual.ticket,previo:previo.ticket,moneda:true}];
- // Orígenes: Dodo IS marca el origen de cada pedido; Rappi (portal) es su propio origen, igual que en los KPIs.
- const origenes=origenesPedidos(d.dias.flatMap(x=>x.ventas_dia_desglose??[]),resumenVentas(d.canales.pos.dias).pedidos??0,resumenVentas(d.canales.rappi.dias).pedidos??0);
- // Historial: venta diaria importada de Dodo IS, de la sucursal elegida o de toda la red.
- const modo=hist==="semanal"||hist==="anual"?hist:"mensual",red=!seleccion||alcance==="red";
- const desdeHist=modo==="anual"?"2000-01-01":modo==="semanal"?sumarDiasISO(p.hasta,-84):`${Number(p.hasta.slice(0,4))-1}${p.hasta.slice(4,7)}-01`;
- const puntos=historialVentas(await ventaDiariaDesde(supabase,red?null:seleccion,desdeHist),p.hasta,modo);
+ // Orígenes: desglose solo de POS (los días combinados ya traen Rappi como agregador); Rappi (portal) es su propio origen.
+ const origenes=origenesPedidos(desgloseDe(d.canales.pos.dias),resumenVentas(d.canales.pos.dias).pedidos??0,resumenVentas(d.canales.rappi.dias).pedidos??0);
+ const puntos=historialVentas(ventaHist,p.hasta,modo);
  const liga=(cambios:Record<string,string>)=>`${ruta}?${new URLSearchParams({...(fecha?{fecha}:{}),ventas_mes:p.desde.slice(0,7),ventas_sucursal:seleccion??"todas",hist:modo,alcance:red?"red":"sucursal",...cambios})}#inicio-historial`;
  return <section className="seccion inicio-ventas" aria-labelledby="inicio-ventas-titulo"><div className="inicio-ventas-titulo"><div><h2 id="inicio-ventas-titulo">Dashboard de ventas</h2><p className="saldo-nota">{titulo} · {fechaTexto(p.desde)} a {fechaTexto(p.hasta)}</p></div><Link className="boton boton-secundario" href={`/ventas?${enlace}`}>Abrir reporte de ventas</Link></div>
  <form action={ruta} method="get" className="acciones inicio-ventas-filtros">{fecha&&<input type="hidden" name="fecha" value={fecha}/>}<label className="campo">Mes<input type="month" name="ventas_mes" max={hoy.slice(0,7)} defaultValue={p.desde.slice(0,7)}/></label><label className="campo">Sucursal<select name="ventas_sucursal" defaultValue={seleccion??"todas"}><option value="todas">Todas las sucursales</option>{opciones.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label><button className="boton" type="submit">Consultar</button></form>
@@ -53,6 +56,6 @@ export async function DashboardVentasInicio({supabase,rol,mes,sucursal,porDefect
   <LineaHistorial titulo={`Venta con IVA, ${red?"toda la red":titulo}`} puntos={puntos}/>
   <nav className="segmentos inicio-historial-modo" aria-label="Periodo del historial">{MODOS.map(([m,texto])=><a key={m} href={liga({hist:m})} aria-current={m===modo?"page":undefined}>{texto}</a>)}</nav>
  </section>
- <p className="saldo-nota">Comparación: {fechaTexto(anterior.desde)} a {fechaTexto(anterior.hasta)}, mismo número de días. Las importaciones pueden estar incompletas. Rappi suma solo órdenes finalizadas marcadas para sumar; usa el subtotal del restaurante, antes de comisiones, y no el depósito recibido. Mostrador son los pedidos de Dodo IS sin otro origen. El historial usa la venta diaria importada de Dodo IS.</p></section>;
+ <p className="saldo-nota">Comparación: {fechaTexto(anterior.desde)} a {fechaTexto(anterior.hasta)}, mismo número de días. Las importaciones pueden estar incompletas. Rappi suma solo órdenes finalizadas marcadas para sumar; usa el subtotal del restaurante, antes de comisiones, y no el depósito recibido. Mostrador son los pedidos de Dodo IS sin otro origen. El historial suma Dodo IS y el subtotal de Rappi (antes de comisiones), como el reporte de ventas.</p></section>;
  }catch{return <section className="seccion"><h2>Dashboard de ventas</h2><p className="aviso aviso-error">No se pudieron consultar las ventas. Intenta de nuevo o abre el reporte.</p><Link href="/ventas">Ir a Ventas</Link></section>;}
 }
