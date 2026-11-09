@@ -634,7 +634,7 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .inicio-origenes-lista strong { font-family: var(--display); font-size: 1.6rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .inicio-origenes-lista small { color: var(--tinta-3); }
 .inicio-historial { display: grid; gap: 12px; }
-.inicio-historial-cabecera { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.inicio-historial-cabecera { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .inicio-historial h2 { font-family: var(--display); font-weight: 800; font-size: clamp(1.8rem, 3.4vw, 2.6rem); line-height: 1.05; }
 .inicio-historial-modo { justify-self: center; }
 .linea-historial { margin: 0; }
