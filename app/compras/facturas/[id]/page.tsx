@@ -29,7 +29,8 @@ import { fechaEsperada } from "@/lib/compras/entregas";
 import { diasDePago } from "../../servidor";
 import { CUENTAS_GASTO, CUENTAS_MEMO, NOMBRE_CUENTA, esCuentaPl } from "@/lib/finanzas/cuentas";
 import { textoCubre } from "@/lib/finanzas/cubre";
-import { puedeEditarCompras } from "@/lib/roles";
+import { puedeEditarCompras, puedeEditarFinanzas, puedeVerFinanzas } from "@/lib/roles";
+import { BloqueCapex, capexVisible } from "@/app/finanzas/capex/BloqueCapex";
 import {
   asignarCuentaFactura, asignarDestino, cambiarPeriodoFactura, cambiarVencimientoFactura, cancelarFacturaAccion, guardarCuentasConceptos, ligarOrdenes, marcarRevisada,
   programarPagoFactura, programarRecepcionFactura, sustituirGastoManual,
@@ -143,6 +144,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
   const dias = await diasDePago(supabase);
   const plazo = f.proveedores?.dias_entrega;
   const recepcionSugerida=fechaEsperada(hoy,plazo??null);
+  const conCapex = puedeVerFinanzas(perfil.rol) && await capexVisible(supabase, f.sucursal_id, "factura", f.id);
 
 
   return (
@@ -425,6 +427,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
       )}
 
 </>},
+        ...(conCapex ? [{id:"capex", titulo:"CAPEX de apertura", contenido:<BloqueCapex db={supabase} tipo="factura" id={f.id} sucursalId={f.sucursal_id} subtotal={Number(f.subtotal) - Number(f.descuento)} cancelado={f.estado === "cancelada"} uuidRelacionado={f.uuid_relacionado} puedeEditar={puedeEditarFinanzas(perfil.rol)} />}] : []),
         {id:"adjuntos",titulo:"Adjuntos",contenido:<AdjuntosCompra tipo="factura" id={f.id}/>},
       ]} /></div><HistorialCompra id={f.id} edita={puedeEditarCompras(perfil.rol)} accion={agregarNotaFactura} eventos={eventos}/></div>
     </>
