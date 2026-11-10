@@ -109,7 +109,6 @@ export function TablaPL({ r, columnas, impresa = false, ajustado = null, sinHist
             <tbody key={s.clave}>
               <tr className={`pl-seccion pl-${s.clave}`}><th colSpan={columnasTotal} scope="rowgroup">{s.nombre}</th></tr>
               {s.renglones.map((c) => de.get(c)).filter((f): f is FilaPL => Boolean(f) && !(esDetalleNomina(f!.clave) && !f!.monto && !aj?.get(f!.clave)?.monto)).map(renglon)}
-              {s.clave === "venta" && informativo("descuentos", "Descuentos (informativo)", r.entrada.descuentos, [])}
               {s.total && de.has(s.total) && renglon(de.get(s.total)!)}
             </tbody>
           ))}

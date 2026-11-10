@@ -56,7 +56,7 @@ export function hojaPL(r: {
       r.anterior ? pct(r.anterior.get(f.clave)) : null, pct(r.acumulado.get(f.clave)),
     ];
   }, {
-    venta: [["Descuentos (informativo)", contable(r.entrada.descuentos)]],
+    venta: [],
     memo: [["Compras de insumos", contable(r.entrada.memos.insumos)], ["Inversiones", contable(r.entrada.memos.inversiones)], ["Regalías facturadas", contable(r.entrada.memos.regalias)]],
   }, arriba.length);
   return [{ nombre: "Contra meta", filas: [...arriba, ...cuerpo.filas], negritas: [0, 4], estilos: cuerpo.estilos,
@@ -83,7 +83,7 @@ export function hojaComparativo(r: { titulo: string; periodo: string; generado: 
     if (detalleNomina(clave) && !fs.some((f) => f?.monto)) return null;
     return fs[0] ? [nombreExcel(clave, r.total.filas.find(f=>f.clave===clave)?.nombre ?? fs[0].nombre), ...fs.flatMap((f) => [contable(f?.monto ?? null), pct(f?.pct)])] : null;
   }, {
-    venta: [["Descuentos (informativo)", ...todas.flatMap((c) => [contable(c.entrada.descuentos), null])]],
+    venta: [],
     memo: [
       ["Compras de insumos", ...todas.flatMap((c) => [contable(c.entrada.memos.insumos), null])],
       ["Inversiones", ...todas.flatMap((c) => [contable(c.entrada.memos.inversiones), null])],

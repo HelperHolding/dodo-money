@@ -6,7 +6,7 @@ const CUENTAS_MEMO: readonly CuentaMemo[] = ["insumos", "inversiones", "regalias
 const memosVacios = (): Memos => ({ insumos: 0, inversiones: 0, regalias: 0 });
 
 export type ClaveRenglon =
-  | "venta_bruta" | "venta_bruta_dodo" | "venta_bruta_rappi" | "venta_neta_dodo" | "venta_neta_rappi" | "alimento_dodo" | "alimento_rappi"
+  | "venta_bruta" | "venta_bruta_dodo" | "venta_bruta_rappi" | "descuentos_venta" | "venta_neta_dodo" | "venta_neta_rappi" | "alimento_dodo" | "alimento_rappi"
   | "venta_neta" | "rappi_fuera_base" | "rappi_excedente" | "rappi_ajustes" | "alimento" | "merma" | "merma_productos" | "merma_insumos" | "nomina_cocina" | "nomina_gerencia" | "repartidores" | "agregadores"
   | "marketing_agregadores" | "marketing" | "renta" | "servicios" | "mantenimiento" | "consumibles_equipo"
   | "regalias" | "otros" | "ebitda_tienda" | "oficina" | "ebitda" | "margen_bruto"
@@ -26,6 +26,11 @@ const detallesNomina = (renglon: "cocina" | "gerencia") =>
 export const esDetalleNomina = (clave: string) => /^nomina_(cocina|gerencia)_/.test(clave);
 
 export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "venta" | "gasto" | "total" | "detalle" }[] = [
+  // Informativos: sin IVA, como la venta neta; no entran a márgenes ni a EBITDA.
+  { clave: "venta_bruta", nombre: "Venta bruta (sin IVA)", tipo: "venta" },
+  { clave: "venta_bruta_dodo", nombre: "Dodo IS / POS · venta bruta", tipo: "detalle" },
+  { clave: "venta_bruta_rappi", nombre: "Rappi · venta bruta", tipo: "detalle" },
+  { clave: "descuentos_venta", nombre: "Descuentos (sin IVA)", tipo: "detalle" },
   { clave: "venta_neta", nombre: "Venta neta", tipo: "venta" },
   { clave: "venta_neta_dodo", nombre: "Dodo IS / POS · venta neta", tipo: "detalle" },
   { clave: "venta_neta_rappi", nombre: "Rappi · venta neta", tipo: "detalle" },
@@ -171,10 +176,12 @@ export type FilaPL = {
 
 export function calcularPL(e: EntradaPL, metas: readonly Meta[], ctx: ContextoMeta): FilaPL[] {
   const g = (k: CuentaGasto) => e.gastos[k] ?? 0;
+  /** Venta bruta sin IVA de ambos canales; sin dato si a alguno le falta. */
+  const bruta = e.canales.dodo.brutaSinIva === null || e.canales.rappi.brutaSinIva === null ? null : centavos(e.canales.dodo.brutaSinIva + e.canales.rappi.brutaSinIva);
   const montos: Partial<Record<ClaveRenglon, number | null>> = {
     rappi_fuera_base:e.rappiFueraBase??0,rappi_excedente:e.rappiExcedente??0,rappi_ajustes:e.rappiAjustes??0,
-    venta_bruta: e.canales.dodo.bruta === null || e.canales.rappi.bruta === null ? null : centavos(e.canales.dodo.bruta + e.canales.rappi.bruta),
-    venta_bruta_dodo: e.canales.dodo.bruta, venta_bruta_rappi: e.canales.rappi.bruta,
+    venta_bruta: bruta, venta_bruta_dodo: e.canales.dodo.brutaSinIva, venta_bruta_rappi: e.canales.rappi.brutaSinIva,
+    descuentos_venta: bruta === null ? null : centavos(bruta - e.canales.dodo.neta - e.canales.rappi.neta),
     venta_neta_dodo: e.canales.dodo.neta, venta_neta_rappi: e.canales.rappi.neta,
     alimento_dodo: e.canales.dodo.alimento, alimento_rappi: e.canales.rappi.alimento,
     venta_neta: e.ventaNeta, alimento: e.alimento, merma: e.merma,

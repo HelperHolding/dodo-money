@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-10 · P&L: venta bruta sin IVA en Contra meta y Rappi en Formato asesores · sin migración
+
+Contra meta, Comparativo, PDF y Excel vuelven a mostrar la venta bruta (retirada el 2026-10-07 cuando llevaba IVA), ahora sin IVA para compararla con la neta: «Venta bruta (sin IVA)», su detalle Dodo IS / POS y Rappi, y «Descuentos (sin IVA)» = bruta − venta neta de los canales. Son informativos: el % sigue sobre la venta neta y márgenes, metas y EBITDA no cambian. Sustituyen a «Descuentos (informativo)», que llevaba IVA. Con reporte financiero de Rappi la bruta sin IVA ya no queda Pendiente: es su Venta Bruta (más el importe de productos de los días sin reporte) ÷ 1.16, y llena Formato asesores. La de Dodo IS sigue exigiendo que el detalle por producto cuadre (o esté conciliado) cada día; un día sin revisar deja la bruta en Sin dato.
+
 ## 2026-11-09 · Rappi: Turbo ya no sale «ocupado» · sin migración
 
 En la primera vuelta del flujo con dos tiendas, Turbo siempre respondía «ocupado»: el batching del nodo HTTP de n8n solo espacia el inicio de las peticiones y no espera la respuesta, así que La Calma y Turbo llegaban juntas al extractor. Ahora el extractor pone las tiendas en turno (`crearTurnos` en `scripts/rappi/api.mjs`): otra tienda espera a que termine la que corre, y solo se salta con «ocupado» la misma tienda empalmada (vueltas de 15 min que se cruzan). Prueba en `scripts/rappi/api.test.mjs`.

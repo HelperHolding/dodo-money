@@ -183,9 +183,10 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       rappi: resumenCanalPL(diasRappi, productosRappi, costeo(renglonesRappi).total.costo),
     };
     canales.rappi.neta=centavos(canales.rappi.neta-historicoCubierto.reduce((t,d)=>t+d.total-d.iva,0)+efecto.ventaNeta);
-    // Con reporte financiero la neta ya no sale de los días: la bruta sin IVA no es confiable (Pendiente).
+    // Con reporte financiero la neta ya no sale de los días: la bruta sin IVA no se puede prorratear por día (Pendiente)…
     if(fin.length||historicoCubierto.length||efecto.ventaNeta!==0)canales.rappi.brutaSinIva=null;
-    if(fin.length){const diasFuera=datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&!fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta));canales.rappi.bruta=centavos(diasFuera.reduce((t,o)=>t+Number(o.bruto),0)+fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta).reduce((t,m)=>t+m.bruta,0));}
+    // …salvo que se tome del reporte: su Venta Bruta y el importe de productos de los días sin reporte llevan IVA del 16 %.
+    if(fin.length){const diasFuera=datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&!fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta));canales.rappi.bruta=centavos(diasFuera.reduce((t,o)=>t+Number(o.bruto),0)+fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta).reduce((t,m)=>t+m.bruta,0));canales.rappi.brutaSinIva=centavos(canales.rappi.bruta/1.16);}
     const renglones = [...renglonesDodo, ...renglonesRappi];
     const c = costeo(renglones);
     anotar(s.id, "alimento", `Costo teórico de ${renglones.reduce((t, r) => t + r.cantidad, 0)} piezas vendidas (receta + periférico)`, c.total.costo);

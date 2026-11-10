@@ -9,7 +9,7 @@ const desgloseNomina = (r: "cocina" | "gerencia"): ClaveRenglon[] =>
   (["sueldo", "bono", "imss", "retiro", "cesantia", "infonavit", "impuesto", "otros"] as const).map((c) => `nomina_${r}_${c}` as const);
 
 export const SECCIONES: readonly Seccion[] = [
-  { clave: "venta", nombre: "Venta e ingresos", fondo: "BDD7EE", renglones: ["venta_neta", "venta_neta_dodo", "venta_neta_rappi", "rappi_fuera_base", "rappi_excedente"], total: null },
+  { clave: "venta", nombre: "Venta e ingresos", fondo: "BDD7EE", renglones: ["venta_bruta", "venta_bruta_dodo", "venta_bruta_rappi", "descuentos_venta", "venta_neta", "venta_neta_dodo", "venta_neta_rappi", "rappi_fuera_base", "rappi_excedente"], total: null },
   { clave: "costo", nombre: "Costo de venta", fondo: "D9EAD3", renglones: ["alimento", "alimento_dodo", "alimento_rappi", "merma", "merma_productos", "merma_insumos"], total: "margen_bruto" },
   {
     clave: "operacion", nombre: "Gastos de operación", fondo: "FCE4D6",
