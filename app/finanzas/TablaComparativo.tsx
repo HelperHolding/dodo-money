@@ -37,7 +37,6 @@ export function TablaComparativo({ columnas, total }: { columnas: ColumnaPL[]; t
             <tbody key={s.clave}>
               <tr className={`pl-seccion pl-${s.clave}`}><th colSpan={ancho} scope="rowgroup"><span className="pl-seccion-nombre">{s.nombre}</span></th></tr>
               {s.renglones.filter((c) => !esDetalleNomina(c) || todas.some((t) => t.filas.find((f) => f.clave === c)?.monto)).map((c) => renglon(c, false))}
-              {s.clave === "venta" && simple("descuentos", "Descuentos (informativo)", (c) => c.entrada.descuentos)}
               {s.total && renglon(s.total, true)}
             </tbody>
           ))}
