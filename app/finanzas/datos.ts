@@ -26,7 +26,7 @@ import { capturasTardias, esMesDeEmision, fraccionCubre, textoCubre } from "@/li
 import {cargarRappi} from "@/app/ventas/rappi/datos";
 import {ventasRappi} from "@/lib/ventas/rappi";
 import {leerFinancierosRappi} from '@/app/banca/rappi/datos';
-import {efectoPLRappi} from '@/lib/banca/rappi';
+import {efectoPLRappi,esPedidoRappi} from '@/lib/banca/rappi';
 
 type Fila = { sucursal_id: string | null };
 type Detalle = import("@/lib/finanzas/reporteCuentas").AportacionPL[];
@@ -274,7 +274,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     });
     const faltantes = centavos(brutos - reclasificados.total);
     const presentes=new Set(datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.estado==='Finalizado').map(o=>o.rappi_id));
-    const sinDetalleFin=fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta&&m.tipo==='ORDEN'&&!['canceled','canceled_with_charge'].includes(m.estado)&&!presentes.has(m.orden)).length;
+    const sinDetalleFin=fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta&&esPedidoRappi(m)&&!['canceled','canceled_with_charge'].includes(m.estado)&&!presentes.has(m.orden)).length;
     const historicoSinFin=rappi.dias.some(d=>d.sucursal_id===s.id&&!fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta));
 
     const entrada: EntradaPL = {

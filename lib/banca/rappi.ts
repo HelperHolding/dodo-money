@@ -1,7 +1,14 @@
 import type {Hoja} from '../ventas/xlsx';
 
-/** Importes firmados del reporte financiero. No son el historial de productos. */
-export type MovimientoRappi={fila:number;fecha:string;orden:string;tienda:string;lote:string|null;tipo:'ORDEN'|'COMPENSACIÓN';estado:string;bruta:number;aliado:number;dar:number;compensacion:number;cancelacion:number;comision:number;creditoDar:number;ivaComision:number;creditoDarIva:number;retencionIva:number;retencionIsr:number;neto:number};
+/**
+ * Importes firmados del reporte financiero. No son el historial de productos.
+ * retroactivo: renglón con "Retroactivo = true" (desde oct 2026). Rappi revierte en un lote nuevo lo que cobró en el lote
+ * original (loteOriginal): devuelve la comisión y su IVA, deshace el DAR y sus créditos y retiene sobre el DAR. Es un
+ * ajuste de la misma orden, no otra venta: no lleva venta bruta ni cuenta como pedido.
+ */
+export type MovimientoRappi={fila:number;fecha:string;orden:string;tienda:string;lote:string|null;tipo:'ORDEN'|'COMPENSACIÓN';estado:string;bruta:number;aliado:number;dar:number;compensacion:number;cancelacion:number;comision:number;creditoDar:number;ivaComision:number;creditoDarIva:number;retencionIva:number;retencionIsr:number;neto:number;retroactivo?:true;loteOriginal?:string};
+/** Pedido del reporte: renglón de orden que no es la reversión retroactiva de otro. */
+export const esPedidoRappi=(m:Pick<MovimientoRappi,'tipo'|'retroactivo'>)=>m.tipo==='ORDEN'&&!m.retroactivo;
 export type FacturaComisionRappi={uuid:string;lote:string;subtotal:number;iva:number;total:number};
 export type ReporteRappi={desde:string;hasta:string;tienda:string;movimientos:MovimientoRappi[];uuidsComision:string[];facturasComision?:FacturaComisionRappi[]};
 const red=(n:number,d=2)=>(Math.sign(n)*Math.round((Math.abs(n)+Number.EPSILON)*10**d)/10**d)||0;
@@ -34,10 +41,19 @@ export function leerFinancieroRappi(hojas:readonly Hoja[],hoy:string):ReporteRap
   // Un nuevo cargo no puede desaparecer silenciosamente del cálculo.
   for(const c of cab.values()){const i=indice(c);if(i>=18&&i<=63&&!conocidas.has(c)&&!['AR','BL','BM'].includes(c)&&num(c,fila)!==0)throw Error(`El reporte contiene un concepto financiero aún no soportado: ${h.celdas.get(c+'2')} (${c}${fila}).`);}
   const m={fila,fecha,orden,tienda,lote,tipo,estado,...Object.fromEntries(Object.entries(CAMPOS).map(([k,n])=>[k,num(col(n),fila)]))} as MovimientoRappi;
-  if(m.bruta<0||m.aliado>0||m.dar>0||m.comision>0||m.ivaComision>0||m.creditoDar<0||m.creditoDarIva<0||m.retencionIva>0||m.retencionIsr>0||m.bruta+m.aliado+m.dar<-.005||Math.abs(m.dar+m.creditoDar+m.creditoDarIva)>.005)throw Error(`Signos o créditos DAR no cuadran en la fila ${fila}.`);
+  // Columnas opcionales: los reportes anteriores a octubre 2026 no las traen.
+  const marca=cab.has(normal('Retroactivo'))?txt('Retroactivo').toLowerCase():'';
+  if(marca&&!['true','false'].includes(marca))throw Error(`Valor de Retroactivo no reconocido en la fila ${fila}.`);
+  if(marca==='true'){
+   const original=cab.has(normal('ID Paidlot retroactivo'))?txt('ID Paidlot retroactivo'):'';
+   // Solo invierte cargos ya cobrados: sin venta, descuento del aliado, compensación ni cancelación, y con los signos al revés.
+   if(tipo!=='ORDEN'||(original&&!/^\d{5,20}$/.test(original))||m.bruta!==0||m.aliado!==0||m.compensacion!==0||m.cancelacion!==0||m.dar<0||m.comision<0||m.ivaComision<0||m.creditoDar>0||m.creditoDarIva>0||m.retencionIva>0||m.retencionIsr>0||Math.abs(m.dar+m.creditoDar+m.creditoDarIva)>.005)throw Error(`Signos del ajuste retroactivo no cuadran en la fila ${fila}.`);
+   m.retroactivo=true;if(original)m.loteOriginal=original;
+  }else if(m.bruta<0||m.aliado>0||m.dar>0||m.comision>0||m.ivaComision>0||m.creditoDar<0||m.creditoDarIva<0||m.retencionIva>0||m.retencionIsr>0||m.bruta+m.aliado+m.dar<-.005||Math.abs(m.dar+m.creditoDar+m.creditoDarIva)>.005)throw Error(`Signos o créditos DAR no cuadran en la fila ${fila}.`);
   if(tipo==='COMPENSACIÓN'&&Object.keys(CAMPOS).some(k=>k!=='compensacion'&&m[k as keyof typeof CAMPOS]!==0))throw Error(`La compensación ${fila} contiene otros conceptos.`);
   m.neto=red(Object.keys(CAMPOS).reduce((s,k)=>s+m[k as keyof typeof CAMPOS],0),6);netos.push({fila,neto:m.neto});
-  const clave=`${tipo}|${orden}`;
+  // La reversión retroactiva convive con el renglón original de la misma orden.
+  const clave=`${tipo}|${orden}${m.retroactivo?'|R':''}`;
   // Una orden puede tener varias compensaciones (un renglón por producto compensado): se suman en un solo movimiento.
   const previa=tipo==='COMPENSACIÓN'?movimientos.find(x=>x.tipo===tipo&&x.orden===orden):undefined;
   if(previa){if(previa.fecha!==fecha||previa.lote!==lote)throw Error('Compensaciones de una misma orden con distinta fecha o paidlot: '+orden);previa.compensacion=red(previa.compensacion+m.compensacion,6);previa.neto=red(previa.neto+m.neto,6);continue;}
@@ -61,11 +77,11 @@ export function resumenFinancieroRappi(movimientos:readonly MovimientoRappi[]){
  const suma=(k:keyof typeof CAMPOS)=>movimientos.reduce((s,m)=>s+Number(m[k]),0);
  const lotes=new Map<string,MovimientoRappi[]>();
  for(const m of movimientos){const k=m.lote??'Sin paidlot';lotes.set(k,[...(lotes.get(k)??[]),m]);}
- const lotesResumen=[...lotes].map(([lote,filas])=>{const sum=(k:keyof typeof CAMPOS)=>filas.reduce((s,m)=>s+Number(m[k]),0);return {lote,pedidos:filas.filter(m=>m.tipo==='ORDEN').length,movimientos:filas.length,bruta:red(sum('bruta')),aliado:red(sum('aliado')),dar:red(sum('dar')),comision:red(sum('comision')),ivaComision:red(sum('ivaComision')),creditoDar:red(sum('creditoDar')),creditoDarIva:red(sum('creditoDarIva')),retenciones:red(sum('retencionIva')+sum('retencionIsr')),ajustes:red(sum('compensacion')+sum('cancelacion')),neto:red(filas.reduce((s,m)=>s+Number(m.neto),0)),comisionNeta:sum('comision')+sum('creditoDar'),provisional:lote==='Sin paidlot'};});
+ const lotesResumen=[...lotes].map(([lote,filas])=>{const sum=(k:keyof typeof CAMPOS)=>filas.reduce((s,m)=>s+Number(m[k]),0);return {lote,pedidos:filas.filter(esPedidoRappi).length,movimientos:filas.length,bruta:red(sum('bruta')),aliado:red(sum('aliado')),dar:red(sum('dar')),comision:red(sum('comision')),ivaComision:red(sum('ivaComision')),creditoDar:red(sum('creditoDar')),creditoDarIva:red(sum('creditoDarIva')),retenciones:red(sum('retencionIva')+sum('retencionIsr')),ajustes:red(sum('compensacion')+sum('cancelacion')),neto:red(filas.reduce((s,m)=>s+Number(m.neto),0)),comisionNeta:sum('comision')+sum('creditoDar'),provisional:lote==='Sin paidlot'};});
  const base=-suma('retencionIva')/.08,baseIsr=-suma('retencionIsr')/.025;
  const efectiva=suma('bruta')+suma('aliado')+suma('dar');
  const comisionEsperada=lotesResumen.reduce((s,l)=>s+Math.max(0,-l.comisionNeta),0),excedente=lotesResumen.reduce((s,l)=>s+Math.max(0,l.comisionNeta),0);
- return {movimientos:movimientos.length,pedidos:movimientos.filter(m=>m.tipo==='ORDEN').length,bruta:red(suma('bruta')),aliado:red(suma('aliado')),dar:red(suma('dar')),efectiva:red(efectiva),comision:red(suma('comision')),ivaComision:red(suma('ivaComision')),creditoDar:red(suma('creditoDar')),creditoDarIva:red(suma('creditoDarIva')),retencionIva:red(suma('retencionIva')),retencionIsr:red(suma('retencionIsr')),compensaciones:red(suma('compensacion')),cancelaciones:red(suma('cancelacion')),neto:red(movimientos.reduce((s,m)=>s+Number(m.neto),0)),baseRetencion:red(base),diferenciaBases:red(base-baseIsr),facturacion:red(base*1.16),fueraBase:red(efectiva-base*1.16),comisionEsperada:red(comisionEsperada),excedente:red(excedente),lotes:lotesResumen};
+ return {movimientos:movimientos.length,pedidos:movimientos.filter(esPedidoRappi).length,retroactivos:movimientos.filter(m=>m.retroactivo).length,comisionDevuelta:red(movimientos.filter(m=>m.retroactivo).reduce((s,m)=>s+m.comision,0)),bruta:red(suma('bruta')),aliado:red(suma('aliado')),dar:red(suma('dar')),efectiva:red(efectiva),comision:red(suma('comision')),ivaComision:red(suma('ivaComision')),creditoDar:red(suma('creditoDar')),creditoDarIva:red(suma('creditoDarIva')),retencionIva:red(suma('retencionIva')),retencionIsr:red(suma('retencionIsr')),compensaciones:red(suma('compensacion')),cancelaciones:red(suma('cancelacion')),neto:red(movimientos.reduce((s,m)=>s+Number(m.neto),0)),baseRetencion:red(base),diferenciaBases:red(base-baseIsr),facturacion:red(base*1.16),fueraBase:red(efectiva-base*1.16),comisionEsperada:red(comisionEsperada),excedente:red(excedente),lotes:lotesResumen};
 }
 
 /** La liquidación no es una venta adicional. Distribuye el gasto/ingreso del lote completo entre sus días por comisión bruta. */
@@ -82,5 +98,5 @@ export function efectoPLRappi(reportes:readonly ReporteRappi[],desde:string,hast
   comision+=parte(unicos.length?unicos.reduce((s,f)=>s+f.subtotal,0):Math.max(0,-lote.comisionNeta));
   excedente+=parte(Math.max(0,lote.comisionNeta));
  }
- return {ventaNeta:r.baseRetencion,fueraBase:r.fueraBase,comision:red(comision),excedente:red(excedente),ajustes:red(-r.compensaciones-r.cancelaciones),fechas:new Set(periodo.map(m=>m.fecha)),pedidos:periodo.filter(m=>m.tipo==='ORDEN').length,neto:r.neto,provisional};
+ return {ventaNeta:r.baseRetencion,fueraBase:r.fueraBase,comision:red(comision),excedente:red(excedente),ajustes:red(-r.compensaciones-r.cancelaciones),fechas:new Set(periodo.map(m=>m.fecha)),pedidos:periodo.filter(esPedidoRappi).length,neto:r.neto,provisional};
 }
