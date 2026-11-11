@@ -50,3 +50,27 @@ test('importación: rechaza movimientos duplicados, sin tienda y futuros',()=>{
  const h=hoja(),c=h.celdas as Map<string,string|number>;for(const [k,v]of [...c])if(k.endsWith('3'))c.set(k.slice(0,-1)+'4',v);assert.throws(()=>leerFinancieroRappi([h],'2026-10-22'),/repetido/);
  const otra=hoja();(otra.celdas as Map<string,string|number>).set('D3','');assert.throws(()=>leerFinancieroRappi([otra],'2026-10-22'));assert.throws(()=>leerFinancieroRappi([hoja()],'2026-10-01'));
 });
+// Orden 2477532152 del reporte de octubre 2026: renglón original (paidlot 63312104) y su reversión retroactiva (64912628).
+function hojaRetro():Hoja{
+ const c=new Map<string,string|number>();for(const [k,v]of Object.entries({...columnas,L:'Retroactivo',BO:'ID Paidlot retroactivo'}))c.set(k+'2',v);
+ for(const [k,v]of Object.entries({A:'sáb. 03 oct. 2026, 2:00:00 p. m.',B:2477532152,C:63312104,D:1930486109,I:'finished',L:'false',P:'ORDEN',R:318,T:-120,U:-100,AC:-35.64,AD:86.2069,AS:-5.7024,AT:13.793103,AV:-6.758621,AX:-2.112069,BL:0}))c.set(k+'3',v);
+ for(const [k,v]of Object.entries({A:'sáb. 03 oct. 2026, 2:00:00 p. m.',B:2477532152,C:64912628,D:1930486109,I:'finished',L:'true',P:'ORDEN',U:100,AC:35.64,AD:-86.2069,AS:5.7024,AT:-13.793103,AV:-6.896551,AX:-2.155172,BL:0,BO:'63312104'}))c.set(k+'4',v);
+ return {nombre:'Detalle',celdas:c};
+}
+test('importación: el ajuste retroactivo convive con la orden original y no cuenta como pedido',()=>{
+ const r=leerFinancieroRappi([hojaRetro()],'2026-11-10'),[orig,retro]=r.movimientos;
+ assert.equal(r.movimientos.length,2);assert.equal(orig.retroactivo,undefined);assert.equal(retro.retroactivo,true);assert.equal(retro.loteOriginal,'63312104');assert.equal(retro.lote,'64912628');
+ assert.equal(retro.neto,32.290674);
+ const s=resumenFinancieroRappi(r.movimientos);
+ assert.equal(s.pedidos,1);assert.equal(s.retroactivos,1);assert.equal(s.comisionDevuelta,35.64);assert.equal(s.comision,0);assert.equal(s.dar,0);
+ // Con el DAR revertido, la base de retención vuelve a la venta sin descuento de Rappi: 198 / 1.16.
+ assert.equal(s.baseRetencion,170.69);assert.ok(Math.abs(s.diferenciaBases)<=.02);
+ assert.equal(efectoPLRappi([r],r.desde,r.hasta).pedidos,1);
+});
+test('importación: rechaza ajustes retroactivos con venta, signos de cargo, compensación o repetidos',()=>{
+ for(const [campo,valor]of [['R4',10],['AC4',-35.64],['AV4',6.896551],['L4','quizá'],['BO4','x1']] as const){const h=hojaRetro();(h.celdas as Map<string,string|number>).set(campo,valor);assert.throws(()=>leerFinancieroRappi([h],'2026-11-10'),/retroactivo|Retroactivo|no cuadran/,campo);}
+ const h=hojaRetro(),c=h.celdas as Map<string,string|number>;for(const [k,v]of [...c])if(/^[A-Z]+4$/.test(k))c.set(k.slice(0,-1)+'5',v);
+ assert.throws(()=>leerFinancieroRappi([h],'2026-11-10'),/repetido/);
+ // Sin la marca, una comisión a favor sigue siendo un error.
+ const sin=hojaRetro();(sin.celdas as Map<string,string|number>).set('L4','false');assert.throws(()=>leerFinancieroRappi([sin],'2026-11-10'),/Signos/);
+});
