@@ -63,7 +63,7 @@ export function leerFinancieroRappi(hojas:readonly Hoja[],hoy:string):ReporteRap
  // Rappi exporta "Valor Neto" como fórmula sin calcular (todo BL en 0): entonces vale el neto calculado aquí, ya validado concepto por concepto.
  const sinCalcular=netos.every(n=>h.celdas.get('BL'+n.fila)===0)&&netos.some(n=>Math.abs(n.neto)>.005);
  if(!sinCalcular)for(const n of netos){const neto=h.celdas.get('BL'+n.fila);if(typeof neto!=='number'||Math.abs(neto-n.neto)>.005)throw Error(`El neto no cuadra o falta el valor calculado de BL${n.fila}. Guarda el Excel recalculado.`);}
- if(!movimientos.length||movimientos.length>5000||new Set(movimientos.map(m=>m.tienda)).size!==1)throw Error('Usa un reporte de una sola tienda, con hasta 5,000 movimientos.');
+ if(!movimientos.length||movimientos.length>5000||new Set(movimientos.map(m=>m.tienda)).size!==1)throw Error('Usa un reporte de una sola tienda, con hasta 5,000 movimientos. Si la sucursal tiene varias (p. ej. Turbo), genera en el portal un reporte por tienda.');
  const fechas=movimientos.map(m=>m.fecha).sort();
  const facturas=hojas.find(h=>h.nombre==='Facturas de comisión');
  const facturasComision:FacturaComisionRappi[]=[];
