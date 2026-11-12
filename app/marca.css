@@ -613,6 +613,13 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   .horas-pico .mapa-calor-celda, .calendario-dia { transition: none; }
 }
 
+/* ─── Estado con tono (p. ej. campañas y envíos de Correos): fondo y texto de los tokens de estado, legibles de día y de noche ─── */
+.estado[data-tono="ok"] { background: var(--cuadra-fondo); color: var(--cuadra-texto); }
+.estado[data-tono="aviso"] { background: var(--aviso-fondo); color: var(--aviso-texto); }
+.estado[data-tono="alerta"] { background: var(--alerta-fondo); color: var(--alerta-texto); }
+.estado[data-tono="info"] { background: var(--info-fondo); color: var(--info); }
+.estado[data-tono="neutro"] { background: var(--neutro-fondo); color: var(--neutro-texto); }
+
 /* ─── Dashboard de inicio: orígenes y venta diaria lado a lado; historial con título grande ───
    Colores de origen de la serie categórica validada; el nombre siempre va al lado (leyenda). */
 .cat-mostrador { --cat: var(--dato-1); }

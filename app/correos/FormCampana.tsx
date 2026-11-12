@@ -10,7 +10,8 @@ export function FormCampana({ campana, etiquetas, conteos }: { campana: Campana 
   const [etiqueta, setEtiqueta] = useState(campana?.etiqueta ?? TODOS);
   const [cuando, setCuando] = useState("ahora");
   return <div className={styles.columnas}>
-    <form action={guardarCampana} className={styles.panel}>
+    <form action={guardarCampana} className={`seccion ${styles.panel}`}>
+      <h2>Contenido</h2>
       {campana && <input type="hidden" name="id" value={campana.id} />}
       <label>Nombre interno<input name="nombre" required maxLength={120} defaultValue={campana?.nombre} /></label>
       <label>Asunto<input name="asunto" required maxLength={150} defaultValue={campana?.asunto} /></label>
@@ -22,7 +23,7 @@ export function FormCampana({ campana, etiquetas, conteos }: { campana: Campana 
       </select></label>
       <button type="submit" className="boton">Guardar</button>
     </form>
-    <div className={styles.panel}>
+    <div className={`seccion ${styles.panel}`}>
       <h2>Vista previa</h2>
       <iframe title="Vista previa del correo" sandbox="" srcDoc={html} className={styles.previa} />
       {campana && <>
