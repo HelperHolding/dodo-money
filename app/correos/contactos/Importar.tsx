@@ -18,9 +18,9 @@ export function Importar({ previa, huella, origen, etiquetaExtra }: { previa: st
       else sessionStorage.removeItem("correos-csv");
     } catch {}
   }, [previa]);
-  return <section className={styles.fila}>
-    <h2>Importar CSV</h2>
-    <p><small>Columnas: correo (obligatoria), nombre, etiquetas. Los dados de baja no se reactivan. Máximo 20 000 contactos y 5 MB.</small></p>
+  // Va dentro de la sección plegable «Importar CSV» de la página de contactos (el título lo pone ella).
+  return <div className={styles.panel}>
+    <p className="saldo-nota">Columnas: correo (obligatoria), nombre, etiquetas. Los dados de baja no se reactivan. Máximo 20 000 contactos y 5 MB.</p>
     <form action={importarCsv} className={styles.fila}>
       <input type="file" accept=".csv,text/csv" onChange={async (e) => {
         const f = e.target.files?.[0]; if (!f) return;
@@ -41,5 +41,5 @@ export function Importar({ previa, huella, origen, etiquetaExtra }: { previa: st
       <input type="hidden" name="etiquetaExtra" value={etiquetaExtra} /><input type="hidden" name="confirmar" value="1" /><input type="hidden" name="huella" value={huella} />
       <button className="boton" type="submit" disabled={!contenido}>Confirmar importación</button>
     </form>}
-  </section>;
+  </div>;
 }
