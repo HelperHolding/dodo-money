@@ -91,7 +91,7 @@ sugerencia trae movimientos, tipo, documentos propuestos, concepto sugerido, dif
 | "Traspaso a cuenta" | Sin documento | `traspaso_interno` |
 | Abono "PRESTAMO" | Sin documento | `prestamo_recibido` |
 
-El Excel de Banregio recorta la descripción a ~60 caracteres; las reglas leen descripción y referencia.
+Las reglas leen descripción y referencia: algunos datos (por ejemplo, el de un préstamo) vienen solo en la referencia.
 
 Las reglas leen la descripción y la referencia conservadas por la importación. Un movimiento ya conciliado no se sugiere.
 
