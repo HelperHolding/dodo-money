@@ -83,3 +83,13 @@ El lote `CUENTAS-PENDIENTES-20261112` asigna las 138 equivalencias que Sebastiá
 Antes de guardar, revisa todo el lote: cada registro debe seguir vigente, con la categoría, el importe y la razón social revisados, y sin otra cuenta confirmada. Si algo no coincide, no guarda nada. La huella se toma al ejecutar. Repetir el lote no duplica nada.
 
 Orden: `supabase/pruebas/2026-11-12_cuentas_pendientes.sql` (ensayo con ROLLBACK, «PRUEBAS OK»), después `supabase/correcciones/2026-11-12_cuentas_pendientes.sql` («CUENTAS PENDIENTES OK», 138). Quedan fuera para decisión aparte: Bolpack de septiembre capturado como insumo (n65–68), un posible duplicado de Coca (n79), el depósito de garantía de CFE (n110; 184-03-000 no se permite para inversiones), Sam's/Seven en «otros» (n127–131, tres coinciden con el reembolso de Ricardo Villa) y la regalía a nombre de PHM, sin catálogo (n134).
+
+### Lote 2 (12/11/2026)
+
+`CUENTAS-PENDIENTES-2-20261112` resuelve 10 de los 12 restantes con las decisiones de Sebastián. Las categorías y las eliminaciones se hacen con las mismas funciones que usa la app (`asignar_cuentas_conceptos` y `editar_anular_gasto_admin`), que dejan su propio historial; después se asigna la cuenta con la huella corregida.
+
+- Bolpack BGL6872 (n65–68): los conceptos pasan de insumos a consumibles y se asignan a 602-54-000 Limpieza (Sitru).
+- Mozzarella $940 y azúcar $138 (n128 y n131): los gastos pasan de «otros» a insumos y se asignan a 502-01-000.
+- Duplicados eliminados: la Coca de caja chica (n79), porque la factura de Arca ya registra el pago con efectivo de ventas del 28/10 como histórico, y tres gastos de Sam's que pagó Ricardo Villa (n127, n129 y n130), porque ya están en su factura de reembolso por pagar. Al eliminar la Coca, la caja chica vuelve a contar $3,164.50 como disponibles. Los de Sam's no mueven efectivo.
+
+Si un gasto ya fue repuesto o cambió, no se guarda nada. Orden: `supabase/pruebas/2026-11-12_cuentas_pendientes_lote2.sql` («PRUEBAS OK») y luego `supabase/correcciones/2026-11-12_cuentas_pendientes_lote2.sql` («LOTE 2 OK», 6 cuentas y 4 duplicados). Siguen pendientes n110 (depósito CFE) y n134 (regalía a nombre de PHM).
