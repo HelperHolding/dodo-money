@@ -75,3 +75,11 @@ El Excel del P&L agrega `Por cuentas` y `Detalle` antes de las hojas operativas 
 Detalle conserva fecha, documento/concepto, proveedor, RFC de la razón social, UUID manual o XML, cuenta, periodo, importe y nota de cálculo. Las ligas a documentos usan el sitio de Dodo MX y requieren su sesión habitual. Fuentes calculadas, pendientes y redondeos siguen identificados. Los totales tienen su propio respaldo con signos; los documentos pueden repetirse en esos bloques, por lo que no se deben sumar bloques entre sí. Insumos e inversiones siguen fuera del resultado.
 
 No requiere migración ni cambia registros. La ruta conserva autenticación, permisos financieros y descarga privada sin caché. Pruebas: conciliación de fórmulas con detalle y acumulado, nota de crédito, ausencia versus cero, periodos sin días, filtros de ruta, cuatro hojas y enlaces internos del archivo guardado. Validación visual local con muestra y recálculo independiente de SUM/ROUND; la apertura y navegación nativa en Microsoft Excel no forman parte de ese ensayo.
+
+## Pendientes de septiembre a noviembre (12/11/2026)
+
+El lote `CUENTAS-PENDIENTES-20261112` asigna las 138 equivalencias que Sebastián aprobó el 12/11/2026, de 150 registros pendientes; 26 son reconfirmaciones de registros que pasaron a «Revisar» porque cambiaron pagos o estado. El plan está en `supabase/correcciones/2026-11-12_equivalencias_pendientes.json`. Solo llama a `asignar_cuenta_contable`: no cambia facturas, gastos, categorías, pagos ni efectivo.
+
+Antes de guardar, revisa todo el lote: cada registro debe seguir vigente, con la categoría, el importe y la razón social revisados, y sin otra cuenta confirmada. Si algo no coincide, no guarda nada. La huella se toma al ejecutar. Repetir el lote no duplica nada.
+
+Orden: `supabase/pruebas/2026-11-12_cuentas_pendientes.sql` (ensayo con ROLLBACK, «PRUEBAS OK»), después `supabase/correcciones/2026-11-12_cuentas_pendientes.sql` («CUENTAS PENDIENTES OK», 138). Quedan fuera para decisión aparte: Bolpack de septiembre capturado como insumo (n65–68), un posible duplicado de Coca (n79), el depósito de garantía de CFE (n110; 184-03-000 no se permite para inversiones), Sam's/Seven en «otros» (n127–131, tres coinciden con el reembolso de Ricardo Villa) y la regalía a nombre de PHM, sin catálogo (n134).
