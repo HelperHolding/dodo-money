@@ -93,3 +93,9 @@ Orden: `supabase/pruebas/2026-11-12_cuentas_pendientes.sql` (ensayo con ROLLBACK
 - Duplicados eliminados: la Coca de caja chica (n79), porque la factura de Arca ya registra el pago con efectivo de ventas del 28/10 como histórico, y tres gastos de Sam's que pagó Ricardo Villa (n127, n129 y n130), porque ya están en su factura de reembolso por pagar. Al eliminar la Coca, la caja chica vuelve a contar $3,164.50 como disponibles. Los de Sam's no mueven efectivo.
 
 Si un gasto ya fue repuesto o cambió, no se guarda nada. Orden: `supabase/pruebas/2026-11-12_cuentas_pendientes_lote2.sql` («PRUEBAS OK») y luego `supabase/correcciones/2026-11-12_cuentas_pendientes_lote2.sql` («LOTE 2 OK», 6 cuentas y 4 duplicados). Siguen pendientes n110 (depósito CFE) y n134 (regalía a nombre de PHM).
+
+### Depósitos en garantía (13/11/2026)
+
+`20261113020000_cuentas_deposito_garantia.sql` permite que una inversión (memo) use también cuentas 184 (depósitos en garantía), además de 15x y 17x. La pantalla de asignación aplica la misma regla y sugiere 184-03-000 para inversiones. Es lo único que cambia: insumos siguen en 502, y las tiendas en 602 y Oficina en 603.
+
+El lote `CUENTAS-PENDIENTES-3-20261113` asigna el depósito de garantía de CFE de La Calma (n110, $3,404.00, Helper) a 184-03-000 Otros depósitos en garantía. Orden: la migración, luego `supabase/pruebas/2026-11-13_deposito_garantia_cfe.sql` («PRUEBAS OK») y luego `supabase/correcciones/2026-11-13_deposito_garantia_cfe.sql` («LOTE 3 OK»). Sin la migración, el ensayo falla y no guarda nada.

@@ -12,7 +12,7 @@ export function alternativas(categoria:string|null,rfc:string):CuentaHelper[] {
 }
 export function codigoCompatible(codigo:string,categoria:string|null,sucursal:string|null) {
   if(categoria==='insumos')return codigo.startsWith('502-');
-  if(categoria==='inversiones')return /^(15\d|17\d)-/.test(codigo);
+  if(categoria==='inversiones')return /^(15\d|17\d|184)-/.test(codigo);
   return codigo.startsWith(sucursal?'602-':'603-');
 }
 export type MovimientoContable = {
