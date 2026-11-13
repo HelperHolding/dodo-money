@@ -1,0 +1,32 @@
+[
+ {
+  "n": 127,
+  "anterior": "ff49bf77-41cc-411f-9a3e-1e662c3dc5b6",
+  "fecha": "2026-11-03",
+  "concepto": "Queso Mozarella · reembolso a Ricardo Villa con caja chica",
+  "proveedor": "Sam’s",
+  "monto": 1202,
+  "concepto_factura": 355,
+  "motivo": "CUENTAS-PENDIENTES-4-20261113 aprobado por Sebastián el 13/11/2026 (n127): Compras nacionales. Compra de Sam's que Ricardo Villa pagó y se le reembolsó con efectivo de caja chica; insumo en memo."
+ },
+ {
+  "n": 129,
+  "anterior": "ef91f528-f300-42a8-944c-7fe92854b8b2",
+  "fecha": "2026-11-07",
+  "concepto": "Jamon · reembolso a Ricardo Villa con caja chica",
+  "proveedor": "Sams",
+  "monto": 1061.08,
+  "concepto_factura": 356,
+  "motivo": "CUENTAS-PENDIENTES-4-20261113 aprobado por Sebastián el 13/11/2026 (n129): Compras nacionales. Compra de Sam's que Ricardo Villa pagó y se le reembolsó con efectivo de caja chica; insumo en memo."
+ },
+ {
+  "n": 130,
+  "anterior": "f8b716b0-eee2-4001-b913-696e72d82eb3",
+  "fecha": "2026-11-08",
+  "concepto": "Jamon · reembolso a Ricardo Villa con caja chica",
+  "proveedor": "Sams",
+  "monto": 1145.76,
+  "concepto_factura": 357,
+  "motivo": "CUENTAS-PENDIENTES-4-20261113 aprobado por Sebastián el 13/11/2026 (n130): Compras nacionales. Compra de Sam's que Ricardo Villa pagó y se le reembolsó con efectivo de caja chica; insumo en memo."
+ }
+]

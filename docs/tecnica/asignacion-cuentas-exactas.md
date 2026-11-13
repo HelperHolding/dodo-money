@@ -99,3 +99,11 @@ Si un gasto ya fue repuesto o cambió, no se guarda nada. Orden: `supabase/prueb
 `20261113020000_cuentas_deposito_garantia.sql` permite que una inversión (memo) use también cuentas 184 (depósitos en garantía), además de 15x y 17x. La pantalla de asignación aplica la misma regla y sugiere 184-03-000 para inversiones. Es lo único que cambia: insumos siguen en 502, y las tiendas en 602 y Oficina en 603.
 
 El lote `CUENTAS-PENDIENTES-3-20261113` asigna el depósito de garantía de CFE de La Calma (n110, $3,404.00, Helper) a 184-03-000 Otros depósitos en garantía. Orden: la migración, luego `supabase/pruebas/2026-11-13_deposito_garantia_cfe.sql` («PRUEBAS OK») y luego `supabase/correcciones/2026-11-13_deposito_garantia_cfe.sql` («LOTE 3 OK»). Sin la migración, el ensayo falla y no guarda nada.
+
+### Reembolso a Ricardo Villa con caja chica (13/11/2026)
+
+El lote 2 eliminó tres gastos de Sam's que Ricardo pagó de su bolsa (origen «empleado») porque se repetían con su factura de reembolso. Después Sebastián confirmó que el reembolso se le pagó con efectivo de caja chica, y eso no estaba registrado en ningún lado: la factura seguía por pagar y la caja chica no lo había descontado.
+
+En la app, marcar como repuesto un gasto de empleado no descuenta ninguna caja, y un pago de factura no puede salir de caja chica. Por eso `CUENTAS-PENDIENTES-4-20261113` registra las tres compras como gastos de caja chica de La Calma con `registrar_gasto_sucursal`, en las fechas de compra (3, 7 y 8 de noviembre). Después los reclasifica a insumos con `editar_anular_gasto_admin`, les asigna 502-01-000 y cancela con `cancelar_factura` la factura de reembolso, que no tiene pagos. La caja chica baja $3,408.84, que es lo que salió del cajón. El total en memo de insumos no cambia.
+
+Orden: `supabase/pruebas/2026-11-13_reembolso_ricardo_caja_chica.sql` («PRUEBAS OK») y luego `supabase/correcciones/2026-11-13_reembolso_ricardo_caja_chica.sql` («LOTE 4 OK», con el saldo de caja chica antes y después).
