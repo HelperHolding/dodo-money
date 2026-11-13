@@ -17,6 +17,10 @@ test('asignación: servicios conserva alternativas y no infiere una cuenta por t
  assert.ok(!codigoCompatible('502-02-003','servicios','s'));
  assert.ok(codigoCompatible('502-02-003','insumos','s'));
  assert.ok(codigoCompatible('153-01-000','inversiones','s'));
+ assert.ok(codigoCompatible('184-03-000','inversiones','s'));
+ assert.ok(!codigoCompatible('185-01-000','inversiones','s'));
+ assert.ok(!codigoCompatible('184-03-000','servicios','s'));
+ assert.ok(alternativas('inversiones','HCM260306B93').some(c=>c.codigo==='184-03-000'));
  assert.ok(!codigoCompatible('602-52-000','servicios',null));
  assert.ok(codigoCompatible('603-52-000','servicios',null));
 });
