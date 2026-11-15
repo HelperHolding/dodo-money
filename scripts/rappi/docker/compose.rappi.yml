@@ -7,6 +7,9 @@ services:
       context: ./rappi-extractor
       dockerfile: docker/Dockerfile
     restart: unless-stopped
+    # Recoge los procesos que deja Chromium al cerrar. Sin esto se acumulan zombis hasta el límite de procesos del
+    # contenedor (2,315); el lector de TheCoffee, igual, se trabó así el 14-nov.
+    init: true
     environment:
       EXTRACTOR_KEY: ${RAPPI_EXTRACTOR_KEY}
       RAPPI_TIENDA: MX1930486109
