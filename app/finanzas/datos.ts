@@ -24,7 +24,7 @@ import { primerError } from "@/lib/corporativo";
 import { fechaMX, fechaTexto, hoyMX, pesos } from "@/lib/formato";
 import { capturasTardias, esMesDeEmision, fraccionCubre, textoCubre } from "@/lib/finanzas/cubre";
 import {cargarRappi} from "@/app/ventas/rappi/datos";
-import {ventasRappi} from "@/lib/ventas/rappi";
+import {claveDia,diasConAgregador,ventasRappi} from "@/lib/ventas/rappi";
 import {leerFinancierosRappi} from '@/app/banca/rappi/datos';
 import {efectoPLRappi,esPedidoRappi} from '@/lib/banca/rappi';
 
@@ -119,14 +119,16 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
   const [conciliaciones,datosMerma,financieros] = await Promise.all([leerConciliaciones(supabase,desde,hasta),datosMermas(supabase,desde,hasta),leerFinancierosRappi(supabase)]);
   const mermasValoradas = valorarMermas(datosMerma.filas,datosMerma.costos);
   const diasConciliados = aplicarConciliaciones(dias,conciliaciones.filas);
-  const rappi=ventasRappi(datosRappi.ordenes,datosRappi.catalogo);
+  // cargarRappi ya marca sumar=false en los días con venta de agregador en Dodo IS, así que rappi solo trae los demás días.
+  const rappi=ventasRappi(datosRappi.ordenes,datosRappi.catalogo),cubiertosDodo=diasConAgregador(datosRappi.agregador);
   const avisosFin=new Map<string,string[]>();
   const finAplicables=financieros.filter(f=>{
     const cubre=(fecha:string)=>fecha>=f.desde&&fecha<=f.hasta&&fecha>=desde&&fecha<=hasta;
-    const conflicto=diasConciliados.some(d=>d.sucursal_id===f.sucursal_id&&cubre(d.fecha)&&Number(desglose.find(x=>x.ventas_dia_id===d.id)?.total??0)>0)||datosRappi.ordenes.some(o=>o.sucursal_id===f.sucursal_id&&cubre(o.fecha)&&!o.sumar&&o.estado==='Finalizado');
+    // Órdenes excluidas a mano en días que Dodo IS no cubre: no se sabe de dónde sale su venta, así que el reporte espera.
+    const conflicto=datosRappi.ordenes.some(o=>o.sucursal_id===f.sucursal_id&&cubre(o.fecha)&&!o.sumar&&!o.enDodo&&o.estado==='Finalizado');
     const cfdiInvalido= facturasLeidas.some(x=>f.reporte.facturasComision?.some(c=>c.uuid===x.uuid?.toLowerCase()&&(x.rfc_receptor!==f.rfc||x.sucursal_id!==f.sucursal_id||x.tipo!=='ingreso'||x.estado==='cancelada'||Math.abs(Number(x.total)-c.total)>.01)));
     const cfdiSinVinculo=facturasLeidas.some(x=>x.sucursal_id===f.sucursal_id&&x.rfc_receptor===f.rfc&&x.estado!=='cancelada'&&/rappi/i.test(x.nombre_emisor??'')&&x.cubre_desde<=f.hasta&&x.cubre_hasta>=f.desde&&!f.reporte.uuidsComision.includes(x.uuid?.toLowerCase()??''));
-    if(conflicto||cfdiInvalido||cfdiSinVinculo){avisosFin.set(f.sucursal_id,[...(avisosFin.get(f.sucursal_id)??[]),`Reporte financiero ${f.archivo} pendiente: ${conflicto?'hay ventas Rappi incluidas en Dodo IS; concilia la fuente antes de aplicarlo':cfdiSinVinculo?'hay un documento de Rappi en Compras sin UUID vinculado en este reporte; revisa su relación para no duplicar gastos':'el CFDI de comisión no coincide en empresa, sucursal, estado o importe'}. Se conserva el cálculo anterior para ese reporte.`]);return false;}
+    if(conflicto||cfdiInvalido||cfdiSinVinculo){avisosFin.set(f.sucursal_id,[...(avisosFin.get(f.sucursal_id)??[]),`Reporte financiero ${f.archivo} pendiente: ${conflicto?'hay órdenes Rappi excluidas a mano en días sin venta de agregador en Dodo IS; revisa su fuente antes de aplicarlo':cfdiSinVinculo?'hay un documento de Rappi en Compras sin UUID vinculado en este reporte; revisa su relación para no duplicar gastos':'el CFDI de comisión no coincide en empresa, sucursal, estado o importe'}. Se conserva el cálculo anterior para ese reporte.`]);return false;}
     return true;
   });
   const cfdisFin=new Set(finAplicables.flatMap(f=>f.reporte.uuidsComision));
@@ -169,8 +171,13 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       };
     }),...rappi.dias.filter(d=>d.sucursal_id===s.id).map(d=>({...d,agregador:{total:d.total,tarjeta:0,en_linea:d.total}}))];
     const fin=finAplicables.filter(f=>f.sucursal_id===s.id),efecto=efectoPLRappi(fin.map(f=>f.reporte),desde,hasta);
+    // Días en que Dodo IS ya trae la venta de agregador: la venta sale de Dodo IS y del reporte financiero solo se usan
+    // comisión, excedente DAR, ingresos fuera de base y ajustes. En los demás días la base del reporte sustituye al portal.
+    const enDodo=(fecha:string)=>cubiertosDodo.has(claveDia(s.id,fecha));
+    const movsFin=fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta),movsFinVenta=movsFin.filter(m=>!enDodo(m.fecha));
+    const baseFin=centavos(movsFinVenta.reduce((t,m)=>t-m.retencionIva/.08,0));
     const historicoCubierto=rappi.dias.filter(d=>d.sucursal_id===s.id&&fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta));
-    const ventaNeta = centavos(diasVenta.reduce((t, d) => t + d.total - d.iva, 0)-historicoCubierto.reduce((t,d)=>t+d.total-d.iva,0)+efecto.ventaNeta);
+    const ventaNeta = centavos(diasVenta.reduce((t, d) => t + d.total - d.iva, 0)-historicoCubierto.reduce((t,d)=>t+d.total-d.iva,0)+baseFin);
     const ventaRappi = centavos(diasVenta.reduce((t, d) => t + d.agregador.total, 0));
 
     const productosDodo = ventas.filter(v => v.sucursal_id === s.id);
@@ -182,11 +189,11 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       dodo: resumenCanalPL(diasSuc, productosDodo, costeo(renglonesDodo).total.costo),
       rappi: resumenCanalPL(diasRappi, productosRappi, costeo(renglonesRappi).total.costo),
     };
-    canales.rappi.neta=centavos(canales.rappi.neta-historicoCubierto.reduce((t,d)=>t+d.total-d.iva,0)+efecto.ventaNeta);
+    canales.rappi.neta=centavos(canales.rappi.neta-historicoCubierto.reduce((t,d)=>t+d.total-d.iva,0)+baseFin);
     // Con reporte financiero la neta ya no sale de los días: la bruta sin IVA no se puede prorratear por día (Pendiente)…
-    if(fin.length||historicoCubierto.length||efecto.ventaNeta!==0)canales.rappi.brutaSinIva=null;
+    if(fin.length||historicoCubierto.length||baseFin!==0)canales.rappi.brutaSinIva=null;
     // …salvo que se tome del reporte: su Venta Bruta y el importe de productos de los días sin reporte llevan IVA del 16 %.
-    if(fin.length){const diasFuera=datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&!fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta));canales.rappi.bruta=centavos(diasFuera.reduce((t,o)=>t+Number(o.bruto),0)+fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta).reduce((t,m)=>t+m.bruta,0));canales.rappi.brutaSinIva=centavos(canales.rappi.bruta/1.16);}
+    if(fin.length){const diasFuera=datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&!fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta));canales.rappi.bruta=centavos(diasFuera.reduce((t,o)=>t+Number(o.bruto),0)+movsFinVenta.reduce((t,m)=>t+m.bruta,0));canales.rappi.brutaSinIva=centavos(canales.rappi.bruta/1.16);}
     const renglones = [...renglonesDodo, ...renglonesRappi];
     const c = costeo(renglones);
     anotar(s.id, "alimento", `Costo teórico de ${renglones.reduce((t, r) => t + r.cantidad, 0)} piezas vendidas (receta + periférico)`, c.total.costo);
@@ -250,7 +257,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     anotar(s.id,'rappi_fuera_base','Reporte Rappi: ingresos fuera de base de retención',efecto.fueraBase);
     anotar(s.id,'rappi_excedente','Excedente DAR del lote completo, sin IVA',efecto.excedente);
     anotar(s.id,'rappi_ajustes','Compensaciones y costo de canceladas del reporte',efecto.ajustes);
-    const basesFin=new Map<string,number>();for(const m of fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta))basesFin.set(m.fecha,(basesFin.get(m.fecha)??0)-m.retencionIva/.08);
+    const basesFin=new Map<string,number>();for(const m of movsFinVenta)basesFin.set(m.fecha,(basesFin.get(m.fecha)??0)-m.retencionIva/.08);
     const regaliasPeriodo = regalias([...diasVenta.filter((d,i)=>i<diasSuc.length||!fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta)),...[...basesFin].map(([fecha,base])=>({fecha,total:base,iva:0,tarjeta:0,en_linea:0,agregador:{total:0,tarjeta:0,en_linea:0}}))], vigente);
     anotar(s.id, "regalias", `Venta neta ${pesos(ventaNeta)} × regalías vigentes`, regaliasPeriodo);
     const cobro = comisionesCobro(diasVenta, vigente);
@@ -274,14 +281,14 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     });
     const faltantes = centavos(brutos - reclasificados.total);
     const presentes=new Set(datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.estado==='Finalizado').map(o=>o.rappi_id));
-    const sinDetalleFin=fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta&&esPedidoRappi(m)&&!['canceled','canceled_with_charge'].includes(m.estado)&&!presentes.has(m.orden)).length;
+    const sinDetalleFin=movsFinVenta.filter(m=>esPedidoRappi(m)&&!['canceled','canceled_with_charge'].includes(m.estado)&&!presentes.has(m.orden)).length;
     const historicoSinFin=rappi.dias.some(d=>d.sucursal_id===s.id&&!fin.some(f=>d.fecha>=f.desde&&d.fecha<=f.hasta));
 
     const entrada: EntradaPL = {
       ...entradaVacia(), canales,
       rappiFueraBase:efecto.fueraBase,rappiExcedente:efecto.excedente,rappiAjustes:efecto.ajustes,
       rappiPendiente:efecto.provisional||sinDetalleFin>0||historicoSinFin||avisosFin.has(s.id),
-      ventaNeta, descuentos: centavos(renglones.reduce((t, r) => t + r.importe_sin_descuento - r.importe, 0)-datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta)).reduce((t,o)=>t+Number(o.bruto)-Number(o.subtotal_restaurante),0)-fin.flatMap(f=>f.reporte.movimientos).filter(m=>m.fecha>=desde&&m.fecha<=hasta).reduce((t,m)=>t+m.aliado+m.dar,0)),
+      ventaNeta, descuentos: centavos(renglones.reduce((t, r) => t + r.importe_sin_descuento - r.importe, 0)-datosRappi.ordenes.filter(o=>o.sucursal_id===s.id&&o.sumar&&o.estado==='Finalizado'&&fin.some(f=>o.fecha>=f.desde&&o.fecha<=f.hasta)).reduce((t,o)=>t+Number(o.bruto)-Number(o.subtotal_restaurante),0)-movsFinVenta.reduce((t,m)=>t+m.aliado+m.dar,0)),
       alimento: c.total.costo, merma: merma.monto===null&&merma.insumosMonto===null?null:centavos((merma.monto??0)+(merma.insumosMonto??0)), mermaPendiente: merma.parcial||merma.insumosParcial,
       mermaProductos:merma.monto,mermaInsumos:merma.insumosMonto,mermaProductosPendiente:merma.parcial,mermaInsumosPendiente:merma.insumosParcial,
       nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia }, nominaDesglose,
@@ -291,7 +298,9 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
 
     const avisos: string[] = [];
     avisos.push(...avisosFin.get(s.id)??[]);
-    if(fin.length){avisos.push('Rappi: reporte financiero aplicado. La venta usa la base de retención; fuera de base, excedente DAR y ajustes se muestran separados. Retenciones e IVA de comisiones no son gasto. La comisión del lote se reparte por la comisión bruta de cada día; los UUID de comisión identificados se excluyen del gasto general para no duplicarlos.');if(efecto.provisional)avisos.push('Rappi: hay movimientos sin paidlot; comisión y excedente son provisionales hasta su asignación.');if(sinDetalleFin)avisos.push(`Rappi: ${sinDetalleFin} órdenes financieras sin productos en el historial; su costo queda pendiente y el resultado es provisional.`);}
+    if(fin.length){avisos.push('Rappi: reporte financiero aplicado. La venta usa la base de retención; fuera de base, excedente DAR y ajustes se muestran separados. Retenciones e IVA de comisiones no son gasto. La comisión del lote se reparte por la comisión bruta de cada día; los UUID de comisión identificados se excluyen del gasto general para no duplicarlos.');if(efecto.provisional)avisos.push('Rappi: hay movimientos sin paidlot; comisión y excedente son provisionales hasta su asignación.');if(sinDetalleFin)avisos.push(`Rappi: ${sinDetalleFin} órdenes financieras sin productos en el historial; su costo queda pendiente y el resultado es provisional.`);
+      const diasDodoFin=new Set(movsFin.filter(m=>enDodo(m.fecha)).map(m=>m.fecha)).size;
+      if(diasDodoFin)avisos.push(`Rappi: en ${diasDodoFin} ${diasDodoFin===1?'día':'días'} del reporte la venta de agregador ya viene en Dodo IS; ahí la venta sale de Dodo IS y del reporte solo entran comisión, excedente DAR, ingresos fuera de base y ajustes.`);}
     for (const m of meses) if (!realDelMes(reales, s.id, m.mes) && plantillaVigente(puestos, s.id, m.fin).length) avisos.push(`Nómina ${m.mes}: se usa plantilla estimada; falta capturar el desglose real del mes.`);
     if(merma.sinImportar)avisos.push(`Mermas: faltan ${merma.sinImportar} días por importar; el resultado es provisional.`);
     if(merma.sinCobertura)avisos.push(`Mermas: ${merma.sinCobertura} días sin cobertura confirmada de productos terminados. Reimporta el reporte completo; el resultado es provisional.`);

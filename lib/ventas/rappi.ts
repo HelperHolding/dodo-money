@@ -12,6 +12,27 @@ export const PREFIJO_EN_VIVO="portal-rappi-";
 export const archivoEnVivo=(desde:string,hasta:string)=>`${PREFIJO_EN_VIVO}${desde}_${hasta}.json`;
 export const esEnVivo=(archivo:string)=>archivo.startsWith(PREFIJO_EN_VIVO);
 const centavos=(n:number)=>Math.round(n*100)/100;
+export const claveDia=(sucursal:string,fecha:string)=>`${sucursal}|${fecha}`;
+/** Venta de agregador que Dodo IS ya trae por día (desglose «agregador» de ventas_dia), con IVA. */
+export type AgregadorDodo={sucursal_id:string;fecha:string;pedidos:number;total:number};
+/**
+ * Días (sucursal|fecha) en que Dodo IS ya trae venta de agregador. Desde que operación captura Rappi en Dodo IS, Dodo IS
+ * es la fuente de esos días y las órdenes del portal solo sirven para cotejo; los días previos siguen sumando Rappi.
+ */
+export const diasConAgregador=(dias:readonly AgregadorDodo[])=>new Set(dias.filter(d=>Number(d.total)>0).map(d=>claveDia(d.sucursal_id,d.fecha)));
+/** Las órdenes del portal de un día que Dodo IS ya cubre dejan de sumar (enDodo); las demás conservan su elección manual. */
+export function aplicarFuenteDodo<T extends {sucursal_id:string;fecha:string;sumar:boolean}>(ordenes:readonly T[],cubiertos:ReadonlySet<string>):(T&{enDodo:boolean})[]{
+ return ordenes.map(o=>cubiertos.has(claveDia(o.sucursal_id,o.fecha))?{...o,sumar:false,enDodo:true}:{...o,enDodo:false});
+}
+export type CotejoDia={sucursal_id:string;fecha:string;dodoPedidos:number;dodoTotal:number;rappiOrdenes:number;rappiTotal:number;diferencia:number};
+/** Cotejo por día: venta de agregador en Dodo IS contra órdenes finalizadas del portal (subtotal restaurante, con IVA). */
+export function cotejoRappiDodo(ordenes:readonly {sucursal_id:string;fecha:string;estado:string;subtotal_restaurante:number|string}[],dodo:readonly AgregadorDodo[]):CotejoDia[]{
+ const dias=new Map<string,CotejoDia>();
+ const dia=(s:string,f:string)=>{const k=claveDia(s,f);let d=dias.get(k);if(!d){d={sucursal_id:s,fecha:f,dodoPedidos:0,dodoTotal:0,rappiOrdenes:0,rappiTotal:0,diferencia:0};dias.set(k,d);}return d;};
+ for(const x of dodo){const d=dia(x.sucursal_id,x.fecha);d.dodoPedidos+=Number(x.pedidos);d.dodoTotal=centavos(d.dodoTotal+Number(x.total));}
+ for(const o of ordenes)if(o.estado==="Finalizado"){const d=dia(o.sucursal_id,o.fecha);d.rappiOrdenes++;d.rappiTotal=centavos(d.rappiTotal+Number(o.subtotal_restaurante));}
+ return [...dias.values()].map(d=>({...d,diferencia:centavos(d.dodoTotal-d.rappiTotal)})).sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.sucursal_id.localeCompare(b.sucursal_id));
+}
 export function resumenPanelRappi(ordenes:readonly RappiGuardada[]) {
  const sumadas=ordenes.filter(o=>o.estado==='Finalizado'&&o.sumar);
  const total=centavos(sumadas.reduce((s,o)=>s+Number(o.subtotal_restaurante),0));
