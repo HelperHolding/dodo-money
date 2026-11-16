@@ -51,3 +51,24 @@ test('panel Rappi: bruto antes de descuentos conserva centavos y la base de vent
  assert.equal(Math.round((r.bruto-r.descuentoRestaurante)*100),Math.round(r.total*100));
  assert.equal(r.cantidad,2);assert.equal(r.descuentoRappi,52.8);assert.equal(resumenPanelRappi([]).bruto,0);
 });
+
+import {aplicarFuenteDodo,claveDia,cotejoRappiDodo,diasConAgregador} from "./rappi.ts";
+test("Rappi: en días con agregador en Dodo IS el portal no suma; los demás días siguen sumando",()=>{
+ const o=guardada(),otroDia={...o,rappi_id:"2",fecha:"2026-10-06"},otraSuc={...o,rappi_id:"3",sucursal_id:"t"};
+ const cubiertos=diasConAgregador([{sucursal_id:"s",fecha:o.fecha,pedidos:1,total:99},{sucursal_id:"s",fecha:"2026-10-07",pedidos:0,total:0}]);
+ assert.deepEqual([...cubiertos],[claveDia("s",o.fecha)]);
+ const marcadas=aplicarFuenteDodo([o,otroDia,otraSuc],cubiertos);
+ assert.deepEqual(marcadas.map(x=>[x.rappi_id,x.sumar,x.enDodo]),[[o.rappi_id,false,true],["2",true,false],["3",true,false]]);
+ // Sin duplicar: el día cubierto solo trae el total de Dodo IS; el otro día suma Rappi.
+ const r=ventasRappi(marcadas,[]);assert.deepEqual(r.dias.map(d=>[d.sucursal_id,d.fecha]).sort(),[["s","2026-10-06"],["t",o.fecha]]);
+ const dodo={sucursal_id:"s",fecha:o.fecha,pedidos:5,total:500,efectivo:0,tarjeta:401,en_linea:99,iva:69,venta_m2:null,ventas_dia_desglose:[{tipo:"agregador" as const,pedidos:1,total:99}]};
+ const dia=combinarDiasRappi([dodo],r.dias).find(d=>d.sucursal_id==="s"&&d.fecha===o.fecha)!;
+ assert.equal(dia.total,500);assert.equal(dia.ventas_dia_desglose.find(x=>x.tipo==="agregador")!.total,99);
+ // Una exclusión manual se conserva en días que Dodo IS no cubre.
+ assert.equal(aplicarFuenteDodo([{...otroDia,sumar:false}],cubiertos)[0].sumar,false);
+});
+test("Rappi: el cotejo compara por día lo capturado en Dodo IS contra el portal",()=>{
+ const o=guardada();
+ const c=cotejoRappiDodo([o,{...o,rappi_id:"2"},{...o,rappi_id:"3",estado:"Cancelado"},{...o,rappi_id:"4",fecha:"2026-10-06"}],[{sucursal_id:"s",fecha:o.fecha,pedidos:1,total:99}]);
+ assert.deepEqual(c.map(d=>[d.fecha,d.dodoPedidos,d.dodoTotal,d.rappiOrdenes,d.rappiTotal,d.diferencia]),[["2026-10-06",0,0,1,99,-99],[o.fecha,1,99,2,198,-99]]);
+});
