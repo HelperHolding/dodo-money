@@ -24,6 +24,23 @@ export const diasConAgregador=(dias:readonly AgregadorDodo[])=>new Set(dias.filt
 export function aplicarFuenteDodo<T extends {sucursal_id:string;fecha:string;sumar:boolean}>(ordenes:readonly T[],cubiertos:ReadonlySet<string>):(T&{enDodo:boolean})[]{
  return ordenes.map(o=>cubiertos.has(claveDia(o.sucursal_id,o.fecha))?{...o,sumar:false,enDodo:true}:{...o,enDodo:false});
 }
+/** Pedido de agregador capturado en Dodo IS (tablas pedidos y pedido_productos). */
+export type PedidoAgregadorDodo={dodo_id:string;sucursal_id:string;fecha:string;hora:string;total:number|string;total_sin_descuento:number|string;agregador:string|null;
+ pedido_productos:{renglon:number;nombre:string;precio:number|string;precio_sin_descuento:number|string;dodo_id:number}[]};
+/**
+ * Pedidos de agregador de Dodo IS con la forma de una orden del portal (archivo «dodo-is», rappi_id «dodo:…»), para que la
+ * página de Rappi muestre la venta de los días en que Dodo IS es la fuente. El importe es lo que capturó operación: lo que
+ * paga el cliente, con el descuento del restaurante y el de Rappi ya aplicados en el menú de agregador.
+ */
+export function ordenesDesdeDodo(pedidos:readonly PedidoAgregadorDodo[]):RappiGuardada[]{
+ return pedidos.map(p=>{
+  const id=`dodo:${p.dodo_id}`,total=centavos(Number(p.total)),bruto=centavos(Math.max(Number(p.total_sin_descuento),total));
+  return {rappi_id:id,tienda_id:"",fecha:p.fecha,hora:p.hora.slice(0,5),estado:"Finalizado",pago:`Dodo IS · ${p.agregador??"agregador"}`,bruto,descuento_restaurante:centavos(bruto-total),subtotal_restaurante:total,descuento_rappi:0,facturar:total,
+   sucursal_id:p.sucursal_id,sumar:true,archivo:"dodo-is",registrado_en:"",
+   rappi_lineas:[...p.pedido_productos].sort((a,b)=>a.renglon-b.renglon).map((x,i)=>({rappi_id:id,linea:i+1,nombre:x.nombre,opciones:"",cantidad:1,importe:centavos(Number(x.precio)),producto_id:-Number(x.dodo_id)}))};
+ });
+}
+export const esDeDodo=(o:{archivo:string})=>o.archivo==="dodo-is";
 export type CotejoDia={sucursal_id:string;fecha:string;dodoPedidos:number;dodoTotal:number;rappiOrdenes:number;rappiTotal:number;diferencia:number};
 /**
  * Cotejo por día: venta de agregador en Dodo IS contra órdenes finalizadas del portal, con IVA. Operación captura en Dodo IS

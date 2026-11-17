@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-17 · Ventas Rappi: pedidos de agregador de Dodo IS · sin migración
+
+Desde que Dodo IS es la fuente de los días con agregador, Ventas → Rappi solo mostraba las órdenes del portal que suman, y esos días quedaban vacíos. Ahora `cargarPedidosAgregadorDodo` lee los pedidos entregados con agregador (y sus productos) y `ordenesDesdeDodo` los convierte en órdenes con archivo `dodo-is` e importe igual a lo capturado: lo que paga el cliente. Suman a los indicadores («Venta Rappi»), al subtotal acumulado, por día, por día de la semana y por hora, junto con las órdenes del portal de los días sin Dodo IS, sin duplicar. El calendario de la página toma la venta de agregador de Dodo IS en los días cubiertos. Una sección «Pedidos de agregador en Dodo IS» lista cada pedido con sus productos. Estados, canceladas, reclamos, ranking de productos, cotejo y lista de órdenes siguen saliendo del portal. Prueba en `lib/ventas/rappi.test.ts` con un pedido real del 15 nov.
+
 ## 2026-11-17 · Rappi: el cotejo con Dodo IS usa «A facturar» · sin migración
 
 Al revisar el 15 nov 2026 orden por orden (26 pedidos de agregador en Dodo IS contra 26 finalizadas del portal), operación captura en Dodo IS lo que paga el cliente: el menú de agregador ya trae el descuento del restaurante y el de Rappi (Pepperoni mediana $82, Hawaiana mediana $99, igual que «A facturar»). Comparar contra el subtotal restaurante daba una diferencia de ~22 % todos los días. `cotejoRappiDodo` ahora suma `facturar`, y ese día queda en $394.75: dos cupones que Rappi cubrió completos, un Plan Dúo capturado por piezas y dos descuentos de Rappi distintos a la promoción. Mismo criterio que la base de retención del reporte financiero en el P&L (venta después de ambos descuentos).
