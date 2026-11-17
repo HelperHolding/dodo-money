@@ -73,3 +73,15 @@ test("Rappi: el cotejo compara por día lo capturado en Dodo IS contra «A factu
  const c=cotejoRappiDodo([o,{...o,rappi_id:"2"},{...o,rappi_id:"3",estado:"Cancelado"},{...o,rappi_id:"4",fecha:"2026-10-06"}],[{sucursal_id:"s",fecha:o.fecha,pedidos:2,total:198}]);
  assert.deepEqual(c.map(d=>[d.fecha,d.dodoPedidos,d.dodoTotal,d.rappiOrdenes,d.rappiTotal,d.diferencia]),[["2026-10-06",0,0,1,99,-99],[o.fecha,2,198,2,198,0]]);
 });
+import {esDeDodo,ordenesDesdeDodo} from "./rappi.ts";
+test("Rappi: los pedidos de agregador de Dodo IS se ven como órdenes y suman lo capturado",()=>{
+ // Pedido real del 15 nov 2026: Pepperoni Mediano $82 + Coca Light $38 = $120, lo mismo que «A facturar» en el portal.
+ const [o]=ordenesDesdeDodo([{dodo_id:"ABC",sucursal_id:"s",fecha:"2026-11-15",hora:"16:15:00",total:"120",total_sin_descuento:"120",agregador:"Rappi",
+  pedido_productos:[{renglon:2,nombre:"Coca Light 0,6 L",precio:"38",precio_sin_descuento:"38",dodo_id:7},{renglon:1,nombre:"Pepperoni Mediano",precio:"82",precio_sin_descuento:"82",dodo_id:5}]}]);
+ assert.equal(o.rappi_id,"dodo:ABC");assert.equal(o.hora,"16:15");assert.equal(o.estado,"Finalizado");assert.equal(o.sumar,true);assert.ok(esDeDodo(o));
+ assert.equal(o.subtotal_restaurante,120);assert.equal(o.facturar,120);assert.equal(o.descuento_rappi,0);
+ assert.deepEqual(o.rappi_lineas.map(l=>[l.linea,l.nombre,l.importe,l.producto_id]),[[1,"Pepperoni Mediano",82,-5],[2,"Coca Light 0,6 L",38,-7]]);
+ // Junto con una orden del portal que ya viene en Dodo IS (sumar=false), la venta cuenta una sola vez.
+ const portal={...guardada(),fecha:"2026-11-15",sumar:false};
+ const r=resumenPanelRappi([portal,o]);assert.equal(r.cantidad,1);assert.equal(r.total,120);assert.equal(r.enDodo,1);
+});

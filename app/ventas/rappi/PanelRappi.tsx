@@ -33,12 +33,15 @@ const comparado = (clave: Indicador["clave"], valor: number | null, antes: numbe
  * periodo anterior del mismo largo, y debajo la rejilla de gráficas del tablero de Ventas. `diario` es el subtotal y las
  * órdenes por día del calendario; con él se compara solo si el periodo anterior ya tenía órdenes en vivo.
  */
-export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
-  ordenes: RappiGuardada[]; catalogo: readonly CatalogoRappi[]; periodo: Periodo; hoy: string;
+export function PanelRappi({ ordenes, dodo = [], catalogo, periodo, hoy, diario }: {
+  ordenes: RappiGuardada[]; dodo?: RappiGuardada[]; catalogo: readonly CatalogoRappi[]; periodo: Periodo; hoy: string;
   diario: { venta: Record<string, number>; ordenes: Record<string, number> };
 }) {
-  const r = resumenPanelRappi(ordenes);
-  const sumadas = ordenes.filter((o) => o.estado === "Finalizado" && o.sumar);
+  // Venta: órdenes del portal que suman + pedidos de agregador de Dodo IS (días en que Dodo IS es la fuente).
+  // Estados, cancelaciones y reclamos solo existen en el portal.
+  const venta = [...ordenes, ...dodo];
+  const r = resumenPanelRappi(venta), portal = resumenPanelRappi(ordenes);
+  const sumadas = venta.filter((o) => o.estado === "Finalizado" && o.sumar);
 
   // Contra el periodo anterior: solo si las órdenes en vivo ya llegaban desde su primer día
   const anterior = periodoAnterior(periodo);
@@ -90,9 +93,9 @@ export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
     const total = delDia.reduce((n, d) => n + d.total, 0), cuantas = delDia.reduce((n, d) => n + d.ordenes, 0);
     return { clave: String(i), etiqueta: nombre, valor: total, texto: cuantas ? `${pesos(total)} · ${ordenesTexto(cuantas)}` : "—" };
   });
-  const hora = ventaPorHora(ventasRappi(ordenes, catalogo).pedidos);
+  const hora = ventaPorHora(ventasRappi(venta, catalogo).pedidos);
   const facturar = Math.round((r.total - r.descuentoRappi) * 100) / 100;
-  const estado = Object.fromEntries(r.estados.map((e) => [e.estado, e.cantidad]));
+  const estado = Object.fromEntries(portal.estados.map((e) => [e.estado, e.cantidad]));
   const subtotalDe = (e: RappiGuardada["estado"]) =>
     Math.round(ordenes.filter((o) => o.estado === e).reduce((n, o) => n + Number(o.subtotal_restaurante), 0) * 100) / 100;
 
@@ -102,16 +105,16 @@ export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
         <div className="indicadores-marco">
           <div className="indicadores">
             <div className="indicador">
-              <span className="indicador-etiqueta">Subtotal restaurante</span>
+              <span className="indicador-etiqueta">{dodo.length ? "Venta Rappi" : "Subtotal restaurante"}</span>
               <strong className="indicador-valor">{pesosRedondos(r.total)}</strong>
               {cambio(kpi.total)}
-              <span className="indicador-detalle">Después del descuento restaurante · con IVA.</span>
+              <span className="indicador-detalle">{dodo.length ? "Portal: después del descuento restaurante; días en Dodo IS: lo capturado (lo que paga el cliente) · con IVA." : "Después del descuento restaurante · con IVA."}</span>
             </div>
             <div className="indicador">
               <span className="indicador-etiqueta">Órdenes sumadas</span>
               <strong className="indicador-valor">{r.cantidad.toLocaleString("es-MX")}</strong>
               {cambio(kpi.ordenes)}
-              <span className="indicador-detalle">{r.enDodo} finalizadas incluidas en Dodo IS, excluidas de estos importes.</span>
+              <span className="indicador-detalle">{dodo.length ? `${dodo.length} pedidos de agregador de Dodo IS; ${portal.enDodo} órdenes del portal de esos días quedan solo para cotejo.` : `${portal.enDodo} finalizadas incluidas en Dodo IS, excluidas de estos importes.`}</span>
             </div>
             <div className="indicador">
               <span className="indicador-etiqueta">Ticket promedio</span>
@@ -170,7 +173,7 @@ export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
         <section className="seccion tablero-ancha" aria-labelledby="r-diaria">
           <div className="seccion-cabecera">
             <h2 id="r-diaria">{unDia ? "Subtotal por hora" : "Subtotal por día"}</h2>
-            <ConInfo titulo={unDia ? "Subtotal por hora" : "Subtotal por día"} etiqueta="Cómo leer esto">Solo órdenes finalizadas con fuente Rappi. Los días sin barras no recibieron ventas sumadas del portal.</ConInfo>
+            <ConInfo titulo={unDia ? "Subtotal por hora" : "Subtotal por día"} etiqueta="Cómo leer esto">Órdenes finalizadas del portal y, en los días en que operación captura Rappi en Dodo IS, los pedidos de agregador de Dodo IS. La hora de Dodo IS es la de captura, que puede ir por tandas.</ConInfo>
           </div>
           {r.dias.length ? (
             <BarrasVerticales key={`${periodo.desde}|${periodo.hasta}`} titulo={unDia ? "Subtotal por hora" : "Subtotal por día"} dias={barras} />
