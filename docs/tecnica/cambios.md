@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-17 · Dodo IS: se ignoran los pedidos de call center · sin migración
+
+Los pedidos de Rappi que operación captura a mano en Dodo IS (caja «Delivery» #122, origen `Aggregator`, agregador «Rappi») no cuadraban con el portal: se capturan con el precio que paga el cliente, los combos van por piezas y hay cupones de por medio. Mientras se define cómo conciliarlos, la sincronización de ventas los ignora (`esCallCenter` en `lib/dodois/ventas.ts`: caja Delivery, origen de agregador o con nombre de agregador). `traducirVentas` los cuenta aparte en `callCenter`, y el mensaje de la sincronización dice cuántos se ignoraron y por cuánto. Al volver a sincronizar un día, el RPC borra los pedidos que ya no llegan y rehace el desglose; sin agregador en Dodo IS, la regla automática vuelve a tomar Rappi del portal en Ventas, Rappi y P&L. Pruebas en `lib/dodois/ventas.test.ts`.
+
 ## 2026-11-17 · Ventas: Rappi Turbo separado y agregador fuera del POS en el tablero · sin migración
 
 Dodo IS registra igual la tienda normal y Rappi Turbo (todo llega como «Rappi», misma caja); solo el portal sabe la tienda de cada orden. `rappiPorTienda` separa la venta Rappi por día: las órdenes del portal que suman van por su tienda (`TIENDA_TURBO`) y la venta de agregador de Dodo IS se reparte con la proporción del portal de ese día (`fraccionTurbo`), marcada como estimada. En Ventas → Rappi, la tarjeta de venta muestra normal y Turbo, y las barras por día y por día de la semana pintan Turbo con el segundo color (`parte` en `BarrasVerticales` y `Grafica`). En el tablero de Ventas y en su reporte PDF/Excel, los canales son POS / Dodo IS sin la venta de agregador (`quitarAgregador`; antes Rappi capturado en Dodo IS quedaba en el POS), Rappi y Rappi Turbo (`DatosVentas.tablero`). Inicio, P&L y reporte diario no cambian. Pruebas en `lib/ventas/rappi.test.ts`.
