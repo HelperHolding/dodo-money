@@ -35,3 +35,11 @@ export function porReponerAEmpleados<G extends GastoEmpleado>(gastos: readonly G
     .map(([persona, lista]) => ({ persona, gastos: lista, total: centavos(lista.reduce((s, g) => s + Number(g.monto), 0)) }))
     .sort((a, b) => b.total - a.total);
 }
+
+/**
+ * Foto que se muestra como "Ver foto" del gasto: el ticket original o, si se capturó sin foto,
+ * la que se agregó después como respaldo de la corrección.
+ */
+export function fotoDelGasto(g: { foto_path: string | null; respaldo_informativo: string | null }): string | null {
+  return g.foto_path || g.respaldo_informativo || null;
+}

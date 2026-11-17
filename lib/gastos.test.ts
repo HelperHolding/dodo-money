@@ -47,3 +47,11 @@ test("porReponerAEmpleados agrupa por persona lo que falta reponer, el mayor pri
   ]);
   assert.deepEqual(porReponerAEmpleados([]), []);
 });
+
+test("fotoDelGasto: la foto agregada después en una corrección se muestra como foto del gasto", async () => {
+  const { fotoDelGasto } = await import("./gastos.ts");
+  assert.equal(fotoDelGasto({ foto_path: "s/ticket.jpg", respaldo_informativo: null }), "s/ticket.jpg");
+  assert.equal(fotoDelGasto({ foto_path: null, respaldo_informativo: "s/agregada.jpg" }), "s/agregada.jpg");
+  assert.equal(fotoDelGasto({ foto_path: "s/ticket.jpg", respaldo_informativo: "s/respaldo.jpg" }), "s/ticket.jpg");
+  assert.equal(fotoDelGasto({ foto_path: null, respaldo_informativo: null }), null);
+});
