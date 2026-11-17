@@ -9,20 +9,31 @@ import type { TipoDesglose } from "@/lib/ventas/extraer";
 import { leerTodo } from "@/lib/ventas/paginar";
 import type { LineaPedido, Pedido } from "@/lib/ventas/pedidos";
 import { cargarAgregadorDodo, cargarRappi } from "./rappi/datos";
-import { claveDia, combinarDiasRappi, diasConAgregador, ventasRappi } from "@/lib/ventas/rappi";
+import { claveDia, combinarDiasRappi, diasConAgregador, diasDeTienda, quitarAgregador, rappiPorTienda, ventasRappi, type AgregadorDodo, type RappiGuardada } from "@/lib/ventas/rappi";
 
 export type FilaDesglose = { tipo: TipoDesglose; pedidos: number; total: number };
 export type DiaConDesglose = VentaDia & { importacion_id?: string; ventas_dia_desglose: FilaDesglose[] };
 
 export type DatosVentas = {
   canales: CanalesVentas;
+  /** Canales del tablero y del reporte: POS sin la venta de agregador, Rappi normal y Rappi Turbo. */
+  tablero: CanalesTablero;
   dias: DiaConDesglose[];
   renglones: RenglonCosteo[];
   /** El periodo anterior del mismo largo, para comparar indicadores y productos. */
-  anterior: { dias: VentaDia[]; renglones: RenglonCosteo[]; canales:CanalesVentas };
+  anterior: { dias: VentaDia[]; renglones: RenglonCosteo[]; canales:CanalesVentas; tablero:CanalesTablero };
   cierres: CierreDia[];
 };
 export type CanalesVentas=Record<"pos"|"rappi",{dias:VentaDia[];renglones:RenglonCosteo[]}>;
+export type CanalesTablero=Record<"pos"|"rappi"|"turbo",{dias:VentaDia[];renglones:RenglonCosteo[]}>;
+/**
+ * POS sin la venta de agregador de Dodo IS (es Rappi capturado en Dodo IS) y Rappi separado en tienda normal y Turbo: el
+ * portal por su tienda y, en días de Dodo IS, la venta de agregador repartida con la proporción del portal.
+ */
+function canalesTablero(diasDodo:readonly DiaConDesglose[],canales:CanalesVentas,ordenes:readonly RappiGuardada[],agregador:readonly AgregadorDodo[]):CanalesTablero{
+  const tiendas=rappiPorTienda(ordenes,agregador);
+  return {pos:{dias:quitarAgregador(diasDodo),renglones:canales.pos.renglones},rappi:{dias:diasDeTienda(tiendas.normal),renglones:canales.rappi.renglones},turbo:{dias:diasDeTienda(tiendas.turbo),renglones:[]}};
+}
 
 /**
  * Qué sucursal se ve. Gerente: siempre la suya (la base de datos tampoco le deja ver otra).
@@ -123,9 +134,11 @@ export async function datosVentas(supabase: SupabaseClient, sucursal: string | n
   };
   return {
     canales,
+    tablero:canalesTablero(aplicarConciliaciones(diasDodo,concActual.filas),canales,actualRappi.ordenes,actualRappi.agregador),
     dias,
     renglones: [...canales.pos.renglones,...canales.rappi.renglones],
-    anterior: { dias: diasAnteriores, renglones: [...canalesAnteriores.pos.renglones,...canalesAnteriores.rappi.renglones],canales:canalesAnteriores },
+    anterior: { dias: diasAnteriores, renglones: [...canalesAnteriores.pos.renglones,...canalesAnteriores.rappi.renglones],canales:canalesAnteriores,
+      tablero:canalesTablero(aplicarConciliaciones(diasAnterioresDodo,concAnterior.filas),canalesAnteriores,anteriorRappi.ordenes,anteriorRappi.agregador) },
     cierres,
   };
 }

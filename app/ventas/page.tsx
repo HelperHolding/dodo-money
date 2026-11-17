@@ -165,7 +165,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         pedidos: `${resumen.dias} ${resumen.dias === 1 ? "día" : "días"}`,
         ticket: "Con IVA",
       }} />
-      <TarjetasCanales canales={reporteCanales(d.canales, d.anterior.canales)} />
+      <TarjetasCanales canales={reporteCanales(d.tablero, d.anterior.tablero)} />
       </div></section>
 
       {conDiferencia.length > 0 && (

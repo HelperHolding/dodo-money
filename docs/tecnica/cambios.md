@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-17 · Ventas: Rappi Turbo separado y agregador fuera del POS en el tablero · sin migración
+
+Dodo IS registra igual la tienda normal y Rappi Turbo (todo llega como «Rappi», misma caja); solo el portal sabe la tienda de cada orden. `rappiPorTienda` separa la venta Rappi por día: las órdenes del portal que suman van por su tienda (`TIENDA_TURBO`) y la venta de agregador de Dodo IS se reparte con la proporción del portal de ese día (`fraccionTurbo`), marcada como estimada. En Ventas → Rappi, la tarjeta de venta muestra normal y Turbo, y las barras por día y por día de la semana pintan Turbo con el segundo color (`parte` en `BarrasVerticales` y `Grafica`). En el tablero de Ventas y en su reporte PDF/Excel, los canales son POS / Dodo IS sin la venta de agregador (`quitarAgregador`; antes Rappi capturado en Dodo IS quedaba en el POS), Rappi y Rappi Turbo (`DatosVentas.tablero`). Inicio, P&L y reporte diario no cambian. Pruebas en `lib/ventas/rappi.test.ts`.
+
 ## 2026-11-17 · Ventas Rappi: pedidos de agregador de Dodo IS · sin migración
 
 Desde que Dodo IS es la fuente de los días con agregador, Ventas → Rappi solo mostraba las órdenes del portal que suman, y esos días quedaban vacíos. Ahora `cargarPedidosAgregadorDodo` lee los pedidos entregados con agregador (y sus productos) y `ordenesDesdeDodo` los convierte en órdenes con archivo `dodo-is` e importe igual a lo capturado: lo que paga el cliente. Suman a los indicadores («Venta Rappi»), al subtotal acumulado, por día, por día de la semana y por hora, junto con las órdenes del portal de los días sin Dodo IS, sin duplicar. El calendario de la página toma la venta de agregador de Dodo IS en los días cubiertos. Una sección «Pedidos de agregador en Dodo IS» lista cada pedido con sus productos. Estados, canceladas, reclamos, ranking de productos, cotejo y lista de órdenes siguen saliendo del portal. Prueba en `lib/ventas/rappi.test.ts` con un pedido real del 15 nov.

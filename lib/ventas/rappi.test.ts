@@ -85,3 +85,22 @@ test("Rappi: los pedidos de agregador de Dodo IS se ven como órdenes y suman lo
  const portal={...guardada(),fecha:"2026-11-15",sumar:false};
  const r=resumenPanelRappi([portal,o]);assert.equal(r.cantidad,1);assert.equal(r.total,120);assert.equal(r.enDodo,1);
 });
+import {TIENDA_TURBO,diasDeTienda,fraccionTurbo,quitarAgregador,rappiPorTienda} from "./rappi.ts";
+test("Rappi Turbo: el portal va por tienda y la venta de Dodo IS se reparte con su proporción",()=>{
+ const base={...guardada(),fecha:"2026-11-15",sumar:false,enDodo:true};
+ // Portal del 15: normal 300 en 2 órdenes, Turbo 100 en 1 (25 %); Dodo IS registró 320 en 3 pedidos.
+ const portal=[{...base,rappi_id:"1",subtotal_restaurante:150},{...base,rappi_id:"2",subtotal_restaurante:150},{...base,rappi_id:"3",tienda_id:TIENDA_TURBO,subtotal_restaurante:100},{...base,rappi_id:"4",tienda_id:TIENDA_TURBO,estado:"Cancelado" as const,subtotal_restaurante:500}];
+ assert.deepEqual(fraccionTurbo(portal).get("s|2026-11-15"),{fraccion:.25,turbo:1,todas:3});
+ // Un día anterior sin Dodo IS: el portal suma por su tienda, exacto.
+ const previo=[{...guardada(),rappi_id:"5",fecha:"2026-11-10",subtotal_restaurante:99},{...guardada(),rappi_id:"6",fecha:"2026-11-10",tienda_id:TIENDA_TURBO,subtotal_restaurante:50}];
+ const r=rappiPorTienda([...portal,...previo],[{sucursal_id:"s",fecha:"2026-11-15",pedidos:3,total:320}]);
+ assert.deepEqual(r.turbo.map(d=>[d.fecha,d.pedidos,d.total,d.estimado]),[["2026-11-10",1,50,false],["2026-11-15",1,80,true]]);
+ assert.deepEqual(r.normal.map(d=>[d.fecha,d.pedidos,d.total,d.estimado]),[["2026-11-10",1,99,false],["2026-11-15",2,240,true]]);
+ assert.equal(diasDeTienda(r.turbo)[1].iva,11.03);
+});
+test("Tablero: el POS de Dodo IS sin la venta de agregador; sin agregador queda igual",()=>{
+ const d={sucursal_id:"s",fecha:"2026-11-15",pedidos:73,total:20000,efectivo:9000,tarjeta:6468,en_linea:0,iva:2758.62,venta_m2:200,ventas_dia_desglose:[{tipo:"agregador",pedidos:26,total:4532}]};
+ const [x]=quitarAgregador([d]);
+ assert.deepEqual([x.pedidos,x.total,x.iva,x.efectivo,x.tarjeta,x.venta_m2],[47,15468,2133.52,9000,6468,154.68]);
+ assert.deepEqual(quitarAgregador([{...d,ventas_dia_desglose:[]}])[0].total,20000);
+});
