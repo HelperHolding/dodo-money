@@ -5,7 +5,12 @@
 begin;
 
 -- La bitácora de sincronizaciones también registra las corridas de mermas.
-alter table dodois_sincronizaciones drop constraint if exists dodois_sincronizaciones_tipo_check;
+-- Se quita la restricción de tipo cualquiera que sea su nombre (se creó junto con la columna).
+do $$ declare c text; begin
+  for c in select conname from pg_constraint where conrelid = 'dodois_sincronizaciones'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%tipo%' loop
+    execute format('alter table dodois_sincronizaciones drop constraint %I', c);
+  end loop;
+end $$;
 alter table dodois_sincronizaciones add constraint dodois_sincronizaciones_tipo_check check (tipo in ('ventas', 'recepciones', 'mermas'));
 
 alter table mermas_dodo_dias alter column registrado_por drop not null;

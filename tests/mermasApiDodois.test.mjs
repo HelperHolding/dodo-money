@@ -14,7 +14,9 @@ async function base(){
  create function hoy_mx() returns date language sql as $$select date '2026-11-17'$$;
  create table sucursales(id uuid primary key);insert into sucursales values ('${S}');
  create table perfiles(id uuid primary key,activo boolean,rol text);insert into perfiles values('${ADMIN}',true,'admin');
- create table dodois_sincronizaciones(id bigint generated always as identity,tipo text not null default 'ventas' check (tipo in ('ventas','recepciones')));`);
+ create table dodois_sincronizaciones(id bigint generated always as identity,tipo text not null default 'ventas',
+  -- Nombre distinto al de producción: la migración debe quitarla por su definición, no por su nombre.
+  constraint tipo_original check (tipo in ('ventas','recepciones')));`);
  await db.exec(load('supabase/migrations/0031_mermas_dodo.sql'));
  await db.exec(load('supabase/migrations/0035_mermas_pl.sql'));
  await db.exec(load('supabase/migrations/20261117200000_mermas_api_dodois.sql'));
