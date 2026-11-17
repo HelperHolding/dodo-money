@@ -210,6 +210,9 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       anotar(s.id,"merma",r.nombre,Number(r.costo_pl),detalle);
       anotar(s.id,r.tipo==="producto"?"merma_productos":"merma_insumos",r.nombre,Number(r.costo_pl),detalle);
     }
+    // Bajas con razón Marketing en Dodo IS (producto regalado): gasto de Marketing, no merma.
+    for (const r of merma.marketingFilas.filter(r=>r.costo_pl!==null))
+      anotar(s.id,"marketing",`Producto regalado (baja Marketing en Dodo IS) · ${r.nombre}`,Number(r.costo_pl),{href:`/finanzas/mermas?mes=${r.fecha.slice(0,7)}&sucursal=${s.id}`,nota:`${r.fecha} · ${r.cantidad} ${r.unidad} · ${r.fuente_costo}`});
     const facturasSuc = de(facturas, s.id);
     const f = facturasAGastos(facturasSuc, fraccionDe);
     for (const x of facturasSuc) {
@@ -292,7 +295,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       alimento: c.total.costo, merma: merma.monto===null&&merma.insumosMonto===null?null:centavos((merma.monto??0)+(merma.insumosMonto??0)), mermaPendiente: merma.parcial||merma.insumosParcial,
       mermaProductos:merma.monto,mermaInsumos:merma.insumosMonto,mermaProductosPendiente:merma.parcial,mermaInsumosPendiente:merma.insumosParcial,
       nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia }, nominaDesglose,
-      gastos: sumarGastos(f.gastos, caja.gastos), sinCuenta: centavos(f.sinCuenta + caja.sinCuenta),
+      gastos: sumarGastos(f.gastos, caja.gastos, merma.marketing ? { marketing: merma.marketing } : {}), sinCuenta: centavos(f.sinCuenta + caja.sinCuenta),
       agregadores, comisionesCobro: cobro.total, faltantes, regalias: regaliasPeriodo, memos: sumarMemos(f.memos, caja.memos),
     };
 
@@ -306,6 +309,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     if(merma.sinCobertura)avisos.push(`Mermas: ${merma.sinCobertura} días sin cobertura confirmada de productos terminados. Reimporta el reporte completo; el resultado es provisional.`);
     if(merma.sinCosto)avisos.push(`Mermas: ${merma.sinCosto} renglones de productos sin costo confirmado quedan pendientes y fuera del monto conocido; el resultado es provisional.`);
     if(merma.sinCostoInsumos)avisos.push(`Mermas: ${merma.sinCostoInsumos} renglones de insumos sin costo quedan pendientes y fuera del monto conocido; el resultado es provisional.`);
+    if(merma.marketingSinCosto)avisos.push(`Marketing: ${merma.marketingSinCosto} productos regalados (baja Marketing en Dodo IS) sin costo conocido quedan fuera del renglón.`);
     for (const c of conciliaciones.filas.filter(c=>c.sucursal_id===s.id)) {
       avisos.push(`Conciliación manual ${c.fecha}: ${c.motivo}${c.conciliar_productos?" · diferencia de productos justificada":""}.`);
     }

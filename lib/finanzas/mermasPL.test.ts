@@ -14,6 +14,15 @@ test("merma P&L separa productos e insumos adicionales al BOM",()=>{
  assert.equal(r.monto,40);assert.equal(r.insumos,1);assert.equal(r.productos.length,1);assert.equal(r.parcial,false);
  assert.equal(r.insumosMonto,100);assert.equal(r.insumosParcial,false);
 });
+test("bajas con razón Marketing (clave marketing:) no son merma: su costo conocido va aparte para Marketing",()=>{
+ const mktProducto={...producto,clave:"marketing:pizza",categoria:"Marketing",costo:25};
+ const mktInsumo={...producto,tipo:"insumo" as const,clave:"marketing:QUESO",categoria:"Marketing",costo:5};
+ const mktSinCosto={...mktProducto,clave:"marketing:refresco",costo:0,sin_costo:true};
+ const r=mermaParaPL(valorarMermas([producto,mktProducto,mktInsumo,mktSinCosto],[]),[dia],dia.fecha,dia.fecha);
+ assert.equal(r.monto,40);assert.equal(r.productos.length,1);assert.equal(r.insumos,0);assert.equal(r.sinCosto,0);
+ assert.equal(r.marketing,30);assert.equal(r.marketingFilas.length,3);assert.equal(r.marketingSinCosto,1);
+ assert.equal(mermaParaPL(valorarMermas([producto],[]),[dia],dia.fecha,dia.fecha).marketing,0);
+});
 test("insumos desconocidos no son cero; solo suma costos conocidos y conserva pendientes",()=>{
  const insumo={...producto,tipo:"insumo" as const,clave:"queso",costo:100};
  const desconocido={...insumo,clave:"salsa",costo:0,sin_costo:true};
