@@ -5,7 +5,7 @@ import {mesDe,moverMes} from "@/lib/ventas/calendario";
 import {MasVendidosRappi,PanelRappi} from './PanelRappi';
 import {ProductosRappi} from './ProductosRappi';
 import {unidadesRappi} from '@/lib/ventas/rappiProductos';
-import {cotejoRappiDodo,ordenesDesdeDodo,resumenPanelRappi} from '@/lib/ventas/rappi';
+import {cotejoRappiDodo,ordenesDesdeDodo,rappiPorTienda,resumenPanelRappi} from '@/lib/ventas/rappi';
 import {obtenerPerfil} from "@/lib/contexto";
 import {puedeImportarVentas,veVentasDeTodas} from "@/lib/roles";
 import {hoyCalendarioMX,pesos} from "@/lib/formato";
@@ -35,7 +35,7 @@ export default async function Rappi({searchParams}:{searchParams:Promise<{mes?:s
     ventaDiariaRappi(supabase,sucursal,desde<inicioCalendario?desde:inicioCalendario,hoy),
     cargarPedidosAgregadorDodo(supabase,sucursal,desde,hasta),
   ]);
-  const pedidosAgregador=ordenesDesdeDodo(pedidosDodo);
+  const pedidosAgregador=ordenesDesdeDodo(pedidosDodo),porTienda=rappiPorTienda(ordenes,agregador);
   const nombres=new Map((sucursales??[]).map(s=>[s.id,s.nombre]));
   const ids=new Set(ordenes.flatMap(o=>o.rappi_lineas.map(p=>Number(p.producto_id)))),productos=catalogo.filter(c=>ids.has(Number(c.id)));
   const [dodo,piezas]=await Promise.all([
@@ -52,7 +52,7 @@ export default async function Rappi({searchParams}:{searchParams:Promise<{mes?:s
       maxDias={MAX_DIAS} sucursal={sucursal} sucursales={veVentasDeTodas(perfil.rol)?sucursales??[]:null} ruta="/ventas/rappi"/>
     <div className="rappi-titulo"><h2>Órdenes en vivo</h2><ConInfo titulo="Órdenes en vivo" etiqueta="Qué suma de Rappi">Solo órdenes que llegan en vivo del portal de Rappi (cada 15 minutos, con un repaso del día anterior a las 6:30). Las órdenes subidas por Excel y los reportes financieros importados no se muestran aquí. El calendario muestra el subtotal restaurante de órdenes finalizadas con fuente Rappi; los descuentos de Rappi quedan separados.</ConInfo>
       <ConInfo titulo="Órdenes en vivo" etiqueta="Cómo leer esto">Indicadores de las órdenes finalizadas recibidas del portal de Rappi en el periodo.</ConInfo></div>
-    <PanelRappi ordenes={ordenes} dodo={pedidosAgregador} catalogo={catalogo} periodo={periodo} hoy={hoy} diario={diario}/><ProductosRappi resumen={unidadesRappi(ordenes,catalogo,dodo)}><MasVendidosRappi productos={resumenPanelRappi(ordenes).productos}/></ProductosRappi>{edita&&<FormularioRappi sucursales={sucursales??[]}/>}
+    <PanelRappi ordenes={ordenes} dodo={pedidosAgregador} turbo={porTienda.turbo} catalogo={catalogo} periodo={periodo} hoy={hoy} diario={diario}/><ProductosRappi resumen={unidadesRappi(ordenes,catalogo,dodo)}><MasVendidosRappi productos={resumenPanelRappi(ordenes).productos}/></ProductosRappi>{edita&&<FormularioRappi sucursales={sucursales??[]}/>}
     {cotejo.length>0&&<details className="seccion rappi-acordeon" open={difCotejo.length>0}><summary><strong>Cotejo con Dodo IS</strong><span>{cotejo.length} {cotejo.length===1?"día":"días"} con Rappi capturado en Dodo IS · {difCotejo.length?`${difCotejo.length} con diferencia`:"sin diferencias"}</span></summary>
       <p className="saldo-nota">En estos días la venta de Rappi sale de Dodo IS (agregador) y las órdenes del portal no se suman. Operación captura en Dodo IS lo que paga el cliente (con el descuento del restaurante y el de Rappi), así que se compara contra «A facturar» de las órdenes finalizadas del portal, ambos con IVA. Una diferencia suele ser una orden sin capturar, un cupón que Rappi cubrió completo, un combo capturado por piezas o un descuento de Rappi distinto al de la promoción.</p>
       <table className="tabla tabla-tarjetas"><thead><tr><th scope="col">Día</th>{!sucursal&&<th scope="col">Sucursal</th>}<th scope="col">Dodo IS</th><th scope="col">Rappi · a facturar</th><th scope="col">Diferencia</th></tr></thead>

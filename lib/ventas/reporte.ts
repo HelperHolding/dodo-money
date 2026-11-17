@@ -40,7 +40,7 @@ export function totalesDias(filas: readonly FilaDia[]): Omit<FilaDia, "fecha"> {
 }
 
 export type ResumenReporte = { total: number; neta: number; iva: number; pedidos: number; ticket: number | null; costoPct: number | null };
-export type CanalReporte={clave:"pos"|"rappi";nombre:string;actual:ResumenReporte;anterior:ResumenReporte|null;dias:FilaDia[]};
+export type CanalReporte={clave:"pos"|"rappi"|"turbo";nombre:string;actual:ResumenReporte;anterior:ResumenReporte|null;dias:FilaDia[]};
 export type RenglonResumen = {
   concepto: string; actual: number | null; anterior: number | null;
   /** Fracción (0.1 = +10 %); para el costo, diferencia en puntos como fracción (0.02 = +2 pts). */

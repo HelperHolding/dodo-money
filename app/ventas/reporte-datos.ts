@@ -6,16 +6,19 @@ import { costeo, periodoAnterior, periodoElegido, resumenVentas, type Periodo } 
 import { periodosRapidos } from "@/lib/ventas/calendario";
 import { hoyMX } from "@/lib/formato";
 import { filasPorDia, renglonesResumen, type FilaDia, type RenglonResumen,type CanalReporte } from "@/lib/ventas/reporte";
-import { datosVentas, sucursalElegida, ultimoDiaConDatos,type CanalesVentas } from "./datos";
+import { datosVentas, sucursalElegida, ultimoDiaConDatos,type CanalesTablero } from "./datos";
 
 export type ReporteVentas = {
   titulo: string; periodo: Periodo; generadoPor: string; resumen: RenglonResumen[]; dias: FilaDia[];
   canales:CanalReporte[];
   graficas:Awaited<ReturnType<typeof datosGraficasReporte>>;
 };
-export function reporteCanales(actual:CanalesVentas,anterior:CanalesVentas):CanalReporte[]{
-  const resumen=(c:CanalesVentas["pos"])=>{const s=resumenVentas(c.dias);return{total:s.total,neta:s.neta,iva:s.iva,pedidos:s.pedidos,ticket:s.ticket,costoPct:costeo(c.renglones).total.costoPct};};
-  return (["pos","rappi"] as const).map(clave=>({clave,nombre:clave==="pos"?"POS / Dodo IS":"Rappi",actual:resumen(actual[clave]),anterior:anterior[clave].dias.length?resumen(anterior[clave]):null,dias:filasPorDia(actual[clave].dias)}));
+/** POS / Dodo IS sin agregador, Rappi y Rappi Turbo (este solo si hubo ventas de Turbo en alguno de los dos periodos). */
+export function reporteCanales(actual:CanalesTablero,anterior:CanalesTablero):CanalReporte[]{
+  const resumen=(c:CanalesTablero["pos"])=>{const s=resumenVentas(c.dias);return{total:s.total,neta:s.neta,iva:s.iva,pedidos:s.pedidos,ticket:s.ticket,costoPct:c.renglones.length?costeo(c.renglones).total.costoPct:null};};
+  const nombres={pos:"POS / Dodo IS",rappi:"Rappi",turbo:"Rappi Turbo"} as const;
+  return (["pos","rappi","turbo"] as const).filter(clave=>clave!=="turbo"||actual.turbo.dias.length>0||anterior.turbo.dias.length>0)
+    .map(clave=>({clave,nombre:nombres[clave],actual:resumen(actual[clave]),anterior:anterior[clave].dias.length?resumen(anterior[clave]):null,dias:filasPorDia(actual[clave].dias)}));
 }
 
 /**
@@ -39,7 +42,7 @@ export async function datosReporteVentas(q: { desde?: string; hasta?: string; su
   const previo = resumenVentas(d.anterior.dias);
   return {
     graficas,
-    canales:reporteCanales(d.canales,d.anterior.canales),
+    canales:reporteCanales(d.tablero,d.anterior.tablero),
     titulo: sucursal ? nombreDe.get(sucursal) ?? "Sucursal" : "Todas las sucursales",
     periodo,
     generadoPor: perfil.nombre,
