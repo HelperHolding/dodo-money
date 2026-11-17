@@ -11,6 +11,7 @@ export type ProductoApi = {
 export type VentaApi = {
   orderId: string; soldAtLocal: string; unitId: string; shiftId: string | null; paymentMethod: string | null;
   salesChannel: string | null; orderSource: string | null; aggregatorName: string | null; products: ProductoApi[];
+  cashBoxType?: string | null;
 };
 export type PedidoCarga = {
   dodo_id: string; sucursal_id: string; fecha: string; hora: string; pago: Pago; tipo: TipoPedido; origen: Origen;
@@ -28,7 +29,15 @@ const ORIGEN: Record<string, Origen> = { "dine-in": "mostrador", restaurant: "mo
 const EN_TIENDA = new Set(["dine-in", "takeaway", "pickup"]);
 const PARA_LLEVAR = new Set(["takeaway", "pickup"]);
 const centavos = (n: number) => Math.round(n * 100) / 100;
-const clave = (v: string | null) => (v ?? "").trim().toLowerCase();
+const clave = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+
+/**
+ * Pedido capturado desde call center: caja «Delivery» o con origen/agregador de agregador. Hoy son los pedidos de Rappi
+ * que operación captura a mano en Dodo IS; no se sincronizan porque Rappi ya llega del portal y no cuadraban (lo capturado
+ * es lo que paga el cliente, con combos por piezas y cupones). Rappi vuelve a salir del portal hasta definir cómo cuadrar.
+ */
+export const esCallCenter = (v: Pick<VentaApi, "cashBoxType" | "orderSource" | "aggregatorName">) =>
+  clave(v.cashBoxType) === "delivery" || clave(v.orderSource) === "aggregator" || !!clave(v.aggregatorName);
 
 export function traducirVentas(ventas: readonly VentaApi[], o: {
   sucursalDeUnidad: ReadonlyMap<string, string>; tamanoDe: (nombre: string) => string | null; ivaDe: (precios: readonly number[]) => number;
@@ -36,9 +45,11 @@ export function traducirVentas(ventas: readonly VentaApi[], o: {
   const pedidos: PedidoCarga[] = [], productos: ProductoCarga[] = [];
   const desconocidos = new Set<string>();
   let sinSucursal = 0;
+  const callCenter = { pedidos: 0, total: 0 };
   for (const v of ventas) {
     const sucursal = o.sucursalDeUnidad.get(v.unitId);
     if (!sucursal) { sinSucursal++; continue; }
+    if (esCallCenter(v)) { callCenter.pedidos++; callCenter.total = centavos(callCenter.total + v.products.reduce((s, x) => s + Number(x.priceWithDiscount), 0)); continue; }
     const id = v.orderId.toUpperCase();
     const pago = PAGO[clave(v.paymentMethod)] ?? "otro";
     if (pago === "otro" && v.paymentMethod) desconocidos.add(`pago: ${v.paymentMethod}`);
@@ -60,7 +71,7 @@ export function traducirVentas(ventas: readonly VentaApi[], o: {
       precio: Number(x.priceWithDiscount), precio_sin_descuento: Number(x.price), combo: x.combo?.name ?? null,
     }));
   }
-  return { pedidos, productos, desconocidos: [...desconocidos].sort(), sinSucursal };
+  return { pedidos, productos, desconocidos: [...desconocidos].sort(), sinSucursal, callCenter };
 }
 
 const siguienteDia = (fecha: string) => new Date(Date.parse(`${fecha}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
