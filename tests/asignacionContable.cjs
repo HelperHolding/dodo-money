@@ -1,7 +1,15 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
 function cargar(archivo){const mod={exports:{}};const js=ts.transpileModule(fs.readFileSync(archivo,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
  const req=id=>id.endsWith('.json')?JSON.parse(fs.readFileSync(path.resolve(path.dirname(archivo),id),'utf8')):cargar(path.resolve(path.dirname(archivo),id+'.ts'));new Function('require','module','exports',js)(req,mod,mod.exports);return mod.exports;}
-const {capturables,alternativas,codigoCompatible,estadoAsignacion}=cargar('lib/finanzas/asignacion.ts');
+const {capturables,alternativas,codigoCompatible,estadoAsignacion,claveDeRuta}=cargar('lib/finanzas/asignacion.ts');
+test('asignación: la clave de la ruta llega codificada (concepto%3A366) y se busca decodificada',()=>{
+ assert.equal(claveDeRuta('concepto%3A366'),'concepto:366');
+ assert.equal(claveDeRuta('gasto%3A2e90625c-68a1-46f6-b053-15cbfe2e7bdf'),'gasto:2e90625c-68a1-46f6-b053-15cbfe2e7bdf');
+ assert.equal(claveDeRuta('concepto:366'),'concepto:366');
+ assert.equal(claveDeRuta('%E0%A4%A'),'%E0%A4%A');
+ // La página arma la ruta del detalle con encodeURIComponent(clave): ida y vuelta conserva la clave.
+ for(const c of ['concepto:321','gasto:cb3e116b-8a05-4567-83c1-bb195d97901e'])assert.equal(claveDeRuta(encodeURIComponent(c)),c);
+});
 test('asignación: entidad y cuentas terminales, sin usar títulos ni contraparte propia',()=>{
  const sitru=capturables('CMS230321FI8'),helper=capturables('HCM260306B93');
  assert.ok(sitru.length>50&&helper.length>50);

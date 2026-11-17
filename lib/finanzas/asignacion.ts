@@ -23,6 +23,10 @@ export type AsignacionContable = {
   id:string;clave:string;revision:number;codigo:string|null;rfc:string;huella:string;motivo:string;creado_en:string;autor_nombre:string;
   origen?:MovimientoContable;
 };
+/** La ruta del detalle usa encodeURIComponent(clave) y Next entrega el segmento sin decodificar ("concepto%3A366"). */
+export function claveDeRuta(segmento:string) {
+  try { return decodeURIComponent(segmento); } catch { return segmento; }
+}
 export function estadoAsignacion(m:MovimientoContable,a:AsignacionContable|undefined) {
   if(!a?.codigo)return 'Pendiente';
   return a.huella===m.huella?'Asignada':'Revisar: cambió el origen';
