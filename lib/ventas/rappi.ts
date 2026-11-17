@@ -25,12 +25,16 @@ export function aplicarFuenteDodo<T extends {sucursal_id:string;fecha:string;sum
  return ordenes.map(o=>cubiertos.has(claveDia(o.sucursal_id,o.fecha))?{...o,sumar:false,enDodo:true}:{...o,enDodo:false});
 }
 export type CotejoDia={sucursal_id:string;fecha:string;dodoPedidos:number;dodoTotal:number;rappiOrdenes:number;rappiTotal:number;diferencia:number};
-/** Cotejo por día: venta de agregador en Dodo IS contra órdenes finalizadas del portal (subtotal restaurante, con IVA). */
-export function cotejoRappiDodo(ordenes:readonly {sucursal_id:string;fecha:string;estado:string;subtotal_restaurante:number|string}[],dodo:readonly AgregadorDodo[]):CotejoDia[]{
+/**
+ * Cotejo por día: venta de agregador en Dodo IS contra órdenes finalizadas del portal, con IVA. Operación captura en Dodo IS
+ * lo que paga el cliente (precios del menú de agregador con el descuento del restaurante y el de Rappi), así que se compara
+ * contra «A facturar» del portal, no contra el subtotal restaurante.
+ */
+export function cotejoRappiDodo(ordenes:readonly {sucursal_id:string;fecha:string;estado:string;facturar:number|string}[],dodo:readonly AgregadorDodo[]):CotejoDia[]{
  const dias=new Map<string,CotejoDia>();
  const dia=(s:string,f:string)=>{const k=claveDia(s,f);let d=dias.get(k);if(!d){d={sucursal_id:s,fecha:f,dodoPedidos:0,dodoTotal:0,rappiOrdenes:0,rappiTotal:0,diferencia:0};dias.set(k,d);}return d;};
  for(const x of dodo){const d=dia(x.sucursal_id,x.fecha);d.dodoPedidos+=Number(x.pedidos);d.dodoTotal=centavos(d.dodoTotal+Number(x.total));}
- for(const o of ordenes)if(o.estado==="Finalizado"){const d=dia(o.sucursal_id,o.fecha);d.rappiOrdenes++;d.rappiTotal=centavos(d.rappiTotal+Number(o.subtotal_restaurante));}
+ for(const o of ordenes)if(o.estado==="Finalizado"){const d=dia(o.sucursal_id,o.fecha);d.rappiOrdenes++;d.rappiTotal=centavos(d.rappiTotal+Number(o.facturar));}
  return [...dias.values()].map(d=>({...d,diferencia:centavos(d.dodoTotal-d.rappiTotal)})).sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.sucursal_id.localeCompare(b.sucursal_id));
 }
 export function resumenPanelRappi(ordenes:readonly RappiGuardada[]) {

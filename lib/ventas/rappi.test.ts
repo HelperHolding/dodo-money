@@ -67,8 +67,9 @@ test("Rappi: en días con agregador en Dodo IS el portal no suma; los demás dí
  // Una exclusión manual se conserva en días que Dodo IS no cubre.
  assert.equal(aplicarFuenteDodo([{...otroDia,sumar:false}],cubiertos)[0].sumar,false);
 });
-test("Rappi: el cotejo compara por día lo capturado en Dodo IS contra el portal",()=>{
- const o=guardada();
- const c=cotejoRappiDodo([o,{...o,rappi_id:"2"},{...o,rappi_id:"3",estado:"Cancelado"},{...o,rappi_id:"4",fecha:"2026-10-06"}],[{sucursal_id:"s",fecha:o.fecha,pedidos:1,total:99}]);
- assert.deepEqual(c.map(d=>[d.fecha,d.dodoPedidos,d.dodoTotal,d.rappiOrdenes,d.rappiTotal,d.diferencia]),[["2026-10-06",0,0,1,99,-99],[o.fecha,1,99,2,198,-99]]);
+test("Rappi: el cotejo compara por día lo capturado en Dodo IS contra «A facturar» del portal",()=>{
+ // Hawaiana 30 cm del 15 nov 2026: $199 de lista, $151.25 de subtotal restaurante y $99 a facturar; Dodo IS registra $99.
+ const o={...guardada(),bruto:199,descuento_restaurante:47.75,subtotal_restaurante:151.25,descuento_rappi:52.25,facturar:99};
+ const c=cotejoRappiDodo([o,{...o,rappi_id:"2"},{...o,rappi_id:"3",estado:"Cancelado"},{...o,rappi_id:"4",fecha:"2026-10-06"}],[{sucursal_id:"s",fecha:o.fecha,pedidos:2,total:198}]);
+ assert.deepEqual(c.map(d=>[d.fecha,d.dodoPedidos,d.dodoTotal,d.rappiOrdenes,d.rappiTotal,d.diferencia]),[["2026-10-06",0,0,1,99,-99],[o.fecha,2,198,2,198,0]]);
 });
