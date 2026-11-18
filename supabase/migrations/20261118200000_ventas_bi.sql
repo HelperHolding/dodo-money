@@ -52,41 +52,51 @@ begin
   v_linea := v_cats is not null or v_prod is not null;
 
   with suc as (select public.ventas_bi_sucursales(p, v_hasta) as id),
-  ped as (
-    select 'pos'::text as canal, pe.dodo_id::text as id, pe.sucursal_id, pe.fecha, extract(hour from pe.hora)::int as hora,
-      case when pe.agregador is not null then 'agregador' else pe.origen end as origen,
-      case when pe.tipo = 'entrega' then 'entrega' when pe.para_llevar then 'para_llevar' else 'en_tienda' end as tipo,
-      pe.pago, round(pe.total - pe.iva, 2) as neto, pe.productos as piezas
+  -- Pedidos de Dodo IS que cuentan. Los de agregador son Rappi capturado en Dodo IS (como en Ventas): van al canal Rappi.
+  dodo as (
+    select pe.*, pe.agregador is not null as es_rappi
     from pedidos pe join suc on suc.id = pe.sucursal_id
-    where pe.fecha between v_desde and v_hasta and pe.estado = 'entregado' and pe.tipo <> 'personal' and (v_canal is null or v_canal = 'pos')
+    where pe.fecha between v_desde and v_hasta and pe.estado = 'entregado' and pe.tipo <> 'personal'
+  ),
+  -- fuente: de qué tablas salen las líneas (dodo → pedido_productos, portal → rappi_lineas); canal: POS o Rappi.
+  ped as (
+    select 'dodo'::text as fuente, case when d.es_rappi then 'rappi' else 'pos' end as canal, d.dodo_id::text as id, d.sucursal_id, d.fecha,
+      extract(hour from d.hora)::int as hora,
+      case when d.es_rappi then 'rappi' else d.origen end as origen,
+      case when d.es_rappi or d.tipo = 'entrega' then 'entrega' when d.para_llevar then 'para_llevar' else 'en_tienda' end as tipo,
+      case when d.es_rappi then 'rappi' else d.pago end as pago, round(d.total - d.iva, 2) as neto, d.productos as piezas
+    from dodo d
     union all
-    select 'rappi', ro.rappi_id, ro.sucursal_id, ro.fecha, extract(hour from ro.hora)::int, 'rappi', 'entrega', 'rappi',
+    -- Órdenes del portal: no las armadas desde Dodo IS (esDeDodo) ni las de un día de sucursal que Dodo IS ya trae con agregador.
+    select 'portal', 'rappi', ro.rappi_id, ro.sucursal_id, ro.fecha, extract(hour from ro.hora)::int, 'rappi', 'entrega', 'rappi',
       round(ro.subtotal_restaurante * 100 / 116, 2), coalesce((select sum(l.cantidad) from rappi_lineas l where l.rappi_id = ro.rappi_id), 0)::int
     from rappi_ordenes ro join suc on suc.id = ro.sucursal_id
-    where ro.fecha between v_desde and v_hasta and ro.estado = 'Finalizado' and ro.sumar and (v_canal is null or v_canal = 'rappi') and v_cats is null
+    where ro.fecha between v_desde and v_hasta and ro.estado = 'Finalizado' and ro.sumar and ro.archivo <> 'dodo-is' and v_cats is null
+      and not exists (select 1 from dodo d where d.es_rappi and d.sucursal_id = ro.sucursal_id and d.fecha = ro.fecha)
   ),
   ped_f as (
     select * from ped
-    where (v_origenes is null or origen = any(v_origenes)) and (v_tipos is null or tipo = any(v_tipos)) and (v_pagos is null or pago = any(v_pagos))
+    where (v_canal is null or canal = v_canal)
+      and (v_origenes is null or origen = any(v_origenes)) and (v_tipos is null or tipo = any(v_tipos)) and (v_pagos is null or pago = any(v_pagos))
       and (v_dias is null or extract(isodow from fecha)::int = any(v_dias)) and hora between v_h1 and v_h2
   ),
   lin as (
-    select pf.id, pf.canal, pp.nombre,
+    select pf.id, pf.fuente, pf.canal, pp.nombre,
       coalesce(pv.categoria::text, case when pp.combo is not null then 'combo' else 'sin_categoria' end) as categoria,
       round(pp.precio * 100 / 116, 2) as neto, 1 as piezas
-    from ped_f pf join pedido_productos pp on pf.canal = 'pos' and pp.pedido_id = pf.id
+    from ped_f pf join pedido_productos pp on pf.fuente = 'dodo' and pp.pedido_id = pf.id
     left join productos_venta pv on pv.dodo_id = pp.dodo_id
     union all
-    select pf.id, pf.canal, rl.nombre, 'rappi', round(rl.importe * 100 / 116, 2), rl.cantidad
-    from ped_f pf join rappi_lineas rl on pf.canal = 'rappi' and rl.rappi_id = pf.id
+    select pf.id, pf.fuente, pf.canal, rl.nombre, 'rappi', round(rl.importe * 100 / 116, 2), rl.cantidad
+    from ped_f pf join rappi_lineas rl on pf.fuente = 'portal' and rl.rappi_id = pf.id
   ),
   lin_f as (
     select * from lin where (v_cats is null or categoria = any(v_cats)) and (v_prod is null or nombre ilike '%' || v_prod || '%')
   ),
   pv as (
-    select pf.canal, pf.id, pf.sucursal_id, pf.fecha, pf.hora, pf.origen, pf.tipo, pf.pago,
+    select pf.fuente, pf.canal, pf.id, pf.sucursal_id, pf.fecha, pf.hora, pf.origen, pf.tipo, pf.pago,
       case when v_linea then x.neto else pf.neto end as venta, case when v_linea then x.piezas else pf.piezas end as unidades
-    from ped_f pf left join (select id, canal, sum(neto) as neto, sum(piezas) as piezas from lin_f group by id, canal) x on x.id = pf.id and x.canal = pf.canal
+    from ped_f pf left join (select id, fuente, sum(neto) as neto, sum(piezas) as piezas from lin_f group by id, fuente) x on x.id = pf.id and x.fuente = pf.fuente
     where not v_linea or x.id is not null
   )
   select jsonb_build_object(
@@ -99,10 +109,10 @@ begin
     'dias', coalesce((select jsonb_agg(jsonb_build_object('dia', dia, 'ventas', v, 'tickets', t) order by dia) from (select extract(isodow from fecha)::int dia, sum(venta) v, count(*) t from pv group by 1) a), '[]'),
     'horas', coalesce((select jsonb_agg(jsonb_build_object('hora', hora, 'ventas', v, 'tickets', t) order by hora) from (select hora, sum(venta) v, count(*) t from pv group by hora) a), '[]'),
     'semanas', coalesce((select jsonb_agg(jsonb_build_object('semana', semana, 'ventas', v, 'tickets', t) order by semana) from (select date_trunc('week', fecha)::date semana, sum(venta) v, count(*) t from pv group by 1) a), '[]'),
-    'categorias', coalesce((select jsonb_agg(jsonb_build_object('categoria', categoria, 'ventas', v, 'piezas', u) order by v desc) from (select categoria, sum(neto) v, sum(piezas) u from lin_f where canal = 'pos' and id in (select id from pv where canal = 'pos') group by categoria) a), '[]'),
+    'categorias', coalesce((select jsonb_agg(jsonb_build_object('categoria', categoria, 'ventas', v, 'piezas', u) order by v desc) from (select categoria, sum(neto) v, sum(piezas) u from lin_f where fuente = 'dodo' and id in (select id from pv where fuente = 'dodo') group by categoria) a), '[]'),
     'productos', coalesce((select jsonb_agg(jsonb_build_object('nombre', nombre, 'canal', canal, 'ventas', v, 'piezas', u, 'pedidos', t) order by v desc) from (
-      select nombre, canal, sum(neto) v, sum(piezas) u, count(distinct id) t from lin_f where (canal, id) in (select canal, id from pv) group by nombre, canal order by v desc limit 200) a), '[]'),
-    'rappi_nombres', coalesce((select jsonb_agg(jsonb_build_object('nombre', nombre, 'ventas', v)) from (select nombre, sum(neto) v from lin_f where canal = 'rappi' and id in (select id from pv where canal = 'rappi') group by nombre) a), '[]')
+      select nombre, canal, sum(neto) v, sum(piezas) u, count(distinct id) t from lin_f where (fuente, id) in (select fuente, id from pv) group by nombre, canal order by v desc limit 200) a), '[]'),
+    'rappi_nombres', coalesce((select jsonb_agg(jsonb_build_object('nombre', nombre, 'ventas', v)) from (select nombre, sum(neto) v from lin_f where fuente = 'portal' and id in (select id from pv where fuente = 'portal') group by nombre) a), '[]')
   ) into r;
   return r;
 end $$;
@@ -115,11 +125,19 @@ begin
     raise exception 'Solo admin y corporativo ven Ventas BI' using errcode = '42501';
   end if;
   with suc as (select public.ventas_bi_sucursales(p, (now() at time zone 'America/Mexico_City')::date) as id),
+  -- Venta diaria sin IVA y su parte de agregador (Rappi capturado en Dodo IS, sin IVA). Un día con agregador > 0 ya trae Rappi.
+  vd as (
+    select v.sucursal_id, v.fecha, v.total - v.iva as neto, coalesce(a.total, 0) > 0 as cubierto, round(coalesce(a.total, 0) * 100 / 116, 2) as agregador
+    from ventas_dia v join suc on suc.id = v.sucursal_id
+    left join ventas_dia_desglose a on a.ventas_dia_id = v.id and a.tipo = 'agregador'
+  ),
   dia as (
-    select v.fecha, v.total - v.iva as neto from ventas_dia v join suc on suc.id = v.sucursal_id where v_canal is null or v_canal = 'pos'
+    select fecha, case v_canal when 'pos' then neto - agregador when 'rappi' then agregador else neto end as neto from vd
     union all
+    -- Órdenes del portal que Dodo IS no trae: ni las armadas desde Dodo IS ni las de un día que ya tiene agregador.
     select ro.fecha, round(ro.subtotal_restaurante * 100 / 116, 2) from rappi_ordenes ro join suc on suc.id = ro.sucursal_id
-    where ro.estado = 'Finalizado' and ro.sumar and (v_canal is null or v_canal = 'rappi')
+    where ro.estado = 'Finalizado' and ro.sumar and ro.archivo <> 'dodo-is' and (v_canal is null or v_canal = 'rappi')
+      and not exists (select 1 from vd where vd.cubierto and vd.sucursal_id = ro.sucursal_id and vd.fecha = ro.fecha)
   )
   select jsonb_build_object(
     'semanas', coalesce((select jsonb_agg(jsonb_build_object('anio', a, 'semana', s, 'ventas', v) order by a, s) from (
