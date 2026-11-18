@@ -74,10 +74,11 @@ begin
     where ro.fecha between v_desde and v_hasta and ro.estado = 'Finalizado' and ro.sumar and ro.archivo <> 'dodo-is' and v_cats is null
       and not exists (select 1 from dodo d where d.es_rappi and d.sucursal_id = ro.sucursal_id and d.fecha = ro.fecha)
   ),
+  -- Rappi no tiene origen ni tipo propios: con un tipo elegido queda fuera; con origen, solo si se eligió «rappi».
   ped_f as (
     select * from ped
     where (v_canal is null or canal = v_canal)
-      and (v_origenes is null or origen = any(v_origenes)) and (v_tipos is null or tipo = any(v_tipos)) and (v_pagos is null or pago = any(v_pagos))
+      and (v_origenes is null or origen = any(v_origenes)) and (v_tipos is null or (canal <> 'rappi' and tipo = any(v_tipos))) and (v_pagos is null or pago = any(v_pagos))
       and (v_dias is null or extract(isodow from fecha)::int = any(v_dias)) and hora between v_h1 and v_h2
   ),
   lin as (

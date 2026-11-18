@@ -50,6 +50,16 @@ test('ventas BI: filtros de categoría (solo líneas, sin Rappi), producto, pago
   assert.equal(num((await bi(db, { hora_desde: 19, hora_hasta: 22 })).kpis.ventas), 300);
 });
 
+test('ventas BI: con origen o tipo de Dodo elegido, Rappi queda fuera', async () => {
+  const db = await nueva(); await como(db, CORP);
+  // Rappi tiene tipo «entrega», pero el filtro de tipo es de servicio de Dodo: con cualquier tipo elegido, Rappi no entra.
+  assert.equal(num((await bi(db, { tipos: ['entrega', 'en_tienda'] })).kpis.ventas), 100);
+  assert.equal(num((await bi(db, { tipos: ['entrega'] })).kpis.ventas), 0);
+  assert.equal(num((await bi(db, { canal: 'rappi', tipos: ['entrega'] })).kpis.ventas), 0);
+  assert.equal(num((await bi(db, { origenes: ['mostrador'] })).kpis.ventas), 100);
+  assert.equal(num((await bi(db, { origenes: ['mostrador', 'rappi'] })).kpis.ventas), 400);
+});
+
 test('ventas BI: razón social y antigüedad filtran sucursales', async () => {
   const db = await nueva(); await como(db, CORP);
   assert.equal(num((await bi(db, { rfc: 'HEL0101011A1' })).kpis.ventas), 300);
