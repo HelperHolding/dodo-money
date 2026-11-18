@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CLASE_ESTADO_SALIDA, estadoSalida, NOMBRE_ESTADO_SALIDA, resumenEnCamino } from "./salidas.ts";
+import { agruparPorMes, CLASE_ESTADO_SALIDA, estadoSalida, NOMBRE_ESTADO_SALIDA, resumenEnCamino } from "./salidas.ts";
 
 test("estadoSalida sigue el recorrido sucursal → admin → corporativo", () => {
   assert.equal(estadoSalida({ estado: "pendiente", recepcion: null }), "por_recoger");
@@ -30,4 +30,11 @@ test("resumenEnCamino cuenta y suma solo lo que va en camino", () => {
   ]);
   assert.deepEqual(r, { cuantas: 2, total: 1750.5, porRecoger: 1, noCuadro: 1 });
   assert.deepEqual(resumenEnCamino([]), { cuantas: 0, total: 0, porRecoger: 0, noCuadro: 0 });
+});
+
+test("agruparPorMes junta el historial completo por mes, del más reciente al más antiguo", () => {
+  const filas = [{ id: "a", f: "2026-09-30" }, { id: "b", f: "2026-11-16" }, { id: "c", f: "2026-11-02" }, { id: "d", f: "2025-12-31" }];
+  assert.deepEqual(agruparPorMes(filas, (x) => x.f).map((g) => [g.mes, g.filas.map((x) => x.id)]),
+    [["2026-11", ["b", "c"]], ["2026-09", ["a"]], ["2025-12", ["d"]]]);
+  assert.deepEqual(agruparPorMes([], (x: { f: string }) => x.f), []);
 });
