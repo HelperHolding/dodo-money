@@ -5,7 +5,8 @@ import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerPerfil } from "@/lib/contexto";
 import { fechaMX, fechaTexto, hora, hoyCalendarioMX, pesos } from "@/lib/formato";
 import { puedeRecibirSalida } from "@/lib/roles";
-import { CLASE_ESTADO_SALIDA, estadoSalida, NOMBRE_ESTADO_SALIDA, resumenEnCamino, type Recepcion } from "@/lib/salidas";
+import { agruparPorMes, CLASE_ESTADO_SALIDA, estadoSalida, NOMBRE_ESTADO_SALIDA, resumenEnCamino, type Recepcion } from "@/lib/salidas";
+import { leerTodo } from "@/lib/ventas/paginar";
 import type { EstadoMovimiento } from "@/lib/tipos";
 import { aceptarEntrada, noCuadra, rechazarSalida, recogerSalida } from "./actions";
 
@@ -17,21 +18,26 @@ type Salida = {
 const COLUMNAS = "id, recoleccion_id, sucursal_id, monto, folio, nota, estado, registrado_por, creado_en, confirmado_por, confirmado_en, recepcion, recibido_por, recibido_en, nota_recepcion";
 
 const cuando = (iso: string) => `${fechaTexto(fechaMX(iso))}, ${hora(iso)}`;
+/** Cuándo terminó la salida: recibida en corporativo o rechazada por el admin. */
+const cerradaEn = (s: Salida) => s.recibido_en ?? s.confirmado_en ?? s.creado_en;
+const nombreMes = new Intl.DateTimeFormat("es-MX", { month: "long", year: "numeric", timeZone: "UTC" });
+const mesTexto = (mes: string) => { const t = nombreMes.format(new Date(`${mes}-15T12:00:00Z`)); return t.charAt(0).toUpperCase() + t.slice(1); };
 
 export default async function Efectivo({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const { ok, error } = await searchParams;
   const { supabase, perfil } = await obtenerPerfil();
   const desde = new Date(`${hoyCalendarioMX()}T00:00:00-06:00`);
   desde.setUTCDate(desde.getUTCDate() - 30);
-  const hace30 = desde.toISOString();
 
-  const [{ data: abiertas }, { data: recientes }, { data: sucursales }, { data: nombres }] = await Promise.all([
+
+  const [{ data: abiertas }, historial, { data: sucursales }, { data: nombres }] = await Promise.all([
     supabase.from("movimientos").select(COLUMNAS).eq("tipo", "salida_corporativo")
       .or("estado.eq.pendiente,and(estado.eq.confirmado,recepcion.is.null)")
       .order("creado_en").returns<Salida[]>(),
-    supabase.from("movimientos").select(COLUMNAS).eq("tipo", "salida_corporativo")
-      .or(`recibido_en.gte."${hace30}",and(estado.eq.rechazado,confirmado_en.gte."${hace30}")`)
-      .order("creado_en", { ascending: false }).returns<Salida[]>(),
+    // Todo el historial: salidas recibidas en corporativo o rechazadas, sin límite de fechas.
+    leerTodo<Salida>((a, b) => supabase.from("movimientos").select(COLUMNAS).eq("tipo", "salida_corporativo")
+      .or("recibido_en.not.is.null,estado.eq.rechazado")
+      .order("creado_en", { ascending: false }).order("id").range(a, b).returns<Salida[]>()),
     supabase.from("sucursales").select("id, nombre").returns<{ id: string; nombre: string }[]>(),
     supabase.from("perfiles").select("id, nombre").returns<{ id: string; nombre: string }[]>(),
   ]);
@@ -39,7 +45,10 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
   const persona = new Map((nombres ?? []).map((p) => [p.id, p.nombre]));
   const porRecoger = (abiertas ?? []).filter((s) => s.estado === "pendiente");
   const enCamino = (abiertas ?? []).filter((s) => s.estado === "confirmado");
-  const resumen = resumenEnCamino([...(abiertas ?? []), ...(recientes ?? [])]);
+  // El contador "No cuadró" sigue siendo de los últimos 30 días.
+  const recientes = historial.filter((s) => new Date(cerradaEn(s)) >= desde);
+  const resumen = resumenEnCamino([...(abiertas ?? []), ...recientes]);
+  const meses = agruparPorMes(historial, (s) => fechaMX(cerradaEn(s)));
   const esAdmin = perfil.rol === "admin";
 
   const tarjeta = (s: Salida, acciones?: React.ReactNode) => {
@@ -131,10 +140,13 @@ export default async function Efectivo({ searchParams }: { searchParams: Promise
       </section>
 
       <section className="seccion" aria-labelledby="t-recientes">
-        <h2 id="t-recientes">Últimos 30 días</h2>
-        {!recientes?.length ? <p className="vacio">Todavía no hay salidas recibidas en los últimos 30 días.</p> : (
-          <div className="tarjetas">{recientes.map((s) => tarjeta(s))}</div>
-        )}
+        <div className="seccion-cabecera"><h2 id="t-recientes">Historial</h2><span className="insignia">{historial.length}</span></div>
+        {!historial.length ? <p className="vacio">Todavía no hay salidas recibidas ni rechazadas.</p> : meses.map((m, i) => (
+          <details key={m.mes} className="zona-plegable" open={i === 0}>
+            <summary><span className="zona-nombre">{mesTexto(m.mes)}</span><span className="saldo-nota">{m.filas.length} {m.filas.length === 1 ? "salida" : "salidas"} · {pesos(m.filas.reduce((t, s) => t + Number(s.monto), 0))}</span></summary>
+            <div className="tarjetas">{m.filas.map((s) => tarjeta(s))}</div>
+          </details>
+        ))}
       </section>
     </>
   );
