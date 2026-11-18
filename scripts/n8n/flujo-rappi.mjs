@@ -38,13 +38,23 @@ if (envio) {
 // Un correo cuando aparece el problema (o cambia) y otro cada 6 h si sigue, por tienda; nada en vueltas sanas u "ocupado".
 const st = $getWorkflowStaticData('global');
 st.avisos = st.avisos ?? {};
+st.omitidas = st.omitidas ?? {};
 const tienda = leido.tienda ?? '?';
 let avisar = false;
-if (estado === 'error' || estado === 'sesion_expirada') {
+// Órdenes omitidas en una vuelta en vivo (Rappi tardó en abrir el detalle): no van a la caché y la siguiente vuelta las
+// reintenta, así que una sola no avisa; dos vueltas seguidas sí. El cierre de las 6:30 (sin caché) avisa de cualquiera.
+const vivo = $('Por tienda').item.json.cache === true;
+const soloOmitidas = estado === 'error' && leido.estado === 'error' && (leido.omitidas ?? []).length > 0 && !leido.cortado;
+if (vivo && soloOmitidas) st.omitidas[tienda] = (st.omitidas[tienda] ?? 0) + 1;
+else if (vivo) delete st.omitidas[tienda];
+const pendiente = vivo && soloOmitidas && st.omitidas[tienda] < 2;
+if (pendiente) mensaje += ' Se reintentan en la siguiente vuelta.';
+else if (vivo && soloOmitidas) mensaje += ' Siguen omitidas en ' + st.omitidas[tienda] + ' vueltas seguidas.';
+if ((estado === 'error' || estado === 'sesion_expirada') && !pendiente) {
   const previo = st.avisos[tienda];
   if (!previo || previo.estado !== estado || Date.now() - previo.t > 6 * 3600 * 1000) { avisar = true; st.avisos[tienda] = { estado, t: Date.now() }; }
 } else if (estado === 'ok' || estado === 'sin_ordenes') delete st.avisos[tienda];
-return { json: { avisar, fecha: leido.fecha, tienda, nombre: nombres[tienda] ?? tienda, estado, mensaje, cambios: leido.cambios ?? [], ordenes: leido.ordenes ?? 0, renglones: leido.renglones ?? 0, omitidas: leido.omitidas ?? [], app: envio ? { status: envio.statusCode, ...envio.body } : null } };`;
+return { json: { avisar, pendiente, fecha: leido.fecha, tienda, nombre: nombres[tienda] ?? tienda, estado, mensaje, cambios: leido.cambios ?? [], ordenes: leido.ordenes ?? 0, renglones: leido.renglones ?? 0, omitidas: leido.omitidas ?? [], app: envio ? { status: envio.statusCode, ...envio.body } : null } };`;
 
 const id = () => randomUUID();
 const nodo = (name, type, typeVersion, position, parameters, extra = {}) => ({ id: id(), name, type, typeVersion, position, parameters, ...extra });
