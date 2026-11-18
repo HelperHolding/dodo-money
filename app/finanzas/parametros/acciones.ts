@@ -50,10 +50,9 @@ export async function guardarMetasVenta(fd: FormData) {
     .filter(([k, v]) => k.startsWith("monto_") && String(v).trim() !== "")
     .map(([k, v]) => ({ sucursal_id: k.slice(6), mes: `${mes}-01`, monto: Number(String(v).replace(/[,$\s]/g, "")), actualizado_en: ahora, actualizado_por: perfil.id }));
   if (filas.some((f) => !Number.isFinite(f.monto) || f.monto < 0)) volver(RUTA, "error", "Revisa los montos: deben ser números positivos.");
-  if (filas.length) {
-    const { error } = await supabase.from("ventas_metas").upsert(filas, { onConflict: "sucursal_id,mes" });
-    if (error) volver(RUTA, "error", "No se pudieron guardar las metas de venta.");
-  }
+  if (!filas.length) volver(`${RUTA}?mes_meta=${mes}`, "ok", "No hay montos que guardar.");
+  const { error } = await supabase.from("ventas_metas").upsert(filas, { onConflict: "sucursal_id,mes" });
+  if (error) volver(RUTA, "error", "No se pudieron guardar las metas de venta.");
   revalidatePath(RUTA);
   revalidatePath("/ventas/bi");
   volver(`${RUTA}?mes_meta=${mes}`, "ok", "Metas de venta guardadas.");

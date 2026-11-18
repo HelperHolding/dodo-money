@@ -10,5 +10,8 @@ test('Parámetros tiene la meta de venta mensual por sucursal y solo admin la gu
   const a = leer('app/finanzas/parametros/acciones.ts');
   assert.match(a, /export async function guardarMetasVenta/);
   assert.match(a, /from\("ventas_metas"\)\.upsert/);
-  assert.match(a, /clienteFinanzas|puedeEditarFinanzas/);
+  const accion = a.slice(a.indexOf('export async function guardarMetasVenta'));
+  assert.match(accion, /puedeEditarFinanzas\(perfil\.rol\)/);
+  assert.match(accion, /actualizado_en/);
+  assert.match(accion, /actualizado_por: perfil\.id/);
 });
