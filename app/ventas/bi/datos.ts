@@ -66,7 +66,8 @@ export async function datosBI(supabase: SupabaseClient, f: FiltrosBI, hoy: strin
   const peMonto = Math.round(pe * 100) / 100;
 
   // Meta: entra la sucursal que tiene la meta de todos los meses del rango; si le falta alguno, no entra ni su venta.
-  const filasMeta = (metas.data ?? []) as { sucursal_id: string; mes: string; monto: number }[];
+  // Una meta en 0 es una meta quitada (así se quita en Parámetros): cuenta como faltante.
+  const filasMeta = ((metas.data ?? []) as { sucursal_id: string; mes: string; monto: number }[]).filter((x) => Number(x.monto) > 0);
   const todas = metas.error ? { monto: 0, faltan: [] } : metaDelRango(filasMeta, elegidas, f.desde, f.hasta);
   const conMeta = metas.error ? [] : elegidas.filter((id) => !todas.faltan.some((x) => x.sucursal_id === id));
   const metaMonto = metaDelRango(filasMeta, conMeta, f.desde, f.hasta).monto;

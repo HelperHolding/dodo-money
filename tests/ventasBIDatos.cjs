@@ -147,3 +147,10 @@ test('Parámetros: la meta del mes anterior es sugerencia (placeholder), no valo
   assert.match(p, /name="copiar" value="1"/); assert.match(p, /Copiar mes anterior/);
   assert.match(p, /Para quitar una meta escribe 0/);
 });
+test('meta en 0 = sin meta: la sucursal no entra a la meta ni a su venta', async () => {
+  const { datosBI } = datos(() => Promise.resolve({ porSucursal: [] }));
+  const r = await datosBI(cliente({ actual: conVentas([['s1', 'efectivo', 70], ['s2', 'efectivo', 30]]),
+    metas: { data: [{ sucursal_id: 's1', mes: '2026-11-01', monto: 0 }, { sucursal_id: 's2', mes: '2026-11-01', monto: 3000 }], error: null } }), f, '2026-11-18');
+  assert.equal(r.meta.venta, 30); assert.equal(r.meta.objetivo, 1000);
+  assert.deepEqual(r.meta.faltan, [{ sucursal_id: 's1', mes: '2026-11-01' }]);
+});
