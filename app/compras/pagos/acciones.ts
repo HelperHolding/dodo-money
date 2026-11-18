@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { leerComplementoPago } from "@/lib/compras/cfdi";
 import { archivoYaSubido } from "@/lib/compras/facturas";
-import { revisarPago } from "@/lib/compras/pagos";
+import { abonosDelPago, formaParaResto, programacionTrasAbono, revisarPago } from "@/lib/compras/pagos";
+import { hoyCalendarioMX } from "@/lib/formato";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
 import { textoDia } from "@/lib/compras/diasPago";
 import { clienteAdmin, volver } from "../servidor";
@@ -57,10 +58,13 @@ export async function registrarPago(fd: FormData) {
     .filter(([k]) => k.startsWith("aplicar_"))
     .map(([k, v]) => ({ factura_id: k.slice(8), monto: Math.round(Number(String(v).replace(/[$\s,]/g, "")) * 100) / 100 }))
     .filter((a) => a.monto > 0);
-  const { data: saldos } = await supabase.from("facturas_saldo").select("id, saldo").in("id", aplicaciones.map((a) => a.factura_id).concat("00000000-0000-0000-0000-000000000000"))
-    .returns<{ id: string; saldo: number }[]>();
-  const problema = revisarPago(monto, aplicaciones, new Map((saldos ?? []).map((s) => [s.id, Number(s.saldo)])));
+  const { data: saldos } = await supabase.from("facturas_saldo").select("id, saldo, pago_programado_el, pago_programado_forma").in("id", aplicaciones.map((a) => a.factura_id).concat("00000000-0000-0000-0000-000000000000"))
+    .returns<{ id: string; saldo: number; pago_programado_el: string | null; pago_programado_forma: string | null }[]>();
+  const saldoDe = new Map((saldos ?? []).map((s) => [s.id, Number(s.saldo)]));
+  const problema = revisarPago(monto, aplicaciones, saldoDe);
   if (problema) volver(ruta, "error", problema);
+  const resto = String(fd.get("liquidar_resto") ?? "");
+  if (resto && !(/^\d{4}-\d{2}-\d{2}$/.test(resto) && resto >= hoyCalendarioMX())) volver(ruta, "error", "La fecha para liquidar el resto debe ser hoy o después.");
 
   const archivo = fd.get("comprobante");
   const comprobante = archivo instanceof File && archivo.size > 0 ? archivo : null;
@@ -88,9 +92,23 @@ export async function registrarPago(fd: FormData) {
     motivo:String(fd.get("motivo_fuera_de_dia")??fd.get("nota_boveda")??"").trim()||null,
   }});
   if (error) volver(ruta, "error", error.message);
+
+  // Lo que queda de un abono: se programa en la fecha elegida o se libera la programación que era para este pago.
+  const fallos: string[] = [];
+  for (const facturaId of abonosDelPago(aplicaciones, saldoDe)) {
+    const actual = (saldos ?? []).find((s) => s.id === facturaId);
+    const plan = programacionTrasAbono(actual?.pago_programado_el ?? null, String(fd.get("fecha") ?? ""), resto);
+    if (!plan) continue;
+    const { error: errorPlan } = await supabase.rpc("programar_pago_detalle", {
+      p_factura: facturaId, p_fecha: plan.fecha,
+      p_forma: plan.fecha ? formaParaResto(actual?.pago_programado_forma ?? null, String(fd.get("origen") ?? "")) : null,
+    });
+    if (errorPlan) fallos.push(errorPlan.message);
+  }
   revalidatePath("/compras", "layout");
   revalidatePath("/", "layout");
-  redirect(`/compras/pagos/${id as string}?ok=${encodeURIComponent("Pago registrado.")}`);
+  const aviso = fallos.length ? `Pago registrado. No se pudo reprogramar el resto: ${fallos[0]} Prográmalo desde Pagos.` : "Pago registrado.";
+  redirect(`/compras/pagos/${id as string}?ok=${encodeURIComponent(aviso)}`);
 }
 
 export async function anularPago(fd: FormData) {

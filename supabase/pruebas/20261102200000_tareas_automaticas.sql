@@ -12,7 +12,7 @@ begin
   end if;
 
   -- 1. Factura sin revisar. Apagada no crea nada.
-  update public.facturas set revisada=false,revision_nota=null,revisada_por=null,revisada_en=null,creado_en=now()-interval '10 days' where id=f;
+  update public.facturas set revisada=false,revision_nota=null,revisada_por=null,revisada_en=null,creado_en=((hoy-10)::timestamp at time zone 'America/Mexico_City') where id=f;
   perform set_config('request.jwt.claims','',true);
   perform public.generar_tareas_automaticas();
   if exists(select 1 from public.tareas where regla='factura_sin_revisar') then raise exception 'FALLÓ: creó tareas con la regla apagada';end if;

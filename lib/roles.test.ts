@@ -10,9 +10,9 @@ test('corte diario: encargado de sucursal puede cerrar sin ampliar otros permiso
  assert.equal(puedeEditarCompras('encargado'),false);
 });
 import {
-  accesosRapidos, enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
+  accesosRapidos, areaActiva, enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, SECCIONES, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeRecibirSalida, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
-  puedeVerFinanzas, puedeEditarFinanzas, puedeCambiarSucursal, puedeVerVistaGeneral } from "./roles.ts";
+  puedeVerFinanzas, puedeEditarFinanzas, puedeCambiarSucursal, puedeVerVistaGeneral, puedeVerCorreos, puedeEditarCorreos } from "./roles.ts";
 
 test("corporativo solo consulta: no abre turno, no supervisa, no gestiona", () => {
   assert.equal(esCorporativo("corporativo"), true);
@@ -69,17 +69,60 @@ type R = Parameters<typeof menuLateral>[0];
 const grupos = (rol: R) => menuLateral(rol).grupos.map((g) => g.titulo);
 const grupo = (rol: R, titulo: string) => menuLateral(rol).grupos.find((g) => g.titulo === titulo)?.enlaces.map((e) => e.href);
 
-test("menú lateral: cada puesto ve solo sus grupos", () => {
-  assert.deepEqual(grupos("operacion"), ["Sucursal", "Tareas", "Conocimiento"]);
-  assert.deepEqual(grupos("encargado"), ["Sucursal", "Tareas", "Conocimiento"]);
-  assert.deepEqual(grupos("gerente"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Conocimiento"]);
-  assert.deepEqual(grupos("admin"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Compras", "Inventario", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
-  assert.deepEqual(grupos("corporativo"), ["Sucursal", "Tareas", "Efectivo", "Ventas", "Compras", "Inventario", "Finanzas", "Catálogos", "Proyectos y admin.", "Conocimiento"]);
+test("menú lateral: cada puesto ve solo sus áreas", () => {
+  assert.deepEqual(grupos("operacion"), ["Inicio", "Tareas", "Operación diaria", "Conocimiento"]);
+  assert.deepEqual(grupos("encargado"), ["Inicio", "Tareas", "Operación diaria", "Conocimiento"]);
+  assert.deepEqual(grupos("gerente"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "CAPEX", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Usuarios y sucursales", "Correos", "Conocimiento"]);
+  assert.deepEqual(grupos("corporativo"), ["Vista general", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "CAPEX", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Correos", "Conocimiento"]);
   assert.deepEqual(grupo("corporativo", "Inventario"), ["/inventario", "/inventario/uniformes"]);
   assert.deepEqual(grupo("operacion", "Tareas"), ["/tareas"]);
   assert.deepEqual(grupo("encargado", "Tareas"), ["/tareas", "/tareas/tablero"]);
-  assert.deepEqual(grupo("admin", "Proyectos y admin."), ["/aperturas", "/activos", "/cumplimiento", "/administracion/usuarios"]);
-  assert.deepEqual(grupo("corporativo", "Proyectos y admin."), ["/aperturas", "/activos", "/cumplimiento"]);
+  assert.deepEqual(grupo("admin", "Aperturas"), ["/aperturas"]);
+  assert.deepEqual(grupo("admin", "Usuarios y sucursales"), ["/administracion/usuarios"]);
+  assert.equal(grupo("corporativo", "Usuarios y sucursales"), undefined);
+});
+
+// Foto tomada de main (6258adf) antes de reorganizar: cada puesto debe seguir viendo exactamente estas páginas.
+const FOTO: Record<R, string[]> = {
+  operacion: ["/","/arqueo","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/tareas"],
+  encargado: ["/","/arqueo","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/recepciones","/tareas","/tareas/tablero","/turnos"],
+  gerente: ["/","/arqueo","/asistente","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/recepciones","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/rappi"],
+  admin: ["/","/activos","/administracion/usuarios","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/cargar","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/correos/contactos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/capex","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/costos","/ventas/dodois","/ventas/importar","/ventas/rappi"],
+  corporativo: ["/","/activos","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/capex","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/costos","/ventas/rappi"],
+  marketing: ["/correos","/correos/contactos"],
+};
+test("menú por áreas: cada puesto ve exactamente las mismas páginas que antes", () => {
+  for (const rol of Object.keys(FOTO) as R[]) {
+    assert.deepEqual([...new Set(enlacesDelMenu(menuLateral(rol)).map((e) => e.href))].sort(), FOTO[rol], rol);
+  }
+});
+test("menú por áreas: toda área tiene ícono, sección válida y al menos una página; secciones en orden", () => {
+  for (const rol of Object.keys(FOTO) as R[]) {
+    const areas = menuLateral(rol).grupos;
+    for (const a of areas) { assert.ok(a.icono, a.titulo); assert.ok(SECCIONES.includes(a.seccion), a.titulo); assert.ok(a.enlaces.length > 0, a.titulo); }
+    const orden = areas.map((a) => SECCIONES.indexOf(a.seccion));
+    assert.deepEqual(orden, [...orden].sort((x, y) => x - y), rol);
+  }
+});
+test("areaActiva: rutas de detalle, alias y la raíz", () => {
+  const admin = menuLateral("admin"), corp = menuLateral("corporativo"), gerente = menuLateral("gerente");
+  assert.equal(areaActiva(admin, "/compras/proveedores/123")?.titulo, "Compras");
+  assert.equal(areaActiva(admin, "/recepciones")?.titulo, "Compras");
+  assert.equal(areaActiva(gerente, "/recepciones")?.titulo, "Operación diaria");
+  assert.equal(areaActiva(admin, "/finanzas/asignacion/concepto:1")?.titulo, "Catálogos");
+  assert.equal(areaActiva(admin, "/")?.titulo, "Inicio");
+  assert.equal(areaActiva(corp, "/")?.titulo, "Vista general");
+  assert.equal(areaActiva(corp, "/corporativo")?.titulo, "Vista general");
+  assert.equal(areaActiva(admin, "/finanzas/nomina")?.titulo, "Nómina");
+  assert.equal(areaActiva(admin, "/banca/movimientos")?.titulo, "Banca");
+  // Mantenimiento junta activos (con su calendario) y compromisos recurrentes; Pagos sigue en Compras
+  assert.equal(areaActiva(admin, "/activos/abc")?.titulo, "Mantenimiento");
+  assert.equal(areaActiva(corp, "/compras/pagos/compromisos")?.titulo, "Mantenimiento");
+  assert.equal(areaActiva(admin, "/compras/pagos")?.titulo, "Compras");
+  assert.equal(areaActiva(admin, "/compras/pagos/reservas")?.titulo, "Compras");
+  for (const rol of ["admin", "corporativo"] as const) assert.deepEqual(menuLateral(rol).grupos.find((g) => g.titulo === "Mantenimiento")?.enlaces.map((e) => e.href), ["/activos", "/compras/pagos/compromisos"]);
+  for (const rol of ["gerente", "encargado", "operacion"] as const) assert.equal(menuLateral(rol).grupos.some((g) => g.titulo === "Mantenimiento"), false);
 });
 
 test("menú lateral: Inicio arriba; corporativo empieza en la vista general", () => {
@@ -88,17 +131,19 @@ test("menú lateral: Inicio arriba; corporativo empieza en la vista general", ()
   assert.deepEqual(menuLateral("corporativo").inicio, { href: "/corporativo", texto: "Vista general" });
 });
 
-test("menú lateral: grupo Sucursal por puesto (Recepciones solo para quien recibe)", () => {
-  assert.deepEqual(grupo("operacion", "Sucursal"), ["/arqueo", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
+test("menú lateral: área Operación diaria por puesto (Recepciones solo para quien recibe)", () => {
+  assert.deepEqual(grupo("operacion", "Operación diaria"), ["/arqueo", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
   assert.equal(puedeVerTurnos("operacion"), false);
   for (const rol of ["encargado", "gerente", "admin", "corporativo"] as const) assert.equal(puedeVerTurnos(rol), true);
   for (const rol of ["encargado", "gerente"] as const) {
-    assert.deepEqual(grupo(rol, "Sucursal"), ["/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists", "/recepciones"]);
+    assert.deepEqual(grupo(rol, "Operación diaria"), ["/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists", "/recepciones"]);
   }
-  // El admin entra por la vista general y opera en la sucursal que elija.
   // El admin tiene una sola "Recepciones" (en Compras): la de tienda es una pestaña dentro.
-  assert.deepEqual(grupo("admin", "Sucursal"), ["/corporativo", "/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
-  assert.deepEqual(grupo("corporativo", "Sucursal"), ["/", "/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
+  assert.deepEqual(grupo("admin", "Operación diaria"), ["/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
+  assert.deepEqual(grupo("corporativo", "Operación diaria"), ["/arqueo", "/turnos", "/movimientos", "/caja-chica", "/cierre", "/checklists"]);
+  // El admin entra por su inicio y tiene la vista general al lado; corporativo al revés.
+  assert.deepEqual(grupo("admin", "Inicio"), ["/", "/corporativo"]);
+  assert.deepEqual(grupo("corporativo", "Vista general"), ["/corporativo", "/"]);
 });
 
 test("menú lateral: Ventas y Compras por puesto", () => {
@@ -147,10 +192,10 @@ test("grupoAbierto: se abre el grupo de la página actual", () => {
   const admin = menuLateral("admin");
   assert.equal(grupoAbierto(admin, "/compras/ordenes/abc"), "Compras");
   assert.equal(grupoAbierto(admin, "/ventas/costos"), "Ventas");
-  assert.equal(grupoAbierto(admin, "/cierre"), "Sucursal");
-  assert.equal(grupoAbierto(admin, "/"), undefined);
-  assert.equal(grupoAbierto(menuLateral("corporativo"), "/"), "Sucursal");
-  assert.equal(grupoAbierto(menuLateral("corporativo"), "/corporativo"), undefined);
+  assert.equal(grupoAbierto(admin, "/cierre"), "Operación diaria");
+  assert.equal(grupoAbierto(admin, "/"), "Inicio");
+  assert.equal(grupoAbierto(menuLateral("corporativo"), "/"), "Vista general");
+  assert.equal(grupoAbierto(menuLateral("corporativo"), "/corporativo"), "Vista general");
 });
 
 test("aviso de productos sin costo: admin y corporativo lo ven; gerente, encargado y operación no", () => {
@@ -159,7 +204,7 @@ test("aviso de productos sin costo: admin y corporativo lo ven; gerente, encarga
 });
 
 test("nombre de cada puesto como se muestra en la app", () => {
-  assert.deepEqual(NOMBRE_ROL, { operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo" });
+  assert.deepEqual(NOMBRE_ROL, { operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo", marketing: "Marketing" });
 });
 
 test("un usuario desactivado no entra", () => {
@@ -172,9 +217,12 @@ test("finanzas: admin y corporativo ven; solo admin edita; grupo Finanzas", () =
   for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerFinanzas(rol), false);
   assert.equal(puedeEditarFinanzas("admin"), true);
   assert.equal(puedeEditarFinanzas("corporativo"), false);
-  assert.deepEqual(grupo("admin", "Finanzas"), ["/finanzas", "/finanzas/flujo", "/banca", "/finanzas/nomina", "/finanzas/personal", "/finanzas/retenciones", "/finanzas/mermas", "/finanzas/parametros"]);
-  assert.deepEqual(grupo("corporativo", "Finanzas"), grupo("admin", "Finanzas"));
-  assert.equal(grupo("gerente", "Finanzas"), undefined);
+  assert.deepEqual(grupo("admin", "P&L"), ["/finanzas", "/finanzas/flujo", "/finanzas/mermas", "/finanzas/parametros"]);
+  assert.deepEqual(grupo("admin", "Banca"), ["/banca"]);
+  assert.deepEqual(grupo("admin", "Nómina"), ["/finanzas/nomina", "/finanzas/personal", "/finanzas/retenciones"]);
+  assert.deepEqual(grupo("admin", "CAPEX"), ["/finanzas/capex"]);
+  for (const a of ["P&L", "Banca", "Nómina", "CAPEX"]) assert.deepEqual(grupo("corporativo", a), grupo("admin", a));
+  assert.equal(grupo("gerente", "P&L"), undefined);
 });
 
 test("cambiar de sucursal y vista general: el admin cambia y opera; corporativo solo ve", () => {
@@ -201,4 +249,18 @@ test("accesos rápidos del celular: 3 por puesto y todos están en su menú", ()
   }
   assert.deepEqual(accesosRapidos("gerente").map((a) => a.href), ["/", "/arqueo", "/ventas"]);
   assert.deepEqual(accesosRapidos("admin").map((a) => a.href), ["/corporativo", "/ventas", "/compras/documentos"]);
+});
+
+test("marketing: solo la sección Correos; corporativo consulta", () => {
+  assert.equal(NOMBRE_ROL.marketing, "Marketing");
+  for (const rol of ["marketing", "admin"] as const) { assert.equal(puedeVerCorreos(rol), true); assert.equal(puedeEditarCorreos(rol), true); }
+  assert.equal(puedeVerCorreos("corporativo"), true); assert.equal(puedeEditarCorreos("corporativo"), false);
+  for (const rol of ["gerente", "encargado", "operacion"] as const) assert.equal(puedeVerCorreos(rol), false);
+  const menu = menuLateral("marketing");
+  assert.deepEqual(menu.inicio, { href: "/correos", texto: "Campañas" });
+  assert.deepEqual(menu.grupos.map((g) => g.titulo), ["Correos"]);
+  assert.deepEqual(menuLateral("admin").grupos.find((g) => g.titulo === "Correos")?.enlaces.map((e) => e.href), ["/correos", "/correos/contactos"]);
+  assert.deepEqual(menuLateral("corporativo").grupos.find((g) => g.titulo === "Correos")?.enlaces.map((e) => e.href), ["/correos"]);
+  assert.deepEqual(accesosRapidos("marketing").map((e) => e.href), ["/correos", "/correos/contactos", "/correos/nueva"]);
+  for (const rol of ["gerente", "operacion"] as const) assert.equal(menuLateral(rol).grupos.some((g) => g.titulo === "Correos"), false);
 });

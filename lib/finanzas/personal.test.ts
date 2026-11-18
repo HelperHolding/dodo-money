@@ -24,6 +24,14 @@ test("CONTPAQi: percepciones, subtotal IMSS y diferencia del total reportado",()
  assert.throws(()=>extraerContpaqi(hoja(),"2026-10"),/mes completo/);
  const c=new Map(hoja().celdas);c.delete("AG14");assert.throws(()=>extraerContpaqi({nombre:"H",celdas:c},"2026-09"),/AG14/);
 });
+test("CONTPAQi: acumulado completo ubica columnas por encabezado y separa cesantía del IMSS empresa",()=>{
+ const enc:[string,string][]=[["B8","Empleado"],["C8","Sueldo"],["L8","Aguinaldo"],["N8","*TOTAL* *PERCEPCIONES*"],["P8","Ret. Cesantia"],["AG8","*TOTAL* *DEDUCCIONES*"],["AJ8","Cesantia y Vejez"],["AL8","2% Fondo retiro SAR (8)"],["AM8","2% Impuesto estatal"],["AN8","Riesgo de trabajo (9)"],["AO8","I.M.S.S. empresa"],["AP8","Infonavit empresa"],["AQ8","Guarderia I.M.S.S. (7)"],["AS8","*TOTAL* *OBLIGACIONES*"]];
+ const fila:[string,string|number][]=[["A14","001"],["B14","BRANDON"],["C14",13800],["N14",14917.8],["P14",168.33],["AG14",1588.8],["AJ14",1124.18],["AL14",299.26],["AM14",276],["AN14",169.18],["AO14",2434.33],["AP14",748.15],["AQ14",149.63],["AS14",4076.55]];
+ const c=new Map<string,string|number>([["A1","CONTPAQi"],["B4","Periodo 19 al 20 Quincenal del 01/10/2026 al 31/10/2026"],...enc,...fila,["A25","Total Gral."],["N25",14917.8],["AS25",4076.55]]);
+ const [e]=extraerContpaqi({nombre:"Hoja1",celdas:c},"2026-10");
+ assert.deepEqual(e,{codigo:"001",nombre:"BRANDON",sueldo:13800,bono:1117.8,imss:1628.96,cesantia:1124.18,retiro:299.26,impuesto:276,infonavit:748.15,ajuste:0});
+ c.set("AS25",4000);assert.throws(()=>extraerContpaqi({nombre:"Hoja1",celdas:c},"2026-10"),/no cuadra/);
+});
 test("importación vincula código y nombre; faltantes no desaparecen ni reutilizan estimaciones",()=>{
  const ricardo={...p,id:"p2",codigo:"RV",personal_versiones:[{...p.personal_versiones[0],id:"v2",datos:{...datos,nombre:"Ricardo Villa",puesto:"Gerente",renglon:"gerencia" as const,sueldo:22000}}]};
  const b=aplicarContpaqi([p,ricardo],"s1","2026-09",extraerContpaqi(hoja(),"2026-09"));assert.equal(b.empleados.length,2);assert.equal(b.empleados[0].bono,500);assert.equal(b.empleados[1].sueldo,null);assert.ok(b.avisos.some(a=>a.includes("no aparece")));assert.ok(b.avisos.some(a=>a.includes("costo del perfil")));

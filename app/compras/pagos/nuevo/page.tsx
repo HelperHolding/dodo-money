@@ -9,7 +9,7 @@ import { puedeEditarCompras } from "@/lib/roles";
 import { FormPago, type FacturaParaPagar, type ReservaPago } from "./FormPago";
 import { diasDePago } from "../../servidor";
 
-type Factura = { id: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; vence_el: string; pago_programado_el: string | null; estado: EstadoFactura; revisada: boolean };
+type Factura = { id: string; uuid: string | null; serie: string | null; folio: string | null; saldo: number; neto: number; pagado: number; metodo_pago: string | null; vence_el: string; pago_programado_el: string | null; estado: EstadoFactura; revisada: boolean };
 
 export default async function NuevoPago({ searchParams }: { searchParams: Promise<{ proveedor?: string; factura?: string; reserva?:string; error?: string }> }) {
   const { proveedor = "", factura = null, reserva=null, error } = await searchParams;
@@ -22,14 +22,14 @@ export default async function NuevoPago({ searchParams }: { searchParams: Promis
   let facturas: FacturaParaPagar[] = [];
   let reservas:ReservaPago[]=[];
   if (elegido) {
-    const { data } = await supabase.from("facturas_saldo").select("id, uuid, serie, folio, saldo, vence_el, pago_programado_el, estado, revisada")
+    const { data } = await supabase.from("facturas_saldo").select("id, uuid, serie, folio, saldo, neto, pagado, metodo_pago, vence_el, pago_programado_el, estado, revisada")
       .eq("proveedor_id", elegido.id).eq("tipo", "ingreso").in("estado", ["por_pagar", "parcial"]).order("vence_el").returns<Factura[]>();
     const abiertas = (data ?? []).filter((f) => Number(f.saldo) > 0);
     const cotejos = await Promise.all(abiertas.map(async (f) => (await supabase.rpc("cotejo_factura", { p_id: f.id })).data as Cotejo | null));
     facturas = abiertas.map((f, i) => {
       const c = cotejos[i];
       const bloqueada = c && c !== "cuadra" && c !== "sin_orden" && !f.revisada ? `${NOMBRE_COTEJO[c].texto}. Márcala como revisada en la factura para poder pagarla.` : null;
-      return { ...f, saldo: Number(f.saldo), nombre: nombreFactura(f), bloqueada };
+      return { ...f, saldo: Number(f.saldo), neto: Number(f.neto), pagado: Number(f.pagado), nombre: nombreFactura(f), bloqueada };
     });
     if(facturas.length){
       const {data,error:e}=await supabase.from("reservas_boveda_saldo").select("id,factura_id,pendiente,sucursal_id,sucursales(nombre)").is("anulado_en",null).gt("pendiente",0).in("factura_id",facturas.map(f=>f.id)).returns<ReservaPago[]>();

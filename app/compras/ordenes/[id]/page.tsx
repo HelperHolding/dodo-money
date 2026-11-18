@@ -20,7 +20,8 @@ import {
   accionesDe, avanceOrden, avanceRenglon, NOMBRE_AVANCE, NOMBRE_ESTADO_ORDEN, precioDistinto, recibidoDeMas, totalesOrden, type EstadoOrden,
 } from "@/lib/compras/ordenes";
 import { NOMBRE_TASA_IVA, type TasaIva } from "@/lib/compras/proveedores";
-import { puedeEditarCompras } from "@/lib/roles";
+import { puedeEditarCompras, puedeEditarFinanzas, puedeVerFinanzas } from "@/lib/roles";
+import { BloqueCapex, capexVisible } from "@/app/finanzas/capex/BloqueCapex";
 import {
   agregarRenglon, anularRecepcionApp, cancelarOrden, cerrarOrden, confirmarOrden, copiarOrden, editarOrden, editarRenglon, enviarOrden, quitarRenglon, cambiarEntregaEsperada, facturarOrden,
 } from "../acciones";
@@ -100,6 +101,8 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
     supabase.from("articulo_proveedores").select("articulo_id").eq("proveedor_id", o.proveedor_id).returns<{ articulo_id: string }[]>(),
   ]);
   const preciosPorArticulo = Object.fromEntries((precios.data ?? []).map((p) => [p.articulo_id, Number(p.precio)]));
+  const conCapex = puedeVerFinanzas(perfil.rol) && await capexVisible(supabase, o.sucursal_id, "orden", o.id);
+  const subtotalOrden = rs.reduce((a, r) => a + Math.round(Number(r.cantidad) * Number(r.precio) * 100), 0) / 100;
 
   return (
     <>
@@ -334,6 +337,7 @@ export default async function DetalleOrden({ params, searchParams }: { params: P
       </section>
 
 </>},
+        ...(conCapex ? [{id:"capex", titulo:"CAPEX de apertura", contenido:<BloqueCapex db={supabase} tipo="orden" id={o.id} sucursalId={o.sucursal_id} subtotal={subtotalOrden} cancelado={o.estado === "cancelada"} puedeEditar={puedeEditarFinanzas(perfil.rol)} />}] : []),
         {id:"adjuntos",titulo:"Adjuntos",contenido:<AdjuntosCompra tipo="orden" id={o.id}/>},
       ]} /></div><HistorialCompra id={o.id} edita={edita} accion={agregarNotaOrden} eventos={[
  ...(historial??[]).map(h=>({id:`evento-${h.id}`,en:h.en,titulo:CLAVE_EVENTO[h.evento]??h.evento,nota:h.nota,autor:h.perfiles?.nombre})),

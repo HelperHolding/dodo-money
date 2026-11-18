@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fechaDePago, finDeSemana, grupoPorPagar, pagadoDelMes, repartirConAjustes, repartirPago, resumenPagos, revisarPago, type PorPagar, agruparPorDiaDePago } from "./pagos.ts";
+import { fechaDePago, finDeSemana, grupoPorPagar, pagadoDelMes, repartirConAjustes, repartirPago, resumenPagos, revisarPago, type PorPagar, agruparPorDiaDePago, efectoAplicacion, ajustarAplicacion, abonosDelPago, programacionTrasAbono, formaParaResto } from "./pagos.ts";
 
 const f = (id: string, saldo: number, vence_el: string, pago_programado_el: string | null = null): PorPagar =>
   ({ id, saldo, vence_el, pago_programado_el, estado: "por_pagar" });
@@ -111,4 +111,54 @@ test("agruparPorDiaDePago: avisa cuando el día de pago cae después del vencimi
   ], "2026-10-17", "2026-10-23");
   const t = g.flatMap((x) => x.facturas).map((x) => [x.id, x.tarde, x.atrasada]);
   assert.deepEqual(t, [["t", true, false], ["ok", false, false]]);
+});
+
+test("efecto de lo aplicado: liquida o abona y dice cuánto queda, al centavo", () => {
+  assert.deepEqual(efectoAplicacion(1000, 1000), { tipo: "liquida" });
+  assert.deepEqual(efectoAplicacion(1000.1, 1000.1), { tipo: "liquida" });
+  assert.deepEqual(efectoAplicacion(1000, 400), { tipo: "abono", queda: 600 });
+  assert.deepEqual(efectoAplicacion(100.3, 0.1), { tipo: "abono", queda: 100.2 });
+  assert.equal(efectoAplicacion(1000, 0), null);
+  assert.equal(efectoAplicacion(1000, 1200), null); // pasa del saldo: lo avisa revisarPago
+});
+
+test("cambiar lo aplicado a una factura recalcula el monto y congela las demás", () => {
+  // Llegó desde la factura A con su saldo; el admin baja el abono a 4,000.
+  assert.deepEqual(ajustarAplicacion([{ factura_id: "a", monto: "10000" }, { factura_id: "b", monto: "" }], "a", "4,000"),
+    { manual: { a: "4,000", b: "" }, monto: "4000" });
+  // Sin factura elegida el monto cayó en A (vence antes); se pasa a B: A en 0 y B con el abono.
+  const paso1 = ajustarAplicacion([{ factura_id: "a", monto: "500" }, { factura_id: "b", monto: "" }], "a", "0");
+  assert.deepEqual(paso1, { manual: { a: "0", b: "" }, monto: "0" });
+  assert.deepEqual(ajustarAplicacion([{ factura_id: "a", monto: paso1.manual.a }, { factura_id: "b", monto: paso1.manual.b }], "b", "500.25"),
+    { manual: { a: "0", b: "500.25" }, monto: "500.25" });
+  // Centavos sin errores de coma flotante.
+  assert.equal(ajustarAplicacion([{ factura_id: "a", monto: "0.1" }, { factura_id: "b", monto: "0.2" }], "b", "0.2").monto, "0.3");
+  // Mientras escribe, un campo vacío cuenta como cero.
+  assert.equal(ajustarAplicacion([{ factura_id: "a", monto: "300" }], "a", "").monto, "");
+});
+
+test("abonos del pago: las facturas que quedan con saldo", () => {
+  const saldos = new Map([["a", 1000], ["b", 500], ["c", 0.3]]);
+  assert.deepEqual(abonosDelPago([{ factura_id: "a", monto: 400 }, { factura_id: "b", monto: 500 }, { factura_id: "c", monto: 0.1 }], saldos), ["a", "c"]);
+  assert.deepEqual(abonosDelPago([{ factura_id: "b", monto: 500 }], saldos), []);
+});
+
+test("programación del resto tras un abono", () => {
+  // Con fecha para liquidar el resto: se programa ahí.
+  assert.deepEqual(programacionTrasAbono("2026-11-06", "2026-11-06", "2026-11-27"), { fecha: "2026-11-27" });
+  // Sin fecha: la programación que era para este pago (hoy o antes) se borra y el resto vuelve a su día sugerido.
+  assert.deepEqual(programacionTrasAbono("2026-11-06", "2026-11-06", ""), { fecha: null });
+  assert.deepEqual(programacionTrasAbono("2026-11-01", "2026-11-06", ""), { fecha: null });
+  // Una programación futura se respeta; sin programación no hay nada que hacer.
+  assert.equal(programacionTrasAbono("2026-11-20", "2026-11-06", ""), null);
+  assert.equal(programacionTrasAbono(null, "2026-11-06", ""), null);
+});
+
+test("forma prevista del resto: la que tenía la factura; si no, la del abono", () => {
+  assert.equal(formaParaResto("cheque", "transferencia"), "cheque");
+  assert.equal(formaParaResto(null, "transferencia"), "transferencia");
+  assert.equal(formaParaResto(null, "tarjeta"), "tarjeta");
+  assert.equal(formaParaResto(null, "boveda_acumulado"), "efectivo");
+  assert.equal(formaParaResto(null, "ventas"), "efectivo");
+  assert.equal(formaParaResto(null, "boveda"), "efectivo");
 });

@@ -33,6 +33,8 @@ export async function obtenerPerfil({ permitirCambioPendiente = false }: { permi
  */
 export async function obtenerContexto() {
   const { supabase, user, perfil } = await obtenerPerfil();
+  // Marketing no tiene sucursal: su inicio es Correos.
+  if (perfil.rol === "marketing") redirect("/correos");
   const soloLectura = esCorporativo(perfil.rol);
   const sucursalId = soloLectura ? (await cookies()).get(COOKIE_SUCURSAL)?.value : perfil.sucursal_id;
   if (!sucursalId) redirect(soloLectura ? "/corporativo" : "/login?error=sin-perfil");

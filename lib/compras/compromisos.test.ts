@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { calcularGasto } from "./gastoManual.ts";
-import { CONCEPTOS, REQUIERE_SERVICIO, compromisoDesdeFactura, impuestosDe, ventanaCompromisos, avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso } from "./compromisos.ts";
+import { CONCEPTOS, REQUIERE_SERVICIO, compromisoDesdeFactura, impuestosDe, ventanaCompromisos, avisosCompromisos, estadoPago, filtrarPrevistos, leerCompromiso, previstosPorDia, servicioSinComprobar, textoFrecuencia, tituloCompromiso, type FechaCompromiso, CADA_SUGERIDO } from "./compromisos.ts";
 
 const fecha = (x: Partial<FechaCompromiso> = {}): FechaCompromiso => ({
   compromiso_id: "c1", vence: "2026-11-01", fecha_id: null, factura_id: null, factura_estado: null, factura_saldo: null,
@@ -160,4 +160,22 @@ test("previstos de monto variable: monto 0 y marcados como variables", () => {
   const datos = new Map([["c1", { monto: 899, titulo: "Teléfono · Zapopan", variable: true }], ["c2", { monto: 45000, titulo: "Renta · Zapopan", variable: false }]]);
   const r = previstosPorDia([fecha(), fecha({ compromiso_id: "c2" })], datos, "2026-10-28", (v) => v);
   assert.deepEqual(r["2026-11-01"].map((p) => [p.titulo, p.monto, p.variable]), [["Teléfono · Zapopan", 0, true], ["Renta · Zapopan", 45000, false]]);
+});
+
+test("extractor y minisplits: conceptos con servicio y frecuencia sugerida (6 y 2 meses)", () => {
+  assert.equal(CONCEPTOS.extractor, "Mantenimiento de extractor");
+  assert.equal(CONCEPTOS.minisplits, "Mantenimiento de minisplits");
+  assert.deepEqual([REQUIERE_SERVICIO.extractor, REQUIERE_SERVICIO.minisplits], [true, true]);
+  assert.deepEqual([CADA_SUGERIDO.extractor, CADA_SUGERIDO.minisplits, CADA_SUGERIDO.renta], [6, 2, undefined]);
+});
+
+test("factura → compromiso: extractor cada 6 meses y minisplits cada 2", () => {
+  const f = { proveedor_id: "p1", sucursal_id: "s1", subtotal: 3000, descuento: 0, iva: 480, retencion_iva: 0, retencion_isr: 0, vence_el: "2026-11-10" };
+  const ext = compromisoDesdeFactura(f, "Mantenimiento preventivo de EXTRACTOR de cocina");
+  assert.deepEqual([ext.concepto, ext.cada, ext.descripcion], ["extractor", 6, ""]);
+  for (const d of ["Servicio a minisplits", "Limpieza mini split 2 TR"]) {
+    const m = compromisoDesdeFactura(f, d);
+    assert.deepEqual([m.concepto, m.cada], ["minisplits", 2]);
+  }
+  assert.equal(compromisoDesdeFactura(f, "Renta noviembre").cada, 1);
 });

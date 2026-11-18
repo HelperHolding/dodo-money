@@ -19,8 +19,8 @@ import { abierta, ordenPendientes } from "@/lib/tareas";
 import { abrirTurno } from "./actions";
 import { confirmarMovimiento, rechazarMovimiento } from "./movimientos/actions";
 
-export default async function Inicio({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string;ventas_mes?:string;ventas_sucursal?:string }> }) {
-  const { ok, error,ventas_mes,ventas_sucursal } = await searchParams;
+export default async function Inicio({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string;ventas_mes?:string;ventas_sucursal?:string;hist?:string;alcance?:string }> }) {
+  const { ok, error,ventas_mes,ventas_sucursal,hist,alcance } = await searchParams;
   const { supabase, perfil, sucursal, turno, cajas, soloLectura } = await obtenerContexto();
 
   const hoy = hoyCalendarioMX();
@@ -213,7 +213,7 @@ export default async function Inicio({ searchParams }: { searchParams: Promise<{
         )}
       </section>
 
-      {["admin","corporativo"].includes(perfil.rol)&&<DashboardVentasInicio supabase={supabase} rol={perfil.rol} mes={ventas_mes} sucursal={ventas_sucursal} porDefecto={sucursal.id} ruta="/"/>}
+      {["admin","corporativo"].includes(perfil.rol)&&<DashboardVentasInicio supabase={supabase} rol={perfil.rol} mes={ventas_mes} sucursal={ventas_sucursal} porDefecto={sucursal.id} ruta="/" hist={hist} alcance={alcance}/>}
 
       <section className="seccion" aria-labelledby="t-resumen">
         <h2 id="t-resumen">Ir a</h2>

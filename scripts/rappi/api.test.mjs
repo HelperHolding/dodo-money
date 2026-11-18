@@ -102,3 +102,35 @@ test("sinRechazoSuelto: si nadie la espera no hay rechazo suelto; si se espera, 
     process.off("unhandledRejection", anotar);
   }
 });
+
+import { tiendasPermitidas, elegirTienda, nombreCache, fechaDeCache } from "./api.mjs";
+test("tiendas: principal primero, Turbo de RAPPI_TIENDAS, sin repetidos ni basura", () => {
+  assert.deepEqual(tiendasPermitidas("MX1930494033, MX1930486109,,x1,", "MX1930486109"), ["MX1930486109", "MX1930494033"]);
+  assert.deepEqual(tiendasPermitidas(undefined, "MX1930486109"), ["MX1930486109"]);
+  const t = ["MX1930486109", "MX1930494033"];
+  assert.equal(elegirTienda(undefined, t), "MX1930486109");
+  assert.equal(elegirTienda("", t), "MX1930486109");
+  assert.equal(elegirTienda(" MX1930494033 ", t), "MX1930494033");
+  assert.throws(() => elegirTienda("MX999", t), /RAPPI_TIENDAS/);
+});
+test("caché por tienda: la principal conserva el nombre viejo y la limpieza reconoce ambas", () => {
+  assert.equal(nombreCache("MX1930486109", "2026-11-09", "MX1930486109"), "cache-2026-11-09.json");
+  assert.equal(nombreCache("MX1930494033", "2026-11-09", "MX1930486109"), "cache-MX1930494033-2026-11-09.json");
+  assert.equal(fechaDeCache("cache-2026-11-09.json"), "2026-11-09");
+  assert.equal(fechaDeCache("cache-MX1930494033-2026-11-09.json"), "2026-11-09");
+  assert.equal(fechaDeCache("cache-2026-11-09.json.tmp"), null);
+  assert.equal(fechaDeCache("sesion.json"), null);
+});
+import { crearTurnos } from "./api.mjs";
+test("turnos: otra tienda espera a que termine la primera; la misma tienda empalmada se salta", async () => {
+  const turno = crearTurnos(), orden = [];
+  const tarea = (nombre, ms) => async () => { orden.push(`inicia ${nombre}`); await new Promise((r) => setTimeout(r, ms)); orden.push(`termina ${nombre}`); return nombre; };
+  const [calma, turbo, otraCalma] = await Promise.all([turno("MX1", tarea("calma", 30)), turno("MX2", tarea("turbo", 5)), turno("MX1", tarea("calma2", 5))]);
+  assert.deepEqual(calma, { ocupado: false, resultado: "calma" });
+  assert.deepEqual(turbo, { ocupado: false, resultado: "turbo" });
+  assert.deepEqual(otraCalma, { ocupado: true });
+  assert.deepEqual(orden, ["inicia calma", "termina calma", "inicia turbo", "termina turbo"]);
+  // Un error no traba la fila: la siguiente corrida arranca y la tienda queda libre.
+  await assert.rejects(turno("MX1", async () => { throw new Error("falla"); }), /falla/);
+  assert.deepEqual(await turno("MX1", async () => "otra vez"), { ocupado: false, resultado: "otra vez" });
+});

@@ -2,11 +2,13 @@
 import type { FormaPago } from "./proveedores";
 import type { Impuestos } from "./gastoManual";
 
-export type Concepto = "renta" | "fumigacion" | "basura" | "trampas_grasa" | "internet" | "telefono" | "otro";
-export const CONCEPTOS: Record<Concepto, string> = { renta: "Renta", fumigacion: "Fumigación", basura: "Recolección de basura", trampas_grasa: "Limpieza de trampas de grasa", internet: "Internet", telefono: "Teléfono", otro: "Otro" };
+export type Concepto = "renta" | "fumigacion" | "basura" | "trampas_grasa" | "internet" | "telefono" | "extractor" | "minisplits" | "otro";
+export const CONCEPTOS: Record<Concepto, string> = { renta: "Renta", fumigacion: "Fumigación", basura: "Recolección de basura", trampas_grasa: "Limpieza de trampas de grasa", internet: "Internet", telefono: "Teléfono", extractor: "Mantenimiento de extractor", minisplits: "Mantenimiento de minisplits", otro: "Otro" };
 /** Valor inicial de la casilla en el formulario: los servicios se comprueban; la renta, el internet y el teléfono no
  * (internet y teléfono salen igual en el calendario de cumplimiento: se cumplen al ligar su factura). */
-export const REQUIERE_SERVICIO: Record<Concepto, boolean> = { renta: false, fumigacion: true, basura: true, trampas_grasa: true, internet: false, telefono: false, otro: false };
+export const REQUIERE_SERVICIO: Record<Concepto, boolean> = { renta: false, fumigacion: true, basura: true, trampas_grasa: true, internet: false, telefono: false, extractor: true, minisplits: true, otro: false };
+/** Cada cuántos meses se propone en el formulario (y al hacerlo desde una factura); el resto, cada mes. */
+export const CADA_SUGERIDO: Partial<Record<Concepto, number>> = { extractor: 6, minisplits: 2 };
 
 export type Compromiso = {
   id: string; sucursal_id: string; concepto: Concepto; descripcion: string | null; proveedor_id: string;
@@ -28,13 +30,13 @@ export function compromisoDesdeFactura(
 ): Pick<Compromiso, "sucursal_id" | "proveedor_id" | "concepto" | "descripcion" | "monto_estimado" | "iva" | "ret_iva" | "ret_isr" | "unidad" | "cada" | "dia_mes" | "inicio"> {
   const base = Math.round((Number(f.subtotal) - Number(f.descuento)) * 100) / 100;
   const texto = descripcion.trim(), plano = texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  const concepto: Concepto = /renta|arrendamiento/.test(plano) ? "renta" : /fumiga/.test(plano) ? "fumigacion" : /trampa/.test(plano) ? "trampas_grasa" : /basura/.test(plano) ? "basura" : /internet/.test(plano) ? "internet" : /telefon/.test(plano) ? "telefono" : "otro";
+  const concepto: Concepto = /renta|arrendamiento/.test(plano) ? "renta" : /fumiga/.test(plano) ? "fumigacion" : /trampa/.test(plano) ? "trampas_grasa" : /basura/.test(plano) ? "basura" : /extractor/.test(plano) ? "extractor" : /mini ?split/.test(plano) ? "minisplits" : /internet/.test(plano) ? "internet" : /telefon/.test(plano) ? "telefono" : "otro";
   // ISR: 10 % (arrendamiento, honorarios) o 1.25 % (RESICO); lo que quede en medio se toma por la tasa más cercana.
   const isr = Number(f.retencion_isr) > 0 ? (Number(f.retencion_isr) / base > 0.05 ? "diez" : "resico") : "ninguna";
   return {
     sucursal_id: f.sucursal_id, proveedor_id: f.proveedor_id, concepto, descripcion: concepto === "otro" ? texto.slice(0, 300) : "", monto_estimado: base,
     iva: Number(f.iva) > 0 ? 0.16 : 0, ret_iva: Number(f.iva) > 0 && Number(f.retencion_iva) > 0 ? "dos_tercios" : "ninguna", ret_isr: isr,
-    unidad: "mes", cada: 1, dia_mes: Number(f.vence_el.slice(8)), inicio: f.vence_el,
+    unidad: "mes", cada: CADA_SUGERIDO[concepto] ?? 1, dia_mes: Number(f.vence_el.slice(8)), inicio: f.vence_el,
   };
 }
 /** Una fila de `compromisos_en_rango`: la fecha calculada y lo guardado de ella. */

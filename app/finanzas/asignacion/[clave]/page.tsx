@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
 import { obtenerPerfil } from '@/lib/contexto';
-import { alternativas, codigoCompatible, estadoAsignacion, type MovimientoContable, type AsignacionContable } from '@/lib/finanzas/asignacion';
+import { alternativas, claveDeRuta, codigoCompatible, estadoAsignacion, type MovimientoContable, type AsignacionContable } from '@/lib/finanzas/asignacion';
 import { pesos } from '@/lib/formato';
 import { confirmarCuenta } from '../acciones';
 
 type Cuenta={codigo:string;nombre:string;rubro:string|null};
 export default async function Revisar({params,searchParams}:{params:Promise<{clave:string}>;searchParams:Promise<{rfc?:string;codigo?:string;ok?:string;error?:string}>}) {
-  const {clave}=await params;const q=await searchParams;
+  const clave=claveDeRuta((await params).clave);const q=await searchParams;
   const {supabase,perfil}=await obtenerPerfil();
   const [{data:m,error},{data:historial,error:eh},{data:razones,error:er}]=await Promise.all([
     supabase.from('contabilidad_movimientos').select('*').eq('clave',clave).maybeSingle<MovimientoContable>(),

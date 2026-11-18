@@ -21,7 +21,8 @@ export function BuscadorPaginas({ menu }: { menu: Menu }) {
   const paginas = useMemo(() => [
     { href: menu.inicio.href, texto: menu.inicio.texto, grupo: "" },
     ...menu.grupos.flatMap((g) => g.enlaces.map((e) => ({ href: e.href, texto: e.texto, grupo: g.titulo }))),
-  ], [menu]);
+  // Inicio va arriba y también dentro de su área: cada destino una sola vez (la clave de la lista es el href).
+  ].filter((p, i, todas) => todas.findIndex((x) => x.href === p.href) === i), [menu]);
   const q = normal(texto.trim());
   const lista = q ? paginas.filter((p) => normal(`${p.texto} ${p.grupo}`).includes(q)) : paginas;
 

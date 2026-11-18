@@ -4,19 +4,23 @@ import { revalidatePath } from "next/cache";
 import { clienteFinanzas, volver } from "../servidor";
 import { hoyCalendarioMX } from "@/lib/formato";
 import { leerHojas } from "@/lib/ventas/xlsx";
-import { leerMermasDodo, resumirMermas } from "@/lib/finanzas/mermasDodo";
+import { leerMermasDodo, nombresParaMermas, resumirMermas } from "@/lib/finanzas/mermasDodo";
 import { leerTodo } from "@/lib/ventas/paginar";
 export type Revision = { error?: string; huella?: string; archivo?: string; dias?: ReturnType<typeof resumirMermas>; nombres?: Record<string,string>; reemplazados?: number };
 export async function importarMermas(_: Revision, fd: FormData): Promise<Revision> {
   const supabase = await clienteFinanzas("/finanzas/mermas");
   const archivo = fd.get("archivo");
   if (!(archivo instanceof File) || !archivo.size || archivo.size > 4*1024*1024 || !/\.xlsx$/i.test(archivo.name) || archivo.name.length > 255) return { error: "Elige el Excel .xlsx de Dodo IS, de hasta 4 MB." };
-  const {data: sucursales,error} = await supabase.from("sucursales").select("id,nombre");
+  const {data: sucursales,error} = await supabase.from("sucursales").select("id,nombre,dodois_unit_id").returns<{id:string;nombre:string;dodois_unit_id:string|null}[]>();
   if (error) return { error: error.message };
+  // El Excel trae el nombre de la unidad en Dodo IS; se reconoce por la unidad ligada a cada sucursal.
+  const {data: conexion,error: errorConexion} = await supabase.from("dodois_conexion").select("unidades").maybeSingle<{unidades:{id?:unknown;name?:unknown}[]|null}>();
+  if (errorConexion) return { error: errorConexion.message };
+  const nombres = nombresParaMermas(sucursales ?? [], Array.isArray(conexion?.unidades) ? conexion.unidades : []);
   let lectura; let huella;
   try {
     const bytes = new Uint8Array(await archivo.arrayBuffer()); huella = createHash("sha256").update(bytes).digest("hex");
-    lectura = leerMermasDodo(leerHojas(bytes), sucursales ?? [], hoyCalendarioMX());
+    lectura = leerMermasDodo(leerHojas(bytes), nombres, hoyCalendarioMX());
   } catch { return { error: "No se pudo leer el Excel. Descarga nuevamente el reporte de Bajas de Dodo IS." }; }
   if (lectura.errores.length) return { error: lectura.errores.join(" ") };
   if (fd.get("etapa") === "guardar") {

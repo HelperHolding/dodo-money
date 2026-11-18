@@ -51,3 +51,56 @@ test('panel Rappi: bruto antes de descuentos conserva centavos y la base de vent
  assert.equal(Math.round((r.bruto-r.descuentoRestaurante)*100),Math.round(r.total*100));
  assert.equal(r.cantidad,2);assert.equal(r.descuentoRappi,52.8);assert.equal(resumenPanelRappi([]).bruto,0);
 });
+
+import {aplicarFuenteDodo,claveDia,cotejoRappiDodo,diasConAgregador} from "./rappi.ts";
+test("Rappi: en días con agregador en Dodo IS el portal no suma; los demás días siguen sumando",()=>{
+ const o=guardada(),otroDia={...o,rappi_id:"2",fecha:"2026-10-06"},otraSuc={...o,rappi_id:"3",sucursal_id:"t"};
+ const cubiertos=diasConAgregador([{sucursal_id:"s",fecha:o.fecha,pedidos:1,total:99},{sucursal_id:"s",fecha:"2026-10-07",pedidos:0,total:0}]);
+ assert.deepEqual([...cubiertos],[claveDia("s",o.fecha)]);
+ const marcadas=aplicarFuenteDodo([o,otroDia,otraSuc],cubiertos);
+ assert.deepEqual(marcadas.map(x=>[x.rappi_id,x.sumar,x.enDodo]),[[o.rappi_id,false,true],["2",true,false],["3",true,false]]);
+ // Sin duplicar: el día cubierto solo trae el total de Dodo IS; el otro día suma Rappi.
+ const r=ventasRappi(marcadas,[]);assert.deepEqual(r.dias.map(d=>[d.sucursal_id,d.fecha]).sort(),[["s","2026-10-06"],["t",o.fecha]]);
+ const dodo={sucursal_id:"s",fecha:o.fecha,pedidos:5,total:500,efectivo:0,tarjeta:401,en_linea:99,iva:69,venta_m2:null,ventas_dia_desglose:[{tipo:"agregador" as const,pedidos:1,total:99}]};
+ const dia=combinarDiasRappi([dodo],r.dias).find(d=>d.sucursal_id==="s"&&d.fecha===o.fecha)!;
+ assert.equal(dia.total,500);assert.equal(dia.ventas_dia_desglose.find(x=>x.tipo==="agregador")!.total,99);
+ // Una exclusión manual se conserva en días que Dodo IS no cubre.
+ assert.equal(aplicarFuenteDodo([{...otroDia,sumar:false}],cubiertos)[0].sumar,false);
+});
+test("Rappi: el cotejo compara por día lo capturado en Dodo IS contra «A facturar» del portal",()=>{
+ // Hawaiana 30 cm del 15 nov 2026: $199 de lista, $151.25 de subtotal restaurante y $99 a facturar; Dodo IS registra $99.
+ const o={...guardada(),bruto:199,descuento_restaurante:47.75,subtotal_restaurante:151.25,descuento_rappi:52.25,facturar:99};
+ const c=cotejoRappiDodo([o,{...o,rappi_id:"2"},{...o,rappi_id:"3",estado:"Cancelado"},{...o,rappi_id:"4",fecha:"2026-10-06"}],[{sucursal_id:"s",fecha:o.fecha,pedidos:2,total:198}]);
+ assert.deepEqual(c.map(d=>[d.fecha,d.dodoPedidos,d.dodoTotal,d.rappiOrdenes,d.rappiTotal,d.diferencia]),[["2026-10-06",0,0,1,99,-99],[o.fecha,2,198,2,198,0]]);
+});
+import {esDeDodo,ordenesDesdeDodo} from "./rappi.ts";
+test("Rappi: los pedidos de agregador de Dodo IS se ven como órdenes y suman lo capturado",()=>{
+ // Pedido real del 15 nov 2026: Pepperoni Mediano $82 + Coca Light $38 = $120, lo mismo que «A facturar» en el portal.
+ const [o]=ordenesDesdeDodo([{dodo_id:"ABC",sucursal_id:"s",fecha:"2026-11-15",hora:"16:15:00",total:"120",total_sin_descuento:"120",agregador:"Rappi",
+  pedido_productos:[{renglon:2,nombre:"Coca Light 0,6 L",precio:"38",precio_sin_descuento:"38",dodo_id:7},{renglon:1,nombre:"Pepperoni Mediano",precio:"82",precio_sin_descuento:"82",dodo_id:5}]}]);
+ assert.equal(o.rappi_id,"dodo:ABC");assert.equal(o.hora,"16:15");assert.equal(o.estado,"Finalizado");assert.equal(o.sumar,true);assert.ok(esDeDodo(o));
+ assert.equal(o.subtotal_restaurante,120);assert.equal(o.facturar,120);assert.equal(o.descuento_rappi,0);
+ assert.deepEqual(o.rappi_lineas.map(l=>[l.linea,l.nombre,l.importe,l.producto_id]),[[1,"Pepperoni Mediano",82,-5],[2,"Coca Light 0,6 L",38,-7]]);
+ // Junto con una orden del portal que ya viene en Dodo IS (sumar=false), la venta cuenta una sola vez.
+ const portal={...guardada(),fecha:"2026-11-15",sumar:false};
+ const r=resumenPanelRappi([portal,o]);assert.equal(r.cantidad,1);assert.equal(r.total,120);assert.equal(r.enDodo,1);
+});
+import {TIENDA_TURBO,diasDeTienda,fraccionTurbo,quitarAgregador,rappiPorTienda} from "./rappi.ts";
+test("Rappi Turbo: el portal va por tienda y la venta de Dodo IS se reparte con su proporción",()=>{
+ const base={...guardada(),fecha:"2026-11-15",sumar:false,enDodo:true};
+ // Portal del 15: normal 300 en 2 órdenes, Turbo 100 en 1 (25 %); Dodo IS registró 320 en 3 pedidos.
+ const portal=[{...base,rappi_id:"1",subtotal_restaurante:150},{...base,rappi_id:"2",subtotal_restaurante:150},{...base,rappi_id:"3",tienda_id:TIENDA_TURBO,subtotal_restaurante:100},{...base,rappi_id:"4",tienda_id:TIENDA_TURBO,estado:"Cancelado" as const,subtotal_restaurante:500}];
+ assert.deepEqual(fraccionTurbo(portal).get("s|2026-11-15"),{fraccion:.25,turbo:1,todas:3});
+ // Un día anterior sin Dodo IS: el portal suma por su tienda, exacto.
+ const previo=[{...guardada(),rappi_id:"5",fecha:"2026-11-10",subtotal_restaurante:99},{...guardada(),rappi_id:"6",fecha:"2026-11-10",tienda_id:TIENDA_TURBO,subtotal_restaurante:50}];
+ const r=rappiPorTienda([...portal,...previo],[{sucursal_id:"s",fecha:"2026-11-15",pedidos:3,total:320}]);
+ assert.deepEqual(r.turbo.map(d=>[d.fecha,d.pedidos,d.total,d.estimado]),[["2026-11-10",1,50,false],["2026-11-15",1,80,true]]);
+ assert.deepEqual(r.normal.map(d=>[d.fecha,d.pedidos,d.total,d.estimado]),[["2026-11-10",1,99,false],["2026-11-15",2,240,true]]);
+ assert.equal(diasDeTienda(r.turbo)[1].iva,11.03);
+});
+test("Tablero: el POS de Dodo IS sin la venta de agregador; sin agregador queda igual",()=>{
+ const d={sucursal_id:"s",fecha:"2026-11-15",pedidos:73,total:20000,efectivo:9000,tarjeta:6468,en_linea:0,iva:2758.62,venta_m2:200,ventas_dia_desglose:[{tipo:"agregador",pedidos:26,total:4532}]};
+ const [x]=quitarAgregador([d]);
+ assert.deepEqual([x.pedidos,x.total,x.iva,x.efectivo,x.tarjeta,x.venta_m2],[47,15468,2133.52,9000,6468,154.68]);
+ assert.deepEqual(quitarAgregador([{...d,ventas_dia_desglose:[]}])[0].total,20000);
+});

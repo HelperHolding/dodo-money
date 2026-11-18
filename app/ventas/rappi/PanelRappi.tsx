@@ -9,7 +9,7 @@ import { TarjetaDetalle } from "@/components/TarjetaDetalle";
 import { fechaTexto, pesos, pesosRedondos, porcentaje } from "@/lib/formato";
 import { periodoAnterior, type Periodo } from "@/lib/ventas/calculos";
 import { DIAS_SEMANA, ventaPorHora } from "@/lib/ventas/pedidos";
-import { resumenPanelRappi, ventasRappi, type CatalogoRappi, type RappiGuardada } from "@/lib/ventas/rappi";
+import { resumenPanelRappi, ventasRappi, type CatalogoRappi, type DiaTienda, type RappiGuardada } from "@/lib/ventas/rappi";
 import { cambioRelativo, type Indicador } from "@/lib/ventas/tablero";
 
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
@@ -33,12 +33,19 @@ const comparado = (clave: Indicador["clave"], valor: number | null, antes: numbe
  * periodo anterior del mismo largo, y debajo la rejilla de gráficas del tablero de Ventas. `diario` es el subtotal y las
  * órdenes por día del calendario; con él se compara solo si el periodo anterior ya tenía órdenes en vivo.
  */
-export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
-  ordenes: RappiGuardada[]; catalogo: readonly CatalogoRappi[]; periodo: Periodo; hoy: string;
+export function PanelRappi({ ordenes, dodo = [], turbo = [], catalogo, periodo, hoy, diario }: {
+  ordenes: RappiGuardada[]; dodo?: RappiGuardada[]; turbo?: DiaTienda[]; catalogo: readonly CatalogoRappi[]; periodo: Periodo; hoy: string;
   diario: { venta: Record<string, number>; ordenes: Record<string, number> };
 }) {
-  const r = resumenPanelRappi(ordenes);
-  const sumadas = ordenes.filter((o) => o.estado === "Finalizado" && o.sumar);
+  // Rappi Turbo por día (sumando sucursales); en días de Dodo IS es estimado con la proporción del portal.
+  const turboDia = new Map<string, { total: number; pedidos: number; estimado: boolean }>();
+  for (const t of turbo) { const x = turboDia.get(t.fecha) ?? { total: 0, pedidos: 0, estimado: false }; x.total = Math.round((x.total + t.total) * 100) / 100; x.pedidos += t.pedidos; x.estimado ||= t.estimado; turboDia.set(t.fecha, x); }
+  const turboTotal = Math.round([...turboDia.values()].reduce((n, x) => n + x.total, 0) * 100) / 100, turboEstimado = [...turboDia.values()].some((x) => x.estimado);
+  // Venta: órdenes del portal que suman + pedidos de agregador de Dodo IS (días en que Dodo IS es la fuente).
+  // Estados, cancelaciones y reclamos solo existen en el portal.
+  const venta = [...ordenes, ...dodo];
+  const r = resumenPanelRappi(venta), portal = resumenPanelRappi(ordenes);
+  const sumadas = venta.filter((o) => o.estado === "Finalizado" && o.sumar);
 
   // Contra el periodo anterior: solo si las órdenes en vivo ya llegaban desde su primer día
   const anterior = periodoAnterior(periodo);
@@ -75,9 +82,9 @@ export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
     : rangoHoras.map((h) => ({ clave: String(h), rotulo: `${hh(h)} h`, detalle: `Al cierre de ${hh(h)}:59`, actual: horas.get(h)?.total ?? 0, anterior: null }));
   const barras = !unDia
     ? fechasDe(periodo.desde, periodo.hasta < hoy ? periodo.hasta : hoy).map((f) => {
-        const d = porDia.get(f);
-        return { clave: f, rotulo: String(Number(f.slice(8))), valor: d?.total ?? 0,
-          detalle: d ? `${fechaTexto(f)} · ${pesos(d.total)} · ${ordenesTexto(d.ordenes)} · ticket ${pesos(d.total / d.ordenes)}` : `${fechaTexto(f)} · sin ventas sumadas` };
+        const d = porDia.get(f), t = turboDia.get(f);
+        return { clave: f, rotulo: String(Number(f.slice(8))), valor: d?.total ?? 0, parte: t?.total,
+          detalle: d ? `${fechaTexto(f)} · ${pesos(d.total)} · ${ordenesTexto(d.ordenes)} · ticket ${pesos(d.total / d.ordenes)}${t?.total ? ` · Turbo ${pesos(t.total)}${t.estimado ? " (estimado)" : ""}` : ""}` : `${fechaTexto(f)} · sin ventas sumadas` };
       })
     : rangoHoras.map((h) => {
         const x = horas.get(h);
@@ -88,11 +95,12 @@ export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
   const semana = DIAS.map((nombre, i) => {
     const delDia = r.dias.filter((d) => (new Date(`${d.fecha}T12:00:00Z`).getUTCDay() + 6) % 7 === i);
     const total = delDia.reduce((n, d) => n + d.total, 0), cuantas = delDia.reduce((n, d) => n + d.ordenes, 0);
-    return { clave: String(i), etiqueta: nombre, valor: total, texto: cuantas ? `${pesos(total)} · ${ordenesTexto(cuantas)}` : "—" };
+    const parte = Math.round(delDia.reduce((n, d) => n + (turboDia.get(d.fecha)?.total ?? 0), 0) * 100) / 100;
+    return { clave: String(i), etiqueta: nombre, valor: total, parte, texto: cuantas ? `${pesos(total)} · ${ordenesTexto(cuantas)}${parte ? ` · Turbo ${pesos(parte)}` : ""}` : "—" };
   });
-  const hora = ventaPorHora(ventasRappi(ordenes, catalogo).pedidos);
+  const hora = ventaPorHora(ventasRappi(venta, catalogo).pedidos);
   const facturar = Math.round((r.total - r.descuentoRappi) * 100) / 100;
-  const estado = Object.fromEntries(r.estados.map((e) => [e.estado, e.cantidad]));
+  const estado = Object.fromEntries(portal.estados.map((e) => [e.estado, e.cantidad]));
   const subtotalDe = (e: RappiGuardada["estado"]) =>
     Math.round(ordenes.filter((o) => o.estado === e).reduce((n, o) => n + Number(o.subtotal_restaurante), 0) * 100) / 100;
 
@@ -102,16 +110,17 @@ export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
         <div className="indicadores-marco">
           <div className="indicadores">
             <div className="indicador">
-              <span className="indicador-etiqueta">Subtotal restaurante</span>
+              <span className="indicador-etiqueta">{dodo.length ? "Venta Rappi" : "Subtotal restaurante"}</span>
               <strong className="indicador-valor">{pesosRedondos(r.total)}</strong>
               {cambio(kpi.total)}
-              <span className="indicador-detalle">Después del descuento restaurante · con IVA.</span>
+              <span className="indicador-detalle">{dodo.length ? "Portal: después del descuento restaurante; días en Dodo IS: lo capturado (lo que paga el cliente) · con IVA." : "Después del descuento restaurante · con IVA."}</span>
+              {turboTotal > 0 && <span className="indicador-detalle">Normal {pesosRedondos(Math.round((r.total - turboTotal) * 100) / 100)} · Turbo {pesosRedondos(turboTotal)} ({porcentaje(r.total ? turboTotal / r.total : null)}){turboEstimado ? " · Turbo estimado en días de Dodo IS" : ""}</span>}
             </div>
             <div className="indicador">
               <span className="indicador-etiqueta">Órdenes sumadas</span>
               <strong className="indicador-valor">{r.cantidad.toLocaleString("es-MX")}</strong>
               {cambio(kpi.ordenes)}
-              <span className="indicador-detalle">{r.enDodo} finalizadas incluidas en Dodo IS, excluidas de estos importes.</span>
+              <span className="indicador-detalle">{dodo.length ? `${dodo.length} pedidos de agregador de Dodo IS; ${portal.enDodo} órdenes del portal de esos días quedan solo para cotejo.` : `${portal.enDodo} finalizadas incluidas en Dodo IS, excluidas de estos importes.`}</span>
             </div>
             <div className="indicador">
               <span className="indicador-etiqueta">Ticket promedio</span>
@@ -170,11 +179,12 @@ export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
         <section className="seccion tablero-ancha" aria-labelledby="r-diaria">
           <div className="seccion-cabecera">
             <h2 id="r-diaria">{unDia ? "Subtotal por hora" : "Subtotal por día"}</h2>
-            <ConInfo titulo={unDia ? "Subtotal por hora" : "Subtotal por día"} etiqueta="Cómo leer esto">Solo órdenes finalizadas con fuente Rappi. Los días sin barras no recibieron ventas sumadas del portal.</ConInfo>
+            <ConInfo titulo={unDia ? "Subtotal por hora" : "Subtotal por día"} etiqueta="Cómo leer esto">Órdenes finalizadas del portal y, en los días en que operación captura Rappi en Dodo IS, los pedidos de agregador de Dodo IS. La hora de Dodo IS es la de captura, que puede ir por tandas.</ConInfo>
           </div>
           {r.dias.length ? (
             <BarrasVerticales key={`${periodo.desde}|${periodo.hasta}`} titulo={unDia ? "Subtotal por hora" : "Subtotal por día"} dias={barras} />
           ) : <p className="vacio">Sin ventas sumadas en este periodo.</p>}
+          {!unDia && turboTotal > 0 && <p className="serie-leyenda"><span>Rappi normal</span><span data-serie="2">Rappi Turbo{turboEstimado ? " (estimado en días de Dodo IS)" : ""}</span></p>}
         </section>
 
         <section className="seccion" aria-labelledby="r-semana">
@@ -183,6 +193,7 @@ export function PanelRappi({ ordenes, catalogo, periodo, hoy, diario }: {
             <ConInfo titulo="Por día de la semana" etiqueta="Cómo leer esto">Subtotal restaurante del periodo sumado por día de la semana; los días que se repiten más veces en el periodo pesan más.</ConInfo>
           </div>
           {r.dias.length ? <Grafica titulo="Subtotal por día de la semana" barras={semana} /> : <p className="vacio">Sin ventas sumadas en este periodo.</p>}
+          {turboTotal > 0 && <p className="serie-leyenda"><span>Rappi normal</span><span data-serie="2">Rappi Turbo</span></p>}
         </section>
 
         <TarjetaDetalle ancho="doble" id="r-hora" titulo="Venta por hora" resumen={hora.pico ? `Pico ${DIAS_SEMANA[hora.pico.dia - 1]} ${hora.pico.hora} h` : "—"}>

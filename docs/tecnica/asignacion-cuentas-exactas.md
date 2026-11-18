@@ -75,3 +75,35 @@ El Excel del P&L agrega `Por cuentas` y `Detalle` antes de las hojas operativas 
 Detalle conserva fecha, documento/concepto, proveedor, RFC de la razón social, UUID manual o XML, cuenta, periodo, importe y nota de cálculo. Las ligas a documentos usan el sitio de Dodo MX y requieren su sesión habitual. Fuentes calculadas, pendientes y redondeos siguen identificados. Los totales tienen su propio respaldo con signos; los documentos pueden repetirse en esos bloques, por lo que no se deben sumar bloques entre sí. Insumos e inversiones siguen fuera del resultado.
 
 No requiere migración ni cambia registros. La ruta conserva autenticación, permisos financieros y descarga privada sin caché. Pruebas: conciliación de fórmulas con detalle y acumulado, nota de crédito, ausencia versus cero, periodos sin días, filtros de ruta, cuatro hojas y enlaces internos del archivo guardado. Validación visual local con muestra y recálculo independiente de SUM/ROUND; la apertura y navegación nativa en Microsoft Excel no forman parte de ese ensayo.
+
+## Pendientes de septiembre a noviembre (12/11/2026)
+
+El lote `CUENTAS-PENDIENTES-20261112` asigna las 138 equivalencias que Sebastián aprobó el 12/11/2026, de 150 registros pendientes; 26 son reconfirmaciones de registros que pasaron a «Revisar» porque cambiaron pagos o estado. El plan está en `supabase/correcciones/2026-11-12_equivalencias_pendientes.json`. Solo llama a `asignar_cuenta_contable`: no cambia facturas, gastos, categorías, pagos ni efectivo.
+
+Antes de guardar, revisa todo el lote: cada registro debe seguir vigente, con la categoría, el importe y la razón social revisados, y sin otra cuenta confirmada. Si algo no coincide, no guarda nada. La huella se toma al ejecutar. Repetir el lote no duplica nada.
+
+Orden: `supabase/pruebas/2026-11-12_cuentas_pendientes.sql` (ensayo con ROLLBACK, «PRUEBAS OK»), después `supabase/correcciones/2026-11-12_cuentas_pendientes.sql` («CUENTAS PENDIENTES OK», 138). Quedan fuera para decisión aparte: Bolpack de septiembre capturado como insumo (n65–68), un posible duplicado de Coca (n79), el depósito de garantía de CFE (n110; 184-03-000 no se permite para inversiones), Sam's/Seven en «otros» (n127–131, tres coinciden con el reembolso de Ricardo Villa) y la regalía a nombre de PHM, sin catálogo (n134).
+
+### Lote 2 (12/11/2026)
+
+`CUENTAS-PENDIENTES-2-20261112` resuelve 10 de los 12 restantes con las decisiones de Sebastián. Las categorías y las eliminaciones se hacen con las mismas funciones que usa la app (`asignar_cuentas_conceptos` y `editar_anular_gasto_admin`), que dejan su propio historial; después se asigna la cuenta con la huella corregida.
+
+- Bolpack BGL6872 (n65–68): los conceptos pasan de insumos a consumibles y se asignan a 602-54-000 Limpieza (Sitru).
+- Mozzarella $940 y azúcar $138 (n128 y n131): los gastos pasan de «otros» a insumos y se asignan a 502-01-000.
+- Duplicados eliminados: la Coca de caja chica (n79), porque la factura de Arca ya registra el pago con efectivo de ventas del 28/10 como histórico, y tres gastos de Sam's que pagó Ricardo Villa (n127, n129 y n130), porque ya están en su factura de reembolso por pagar. Al eliminar la Coca, la caja chica vuelve a contar $3,164.50 como disponibles. Los de Sam's no mueven efectivo.
+
+Si un gasto ya fue repuesto o cambió, no se guarda nada. Orden: `supabase/pruebas/2026-11-12_cuentas_pendientes_lote2.sql` («PRUEBAS OK») y luego `supabase/correcciones/2026-11-12_cuentas_pendientes_lote2.sql` («LOTE 2 OK», 6 cuentas y 4 duplicados). Siguen pendientes n110 (depósito CFE) y n134 (regalía a nombre de PHM).
+
+### Depósitos en garantía (13/11/2026)
+
+`20261113020000_cuentas_deposito_garantia.sql` permite que una inversión (memo) use también cuentas 184 (depósitos en garantía), además de 15x y 17x. La pantalla de asignación aplica la misma regla y sugiere 184-03-000 para inversiones. Es lo único que cambia: insumos siguen en 502, y las tiendas en 602 y Oficina en 603.
+
+El lote `CUENTAS-PENDIENTES-3-20261113` asigna el depósito de garantía de CFE de La Calma (n110, $3,404.00, Helper) a 184-03-000 Otros depósitos en garantía. Orden: la migración, luego `supabase/pruebas/2026-11-13_deposito_garantia_cfe.sql` («PRUEBAS OK») y luego `supabase/correcciones/2026-11-13_deposito_garantia_cfe.sql` («LOTE 3 OK»). Sin la migración, el ensayo falla y no guarda nada.
+
+### Reembolso a Ricardo Villa con caja chica (13/11/2026)
+
+El lote 2 eliminó tres gastos de Sam's que Ricardo pagó de su bolsa (origen «empleado») porque se repetían con su factura de reembolso. Después Sebastián confirmó que el reembolso se le pagó con efectivo de caja chica, y eso no estaba registrado en ningún lado: la factura seguía por pagar y la caja chica no lo había descontado.
+
+En la app, marcar como repuesto un gasto de empleado no descuenta ninguna caja, y un pago de factura no puede salir de caja chica. Por eso `CUENTAS-PENDIENTES-4-20261113` registra las tres compras como gastos de caja chica de La Calma con `registrar_gasto_sucursal`, en las fechas de compra (3, 7 y 8 de noviembre). Después los reclasifica a insumos con `editar_anular_gasto_admin`, les asigna 502-01-000 y cancela con `cancelar_factura` la factura de reembolso, que no tiene pagos. La caja chica baja $3,408.84, que es lo que salió del cajón. El total en memo de insumos no cambia.
+
+Orden: `supabase/pruebas/2026-11-13_reembolso_ricardo_caja_chica.sql` («PRUEBAS OK») y luego `supabase/correcciones/2026-11-13_reembolso_ricardo_caja_chica.sql` («LOTE 4 OK», con el saldo de caja chica antes y después).

@@ -12,6 +12,92 @@ export const PREFIJO_EN_VIVO="portal-rappi-";
 export const archivoEnVivo=(desde:string,hasta:string)=>`${PREFIJO_EN_VIVO}${desde}_${hasta}.json`;
 export const esEnVivo=(archivo:string)=>archivo.startsWith(PREFIJO_EN_VIVO);
 const centavos=(n:number)=>Math.round(n*100)/100;
+export const claveDia=(sucursal:string,fecha:string)=>`${sucursal}|${fecha}`;
+/** Venta de agregador que Dodo IS ya trae por día (desglose «agregador» de ventas_dia), con IVA. */
+export type AgregadorDodo={sucursal_id:string;fecha:string;pedidos:number;total:number};
+/**
+ * Días (sucursal|fecha) en que Dodo IS ya trae venta de agregador. Desde que operación captura Rappi en Dodo IS, Dodo IS
+ * es la fuente de esos días y las órdenes del portal solo sirven para cotejo; los días previos siguen sumando Rappi.
+ */
+export const diasConAgregador=(dias:readonly AgregadorDodo[])=>new Set(dias.filter(d=>Number(d.total)>0).map(d=>claveDia(d.sucursal_id,d.fecha)));
+/** Las órdenes del portal de un día que Dodo IS ya cubre dejan de sumar (enDodo); las demás conservan su elección manual. */
+export function aplicarFuenteDodo<T extends {sucursal_id:string;fecha:string;sumar:boolean}>(ordenes:readonly T[],cubiertos:ReadonlySet<string>):(T&{enDodo:boolean})[]{
+ return ordenes.map(o=>cubiertos.has(claveDia(o.sucursal_id,o.fecha))?{...o,sumar:false,enDodo:true}:{...o,enDodo:false});
+}
+/** Pedido de agregador capturado en Dodo IS (tablas pedidos y pedido_productos). */
+export type PedidoAgregadorDodo={dodo_id:string;sucursal_id:string;fecha:string;hora:string;total:number|string;total_sin_descuento:number|string;agregador:string|null;
+ pedido_productos:{renglon:number;nombre:string;precio:number|string;precio_sin_descuento:number|string;dodo_id:number}[]};
+/**
+ * Pedidos de agregador de Dodo IS con la forma de una orden del portal (archivo «dodo-is», rappi_id «dodo:…»), para que la
+ * página de Rappi muestre la venta de los días en que Dodo IS es la fuente. El importe es lo que capturó operación: lo que
+ * paga el cliente, con el descuento del restaurante y el de Rappi ya aplicados en el menú de agregador.
+ */
+export function ordenesDesdeDodo(pedidos:readonly PedidoAgregadorDodo[]):RappiGuardada[]{
+ return pedidos.map(p=>{
+  const id=`dodo:${p.dodo_id}`,total=centavos(Number(p.total)),bruto=centavos(Math.max(Number(p.total_sin_descuento),total));
+  return {rappi_id:id,tienda_id:"",fecha:p.fecha,hora:p.hora.slice(0,5),estado:"Finalizado",pago:`Dodo IS · ${p.agregador??"agregador"}`,bruto,descuento_restaurante:centavos(bruto-total),subtotal_restaurante:total,descuento_rappi:0,facturar:total,
+   sucursal_id:p.sucursal_id,sumar:true,archivo:"dodo-is",registrado_en:"",
+   rappi_lineas:[...p.pedido_productos].sort((a,b)=>a.renglon-b.renglon).map((x,i)=>({rappi_id:id,linea:i+1,nombre:x.nombre,opciones:"",cantidad:1,importe:centavos(Number(x.precio)),producto_id:-Number(x.dodo_id)}))};
+ });
+}
+export const esDeDodo=(o:{archivo:string})=>o.archivo==="dodo-is";
+
+/** Rappi Turbo: tienda propia del portal con la misma cocina que La Calma. Dodo IS la registra igual que la normal («Rappi»). */
+export const TIENDA_TURBO="MX1930494033";
+export const esTurbo=(o:{tienda_id:string})=>o.tienda_id===TIENDA_TURBO;
+/**
+ * Parte de Turbo por sucursal y día según el portal: subtotal de órdenes finalizadas de Turbo entre el de todas. Sirve
+ * para repartir la venta de agregador de Dodo IS, que no distingue tiendas. Sin órdenes del portal ese día no hay entrada.
+ */
+export function fraccionTurbo(ordenes:readonly {sucursal_id:string;fecha:string;estado:string;tienda_id:string;subtotal_restaurante:number|string;archivo?:string}[]):Map<string,{fraccion:number;turbo:number;todas:number}>{
+ const dias=new Map<string,{t:number;s:number;turbo:number;todas:number}>();
+ for(const o of ordenes){if(o.estado!=="Finalizado"||o.archivo==="dodo-is")continue;const k=claveDia(o.sucursal_id,o.fecha),d=dias.get(k)??{t:0,s:0,turbo:0,todas:0};const m=Number(o.subtotal_restaurante);d.s+=m;d.todas++;if(esTurbo(o)){d.t+=m;d.turbo++;}dias.set(k,d);}
+ return new Map([...dias].map(([k,d])=>[k,{fraccion:d.s>0?d.t/d.s:0,turbo:d.turbo,todas:d.todas}]));
+}
+export type DiaTienda={sucursal_id:string;fecha:string;pedidos:number;total:number;estimado:boolean};
+/**
+ * Venta Rappi por día separada en tienda normal y Turbo: las órdenes del portal que suman van por su tienda; la venta de
+ * agregador de Dodo IS de un día se reparte con la proporción del portal de ese día (estimado). Los pedidos de Turbo de un
+ * día de Dodo IS son los que el portal registró en Turbo, sin pasar del total de Dodo IS.
+ */
+export function rappiPorTienda(ordenes:readonly RappiGuardada[],agregador:readonly AgregadorDodo[]):{normal:DiaTienda[];turbo:DiaTienda[]}{
+ const normal=new Map<string,DiaTienda>(),turbo=new Map<string,DiaTienda>();
+ const sumar=(m:Map<string,DiaTienda>,s:string,f:string,pedidos:number,total:number,estimado:boolean)=>{const k=claveDia(s,f),d=m.get(k)??{sucursal_id:s,fecha:f,pedidos:0,total:0,estimado:false};d.pedidos+=pedidos;d.total=centavos(d.total+total);d.estimado||=estimado;m.set(k,d);};
+ for(const o of ordenes)if(o.estado==="Finalizado"&&o.sumar&&!esDeDodo(o))sumar(esTurbo(o)?turbo:normal,o.sucursal_id,o.fecha,1,Number(o.subtotal_restaurante),false);
+ const reparto=fraccionTurbo(ordenes);
+ for(const a of agregador){const total=Number(a.total);if(!(total>0))continue;const r=reparto.get(claveDia(a.sucursal_id,a.fecha)),parte=centavos(total*(r?.fraccion??0)),pedidosTurbo=Math.min(Number(a.pedidos),r?.turbo??0);
+  if(parte>0||pedidosTurbo>0)sumar(turbo,a.sucursal_id,a.fecha,pedidosTurbo,parte,true);
+  sumar(normal,a.sucursal_id,a.fecha,Number(a.pedidos)-pedidosTurbo,centavos(total-parte),!!r&&r.fraccion>0);}
+ const orden=(m:Map<string,DiaTienda>)=>[...m.values()].sort((a,b)=>a.fecha.localeCompare(b.fecha)||a.sucursal_id.localeCompare(b.sucursal_id));
+ return {normal:orden(normal),turbo:orden(turbo)};
+}
+/** Días de una tienda Rappi como días de venta (todo en línea, IVA del 16 % incluido). */
+export const diasDeTienda=(dias:readonly DiaTienda[]):VentaDia[]=>dias.map(d=>({sucursal_id:d.sucursal_id,fecha:d.fecha,pedidos:d.pedidos,total:d.total,efectivo:0,tarjeta:0,en_linea:d.total,iva:centavos(d.total*16/116),venta_m2:null}));
+/**
+ * Días de Dodo IS sin su venta de agregador: esa venta es de Rappi (operación captura Rappi en Dodo IS) y en el tablero
+ * va en el canal Rappi. El cobro de agregador no cae en efectivo, tarjeta ni en línea, así que esos importes no cambian.
+ */
+export function quitarAgregador(dias:readonly (VentaDia & {ventas_dia_desglose?:readonly {tipo:string;pedidos:number|string;total:number|string}[]})[]):VentaDia[]{
+ return dias.map(d=>{const a=d.ventas_dia_desglose?.find(x=>x.tipo==="agregador"),total=Number(a?.total??0);
+  const dia:VentaDia={sucursal_id:d.sucursal_id,fecha:d.fecha,pedidos:d.pedidos,total:d.total,efectivo:d.efectivo,tarjeta:d.tarjeta,en_linea:d.en_linea,iva:d.iva,venta_m2:d.venta_m2};
+  if(!(total>0))return dia;
+  const antes=Number(d.total),despues=centavos(antes-total);
+  return {...dia,pedidos:Math.max(0,Number(d.pedidos)-Number(a!.pedidos)),total:despues,iva:centavos(Number(d.iva)-total*16/116),venta_m2:d.venta_m2!==null&&antes>0?centavos(Number(d.venta_m2)*despues/antes):null};
+ });
+}
+export type CotejoDia={sucursal_id:string;fecha:string;dodoPedidos:number;dodoTotal:number;rappiOrdenes:number;rappiTotal:number;diferencia:number};
+/**
+ * Cotejo por día: venta de agregador en Dodo IS contra órdenes finalizadas del portal, con IVA. Operación captura en Dodo IS
+ * lo que paga el cliente (precios del menú de agregador con el descuento del restaurante y el de Rappi), así que se compara
+ * contra «A facturar» del portal, no contra el subtotal restaurante.
+ */
+export function cotejoRappiDodo(ordenes:readonly {sucursal_id:string;fecha:string;estado:string;facturar:number|string}[],dodo:readonly AgregadorDodo[]):CotejoDia[]{
+ const dias=new Map<string,CotejoDia>();
+ const dia=(s:string,f:string)=>{const k=claveDia(s,f);let d=dias.get(k);if(!d){d={sucursal_id:s,fecha:f,dodoPedidos:0,dodoTotal:0,rappiOrdenes:0,rappiTotal:0,diferencia:0};dias.set(k,d);}return d;};
+ for(const x of dodo){const d=dia(x.sucursal_id,x.fecha);d.dodoPedidos+=Number(x.pedidos);d.dodoTotal=centavos(d.dodoTotal+Number(x.total));}
+ for(const o of ordenes)if(o.estado==="Finalizado"){const d=dia(o.sucursal_id,o.fecha);d.rappiOrdenes++;d.rappiTotal=centavos(d.rappiTotal+Number(o.facturar));}
+ return [...dias.values()].map(d=>({...d,diferencia:centavos(d.dodoTotal-d.rappiTotal)})).sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.sucursal_id.localeCompare(b.sucursal_id));
+}
 export function resumenPanelRappi(ordenes:readonly RappiGuardada[]) {
  const sumadas=ordenes.filter(o=>o.estado==='Finalizado'&&o.sumar);
  const total=centavos(sumadas.reduce((s,o)=>s+Number(o.subtotal_restaurante),0));

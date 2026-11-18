@@ -66,9 +66,9 @@ test("canales, agregador y valores desconocidos", () => {
   ], opciones);
   assert.deepEqual(t.pedidos.map((x) => [x.tipo, x.para_llevar, x.origen, x.pago, x.agregador]), [
     ["entrega", false, "app", "en_linea", null],
-    ["en_tienda", true, "mostrador", "tarjeta", "Rappi"],
     ["en_tienda", false, "otro", "otro", null],
   ]);
+  assert.deepEqual(t.callCenter, { pedidos: 1, total: 159 }); // el de Rappi es de call center: no entra
   assert.deepEqual(t.desconocidos, ["canal: Drive", "origen: Drone", "pago: Voucher"]);
   assert.equal(t.sinSucursal, 1);
 });
@@ -81,4 +81,18 @@ test("ventana del día y fecha a sincronizar (CDMX, UTC−6)", () => {
   assert.equal(fechaASincronizar("noche", "2026-10-20T09:00:00Z"), "2026-10-19");
   assert.equal(fechaASincronizar("noche", "2027-01-01T09:00:00Z"), "2026-12-31");
   assert.equal(fechaASincronizar("manual", "2026-10-20T18:00:00Z"), "2026-10-20");
+});
+
+import { esCallCenter } from "./ventas.ts";
+test("traducirVentas: ignora los pedidos de call center (caja Delivery / agregador) y los cuenta aparte", () => {
+  // Como llegan desde el 13/11/2026: Rappi capturado a mano en la caja Delivery #122.
+  const rappi = venta("11F1E118DDB30918A5D34320B1C34F69", "2026-11-15T16:15:43", "Aggregator", "Aggregator",
+    [p("a", "Pepperoni Mediano", 82, 82), p("b", "Coca Light 0,6 L", 38, 38)], { salesChannel: "Takeaway", aggregatorName: "Rappi", cashBoxType: "Delivery" });
+  const sinNombre = venta("X1", "2026-11-15T17:00:00", "Aggregator", "Aggregator", [p("c", "Hawaiana Mediano", 99, 99)], { cashBoxType: "Delivery" });
+  const t = traducirVentas([...VENTAS, rappi, sinNombre], opciones);
+  assert.equal(t.pedidos.length, VENTAS.length);
+  assert.ok(t.pedidos.every((x) => x.agregador === null));
+  assert.deepEqual(t.callCenter, { pedidos: 2, total: 219 });
+  assert.equal(esCallCenter({ cashBoxType: "Dine-in", orderSource: "MobileApp", aggregatorName: null }), false);
+  assert.equal(esCallCenter({ cashBoxType: "Delivery", orderSource: null, aggregatorName: null }), true);
 });

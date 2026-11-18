@@ -8,21 +8,32 @@ import {
 import type { TipoDesglose } from "@/lib/ventas/extraer";
 import { leerTodo } from "@/lib/ventas/paginar";
 import type { LineaPedido, Pedido } from "@/lib/ventas/pedidos";
-import { cargarRappi } from "./rappi/datos";
-import { combinarDiasRappi, ventasRappi } from "@/lib/ventas/rappi";
+import { cargarAgregadorDodo, cargarRappi } from "./rappi/datos";
+import { claveDia, combinarDiasRappi, diasConAgregador, diasDeTienda, quitarAgregador, rappiPorTienda, ventasRappi, type AgregadorDodo, type RappiGuardada } from "@/lib/ventas/rappi";
 
 export type FilaDesglose = { tipo: TipoDesglose; pedidos: number; total: number };
 export type DiaConDesglose = VentaDia & { importacion_id?: string; ventas_dia_desglose: FilaDesglose[] };
 
 export type DatosVentas = {
   canales: CanalesVentas;
+  /** Canales del tablero y del reporte: POS sin la venta de agregador, Rappi normal y Rappi Turbo. */
+  tablero: CanalesTablero;
   dias: DiaConDesglose[];
   renglones: RenglonCosteo[];
   /** El periodo anterior del mismo largo, para comparar indicadores y productos. */
-  anterior: { dias: VentaDia[]; renglones: RenglonCosteo[]; canales:CanalesVentas };
+  anterior: { dias: VentaDia[]; renglones: RenglonCosteo[]; canales:CanalesVentas; tablero:CanalesTablero };
   cierres: CierreDia[];
 };
 export type CanalesVentas=Record<"pos"|"rappi",{dias:VentaDia[];renglones:RenglonCosteo[]}>;
+export type CanalesTablero=Record<"pos"|"rappi"|"turbo",{dias:VentaDia[];renglones:RenglonCosteo[]}>;
+/**
+ * POS sin la venta de agregador de Dodo IS (es Rappi capturado en Dodo IS) y Rappi separado en tienda normal y Turbo: el
+ * portal por su tienda y, en días de Dodo IS, la venta de agregador repartida con la proporción del portal.
+ */
+function canalesTablero(diasDodo:readonly DiaConDesglose[],canales:CanalesVentas,ordenes:readonly RappiGuardada[],agregador:readonly AgregadorDodo[]):CanalesTablero{
+  const tiendas=rappiPorTienda(ordenes,agregador);
+  return {pos:{dias:quitarAgregador(diasDodo),renglones:canales.pos.renglones},rappi:{dias:diasDeTienda(tiendas.normal),renglones:canales.rappi.renglones},turbo:{dias:diasDeTienda(tiendas.turbo),renglones:[]}};
+}
 
 /**
  * Qué sucursal se ve. Gerente: siempre la suya (la base de datos tampoco le deja ver otra).
@@ -53,8 +64,13 @@ export async function ventaDiariaDesde(supabase: SupabaseClient, sucursal: strin
   });
   const venta: Record<string, number> = {};
   for (const f of filas) venta[f.fecha] = Math.round(((venta[f.fecha] ?? 0) + Number(f.total)) * 100) / 100;
-  const rappi=await leerTodo<{fecha:string;subtotal_restaurante:number}>((a,b)=>{let c=supabase.from("rappi_ordenes").select("fecha,subtotal_restaurante").gte("fecha",desde).eq("sumar",true).eq("estado","Finalizado");if(sucursal)c=c.eq("sucursal_id",sucursal);return c.order("rappi_id").range(a,b);});
-  for(const f of rappi)venta[f.fecha]=Math.round(((venta[f.fecha]??0)+Number(f.subtotal_restaurante))*100)/100;
+  const [rappi,agregador]=await Promise.all([
+    leerTodo<{sucursal_id:string;fecha:string;subtotal_restaurante:number}>((a,b)=>{let c=supabase.from("rappi_ordenes").select("sucursal_id,fecha,subtotal_restaurante").gte("fecha",desde).eq("sumar",true).eq("estado","Finalizado");if(sucursal)c=c.eq("sucursal_id",sucursal);return c.order("rappi_id").range(a,b);}),
+    cargarAgregadorDodo(supabase,sucursal,desde,"9999-12-31"),
+  ]);
+  // Los días en que Dodo IS ya trae venta de agregador no vuelven a sumar Rappi.
+  const cubiertos=diasConAgregador(agregador);
+  for(const f of rappi)if(!cubiertos.has(claveDia(f.sucursal_id,f.fecha)))venta[f.fecha]=Math.round(((venta[f.fecha]??0)+Number(f.subtotal_restaurante))*100)/100;
   return venta;
 }
 
@@ -118,9 +134,11 @@ export async function datosVentas(supabase: SupabaseClient, sucursal: string | n
   };
   return {
     canales,
+    tablero:canalesTablero(aplicarConciliaciones(diasDodo,concActual.filas),canales,actualRappi.ordenes,actualRappi.agregador),
     dias,
     renglones: [...canales.pos.renglones,...canales.rappi.renglones],
-    anterior: { dias: diasAnteriores, renglones: [...canalesAnteriores.pos.renglones,...canalesAnteriores.rappi.renglones],canales:canalesAnteriores },
+    anterior: { dias: diasAnteriores, renglones: [...canalesAnteriores.pos.renglones,...canalesAnteriores.rappi.renglones],canales:canalesAnteriores,
+      tablero:canalesTablero(aplicarConciliaciones(diasAnterioresDodo,concAnterior.filas),canalesAnteriores,anteriorRappi.ordenes,anteriorRappi.agregador) },
     cierres,
   };
 }

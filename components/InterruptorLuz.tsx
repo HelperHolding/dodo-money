@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 
 /**
  * Interruptor sol / luna del modo noche. El modo vive en <html data-luz> y en localStorage (solo este navegador);
- * app/layout.tsx lo aplica antes de pintar para que no parpadee. Al apagar la luz del local, las tiras LED
- * y el letrero se encienden con su parpadeo (salvo con movimiento reducido).
+ * app/layout.tsx lo aplica antes de pintar para que no parpadee.
  */
 export function InterruptorLuz() {
   const [noche, setNoche] = useState(false);
@@ -16,12 +15,6 @@ export function InterruptorLuz() {
     const nueva = !noche;
     html.dataset.luz = nueva ? "noche" : "dia";
     try { localStorage.setItem("luz", html.dataset.luz); } catch { /* sin almacenamiento: solo esta visita */ }
-    if (nueva && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      delete html.dataset.encender;
-      void html.offsetWidth;
-      html.dataset.encender = "";
-      window.setTimeout(() => { delete html.dataset.encender; }, 2200);
-    }
     setNoche(nueva);
   };
 

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { CONCEPTOS, REQUIERE_SERVICIO, impuestosDe, type Compromiso, type Concepto, type compromisoDesdeFactura } from "@/lib/compras/compromisos";
+import { CADA_SUGERIDO, CONCEPTOS, REQUIERE_SERVICIO, impuestosDe, type Compromiso, type Concepto, type compromisoDesdeFactura } from "@/lib/compras/compromisos";
 import { calcularGasto, IMPUESTOS_ARRENDAMIENTO, type Impuestos } from "@/lib/compras/gastoManual";
 import { pesos } from "@/lib/formato";
 import { NOMBRE_FORMA_PAGO } from "@/lib/compras/proveedores";
@@ -19,6 +19,7 @@ export function FormCompromiso({ c, sucursales, proveedores, hoy, sucursalInicia
   const d = c ?? desdeFactura?.datos;
   const [concepto, setConcepto] = useState<Concepto>(d?.concepto ?? "renta");
   const [unidad, setUnidad] = useState(d?.unidad ?? "mes");
+  const [cada, setCada] = useState(String(d?.cada ?? 1));
   const [requiere, setRequiere] = useState(c?.requiere_servicio ?? REQUIERE_SERVICIO[d?.concepto ?? "renta"]);
   const [imp, setImp] = useState<Impuestos>(d ? impuestosDe(d) : impuestosPorConcepto("renta"));
   const [monto, setMonto] = useState(d?.monto_estimado != null ? String(d.monto_estimado) : "");
@@ -38,7 +39,7 @@ export function FormCompromiso({ c, sucursales, proveedores, hoy, sucursalInicia
           {fijo && <input type="hidden" name="sucursal_id" value={c.sucursal_id} />}
         </label>
         <label className="campo">Concepto
-          <select name="concepto" value={concepto} disabled={fijo} onChange={(e) => { const v = e.target.value as Concepto; setConcepto(v); setRequiere(REQUIERE_SERVICIO[v]); setImp(impuestosPorConcepto(v)); }}>
+          <select name="concepto" value={concepto} disabled={fijo} onChange={(e) => { const v = e.target.value as Concepto; setConcepto(v); setRequiere(REQUIERE_SERVICIO[v]); setImp(impuestosPorConcepto(v)); const sugerido = CADA_SUGERIDO[v]; if (sugerido) { setUnidad("mes"); setCada(String(sugerido)); } }}>
             {Object.entries(CONCEPTOS).map(([k, t]) => <option key={k} value={k}>{t}</option>)}
           </select>
           {fijo && <input type="hidden" name="concepto" value={concepto} />}
@@ -61,7 +62,7 @@ export function FormCompromiso({ c, sucursales, proveedores, hoy, sucursalInicia
           </select>
           {fijo && <input type="hidden" name="unidad" value={unidad} />}
         </label>
-        <label className="campo">Cada cuántos {unidad === "mes" ? "meses" : "semanas"}<input name="cada" type="number" min={1} max={12} defaultValue={d?.cada ?? 1} required readOnly={fijo} /></label>
+        <label className="campo">Cada cuántos {unidad === "mes" ? "meses" : "semanas"}<input name="cada" type="number" min={1} max={12} value={cada} onChange={(e) => setCada(e.target.value)} required readOnly={fijo} />{CADA_SUGERIDO[concepto] && <small>Lo usual: cada {CADA_SUGERIDO[concepto]} meses.</small>}</label>
         {unidad === "mes" && <label className="campo">Día del mes<input name="dia_mes" type="number" min={1} max={31} defaultValue={d?.dia_mes ?? 1} required readOnly={fijo} /><small>Si el mes es más corto, el último día.</small></label>}
         <label className="campo">Desde<input name="inicio" type="date" defaultValue={d?.inicio ?? hoy} required readOnly={fijo} /><small>La primera fecha que falta por pagar, no el inicio del contrato.</small></label>
         <label className="campo">Hasta (opcional)<input name="fin" type="date" defaultValue={c?.fin ?? ""} /><small>Cuando termina el contrato.</small></label>

@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { fechaTexto, pesos } from "@/lib/formato";
-import { repartirConAjustes, revisarPago, type PorPagar } from "@/lib/compras/pagos";
+import { ajustarAplicacion, efectoAplicacion, repartirConAjustes, revisarPago, type PorPagar } from "@/lib/compras/pagos";
 import { esDiaDePago, NOMBRE_DIA } from "@/lib/compras/diasPago";
 import type { FormaPago } from "@/lib/compras/proveedores";
 import { registrarPago } from "../acciones";
 
-export type FacturaParaPagar = PorPagar & { nombre: string; bloqueada: string | null };
+export type FacturaParaPagar = PorPagar & { nombre: string; bloqueada: string | null; neto: number; pagado: number; metodo_pago: string | null };
 export type ReservaPago={id:string;factura_id:string;pendiente:number;sucursal_id:string;sucursales:{nombre:string}|null};
 
 /** El monto se reparte solo por fecha de pago; cada factura se puede ajustar a mano. */
@@ -45,6 +45,12 @@ export function FormPago({ proveedorId, facturas, hoy, preseleccion, dias,reserv
   const aplicado = (id: string) => manual[id] ?? String(reparto.aplicaciones.find((a) => a.factura_id === id)?.monto ?? "");
   const aplicaciones = pagables.map((f) => ({ factura_id: f.id, monto: numero(aplicado(f.id)) }));
   const problema = revisarPago(numero(monto), aplicaciones, new Map(pagables.map((f) => [f.id, Number(f.saldo)])));
+  const hayAbono = pagables.some((f) => efectoAplicacion(f.saldo, numero(aplicado(f.id)))?.tipo === "abono");
+  // Cambiar lo aplicado a una factura recalcula el monto: así un abono no choca con el saldo prellenado.
+  const cambiarAplicado = (id: string, valor: string) => {
+    const r = ajustarAplicacion(pagables.map((f) => ({ factura_id: f.id, monto: aplicado(f.id) })), id, valor);
+    setManual(r.manual); setMonto(r.monto);
+  };
 
   return (
     <form action={registrarPago} className="seccion formulario">
@@ -63,6 +69,7 @@ export function FormPago({ proveedorId, facturas, hoy, preseleccion, dias,reserv
         <div className="campo">
           <label htmlFor="monto">Monto pagado</label>
           <input id="monto" name="monto" inputMode="decimal" required value={monto} onChange={(e) => { setMonto(e.target.value); setManual(deLaElegida(e.target.value)); }} />
+          <small>Puedes pagar menos que el saldo: lo que falte queda como abono pendiente.</small>
         </div>
         <div className="campo"><label htmlFor="fecha">Fecha del pago</label><input id="fecha" name="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} max={historico ? new Date(new Date(`${hoy}T12:00:00Z`).getTime()-86400000).toISOString().slice(0,10) : hoy} min={!historico&&cash?hoy:undefined} required /></div>
         <div className="campo">
@@ -103,18 +110,32 @@ export function FormPago({ proveedorId, facturas, hoy, preseleccion, dias,reserv
               <div className="tarjeta-encabezado"><div>
                 <h3>{f.nombre}</h3>
                 <p className="tarjeta-estado">Saldo {pesos(f.saldo)} · vence {fechaTexto(f.vence_el)}</p>
+                {f.pagado > 0 && <p className="saldo-nota">Abonado {pesos(f.pagado)} de {pesos(f.neto)}</p>}
               </div></div>
-              {f.bloqueada ? <p className="saldo-nota">{f.bloqueada}</p> : (
-                <div className="campo">
-                  <label htmlFor={`a-${f.id}`}>Aplicar</label>
-                  <input id={`a-${f.id}`} name={`aplicar_${f.id}`} inputMode="decimal" value={aplicado(f.id)}
-                    onChange={(e) => setManual({ ...manual, [f.id]: e.target.value })} />
-                </div>
-              )}
+              {f.bloqueada ? <p className="saldo-nota">{f.bloqueada}</p> : (() => {
+                const efecto = efectoAplicacion(f.saldo, numero(aplicado(f.id)));
+                return (
+                  <div className="campo">
+                    <label htmlFor={`a-${f.id}`}>Aplicar</label>
+                    <input id={`a-${f.id}`} name={`aplicar_${f.id}`} inputMode="decimal" value={aplicado(f.id)}
+                      onChange={(e) => cambiarAplicado(f.id, e.target.value)} />
+                    {efecto && <small>{efecto.tipo === "liquida" ? "Liquida la factura." : `Abono · quedan ${pesos(efecto.queda)} por pagar.`}</small>}
+                    {efecto && f.metodo_pago === "PPD" && <small>Factura PPD: pide al proveedor el complemento de este pago.</small>}
+                  </div>
+                );
+              })()}
             </article>
           ))}
         </div>
       </fieldset>
+
+      {hayAbono && (
+        <div className="campo">
+          <label htmlFor="liquidar_resto">¿Cuándo se liquida el resto? (opcional)</label>
+          <input id="liquidar_resto" name="liquidar_resto" type="date" min={hoy} />
+          <small>Programa lo que queda para esa fecha. Si lo dejas vacío, el resto vuelve a su día de pago sugerido o a su vencimiento.</small>
+        </div>
+      )}
 
       {reparto.sobrante > 0 && <p className="aviso aviso-error">Sobran {pesos(reparto.sobrante)}: el monto pasa del saldo de las facturas.</p>}
       {problema && numero(monto) > 0 && <p className="saldo-nota" role="status">{problema}</p>}

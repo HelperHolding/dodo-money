@@ -44,3 +44,14 @@ export function resumenEnCamino(salidas: readonly (ConEstado & { monto: number |
     noCuadro: en("no_cuadro").length,
   };
 }
+
+/** Historial por mes (YYYY-MM), del más reciente al más antiguo; dentro del mes, también del más reciente. */
+export function agruparPorMes<T>(filas: readonly T[], fecha: (fila: T) => string) {
+  const ordenadas = [...filas].sort((a, b) => fecha(b).localeCompare(fecha(a)));
+  const meses = new Map<string, T[]>();
+  for (const fila of ordenadas) {
+    const mes = fecha(fila).slice(0, 7);
+    meses.set(mes, [...(meses.get(mes) ?? []), fila]);
+  }
+  return [...meses].map(([mes, filas]) => ({ mes, filas }));
+}

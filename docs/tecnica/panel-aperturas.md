@@ -22,3 +22,11 @@ El Checklist calcula sus módulos en el navegador (`ChecklistEditable`) a partir
 La página admite `grupo`, `etapa`, `tipo`, `cat` y `ambito`, además de sus filtros anteriores. `vista=alertas` abre los registros que requieren atención. Los indicadores permanecen calculados sobre el proyecto completo al filtrar una lista.
 
 Verificación: pruebas en `lib/aperturas.test.ts` cubren bases de los porcentajes, exclusiones, recepción parcial/excedentes, fechas y alertas únicas. Revisión visual local del componente real con datos de ejemplo en escritorio y celular; sin modificar producción.
+
+## Calendario
+
+`vista=calendario` muestra el mes (`mes=AAAA-MM`, por defecto el de hoy en México) con cada tarea como barra de su `inicio` a su `fin`. Con una sola fecha ocupa ese día; `no_aplica` no aparece. Las barras se acomodan en carriles por semana (`barrasSemana` en `lib/aperturasCalendario.ts`); a partir del quinto carril el día muestra «+n más». En celular se ve como tarjetas del mes.
+
+`color=etapa|categoria` elige cómo colorear. Los colores predeterminados viven en `COLORES_ETAPA` y `COLORES_CATEGORIA`; administración los cambia desde «Colores» y se guardan en `apertura_colores` (migración `20261109200000_aperturas_colores.sql`, función `guardar_color_apertura`). Vacío vuelve al predeterminado. Sin la migración, el calendario funciona con los predeterminados.
+
+Con permiso de compras, el clic en un día programa una tarea (inicio ese día, fin elegido) y el clic en una barra cambia o quita sus fechas. Ambos usan `actualizar_apertura_item` con todos los demás campos del registro (`datosFechas`), así que queda en el historial.

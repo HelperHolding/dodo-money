@@ -108,3 +108,42 @@ export function agruparPorDiaDePago<T extends PorPagar>(facturas: readonly T[], 
   return [...grupos].sort(([a], [b]) => a.localeCompare(b))
     .map(([dia, lista]) => ({ dia, total: lista.reduce((s, x) => s + centavos(x.saldo), 0) / 100, facturas: lista }));
 }
+
+const montoTexto = (t: string) => Number(String(t).replace(/[$\s,]/g, "")) || 0;
+
+/** Qué le pasa a una factura con lo aplicado: la liquida o queda como abono con su resto. Null si no aplica nada o pasa del saldo. */
+export function efectoAplicacion(saldo: number, aplicado: number): { tipo: "liquida" } | { tipo: "abono"; queda: number } | null {
+  const s = centavos(saldo), a = centavos(aplicado);
+  if (a <= 0 || a > s) return null;
+  return a === s ? { tipo: "liquida" } : { tipo: "abono", queda: (s - a) / 100 };
+}
+
+/**
+ * El admin cambió lo aplicado a una factura: las demás se quedan como se ven (dejan de repartirse solas)
+ * y el monto del pago pasa a ser la suma. Así un abono no choca con el monto prellenado.
+ */
+export function ajustarAplicacion(actuales: readonly { factura_id: string; monto: string }[], id: string, valor: string) {
+  const manual: Record<string, string> = Object.fromEntries(actuales.map((a) => [a.factura_id, a.factura_id === id ? valor : a.monto]));
+  const textos = Object.values(manual);
+  const suma = textos.reduce((s, t) => s + centavos(montoTexto(t)), 0);
+  return { manual, monto: textos.every((t) => t.trim() === "") ? "" : String(suma / 100) };
+}
+
+/** Facturas a las que el pago deja saldo (abonos). */
+export function abonosDelPago(aplicaciones: readonly { factura_id: string; monto: number }[], saldos: ReadonlyMap<string, number>) {
+  return aplicaciones.filter((a) => efectoAplicacion(saldos.get(a.factura_id) ?? 0, a.monto)?.tipo === "abono").map((a) => a.factura_id);
+}
+
+/**
+ * Programación de lo que queda después de un abono. `{fecha}`: programar ahí (null la borra); null: no tocarla.
+ * Sin fecha nueva, la programación que era para este pago se borra y el resto vuelve a su día sugerido o al vencimiento.
+ */
+export function programacionTrasAbono(programadaEl: string | null, fechaPago: string, resto: string): { fecha: string | null } | null {
+  if (resto) return { fecha: resto };
+  return programadaEl && programadaEl <= fechaPago ? { fecha: null } : null;
+}
+
+/** Forma prevista para liquidar el resto: la que ya tenía la factura; si no, la del abono (efectivo si salió de caja o bóveda). */
+export function formaParaResto(formaActual: string | null, origen: string) {
+  return formaActual ?? (origen === "transferencia" || origen === "tarjeta" ? origen : "efectivo");
+}

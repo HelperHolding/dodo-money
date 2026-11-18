@@ -27,7 +27,7 @@ export const MAPEO_HELPER: Record<string, { rubro:string; cuentas:readonly strin
   otros:{rubro:'R312 / R319',cuentas:['602-84-000','602-83-101','602-83-102','602-75-000'],nota:'Contiene categorías mezcladas; TPV corresponde a R312. Pendiente separar por movimiento.'},
   oficina:{rubro:'R402',cuentas:['603-33-002','603-33-007','603-33-004'],nota:'Referencia propuesta de servicios administrativos; no asignar una contraparte a todo el prorrateo.'},
   memo_insumos:{rubro:'R201 · memo',cuentas:['502-01-000','502-02-003'],nota:'Compras informativas; conservar fuera del resultado para no duplicar con costo de venta, aunque el maestro les asigne R201.'},
-  memo_inversiones:{rubro:'B201',cuentas:['153-01-000','155-01-000','156-01-000','170-01-000'],nota:'Elegir la clase de activo. No cargar toda inversión al resultado.'},
+  memo_inversiones:{rubro:'B201',cuentas:['153-01-000','155-01-000','156-01-000','170-01-000','184-03-000'],nota:'Elegir la clase de activo; depósitos en garantía en 184. No cargar toda inversión al resultado.'},
 };
 
 export function cuentasHelper(entidad:EntidadHelper, busqueda='') {

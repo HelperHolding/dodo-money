@@ -110,6 +110,49 @@ export function planearRepaso(items, fecha, cache = {}) {
  */
 export const sinRechazoSuelto = (promesa) => { promesa.catch(() => {}); return promesa; };
 
+/**
+ * Tiendas que el extractor puede leer: la principal primero y luego las de RAPPI_TIENDAS (p. ej. la de Rappi Turbo, que
+ * en el portal es otra tienda con su propio ID). Ignora vacíos, repetidos y lo que no tenga forma MX + dígitos.
+ */
+export function tiendasPermitidas(lista, principal) {
+  const todas = [principal, ...String(lista ?? "").split(",")].map((t) => String(t ?? "").trim()).filter((t) => /^MX\d+$/.test(t));
+  return [...new Set(todas)];
+}
+
+/** Tienda pedida por n8n; sin tienda se usa la principal. Una tienda fuera de la lista se rechaza. */
+export function elegirTienda(pedida, permitidas) {
+  if (pedida === undefined || pedida === null || pedida === "") return permitidas[0];
+  const t = String(pedida).trim();
+  if (!permitidas.includes(t)) throw Error(`Tienda ${t.slice(0, 30)} no está en RAPPI_TIENDAS.`);
+  return t;
+}
+
+/** Caché por tienda y día. La principal conserva el nombre de antes (cache-AAAA-MM-DD.json) para no perder la caché viva. */
+export const nombreCache = (tienda, fecha, principal) => (tienda === principal ? `cache-${fecha}.json` : `cache-${tienda}-${fecha}.json`);
+
+/** Fecha de un archivo de caché de cualquier tienda, o null si no es caché. */
+export const fechaDeCache = (archivo) => /^cache-(?:MX\d+-)?(\d{4}-\d{2}-\d{2})\.json$/.exec(archivo)?.[1] ?? null;
+
+/**
+ * Turnos del extractor: una corrida a la vez (dos navegadores sobre la misma sesión se pisarían el storageState).
+ * Si llega otra tienda mientras corre una, espera su turno: n8n pide La Calma y Turbo a la vez porque el "batching" del
+ * nodo HTTP solo espacia el inicio de las peticiones, no espera a que termine la anterior. Si llega la misma tienda que ya
+ * está corriendo o esperando (vueltas de 15 min empalmadas), se salta con ocupado: la siguiente la cubre.
+ * @returns {(tienda: string, correr: () => Promise<any>) => Promise<{ocupado: true} | {ocupado: false, resultado: any}>}
+ */
+export function crearTurnos() {
+  let cadena = Promise.resolve();
+  const pendientes = new Set();
+  return async (tienda, correr) => {
+    if (pendientes.has(tienda)) return { ocupado: true };
+    pendientes.add(tienda);
+    const turno = cadena.then(correr);
+    cadena = turno.catch(() => {});
+    try { return { ocupado: false, resultado: await turno }; }
+    finally { pendientes.delete(tienda); }
+  };
+}
+
 /** Espera a que condicion() sea verdadera, revisando cada paso ms, hasta ms milisegundos. Devuelve si se cumplió. */
 export async function esperarHasta(condicion, ms, paso = 200) {
   const fin = Date.now() + ms;
