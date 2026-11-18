@@ -77,6 +77,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
           {meta && " Meta: PL Base del modelo de Dodo."}{((meta && !meta.suc) || (ases && !ases.suc)) && " Elige una sucursal para ver de dónde sale cada renglón."}</>}
         acciones={<>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/catalogo">Catálogo contable</Link>
+          <Link className="boton boton-secundario boton-compacto" href="/finanzas/facturacion">Facturación de tickets</Link>
           <Link className="boton boton-secundario boton-compacto" href="/finanzas/asignacion">Asignar cuentas</Link>
           {meta?.ajustado ? (
             <form action="/reporte/pl" method="get" target="_blank" className="pl-pdf-columnas">
