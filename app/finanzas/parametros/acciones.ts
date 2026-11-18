@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { numero } from "@/lib/formato";
+import { obtenerPerfil } from "@/lib/contexto";
+import { puedeEditarFinanzas, SOLO_CONSULTA } from "@/lib/roles";
 import { clienteFinanzas, volver } from "../servidor";
 
 const RUTA = "/finanzas/parametros";
@@ -35,4 +37,24 @@ export async function guardarMeta(fd: FormData) {
   if (error) volver(RUTA, "error", error.message);
   revalidatePath("/finanzas", "layout");
   volver(`${RUTA}?sucursal=${sucursal_id}`, "ok", "Meta guardada.");
+}
+
+/** Metas de venta mensual (sin IVA) por sucursal; un solo formulario por mes. Vacío = no se toca. */
+export async function guardarMetasVenta(fd: FormData) {
+  const { supabase, perfil } = await obtenerPerfil();
+  if (!puedeEditarFinanzas(perfil.rol)) volver(RUTA, "error", SOLO_CONSULTA);
+  const mes = t(fd, "mes");
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) volver(RUTA, "error", "Mes inválido.");
+  const ahora = new Date().toISOString();
+  const filas = [...fd.entries()]
+    .filter(([k, v]) => k.startsWith("monto_") && String(v).trim() !== "")
+    .map(([k, v]) => ({ sucursal_id: k.slice(6), mes: `${mes}-01`, monto: Number(String(v).replace(/[,$\s]/g, "")), actualizado_en: ahora, actualizado_por: perfil.id }));
+  if (filas.some((f) => !Number.isFinite(f.monto) || f.monto < 0)) volver(RUTA, "error", "Revisa los montos: deben ser números positivos.");
+  if (filas.length) {
+    const { error } = await supabase.from("ventas_metas").upsert(filas, { onConflict: "sucursal_id,mes" });
+    if (error) volver(RUTA, "error", "No se pudieron guardar las metas de venta.");
+  }
+  revalidatePath(RUTA);
+  revalidatePath("/ventas/bi");
+  volver(`${RUTA}?mes_meta=${mes}`, "ok", "Metas de venta guardadas.");
 }
