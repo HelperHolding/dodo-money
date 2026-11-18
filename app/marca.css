@@ -657,6 +657,35 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .linea-historial-punto { fill: var(--accion); stroke: var(--superficie); stroke-width: 2; }
 .linea-historial-punto[data-parcial] { fill: var(--superficie); stroke: var(--accion); }
 
+/* ─── Gráficas de Ventas BI ─── */
+.bi-medidor { margin: 0; text-align: center; }
+.bi-medidor svg { width: 100%; max-width: 280px; height: auto; }
+.bi-medidor-tramo { fill: none; stroke-width: 16; }
+.bi-medidor-tramo-bajo { stroke: var(--alerta); }
+.bi-medidor-tramo-medio { stroke: var(--ambar); }
+.bi-medidor-tramo-alto { stroke: var(--cuadra); }
+.bi-medidor-aguja { transform-box: view-box; transform-origin: 100px 100px; stroke: var(--tinta-2); fill: var(--tinta-2); }
+.bi-medidor-aguja line { stroke-width: 3; stroke-linecap: round; }
+.bi-medidor-valor { font-size: 18px; font-weight: 700; fill: currentColor; }
+.bi-medidor-titulo { color: var(--tinta-2); font-size: 13px; }
+.bi-barras-h { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.bi-barras-h-fila { display: grid; grid-template-columns: minmax(80px, 28%) 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
+.bi-barras-h-pista { display: block; height: 14px; }
+.bi-barras-h-barra { display: flex; height: 100%; min-width: 2px; border-radius: 3px; overflow: hidden; background: var(--accion); }
+.bi-barras-h-parte { display: block; height: 100%; background: var(--cat); }
+.bi-barras-h-detalle { color: var(--tinta-2); white-space: nowrap; }
+.bi-barras-linea, .bi-lineas-anios { margin: 0; }
+.bi-barras-linea svg, .bi-lineas-anios svg { width: 100%; height: auto; }
+.bi-barras-linea-guia, .bi-lineas-anios-guia { stroke: var(--linea); stroke-width: 1; }
+.bi-barras-linea-eje, .bi-lineas-anios-eje { fill: var(--tinta-2); font-size: 11px; }
+.bi-barras-linea-barra { fill: var(--accion); opacity: .5; }
+.bi-barras-linea-trazo { fill: none; stroke: var(--dato-2); stroke-width: 2.5; }
+.bi-barras-linea-punto { fill: var(--dato-2); }
+.bi-lineas-anios-trazo { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linejoin: round; }
+.bi-lineas-anios-punto { fill: currentColor; }
+.bi-lineas-anios-leyenda { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+.bi-lineas-anios-muestra { display: inline-block; width: 12px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+
 /* ─── Menú por áreas: secciones con título pequeño y áreas con ícono; pestañas del área arriba de la página ─── */
 .lateral-seccion { padding: 10px 8px 2px; }
 .lateral-seccion ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
