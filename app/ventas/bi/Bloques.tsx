@@ -37,7 +37,7 @@ export function Kpis({ lista }: { lista: readonly Kpi[] }) {
 }
 
 type Objetivo = {
-  titulo: string; venta: number; objetivo: number | null; nombreObjetivo: string; medidor: string;
+  titulo: string; venta: number; objetivo: number | null; nombreObjetivo: string; medidor: string; diferencia: string;
   aviso?: string | null; faltan?: { mes: string; sucursales: string[] }[];
 };
 
@@ -62,7 +62,7 @@ function FilaMedidor({ o }: { o: Objetivo }) {
           <MedidorSemicircular titulo={`Venta contra ${o.nombreObjetivo}`} valor={pct} maximo={1} etiqueta={porcentaje(pct)} />
         </section>
         <section className="seccion bi-bloque">
-          <h2>Diferencia contra {o.nombreObjetivo}</h2>
+          <h2>{o.diferencia}</h2>
           <p className="bi-diferencia" data-signo={diferencia === null ? undefined : diferencia >= 0 ? "mas" : "menos"}>
             {diferencia === null ? "Sin dato" : `${diferencia >= 0 ? "+" : "−"}${pesos(Math.abs(diferencia))}`}
           </p>

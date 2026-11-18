@@ -37,7 +37,7 @@ export default async function VentasBI({ searchParams }: { searchParams: Promise
     supabase.from("sucursales").select("id, nombre").order("nombre"), supabase.from("razones_sociales").select("rfc, razon_social").eq("activa", true).order("razon_social")]);
   const listaSuc = (sucursales ?? []) as { id: string; nombre: string }[];
   const nombreSuc = new Map(listaSuc.map((s) => [s.id, s.nombre]));
-  const { actual, anterior, historico, comp, pe, meta } = await datosBI(supabase, f, hoy, listaSuc);
+  const { actual, anterior, historico, comp, pe, meta } = await datosBI(supabase, f, hoy);
 
   // 1. KPIs: ticket = ventas ÷ tickets; UPT = productos ÷ tickets.
   const k = (r: typeof actual) => {
@@ -106,9 +106,9 @@ export default async function VentasBI({ searchParams }: { searchParams: Promise
         <Kpis lista={kpis} />
 
         <Medidores
-          pe={{ titulo: "Venta vs P.E.", venta: a.ventas, objetivo: pe.monto > 0 ? pe.monto : null, nombreObjetivo: "P.E.", medidor: "P.E. vs Venta %",
-            aviso: pe.sinPE.length ? `Sin P&L cerrado de ${pe.mesCerrado} (no entran al P.E.): ${pe.sinPE.map((id) => nombreSuc.get(id) ?? id).join(", ")}.` : null }}
-          meta={{ titulo: "Venta vs Meta", venta: a.ventas, objetivo: meta.monto > 0 ? meta.monto : null, nombreObjetivo: "Meta", medidor: "Cumplimiento de meta %",
+          pe={{ titulo: "Venta vs P.E.", venta: a.ventas, objetivo: !pe.error && pe.monto > 0 ? pe.monto : null, nombreObjetivo: "P.E.", medidor: "P.E. vs Venta %", diferencia: "Diferencia contra P.E.",
+            aviso: pe.error ? `No se pudo calcular el P&L de ${pe.mesCerrado}; el punto de equilibrio no está disponible.` : pe.sinPE.length ? `Sin P&L cerrado de ${pe.mesCerrado} (no entran al P.E.): ${pe.sinPE.map((id) => nombreSuc.get(id) ?? id).join(", ")}.` : null }}
+          meta={{ titulo: "Venta vs Meta", venta: a.ventas, objetivo: meta.monto > 0 ? meta.monto : null, nombreObjetivo: "Meta", medidor: "Cumplimiento de meta %", diferencia: "Diferencia contra meta",
             faltan: [...faltanMeta].map(([mes, sucs]) => ({ mes, sucursales: sucs })) }} />
 
         <div className="bi-fila bi-fila-3">
