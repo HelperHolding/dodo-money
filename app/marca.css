@@ -672,7 +672,11 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .bi-barras-h-fila { display: grid; grid-template-columns: minmax(80px, 28%) 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
 .bi-barras-h-pista { display: block; height: 14px; }
 .bi-barras-h-barra { display: flex; height: 100%; min-width: 2px; border-radius: 3px; overflow: hidden; background: var(--accion); }
-.bi-barras-h-parte { display: block; height: 100%; background: var(--cat); }
+.bi-barras-h-parte { display: block; height: 100%; background: var(--cat, var(--dato-otro)); }
+.cat-efectivo { --cat: var(--dato-1); }
+.cat-tarjeta { --cat: var(--dato-2); }
+.cat-en_linea { --cat: var(--dato-3); }
+.cat-otro-pago { --cat: var(--dato-otro); }
 .bi-barras-h-detalle { color: var(--tinta-2); white-space: nowrap; }
 .bi-barras-linea, .bi-lineas-anios { margin: 0; }
 .bi-barras-linea svg, .bi-lineas-anios svg { width: 100%; height: auto; }

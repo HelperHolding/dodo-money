@@ -22,3 +22,9 @@ test('barras + línea y líneas por año sin datos no truenan', () => {
   const html = cargar('components/LineasAnios.tsx', 'LineasAnios')({ titulo: 'Años', series: [{ anio: 2025, valores: { 1: 10, 2: 20 } }, { anio: 2026, valores: { 1: 15 } }], eje: { desde: 1, hasta: 53, rotulo: (n) => `S${n}` } });
   assert.match(html, /2025/); assert.match(html, /2026/);
 });
+test('barras apiladas: marca.css define colores de forma de pago y fallback del segmento', () => {
+  const css = fs.readFileSync('app/marca.css', 'utf8');
+  assert.match(css, /\.cat-efectivo\s*\{\s*--cat:\s*var\(--dato-/);
+  assert.match(css, /\.cat-tarjeta\s*\{\s*--cat:\s*var\(--dato-/);
+  assert.match(css, /\.bi-barras-h-parte\s*\{[^}]*var\(--cat, /);
+});
