@@ -28,3 +28,23 @@ test('barras apiladas: marca.css define colores de forma de pago y fallback del 
   assert.match(css, /\.cat-tarjeta\s*\{\s*--cat:\s*var\(--dato-/);
   assert.match(css, /\.bi-barras-h-parte\s*\{[^}]*var\(--cat, /);
 });
+// I3 y M4: cada forma de pago y cada origen con su color; tarjeta no comparte el de Rappi y «Otro» origen no el de Sitio.
+const tokenDe = (css, clase) => (css.match(new RegExp(`\\.cat-${clase}\\s*\\{\\s*--cat:\\s*var\\((--[a-z0-9-]+)`)) ?? [])[1];
+test('colores: formas de pago distintas entre sí (tarjeta ≠ Rappi)', () => {
+  const css = fs.readFileSync('app/marca.css', 'utf8');
+  assert.equal(tokenDe(css, 'tarjeta'), '--dato-4');
+  const pagos = ['efectivo', 'tarjeta', 'en_linea', 'rappi', 'otro-pago'].map((c) => tokenDe(css, c));
+  assert.equal(new Set(pagos).size, pagos.length, pagos.join(' '));
+});
+test('origen «otro»: nombre «Otro» y color propio, distinto de Sitio', () => {
+  const codigo = ts.transpileModule(fs.readFileSync('lib/ventas/biNombres.ts', 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+  const mod = { exports: {} }; new Function('require', 'module', 'exports', codigo)(require, mod, mod.exports);
+  const { NOMBRE_ORIGEN, claveOrigen } = mod.exports;
+  assert.equal(NOMBRE_ORIGEN.otro, 'Otro');
+  assert.equal(claveOrigen('otro'), 'otro-origen'); assert.equal(claveOrigen('sitio'), 'sitio');
+  const css = fs.readFileSync('app/marca.css', 'utf8');
+  assert.ok(tokenDe(css, 'otro-origen'), 'falta .cat-otro-origen');
+  const origenes = ['mostrador', 'kiosco', 'app', 'sitio', 'otro-origen', 'rappi'].map((c) => tokenDe(css, c));
+  assert.equal(new Set(origenes).size, origenes.length, origenes.join(' '));
+  assert.match(fs.readFileSync('app/ventas/bi/page.tsx', 'utf8'), /clave: claveOrigen\(o\.origen\)/);
+});

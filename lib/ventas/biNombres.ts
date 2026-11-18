@@ -1,7 +1,7 @@
 /** Nombres visibles de Ventas BI (filtros y gráficas). Las claves son las de `lib/ventas/bi.ts` y de `ventas_bi`. */
 export const NOMBRE_PAGO: Record<string, string> = { efectivo: "Efectivo", tarjeta: "Tarjeta", en_linea: "En línea", rappi: "Rappi", otro: "Otro" };
 export const NOMBRE_ORIGEN: Record<string, string> = {
-  mostrador: "Mostrador", kiosco: "Kiosco", app: "App", sitio: "Sitio web", agregador: "Agregadores", rappi: "Rappi", centro_llamadas: "Centro de llamadas",
+  mostrador: "Mostrador", kiosco: "Kiosco", app: "App", sitio: "Sitio web", otro: "Otro", agregador: "Agregadores", rappi: "Rappi", centro_llamadas: "Centro de llamadas",
 };
 export const NOMBRE_TIPO_BI: Record<string, string> = { en_tienda: "En tienda", entrega: "Entrega", para_llevar: "Para llevar" };
 export const NOMBRE_CANAL: Record<string, string> = { pos: "POS (Dodo IS)", rappi: "Rappi" };
@@ -16,3 +16,5 @@ export const MES_CORTO = ["", "ene", "feb", "mar", "abr", "may", "jun", "jul", "
 /** Clase de color del pago: «otro» usa cat-otro-pago, porque cat-otro es el color de la categoría de producto. */
 export const clavePago = (pago: string) => (pago === "otro" ? "otro-pago" : pago);
 export const nombre = (mapa: Record<string, string>, clave: string) => mapa[clave] ?? clave;
+/** Clase de color del origen: «otro» usa cat-otro-origen (cat-otro es de la categoría de producto). */
+export const claveOrigen = (origen: string) => (origen === "otro" ? "otro-origen" : origen);

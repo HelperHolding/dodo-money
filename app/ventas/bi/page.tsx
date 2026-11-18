@@ -10,7 +10,7 @@ import { obtenerPerfil } from "@/lib/contexto";
 import { fechaConAnio, fechaTexto, hoyCalendarioMX, pesos, porcentaje } from "@/lib/formato";
 import { veVentasDeTodas } from "@/lib/roles";
 import { leerFiltrosBI, mezclarCategorias } from "@/lib/ventas/bi";
-import { clavePago, MES_CORTO, nombre, NOMBRE_CANAL, NOMBRE_CATEGORIA_BI, NOMBRE_DIA, NOMBRE_ORIGEN, NOMBRE_PAGO } from "@/lib/ventas/biNombres";
+import { claveOrigen, clavePago, MES_CORTO, nombre, NOMBRE_CANAL, NOMBRE_CATEGORIA_BI, NOMBRE_DIA, NOMBRE_ORIGEN, NOMBRE_PAGO } from "@/lib/ventas/biNombres";
 import { cambioRelativo } from "@/lib/ventas/tablero";
 import { Kpis, Medidores, Ranking, type Kpi } from "./Bloques";
 import { datosBI } from "./datos";
@@ -63,7 +63,7 @@ export default async function VentasBI({ searchParams }: { searchParams: Promise
   const categorias = partes(mezclarCategorias(actual.categorias ?? [], actual.rappi_nombres ?? [])
     .map((c) => ({ clave: c.categoria, etiqueta: nombre(NOMBRE_CATEGORIA_BI, c.categoria), valor: c.ventas })));
   const canales = partes((actual.canales ?? []).map((c) => ({ clave: c.canal, etiqueta: nombre(NOMBRE_CANAL, c.canal), valor: n(c.ventas) })));
-  const origenes = partes((actual.origenes ?? []).map((o) => ({ clave: o.origen, etiqueta: nombre(NOMBRE_ORIGEN, o.origen), valor: n(o.ventas) })));
+  const origenes = partes((actual.origenes ?? []).map((o) => ({ clave: claveOrigen(o.origen), etiqueta: nombre(NOMBRE_ORIGEN, o.origen), valor: n(o.ventas) })));
   const pagos = partes((actual.pagos ?? []).map((p) => ({ clave: clavePago(p.pago), etiqueta: nombre(NOMBRE_PAGO, p.pago), valor: n(p.ventas) })));
 
   // 4–7. Semanas, pago por sucursal, día y hora.

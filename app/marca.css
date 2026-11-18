@@ -674,7 +674,7 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .bi-barras-h-barra { display: flex; height: 100%; min-width: 2px; border-radius: 3px; overflow: hidden; background: var(--accion); }
 .bi-barras-h-parte { display: block; height: 100%; background: var(--cat, var(--dato-otro)); }
 .cat-efectivo { --cat: var(--dato-1); }
-.cat-tarjeta { --cat: var(--dato-2); }
+.cat-tarjeta { --cat: var(--dato-4); }
 .cat-en_linea { --cat: var(--dato-3); }
 .cat-otro-pago { --cat: var(--dato-otro); }
 .bi-barras-h-detalle { color: var(--tinta-2); white-space: nowrap; }
@@ -693,6 +693,8 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 /* ─── Pantalla Ventas BI: filtros plegables, KPIs, medidores y filas de gráficas. Colores solo con tokens (día y noche) ─── */
 .cat-pos { --cat: var(--dato-pos, var(--dato-1)); }
 .cat-kiosco { --cat: var(--violeta); }
+/* Origen «otro» de Dodo IS: cat-otro es la categoría de producto; el agregador ya va como Rappi, así que toma su color. */
+.cat-otro-origen { --cat: var(--dato-4); }
 .cat-sin_categoria { --cat: var(--dato-sin); }
 .bi-filtros { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); padding: 12px 16px; min-width: 0; }
 .bi-filtros > summary { cursor: pointer; font-weight: 700; padding: 4px 0; }

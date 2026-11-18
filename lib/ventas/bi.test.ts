@@ -71,3 +71,7 @@ test("url de BI conserva filtros y aplica cambios", () => {
   const f = leerFiltrosBI({ rel: "este_mes", suc: ["a"], canal: "pos" }, "2026-11-18");
   assert.equal(urlBI(f, { canal: "rappi" }), "/ventas/bi?rel=este_mes&comp=anterior&suc=a&canal=rappi");
 });
+
+test("origen: «otro» de Dodo IS se puede filtrar; «agregador» ya no existe (va como Rappi)", () => {
+  assert.deepEqual(leerFiltrosBI({ origen: ["otro", "agregador", "rappi"] }, "2026-11-18").origen, ["otro", "rappi"]);
+});

@@ -4,7 +4,8 @@ import { categoriaRappi } from "./rappiProductos.ts";
 export type Relativa = "hoy" | "ayer" | "esta_semana" | "semana_pasada" | "este_mes" | "mes_pasado" | "este_anio" | "anio_pasado";
 export const RELATIVAS: readonly [Relativa, string][] = [["hoy", "Hoy"], ["ayer", "Ayer"], ["esta_semana", "Esta semana"], ["semana_pasada", "Semana pasada"],
   ["este_mes", "Este mes"], ["mes_pasado", "Mes pasado"], ["este_anio", "Este año"], ["anio_pasado", "Año pasado"]];
-export const ORIGENES_BI = ["mostrador", "kiosco", "app", "sitio", "agregador", "rappi"] as const;
+/** Orígenes de pedidos de Dodo IS más Rappi. El agregador de Dodo IS es Rappi capturado ahí: entra como «rappi». */
+export const ORIGENES_BI = ["mostrador", "kiosco", "app", "sitio", "otro", "rappi"] as const;
 export const TIPOS_BI = ["en_tienda", "entrega", "para_llevar"] as const;
 export const PAGOS_BI = ["efectivo", "tarjeta", "en_linea", "rappi", "otro"] as const;
 export const CATEGORIAS_BI = ["pizza", "snack", "postre", "bebida", "combo", "otro", "sin_categoria"] as const;
