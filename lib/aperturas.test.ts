@@ -116,3 +116,12 @@ test('portada: primero la apertura más próxima; las ya pasadas al final, la m�
  const orden=ordenarProyectos([p('vieja','2026-09-01'),p('lejana','2027-02-01'),p('reciente','2026-11-10'),p('proxima','2026-12-15')],'2026-11-18').map(x=>x.id);
  assert.deepEqual(orden,['proxima','lejana','reciente','vieja']);
 });
+
+import {porcentajeAvance} from './aperturas.ts';
+test('portada: porcentaje de avance entero, nunca 100 % si falta algo y sin dato si no hay actividades',()=>{
+ assert.equal(porcentajeAvance({terminados:44,total:52}),85);
+ assert.equal(porcentajeAvance({terminados:50,total:50}),100);
+ assert.equal(porcentajeAvance({terminados:199,total:200}),99);
+ assert.equal(porcentajeAvance({terminados:1,total:300}),0);
+ assert.equal(porcentajeAvance({terminados:0,total:0}),null);
+});

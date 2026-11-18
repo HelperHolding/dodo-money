@@ -20,3 +20,10 @@ test('los estilos de la portada usan tokens y resaltan solo el borde', () => {
   assert.match(css, /\.ap-tarjeta \{[^}]*border: 1px solid var\(--linea\)/);
   assert.match(css, /\.ap-tarjeta:hover[^{]*\{ border-color: var\(--accion\); \}/);
 });
+
+test('cada tarjeta muestra el porcentaje de avance junto a la barra', () => {
+  const p = leer('app/aperturas/page.tsx');
+  assert.match(p, /porcentajeAvance\(/);
+  assert.match(p, /className="ap-tarjeta-porcentaje"/);
+  assert.match(leer('app/marca.css'), /\.ap-tarjeta-porcentaje \{/);
+});

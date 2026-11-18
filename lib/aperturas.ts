@@ -160,3 +160,10 @@ export function ordenarProyectos<T extends {objetivo_desde:string;objetivo_hasta
  const pasaron=lista.filter(p=>p.objetivo_hasta<hoy).sort((a,b)=>b.objetivo_hasta.localeCompare(a.objetivo_hasta));
  return [...vienen,...pasaron];
 }
+
+/** Porcentaje entero de actividades terminadas; 100 solo si de verdad está todo, y null si no hay actividades. */
+export function porcentajeAvance(a:{terminados:number;total:number}):number|null{
+ if(!a.total)return null;
+ const p=Math.round(a.terminados/a.total*100);
+ return a.terminados<a.total?Math.min(99,p):100;
+}

@@ -622,6 +622,9 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .ap-tarjeta-nombre { font-family: var(--display); font-weight: 800; font-size: 1.35rem; line-height: 1.1; overflow-wrap: anywhere; }
 .ap-tarjeta-dato { color: var(--tinta-2); font-size: var(--t-sm); }
 .ap-tarjeta-avance { display: grid; gap: 6px; width: 100%; margin-top: 4px; }
+.ap-tarjeta-barra { display: flex; align-items: center; gap: 12px; }
+.ap-tarjeta-barra progress { flex: 1; }
+.ap-tarjeta-porcentaje { font-family: var(--display); font-weight: 800; font-size: 1.25rem; line-height: 1; font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
 .ap-tarjeta-avance small { color: var(--tinta-2); font-variant-numeric: tabular-nums; }
 .ap-tarjeta progress { width: 100%; height: 6px; border: 0; border-radius: var(--r-full); overflow: hidden; background: var(--papel-2); appearance: none; }
 .ap-tarjeta progress::-webkit-progress-bar { background: var(--papel-2); border-radius: var(--r-full); }
