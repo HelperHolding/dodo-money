@@ -690,6 +690,38 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .bi-lineas-anios-leyenda { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
 .bi-lineas-anios-muestra { display: inline-block; width: 12px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
 
+/* ─── Pantalla Ventas BI: filtros plegables, KPIs, medidores y filas de gráficas. Colores solo con tokens (día y noche) ─── */
+.cat-pos { --cat: var(--dato-pos, var(--dato-1)); }
+.cat-kiosco { --cat: var(--violeta); }
+.cat-sin_categoria { --cat: var(--dato-sin); }
+.bi-filtros { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); padding: 12px 16px; min-width: 0; }
+.bi-filtros > summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.bi-filtros[open] > summary { margin-bottom: 12px; }
+.bi-filtros-campos { display: grid; gap: 14px; min-width: 0; }
+.bi-filtros-fila { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); align-items: start; }
+.bi-filtros-campos :is(input:not([type="checkbox"]), select) { width: 100%; min-width: 0; }
+.bi-casillas > div { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.bi-casillas label { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; min-height: 32px; }
+.bi-cuerpo { display: grid; gap: 16px; min-width: 0; margin-top: 16px; }
+.bi-cuerpo[aria-busy="true"] { opacity: .55; transition: opacity var(--dur-media) var(--curva); cursor: progress; }
+.bi-kpis { display: grid; gap: 12px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.bi-medidores { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+.bi-fila { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.bi-fila-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bi-bloque { min-width: 0; }
+.bi-bloque > h2 { font-size: 1.05rem; }
+.bi-nota { color: var(--tinta-2); font-size: var(--t-sm, .85rem); }
+.bi-diferencia { font: 700 1.8rem var(--display); font-variant-numeric: tabular-nums; }
+.bi-diferencia[data-signo="mas"] { color: var(--cuadra); }
+.bi-diferencia[data-signo="menos"] { color: var(--alerta); }
+.bi-leyenda { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+.bi-leyenda li { display: inline-flex; align-items: center; gap: 6px; }
+.bi-faltan { margin: 6px 0 0; padding-left: 18px; }
+.bi-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 1100px) { .bi-fila-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .bi-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .bi-fila, .bi-fila-3 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .bi-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bi-medidores { grid-template-columns: minmax(0, 1fr); } .bi-filtros { padding: 10px 12px; } }
+
 /* ─── Menú por áreas: secciones con título pequeño y áreas con ícono; pestañas del área arriba de la página ─── */
 .lateral-seccion { padding: 10px 8px 2px; }
 .lateral-seccion ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }

@@ -1,0 +1,58 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { datosPL } from "@/app/finanzas/datos";
+import { calcularPL } from "@/lib/finanzas/pl";
+import { metaDelRango, parametrosSQL, puntoEquilibrio, prorratear, rangoComparacion, type FiltrosBI } from "@/lib/ventas/bi";
+
+type Num = number | string;
+/** Lo que devuelve `ventas_bi` (los numeric pueden llegar como texto: se convierten con Number al usarlos). */
+export type ResultadoBI = {
+  kpis: { ventas: Num; tickets: Num; productos: Num };
+  canales: { canal: string; ventas: Num; tickets: Num }[];
+  origenes: { origen: string; ventas: Num; tickets: Num }[];
+  tipos: { tipo: string; ventas: Num; tickets: Num }[];
+  pagos: { pago: string; ventas: Num; tickets: Num }[];
+  pagos_sucursal: { sucursal_id: string; pago: string; ventas: Num }[];
+  dias: { dia: number; ventas: Num; tickets: Num }[];
+  horas: { hora: number; ventas: Num; tickets: Num }[];
+  semanas: { semana: string; ventas: Num; tickets: Num }[];
+  categorias: { categoria: string; ventas: number; piezas: Num }[];
+  productos: { nombre: string; canal: string; ventas: Num; piezas: Num; pedidos: Num }[];
+  rappi_nombres: { nombre: string; ventas: number }[];
+};
+export type HistoricoBI = { semanas: { anio: number; semana: number; ventas: Num }[]; meses: { anio: number; mes: number; ventas: Num }[] };
+
+/** Último mes cerrado: el anterior al mes de `hoy`. */
+const mesCerrado = (hoy: string) => { const x = new Date(`${hoy.slice(0, 7)}-01T12:00:00Z`); x.setUTCDate(0); return { desde: `${x.toISOString().slice(0, 7)}-01`, hasta: x.toISOString().slice(0, 10) }; };
+const siguienteMes = (m: string) => new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 1)).toISOString().slice(0, 7);
+
+export async function datosBI(supabase: SupabaseClient, f: FiltrosBI, hoy: string, sucursales: { id: string }[]) {
+  const comp = rangoComparacion(f.desde, f.hasta, f.comp);
+  const cerrado = mesCerrado(hoy);
+  const p = parametrosSQL(f, f);
+  const [actual, anterior, historico, filtradas, metas, pl] = await Promise.all([
+    supabase.rpc("ventas_bi", { p }),
+    supabase.rpc("ventas_bi", { p: parametrosSQL(f, comp) }),
+    supabase.rpc("ventas_bi_historico", { p }),
+    // Sucursales que pasan sucursal, razón social y antigüedad: las mismas que suma ventas_bi, para que P.E. y meta comparen lo mismo.
+    supabase.rpc("ventas_bi_sucursales", { p, p_hasta: f.hasta }),
+    supabase.from("ventas_metas").select("sucursal_id, mes, monto").gte("mes", `${f.desde.slice(0, 7)}-01`).lte("mes", f.hasta),
+    datosPL(supabase, cerrado).catch(() => null),
+  ]);
+  if (actual.error || anterior.error || historico.error) throw new Error("No se pudo calcular Ventas BI.");
+  const elegidas: string[] = filtradas.error
+    ? (f.suc.length ? f.suc : sucursales.map((s) => s.id))
+    : ((filtradas.data ?? []) as (string | { ventas_bi_sucursales: string })[]).map((x) => (typeof x === "string" ? x : x.ventas_bi_sucursales));
+  // P.E. del rango: P.E. mensual de cada sucursal (mes cerrado) prorrateado a los días del rango.
+  const sinPE: string[] = [];
+  let pe = 0;
+  for (const id of elegidas) {
+    const s = pl?.porSucursal.find((x) => x.id === id);
+    const montos = s ? Object.fromEntries(calcularPL(s.entrada, s.metas, s.ctx).map((r) => [r.clave, r.monto])) : null;
+    const mensual = montos ? puntoEquilibrio(montos) : null;
+    if (mensual === null) { sinPE.push(id); continue; }
+    for (let m = f.desde.slice(0, 7); m <= f.hasta.slice(0, 7); m = siguienteMes(m)) pe += prorratear(mensual, f.desde, f.hasta, m);
+  }
+  const meta = metaDelRango((metas.data ?? []) as { sucursal_id: string; mes: string; monto: number }[], elegidas, f.desde, f.hasta);
+  return { actual: actual.data as ResultadoBI, anterior: anterior.data as ResultadoBI, historico: historico.data as HistoricoBI, comp, elegidas,
+    pe: { monto: Math.round(pe * 100) / 100, sinPE, mesCerrado: cerrado.desde.slice(0, 7) }, meta };
+}
