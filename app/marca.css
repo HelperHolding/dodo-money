@@ -613,6 +613,21 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   .horas-pico .mapa-calor-celda, .calendario-dia { transition: none; }
 }
 
+/* ─── Aperturas, portada: tarjetas compactas (toda la tarjeta es el enlace); al pasar el mouse solo cambia el borde ─── */
+.ap-portada { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.ap-tarjeta { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px 22px; min-width: 0;
+  background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-lg); color: inherit; text-decoration: none;
+  transition: border-color var(--dur-rapida) var(--curva); }
+.ap-tarjeta:hover, .ap-tarjeta:focus-visible { border-color: var(--accion); }
+.ap-tarjeta-nombre { font-family: var(--display); font-weight: 800; font-size: 1.35rem; line-height: 1.1; overflow-wrap: anywhere; }
+.ap-tarjeta-dato { color: var(--tinta-2); font-size: var(--t-sm); }
+.ap-tarjeta-avance { display: grid; gap: 6px; width: 100%; margin-top: 4px; }
+.ap-tarjeta-avance small { color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+.ap-tarjeta progress { width: 100%; height: 6px; border: 0; border-radius: var(--r-full); overflow: hidden; background: var(--papel-2); appearance: none; }
+.ap-tarjeta progress::-webkit-progress-bar { background: var(--papel-2); border-radius: var(--r-full); }
+.ap-tarjeta progress::-webkit-progress-value { background: var(--accion); border-radius: var(--r-full); }
+.ap-tarjeta progress::-moz-progress-bar { background: var(--accion); border-radius: var(--r-full); }
+
 /* ─── Estado con tono (p. ej. campañas y envíos de Correos): fondo y texto de los tokens de estado, legibles de día y de noche ─── */
 .estado[data-tono="ok"] { background: var(--cuadra-fondo); color: var(--cuadra-texto); }
 .estado[data-tono="aviso"] { background: var(--aviso-fondo); color: var(--aviso-texto); }

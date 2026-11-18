@@ -95,3 +95,24 @@ test('checklist en vivo: gana la revisión más nueva y los números de Realtime
  const nuevo=fusionarItems(base,[desdeRealtime,{...a,id:'y',revision:1}]);
  assert.deepEqual([nuevo.x.estado,nuevo.y.id,Object.keys(nuevo).length],['recibido','y',2]);
 });
+
+import {avancePorProyecto,cuentaRegresiva,ordenarProyectos} from './aperturas.ts';
+test('portada: avance por proyecto con la misma regla del resumen (no aplica fuera; completado o verificado cuentan)',()=>{
+ const a=avancePorProyecto([{proyecto_id:'a',estado:'completado'},{proyecto_id:'a',estado:'verificado'},{proyecto_id:'a',estado:'en_curso'},{proyecto_id:'a',estado:'no_aplica'},{proyecto_id:'b',estado:'pendiente'}]);
+ assert.deepEqual(a,{a:{terminados:2,total:3},b:{terminados:0,total:1}});
+});
+test('portada: cuenta regresiva según la ventana objetivo y el avance',()=>{
+ const listo={terminados:5,total:5},falta={terminados:2,total:5};
+ assert.deepEqual(cuentaRegresiva('2026-12-15','2026-12-20','2026-11-18',falta),{texto:'Abre en 27 días',tono:'info'});
+ assert.deepEqual(cuentaRegresiva('2026-11-25','2026-11-30','2026-11-18',falta),{texto:'Abre en 7 días',tono:'aviso'});
+ assert.deepEqual(cuentaRegresiva('2026-11-19','2026-11-30','2026-11-18',falta),{texto:'Abre mañana',tono:'aviso'});
+ assert.deepEqual(cuentaRegresiva('2026-11-15','2026-11-20','2026-11-18',falta),{texto:'En ventana de apertura',tono:'aviso'});
+ assert.deepEqual(cuentaRegresiva('2026-11-01','2026-11-05','2026-11-18',listo),{texto:'Abierta',tono:'ok'});
+ assert.deepEqual(cuentaRegresiva('2026-11-01','2026-11-05','2026-11-18',falta),{texto:'Objetivo vencido',tono:'alerta'});
+ assert.deepEqual(cuentaRegresiva('2026-11-01','2026-11-05','2026-11-18',{terminados:0,total:0}),{texto:'Objetivo vencido',tono:'alerta'});
+});
+test('portada: primero la apertura más próxima; las ya pasadas al final, la más reciente primero',()=>{
+ const p=(id:string,objetivo_hasta:string)=>({id,objetivo_desde:objetivo_hasta,objetivo_hasta});
+ const orden=ordenarProyectos([p('vieja','2026-09-01'),p('lejana','2027-02-01'),p('reciente','2026-11-10'),p('proxima','2026-12-15')],'2026-11-18').map(x=>x.id);
+ assert.deepEqual(orden,['proxima','lejana','reciente','vieja']);
+});

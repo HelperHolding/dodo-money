@@ -131,3 +131,32 @@ export function fusionarItems(actual:Record<string,ItemChecklist>,nuevos:ItemChe
  for(const n of nuevos){const a=r[n.id];if(a&&a.revision>=n.revision)continue;r[n.id]=n;cambio=true;}
  return cambio?r:actual;
 }
+
+/** Portada de Aperturas: actividades terminadas de las aplicables por proyecto (misma regla que resumenApertura). */
+export function avancePorProyecto(items:readonly {proyecto_id:string;estado:string}[]):Record<string,{terminados:number;total:number}>{
+ const r:Record<string,{terminados:number;total:number}>={};
+ for(const i of items){
+  if(i.estado==='no_aplica')continue;
+  const a=r[i.proyecto_id]??={terminados:0,total:0};
+  a.total++;if(i.estado==='completado'||i.estado==='verificado')a.terminados++;
+ }
+ return r;
+}
+
+const diasEntre=(desde:string,hasta:string)=>Math.round((Date.parse(`${hasta}T12:00:00Z`)-Date.parse(`${desde}T12:00:00Z`))/86_400_000);
+/**
+ * Estado de la portada según la ventana objetivo: cuenta regresiva antes de abrir (aviso en la última semana),
+ * «En ventana» dentro de ella y, ya pasada, «Abierta» si todo está terminado u «Objetivo vencido» si falta algo.
+ */
+export function cuentaRegresiva(desde:string,hasta:string,hoy:string,avance:{terminados:number;total:number}):{texto:string;tono:'ok'|'aviso'|'alerta'|'info'}{
+ if(hoy<desde){const d=diasEntre(hoy,desde);return {texto:d===1?'Abre mañana':`Abre en ${d} días`,tono:d<=7?'aviso':'info'};}
+ if(hoy<=hasta)return {texto:'En ventana de apertura',tono:'aviso'};
+ return avance.total>0&&avance.terminados===avance.total?{texto:'Abierta',tono:'ok'}:{texto:'Objetivo vencido',tono:'alerta'};
+}
+
+/** Primero las aperturas por venir (la más próxima arriba); las que ya pasaron al final, la más reciente primero. */
+export function ordenarProyectos<T extends {objetivo_desde:string;objetivo_hasta:string}>(lista:readonly T[],hoy:string):T[]{
+ const vienen=lista.filter(p=>p.objetivo_hasta>=hoy).sort((a,b)=>a.objetivo_desde.localeCompare(b.objetivo_desde));
+ const pasaron=lista.filter(p=>p.objetivo_hasta<hoy).sort((a,b)=>b.objetivo_hasta.localeCompare(a.objetivo_hasta));
+ return [...vienen,...pasaron];
+}
