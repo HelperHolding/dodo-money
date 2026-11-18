@@ -101,3 +101,49 @@ test('medidores: con filtros que no son de sucursal, P.E. y meta quedan «Sin da
   const p = fs.readFileSync('app/ventas/bi/page.tsx', 'utf8');
   assert.match(p, /Con filtros de canal, día, hora, pago, producto… la venta es solo una parte; el P\.E\. y la meta son mensuales completos\./);
 });
+
+// M-36 y M5: metas de venta en Parámetros. Vacío no toca; «Copiar mes anterior» llena solo los vacíos; los errores regresan al mes.
+function accionMetas() {
+  const llamadas = { upsert: [], consultas: [] };
+  const anteriores = [{ sucursal_id: 's1', monto: 3000 }];
+  const supabase = {
+    from: (tabla) => {
+      const q = { filtros: {} };
+      q.select = () => q; q.eq = (c, v) => { q.filtros[c] = v; return q; }; q.in = (c, v) => { q.filtros[c] = v; return q; };
+      q.then = (ok, mal) => { llamadas.consultas.push({ tabla, ...q.filtros });
+        return Promise.resolve({ data: anteriores.filter((x) => q.filtros.mes === '2026-10-01' && (q.filtros.sucursal_id ?? []).includes(x.sucursal_id)), error: null }).then(ok, mal); };
+      q.upsert = (filas) => { llamadas.upsert.push(...filas); return Promise.resolve({ error: llamadas.fallaUpsert ? { message: 'x' } : null }); };
+      return q;
+    },
+  };
+  const { guardarMetasVenta } = cargar('app/finanzas/parametros/acciones.ts', {
+    'next/cache': { revalidatePath: () => {} }, '@/lib/formato': { numero: Number },
+    '@/lib/contexto': { obtenerPerfil: async () => ({ supabase, perfil: { rol: 'admin', id: 'u1' } }) },
+    '@/lib/roles': { puedeEditarFinanzas: () => true, SOLO_CONSULTA: 'Solo consulta' },
+    '../servidor': { clienteFinanzas: async () => supabase, volver: (r, c, t) => { throw { url: `${r}${r.includes('?') ? '&' : '?'}${c}=${t}` }; } },
+  });
+  const correr = async (campos) => { const fd = new FormData(); for (const [k, v] of Object.entries(campos)) fd.append(k, v);
+    try { await guardarMetasVenta(fd); } catch (e) { if (e && e.url) return e.url; throw e; } return null; };
+  return { correr, llamadas };
+}
+test('metas de venta: vacío no se toca; «Copiar mes anterior» llena solo los vacíos', async () => {
+  const a = accionMetas();
+  assert.match(await a.correr({ mes: '2026-11', monto_s1: '', monto_s2: '5000' }), /mes_meta=2026-11&ok=/);
+  assert.deepEqual(a.llamadas.upsert.map((x) => [x.sucursal_id, x.monto]), [['s2', 5000]]);
+  const b = accionMetas();
+  assert.match(await b.correr({ mes: '2026-11', monto_s1: '', monto_s2: '5000', monto_s3: '', copiar: '1' }), /mes_meta=2026-11&ok=/);
+  assert.deepEqual(b.llamadas.upsert.map((x) => [x.sucursal_id, x.mes, x.monto]).sort(), [['s1', '2026-11-01', 3000], ['s2', '2026-11-01', 5000]]);
+});
+test('metas de venta: los errores regresan al mes elegido', async () => {
+  const a = accionMetas();
+  assert.match(await a.correr({ mes: '2026-11', monto_s1: '-5' }), /^\/finanzas\/parametros\?mes_meta=2026-11&error=/);
+  const b = accionMetas(); b.llamadas.fallaUpsert = true;
+  assert.match(await b.correr({ mes: '2026-11', monto_s1: '10' }), /^\/finanzas\/parametros\?mes_meta=2026-11&error=/);
+});
+test('Parámetros: la meta del mes anterior es sugerencia (placeholder), no valor; 0 quita la meta', () => {
+  const p = fs.readFileSync('app/finanzas/parametros/page.tsx', 'utf8');
+  assert.doesNotMatch(p, /defaultValue=\{actual \? String\(actual\.monto\) : previa/);
+  assert.match(p, /placeholder=\{previa \? String\(previa\.monto\) : undefined\}/);
+  assert.match(p, /name="copiar" value="1"/); assert.match(p, /Copiar mes anterior/);
+  assert.match(p, /Para quitar una meta escribe 0/);
+});

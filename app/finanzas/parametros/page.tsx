@@ -56,7 +56,7 @@ export default async function Parametros({ searchParams }: { searchParams: Promi
       </section>
       <section className="seccion" aria-labelledby="meta-venta">
         <h2 id="meta-venta">Meta de venta mensual</h2>
-        <p className="saldo-nota">Venta neta sin IVA que se espera de cada sucursal en el mes. La usa Ventas BI (Venta vs Meta).</p>
+        <p className="saldo-nota">Venta neta sin IVA que se espera de cada sucursal en el mes. La usa Ventas BI (Venta vs Meta). Un campo vacío no cambia la meta. Para quitar una meta escribe 0.</p>
         <form method="get" className="barra-filtros"><input type="month" name="mes_meta" defaultValue={mesMeta} aria-label="Mes de la meta" /><button className="boton boton-secundario boton-compacto" type="submit">Ver</button></form>
         {edita ? (
           <form action={guardarMetasVenta} className="formulario">
@@ -71,7 +71,7 @@ export default async function Parametros({ searchParams }: { searchParams: Promi
                     return (
                       <tr key={s.id}>
                         <td data-label="Sucursal">{s.nombre}</td>
-                        <td data-label={`Meta ${mesMeta}`} className="monto"><input name={`monto_${s.id}`} inputMode="decimal" defaultValue={actual ? String(actual.monto) : previa ? String(previa.monto) : ""} aria-label={`Meta de ${s.nombre}`} /></td>
+                        <td data-label={`Meta ${mesMeta}`} className="monto"><input name={`monto_${s.id}`} inputMode="decimal" defaultValue={actual ? String(actual.monto) : ""} placeholder={previa ? String(previa.monto) : undefined} aria-label={`Meta de ${s.nombre}`} /></td>
                         <td data-label="Mes anterior" className="monto">{previa ? pesos(Number(previa.monto)) : "—"}</td>
                       </tr>
                     );
@@ -79,7 +79,11 @@ export default async function Parametros({ searchParams }: { searchParams: Promi
                 </tbody>
               </table>
             </div>
-            <BotonEnviar>Guardar metas de venta</BotonEnviar>
+            <div className="acciones">
+              <BotonEnviar>Guardar metas de venta</BotonEnviar>
+              <button className="boton boton-secundario" type="submit" name="copiar" value="1">Copiar mes anterior</button>
+            </div>
+            <p className="saldo-nota">«Copiar mes anterior» guarda lo escrito y llena las sucursales vacías con su meta de {mesAnterior}.</p>
           </form>
         ) : <p className="saldo-nota">Solo admin captura las metas.</p>}
       </section>

@@ -14,6 +14,9 @@ test('Parámetros tiene la meta de venta mensual por sucursal y solo admin la gu
   assert.match(accion, /puedeEditarFinanzas\(perfil\.rol\)/);
   assert.match(accion, /actualizado_en/);
   assert.match(accion, /actualizado_por: perfil\.id/);
+  // La meta del mes anterior es sugerencia: solo se copia con el botón «Copiar mes anterior».
+  assert.match(accion, /t\(fd, "copiar"\) === "1"/);
+  assert.match(p, /placeholder=\{previa/);
 });
 
 test('la página BI es solo de admin y corporativo y usa las funciones SQL', () => {
