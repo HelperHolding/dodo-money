@@ -37,7 +37,7 @@ export default async function VentasBI({ searchParams }: { searchParams: Promise
     supabase.from("sucursales").select("id, nombre").order("nombre"), supabase.from("razones_sociales").select("rfc, razon_social").eq("activa", true).order("razon_social")]);
   const listaSuc = (sucursales ?? []) as { id: string; nombre: string }[];
   const nombreSuc = new Map(listaSuc.map((s) => [s.id, s.nombre]));
-  const { actual, anterior, historico, comp, pe, meta } = await datosBI(supabase, f, hoy);
+  const { actual, anterior, historico, comp, pe, meta, parcial } = await datosBI(supabase, f, hoy);
 
   // 1. KPIs: ticket = ventas ÷ tickets; UPT = productos ÷ tickets.
   const k = (r: typeof actual) => {
@@ -54,7 +54,8 @@ export default async function VentasBI({ searchParams }: { searchParams: Promise
     { clave: "productos", etiqueta: "Total de productos", valor: a.productos.toLocaleString("es-MX"), cambio: cambio(a.productos, b.productos) },
   ];
 
-  // 2. Medidores: sin P.E. de ninguna sucursal o sin meta capturada, el medidor dice «Sin dato» en lugar de 0.
+  // 2. Medidores: sin P.E. de ninguna sucursal, sin meta capturada o con filtros que parten la venta, el medidor dice
+  // «Sin dato» en lugar de 0. La venta de cada medidor es la de las sucursales que forman su objetivo.
   const faltanMeta = new Map<string, string[]>();
   for (const x of meta.faltan) faltanMeta.set(x.mes.slice(0, 7), [...(faltanMeta.get(x.mes.slice(0, 7)) ?? []), nombreSuc.get(x.sucursal_id) ?? x.sucursal_id]);
 
@@ -100,16 +101,18 @@ export default async function VentasBI({ searchParams }: { searchParams: Promise
         descripcion={`${fechaConAnio(f.desde)} – ${fechaConAnio(f.hasta)} · contra ${textoComp} (${fechaConAnio(comp.desde)} – ${fechaConAnio(comp.hasta)})`}
         info="Tablero de análisis de ventas de Dodo IS y Rappi, sin IVA. Los filtros se guardan en la dirección para compartir la vista." />
       <FiltrosBI filtros={f} hoy={hoy} sucursales={listaSuc} razones={(razones ?? []) as { rfc: string; razon_social: string }[]}>
-        {f.cat.length > 0 && <p className="aviso aviso-info">Rappi no trae categoría: queda fuera mientras haya filtro de categoría.</p>}
+        {f.cat.length > 0 && <p className="aviso aviso-info">Las órdenes del portal de Rappi no traen categoría: quedan fuera mientras haya filtro de categoría (Rappi capturado en Dodo IS sí entra).</p>}
         {(f.cat.length > 0 || f.prod) && <p className="aviso aviso-info">Se cuentan solo las líneas de esos productos (no el pedido entero) en los pedidos que los contienen.</p>}
 
         <Kpis lista={kpis} />
 
+        {parcial && <p className="aviso aviso-info">Con filtros de canal, día, hora, pago, producto… la venta es solo una parte; el P.E. y la meta son mensuales completos.</p>}
         <Medidores
-          pe={{ titulo: "Venta vs P.E.", venta: a.ventas, objetivo: !pe.error && pe.monto > 0 ? pe.monto : null, nombreObjetivo: "P.E.", medidor: "P.E. vs Venta %", diferencia: "Diferencia contra P.E.",
-            aviso: pe.error ? `No se pudo calcular el P&L de ${pe.mesCerrado}; el punto de equilibrio no está disponible.` : pe.sinPE.length ? `Sin P&L cerrado de ${pe.mesCerrado} (no entran al P.E.): ${pe.sinPE.map((id) => nombreSuc.get(id) ?? id).join(", ")}.` : null }}
-          meta={{ titulo: "Venta vs Meta", venta: a.ventas, objetivo: meta.monto > 0 ? meta.monto : null, nombreObjetivo: "Meta", medidor: "Cumplimiento de meta %", diferencia: "Diferencia contra meta",
-            faltan: [...faltanMeta].map(([mes, sucs]) => ({ mes, sucursales: sucs })) }} />
+          pe={{ titulo: "Venta vs P.E.", venta: pe.venta, objetivo: pe.objetivo, nombreObjetivo: "P.E.", medidor: "P.E. vs Venta %", diferencia: "Diferencia contra P.E.",
+            aviso: parcial ? null : pe.error ? `No se pudo calcular el P&L de ${pe.mesCerrado}; el punto de equilibrio no está disponible.` : pe.sinPE.length ? `Sin P&L cerrado con costos fijos de ${pe.mesCerrado} (no entran al P.E. ni a su venta): ${pe.sinPE.map((id) => nombreSuc.get(id) ?? id).join(", ")}.` : null }}
+          meta={{ titulo: "Venta vs Meta", venta: meta.venta, objetivo: meta.objetivo, nombreObjetivo: "Meta", medidor: "Cumplimiento de meta %", diferencia: "Diferencia contra meta",
+            aviso: !parcial && meta.error ? "No se pudieron leer las metas de venta; la meta no está disponible." : null,
+            faltan: parcial ? [] : [...faltanMeta].map(([mes, sucs]) => ({ mes, sucursales: sucs })) }} />
 
         <div className="bi-fila bi-fila-3">
           <Bloque titulo="Ventas por categoría"><Dona titulo="Ventas por categoría" partes={categorias} /></Bloque>

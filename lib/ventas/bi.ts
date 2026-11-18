@@ -73,6 +73,14 @@ export function parametrosSQL(f: FiltrosBI, rango: { desde: string; hasta: strin
     categorias: o(f.cat), producto: f.prod, pagos: o(f.pago) };
 }
 
+/**
+ * Filtros que se quedan con una parte de la venta de cada sucursal (canal, origen, tipo, día, hora, pago, categoría,
+ * producto). Con ellos la venta no se compara contra P.E. ni meta, que son mensuales completos. Sucursal, razón social,
+ * antigüedad y fechas sí permiten comparar.
+ */
+export const ventaParcial = (f: FiltrosBI) =>
+  !!f.canal || !!f.hora || !!f.prod || [f.origen, f.tipo, f.dia, f.pago, f.cat].some((x) => x.length > 0);
+
 /** Renglones del P&L que suben y bajan con la venta; el resto son fijos. */
 export const CLAVES_VARIABLES = ["alimento", "merma", "regalias", "agregadores", "marketing_agregadores", "repartidores"] as const;
 export const CLAVES_FIJAS = ["nomina_cocina", "nomina_gerencia", "renta", "servicios", "mantenimiento", "consumibles_equipo", "marketing", "otros", "oficina"] as const;

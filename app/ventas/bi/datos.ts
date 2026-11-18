@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { datosPL } from "@/app/finanzas/datos";
 import { calcularPL } from "@/lib/finanzas/pl";
-import { metaDelRango, parametrosSQL, puntoEquilibrio, prorratear, rangoComparacion, type FiltrosBI } from "@/lib/ventas/bi";
+import { metaDelRango, parametrosSQL, puntoEquilibrio, prorratear, rangoComparacion, ventaParcial, type FiltrosBI } from "@/lib/ventas/bi";
 
 type Num = number | string;
 /** Lo que devuelve `ventas_bi` (los numeric pueden llegar como texto: se convierten con Number al usarlos). */
@@ -41,17 +41,39 @@ export async function datosBI(supabase: SupabaseClient, f: FiltrosBI, hoy: strin
   ]);
   if (actual.error || anterior.error || historico.error || filtradas.error) throw new Error("No se pudo calcular Ventas BI.");
   const elegidas: string[] = ((filtradas.data ?? []) as (string | { ventas_bi_sucursales: string })[]).map((x) => (typeof x === "string" ? x : x.ventas_bi_sucursales));
-  // P.E. del rango: P.E. mensual de cada sucursal (mes cerrado) prorrateado a los días del rango.
-  const sinPE: string[] = [];
+  const resultado = actual.data as ResultadoBI;
+  // Venta del rango por sucursal: el medidor compara cada objetivo solo con la venta de las sucursales que lo forman.
+  const ventaSuc = new Map<string, number>();
+  for (const x of resultado?.pagos_sucursal ?? []) ventaSuc.set(x.sucursal_id, (ventaSuc.get(x.sucursal_id) ?? 0) + Number(x.ventas));
+  const ventaDe = (ids: readonly string[]) => Math.round(ids.reduce((s, id) => s + (ventaSuc.get(id) ?? 0), 0) * 100) / 100;
+  // Las sucursales que no vendieron en el rango no salen en los avisos de «sin P.E.» o «falta meta».
+  const vendio = (id: string) => (ventaSuc.get(id) ?? 0) !== 0;
+  // Con filtros de canal, día, hora, pago, producto… la venta es solo una parte: P.E. y meta quedan sin dato.
+  const parcial = ventaParcial(f);
+
+  // P.E. del rango: P.E. mensual de cada sucursal (mes cerrado) prorrateado a los días del rango. Sin P&L, sin margen o
+  // sin costos fijos cargados (P.E. ≤ 0), la sucursal queda «sin P.E.».
+  const sinPE: string[] = [], conPE: string[] = [];
   let pe = 0;
   for (const id of pl.error ? [] : elegidas) {
     const s = pl.d?.porSucursal.find((x) => x.id === id);
     const montos = s ? Object.fromEntries(calcularPL(s.entrada, s.metas, s.ctx).map((r) => [r.clave, r.monto])) : null;
     const mensual = montos ? puntoEquilibrio(montos) : null;
-    if (mensual === null) { sinPE.push(id); continue; }
+    if (mensual === null || !(mensual > 0)) { sinPE.push(id); continue; }
+    conPE.push(id);
     for (let m = f.desde.slice(0, 7); m <= f.hasta.slice(0, 7); m = siguienteMes(m)) pe += prorratear(mensual, f.desde, f.hasta, m);
   }
-  const meta = metaDelRango((metas.data ?? []) as { sucursal_id: string; mes: string; monto: number }[], elegidas, f.desde, f.hasta);
-  return { actual: actual.data as ResultadoBI, anterior: anterior.data as ResultadoBI, historico: historico.data as HistoricoBI, comp, elegidas,
-    pe: { monto: Math.round(pe * 100) / 100, sinPE, error: pl.error, mesCerrado: cerrado.desde.slice(0, 7) }, meta };
+  const peMonto = Math.round(pe * 100) / 100;
+
+  // Meta: entra la sucursal que tiene la meta de todos los meses del rango; si le falta alguno, no entra ni su venta.
+  const filasMeta = (metas.data ?? []) as { sucursal_id: string; mes: string; monto: number }[];
+  const todas = metas.error ? { monto: 0, faltan: [] } : metaDelRango(filasMeta, elegidas, f.desde, f.hasta);
+  const conMeta = metas.error ? [] : elegidas.filter((id) => !todas.faltan.some((x) => x.sucursal_id === id));
+  const metaMonto = metaDelRango(filasMeta, conMeta, f.desde, f.hasta).monto;
+
+  return { actual: resultado, anterior: anterior.data as ResultadoBI, historico: historico.data as HistoricoBI, comp, elegidas, parcial,
+    pe: { monto: peMonto, objetivo: parcial || pl.error || !(peMonto > 0) ? null : peMonto, venta: ventaDe(conPE),
+      sinPE: sinPE.filter(vendio), error: pl.error, mesCerrado: cerrado.desde.slice(0, 7) },
+    meta: { monto: metaMonto, objetivo: parcial || metas.error || !(metaMonto > 0) ? null : metaMonto, venta: ventaDe(conMeta),
+      faltan: todas.faltan.filter((x) => vendio(x.sucursal_id)), error: !!metas.error } };
 }

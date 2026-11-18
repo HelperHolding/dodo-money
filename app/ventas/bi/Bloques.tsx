@@ -72,7 +72,7 @@ function FilaMedidor({ o }: { o: Objetivo }) {
       {o.aviso && <p className="aviso aviso-info">{o.aviso}</p>}
       {o.faltan && o.faltan.length > 0 && (
         <div className="aviso aviso-info">
-          <p>Falta la meta de venta de algunas sucursales (no entran a la meta):</p>
+          <p>Falta la meta de venta de algunas sucursales (no entran a la meta ni a su venta):</p>
           <ul className="bi-faltan">
             {o.faltan.map((x) => (
               <li key={x.mes}><Link href={`/finanzas/parametros?mes_meta=${x.mes}`}>{x.mes}</Link>: {x.sucursales.join(", ")}</li>
