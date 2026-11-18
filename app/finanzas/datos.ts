@@ -20,6 +20,7 @@ import { aplicarAjustes, conDeltas, esAjustable, faltaTabla, sumarDeltas, type A
 import { prorratear } from "@/lib/finanzas/prorrateo";
 import { costearProductos, costeo, type Categoria, type Costo, type VentaDia, type VentaProducto } from "@/lib/ventas/calculos";
 import { leerTodo } from "@/lib/ventas/paginar";
+import { separarRegalados, type PedidoVenta, type PiezaPedido } from "@/lib/finanzas/regalados";
 import { primerError } from "@/lib/corporativo";
 import { fechaMX, fechaTexto, hoyMX, pesos } from "@/lib/formato";
 import { capturasTardias, esMesDeEmision, fraccionCubre, textoCubre } from "@/lib/finanzas/cubre";
@@ -90,7 +91,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     uuid:string|null;uuid_manual:string|null;rfc_receptor:string;total:number;tipo: "ingreso" | "egreso"; estado: string; subtotal: number; descuento: number; cuenta_pl: string | null; serie: string | null; folio: string | null;
     nombre_emisor: string; fecha_emision: string; cubre_desde: string; cubre_hasta: string; creado_en: string; origen: "cfdi" | "manual"; factura_conceptos: { id: number; descripcion: string; importe: number; cuenta_pl: string | null }[];
   };
-  const [facturasLeidas, cajaChica, cierres, arqueos, dias, desglose, ventas, catalogo, costos, datosRappi] = await Promise.all([
+  const [facturasLeidas, cajaChica, cierres, arqueos, dias, desglose, ventasLeidas, catalogo, costos, datosRappi, pedidosEnCero] = await Promise.all([
     desde > hasta ? Promise.resolve([] as FacturaPL[]) : leerTodo<FacturaPL>((d, h) => supabase.from("facturas")
       .select("id, sucursal_id, proveedor_id, uuid, uuid_manual, rfc_receptor, total, tipo, estado, subtotal, descuento, cuenta_pl, serie, folio, nombre_emisor, fecha_emision, cubre_desde, cubre_hasta, creado_en, origen, factura_conceptos(id, descripcion, importe, cuenta_pl)")
       .lte("cubre_desde", hasta).gte("cubre_hasta", desde).order("id").range(d, h).returns<FacturaPL[]>()),
@@ -115,7 +116,17 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     leerTodo<Costo & { dodo_id: number }>((d, h) => supabase.from("costos_producto").select("dodo_id, costo, vigente_desde").lte("vigente_desde", hasta)
       .order("dodo_id").order("vigente_desde").range(d, h).returns<(Costo & { dodo_id: number })[]>()),
     cargarRappi(supabase,null,desde,hasta),
+    leerTodo<PedidoVenta>((d, h) => supabase.from("pedidos").select("dodo_id, sucursal_id, fecha, hora, total, total_sin_descuento, promocion")
+      .eq("total", 0).gt("total_sin_descuento", 0).gte("fecha", desde).lte("fecha", hasta).order("dodo_id").range(d, h).returns<PedidoVenta[]>()),
   ]);
+  // Pedidos regalados (cobrados en $0 con precio de lista): no son venta; el costo de sus piezas va a Marketing.
+  const piezasEnCero: PiezaPedido[] = [];
+  for (let i = 0; i < pedidosEnCero.length; i += 200) {
+    const ids = pedidosEnCero.slice(i, i + 200).map((p) => p.dodo_id);
+    piezasEnCero.push(...await leerTodo<PiezaPedido>((d, h) => supabase.from("pedido_productos").select("pedido_id, dodo_id, nombre, precio, precio_sin_descuento")
+      .in("pedido_id", ids).order("pedido_id").order("renglon").range(d, h).returns<PiezaPedido[]>()));
+  }
+  const { ventas, regalados } = separarRegalados(ventasLeidas, pedidosEnCero, piezasEnCero);
   const [conciliaciones,datosMerma,financieros] = await Promise.all([leerConciliaciones(supabase,desde,hasta),datosMermas(supabase,desde,hasta),leerFinancierosRappi(supabase)]);
   const mermasValoradas = valorarMermas(datosMerma.filas,datosMerma.costos);
   const diasConciliados = aplicarConciliaciones(dias,conciliaciones.filas);
@@ -197,6 +208,12 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     const renglones = [...renglonesDodo, ...renglonesRappi];
     const c = costeo(renglones);
     anotar(s.id, "alimento", `Costo teórico de ${renglones.reduce((t, r) => t + r.cantidad, 0)} piezas vendidas (receta + periférico)`, c.total.costo);
+    const regalos = regalados.filter((p) => p.sucursal_id === s.id).map((p) => ({ p, c: costeo(costearProductos(p.renglones, diasSuc, catalogo, costos)) }));
+    for (const { p, c } of regalos)
+      anotar(s.id, "marketing", `Pedido regalado en Dodo IS · ${p.piezas} ${p.piezas === 1 ? "pieza" : "piezas"} · ${p.promocion ?? "sin promoción"}`, c.total.costo,
+        { nota: `${fechaTexto(p.fecha)} ${p.hora} · precio de lista ${pesos(p.precioLista)} · costo teórico (receta + periférico)` });
+    const marketingRegalos = centavos(regalos.reduce((t, x) => t + x.c.total.costo, 0));
+    const regalosSinCosto = regalos.reduce((t, x) => t + x.c.sinCosto.reduce((u, y) => u + y.piezas, 0), 0);
 
     for (const [canal, nombre] of [["dodo", "Dodo IS / POS"], ["rappi", "Rappi"]] as const) {
       const c = canales[canal];
@@ -292,7 +309,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       alimento: c.total.costo, merma: merma.monto===null&&merma.insumosMonto===null?null:centavos((merma.monto??0)+(merma.insumosMonto??0)), mermaPendiente: merma.parcial||merma.insumosParcial,
       mermaProductos:merma.monto,mermaInsumos:merma.insumosMonto,mermaProductosPendiente:merma.parcial,mermaInsumosPendiente:merma.insumosParcial,
       nomina: { cocina: nomina.cocina, gerencia: nomina.gerencia }, nominaDesglose,
-      gastos: sumarGastos(f.gastos, caja.gastos), sinCuenta: centavos(f.sinCuenta + caja.sinCuenta),
+      gastos: sumarGastos(f.gastos, caja.gastos, marketingRegalos ? { marketing: marketingRegalos } : {}), sinCuenta: centavos(f.sinCuenta + caja.sinCuenta),
       agregadores, comisionesCobro: cobro.total, faltantes, regalias: regaliasPeriodo, memos: sumarMemos(f.memos, caja.memos),
     };
 
@@ -313,6 +330,7 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
     if(diasVenta.some(d=>d.agregador.total>0)&&rappi.dias.some(r=>r.sucursal_id===s.id&&diasSuc.some(d=>d.fecha===r.fecha&&Number(agregadorDe.get(d.id)?.total??0)>0)))avisos.push("Hay ventas de agregador en Dodo IS y órdenes Rappi importadas para los mismos días. Revisa su fuente en Ventas → Rappi para evitar duplicados.");
     if (diasSuc.length < diasRango) avisos.push(`Faltan ${diasRango - diasSuc.length} días de ventas por importar; los % son sobre lo importado.`);
     if (c.sinCosto.length) avisos.push(`${c.sinCosto.length} productos vendidos sin costo quedan fuera del alimento.`);
+    if (regalosSinCosto) avisos.push(`Marketing: ${regalosSinCosto} ${regalosSinCosto === 1 ? "pieza regalada" : "piezas regaladas"} (pedidos en $0 de Dodo IS) sin costo conocido quedan fuera del renglón.`);
     const sinCuenta = facturasSuc.filter((x) => partesFactura(x).some((p) => !p.cuenta)).length;
     if (sinCuenta) avisos.push(`${sinCuenta} facturas sin cuenta del P&L (van a Otros).`);
     avisos.push(...avisoTardias(facturasSuc));
