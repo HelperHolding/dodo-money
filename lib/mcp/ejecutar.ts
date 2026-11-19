@@ -7,7 +7,8 @@ import {leerTodo} from '@/lib/ventas/paginar';
 import type {Pedido} from '@/lib/ventas/pedidos';
 import {absolutizar,type Argumentos} from './herramientas';
 import {resumenProductos} from './productos';
-import {filtrosBI,parametrosBI,resumenBI,type SalidaBI} from './bi';
+import {filtrosBI,parametrosBI,periodoBI,resumenBI,type SalidaBI} from './bi';
+import {hoyMX} from '@/lib/formato';
 import {resumenTiempos} from './tiempos';
 
 type PedidoTiempo=Pedido&{sucursal_id:string};
@@ -36,12 +37,12 @@ export async function ejecutarHerramienta(supabase:SupabaseClient,rol:string,a:A
     fuente:`/ventas?${new URLSearchParams({...p,...(sucursal?{sucursal}:{})})}`},origen);
   }
   case 'bi':{
-   const q=parametrosBI(filtrosBI(a));
+   const hoy=hoyMX(),periodo=periodoBI(a,hoy),f=filtrosBI(a,hoy),q=parametrosBI(f,a.comparar);
    const [x,y]=await Promise.all([supabase.rpc('ventas_bi',{p:q.actual}),supabase.rpc('ventas_bi',{p:q.anterior})]);
    if(x.error||y.error)throw Error([x.error,y.error].some(e=>e?.code==='42501')?'Ventas BI está reservado a admin y corporativo.':'No se pudo calcular Ventas BI. Intenta con un rango más corto.');
-   return absolutizar({periodo:{desde:a.desde,hasta:a.hasta},comparacion:q.comparacion,sucursal:sucursal??'Consolidado',canal:a.canal??'todos',
-    ...resumenBI(x.data as SalidaBI,y.data as SalidaBI),
-    nota:'ventaNeta es sin IVA (no es la venta cobrada de la herramienta ventas). Mismo cálculo que Ventas → BI: pedidos entregados de Dodo IS y órdenes finalizadas del portal de Rappi; excluye comida del personal y cancelados. cambioPct compara contra comparacion; es null si ese periodo no tuvo venta. Horas en hora de México. categorias solo incluye renglones de Dodo IS. sinVenta=true significa que no hubo pedidos con esos filtros.',
+   return absolutizar({periodo,comparacion:q.comparacion,sucursal:sucursal??'Consolidado',canal:a.canal??'todos',filtroDias:a.dias??'todos',
+    ...resumenBI(x.data as SalidaBI,y.data as SalidaBI,f),
+    nota:'ventaNeta es sin IVA (no es la venta cobrada de la herramienta ventas). Mismo cálculo que Ventas → BI: pedidos entregados de Dodo IS y órdenes finalizadas del portal de Rappi; excluye comida del personal y cancelados. cambioPct compara contra comparacion; es null si ese periodo no tuvo venta. Horas en hora de México. categorias solo incluye renglones de Dodo IS. sinVenta=true significa que no hubo pedidos con esos filtros. Si periodo.incluyeHoy es true, hoy aún no cierra y la comparación favorece al periodo anterior: dilo. Si periodo.hastaPedido no es null, se recortó a hoy. diaPico usa ventaNetaPromedioDia (venta entre ocurrencias del día). semanas puede incluir semanas incompletas al inicio o al final.',
     fuente:q.fuente},origen);
   }
   case 'tiempos':{
@@ -57,7 +58,7 @@ export async function ejecutarHerramienta(supabase:SupabaseClient,rol:string,a:A
    // Postgres devuelve la hora como "13:05:00" y los montos como texto (igual que en Ventas).
    const r=resumenTiempos(pedidos.map(p=>({...p,hora:p.hora.slice(0,5),total:Number(p.total),total_sin_descuento:Number(p.total_sin_descuento)})),nombres);
    return absolutizar({periodo:{desde:a.desde,hasta:a.hasta},sucursal:sucursal??'Consolidado',...r,
-    nota:`Cocina: de que se empieza a que queda listo. Entrega: de que se pide a que se entrega. Lento = más de ${r.minutosLento} min en cocina. Solo cuentan pedidos de Dodo IS con hora registrada (ver cobertura): la sincronización automática de Dodo IS no guarda tiempos, solo los días importados desde Excel los tienen. sinDatos=true o poca cobertura significa que no hay tiempos suficientes, no que el servicio fuera rápido. Las medianas están en minutos.`,
+    nota:`Cocina: de que se empieza a que queda listo. Entrega: de que se pide a que se entrega. Lento = más de ${r.minutosLento} min en cocina. Solo cuentan pedidos de Dodo IS con hora registrada (ver cobertura): la sincronización automática de Dodo IS no guarda tiempos, solo los días importados desde Excel los tienen. sinDatos=true o poca cobertura significa que no hay tiempos suficientes, no que el servicio fuera rápido. Las medianas están en minutos. Para comparar sucursales usa solo las que tienen muestraChica=false (al menos ${r.minimoComparable} pedidos con tiempo) y menciona diasConTiempo y pctConTiempo de cada una: si cubren días distintos, la comparación es débil.`,
     fuente:`/ventas?${new URLSearchParams({desde:a.desde,hasta:a.hasta,...(sucursal?{sucursal}:{})})}`},origen);
   }
   case 'cortes':return conFuentes(await c.cortes(a.desde,a.hasta));

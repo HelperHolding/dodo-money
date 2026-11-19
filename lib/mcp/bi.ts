@@ -16,14 +16,35 @@ const r2=(n:number)=>Math.round(n*100)/100;
 const div=(a:number,b:number)=>(b>0?r2(a/b):null);
 const cambio=(a:number|null,b:number|null)=>(a===null||b===null||b===0?null:r2((a-b)/b*100));
 
-/** Mismos filtros que la pantalla Ventas → BI, solo con los que expone el conector. */
-export function filtrosBI(a:{desde:string;hasta:string;sucursal:string|null;canal:'pos'|'rappi'|null;comparar:'anterior'|'anio'}):FiltrosBI {
- return {rel:null,desde:a.desde,hasta:a.hasta,comp:a.comparar,suc:a.sucursal?[a.sucursal]:[],rfc:null,edad:null,canal:a.canal,origen:[],tipo:[],dia:[],hora:null,cat:[],prod:null,pago:[]};
+export type ArgsBI={desde:string;hasta:string;sucursal:string|null;canal:'pos'|'rappi'|null;comparar:'anterior'|'anio'|'semana';dias:number[]|null};
+const mas=(f:string,dias:number)=>{const x=new Date(`${f}T12:00:00Z`);x.setUTCDate(x.getUTCDate()+dias);return x.toISOString().slice(0,10);};
+const largo=(desde:string,hasta:string)=>Math.round((Date.parse(hasta)-Date.parse(desde))/86400000)+1;
+
+/** El periodo no puede pasar de hoy (día de operación): un hasta futuro se recorta y se avisa, como en la pantalla. */
+export function periodoBI(a:{desde:string;hasta:string},hoy:string) {
+ if(a.desde>hoy)throw Error('El periodo es futuro: todavía no hay ventas.');
+ const hasta=a.hasta>hoy?hoy:a.hasta;
+ return {desde:a.desde,hasta,hastaPedido:a.hasta>hoy?a.hasta:null,incluyeHoy:hasta===hoy};
 }
 
-export function parametrosBI(f:FiltrosBI) {
- const comp=rangoComparacion(f.desde,f.hasta,f.comp);
- return {actual:parametrosSQL(f,f),anterior:parametrosSQL(f,comp),comparacion:{tipo:f.comp,desde:comp.desde,hasta:comp.hasta},fuente:urlBI(f)};
+/** Mismos filtros que la pantalla Ventas → BI, solo con los que expone el conector. */
+export function filtrosBI(a:ArgsBI,hoy:string):FiltrosBI {
+ const p=periodoBI(a,hoy);
+ return {rel:null,desde:p.desde,hasta:p.hasta,comp:a.comparar==='anio'?'anio':'anterior',suc:a.sucursal?[a.sucursal]:[],rfc:null,edad:null,canal:a.canal,origen:[],tipo:[],dia:a.dias??[],hora:null,cat:[],prod:null,pago:[]};
+}
+
+/** semana: mismos días de la semana, recorridos semanas completas hacia atrás (sin encimarse con el periodo). */
+export function parametrosBI(f:FiltrosBI,comparar:ArgsBI['comparar']) {
+ const semanas=7*Math.ceil(largo(f.desde,f.hasta)/7);
+ const comp=comparar==='semana'?{desde:mas(f.desde,-semanas),hasta:mas(f.hasta,-semanas)}:rangoComparacion(f.desde,f.hasta,comparar);
+ return {actual:parametrosSQL(f,f),anterior:parametrosSQL(f,comp),comparacion:{tipo:comparar,desde:comp.desde,hasta:comp.hasta},fuente:urlBI(f)};
+}
+
+/** Cuántas veces cae cada día de la semana (1 = lunes … 7 = domingo) en el periodo. */
+export function ocurrencias(desde:string,hasta:string):Map<number,number> {
+ const n=new Map<number,number>();
+ for(let f=desde;f<=hasta;f=mas(f,1)){const d=((new Date(`${f}T12:00:00Z`).getUTCDay()+6)%7)+1;n.set(d,(n.get(d)??0)+1);}
+ return n;
 }
 
 function kpis(s:SalidaBI){
@@ -46,9 +67,10 @@ function conAnterior(filas:readonly {k:number;ventas:Num;tickets:Num}[],previas:
 const pico=<T extends {ventaNeta:number}>(xs:T[])=>xs.length?xs.reduce((m,x)=>(x.ventaNeta>m.ventaNeta?x:m)):null;
 
 /** Resumen del periodo contra el de comparación: KPIs, desgloses con participación y cambio por día y por hora. */
-export function resumenBI(actual:SalidaBI,anterior:SalidaBI) {
- const k=kpis(actual),a=kpis(anterior),total=k.ventaNeta;
- const dias=conAnterior(actual.dias.map(x=>({...x,k:x.dia})),anterior.dias.map(x=>({...x,k:x.dia})),total).map(({k,...x})=>({dia:DIAS[k-1]??String(k),...x}));
+export function resumenBI(actual:SalidaBI,anterior:SalidaBI,periodo:{desde:string;hasta:string}) {
+ const k=kpis(actual),a=kpis(anterior),total=k.ventaNeta,veces=ocurrencias(periodo.desde,periodo.hasta);
+ const dias=conAnterior(actual.dias.map(x=>({...x,k:x.dia})),anterior.dias.map(x=>({...x,k:x.dia})),total)
+  .map(({k,...x})=>({dia:DIAS[k-1]??String(k),...x,ocurrencias:veces.get(k)??0,ventaNetaPromedioDia:div(x.ventaNeta,veces.get(k)??0)}));
  const horas=conAnterior(actual.horas.map(x=>({...x,k:x.hora})),anterior.horas.map(x=>({...x,k:x.hora})),total).map(({k,...x})=>({hora:k,...x}));
  return {
   sinVenta:k.tickets===0,
@@ -56,7 +78,7 @@ export function resumenBI(actual:SalidaBI,anterior:SalidaBI) {
   cambioPct:{ventaNeta:cambio(k.ventaNeta,a.ventaNeta),tickets:cambio(k.tickets,a.tickets),ticketPromedio:cambio(k.ticketPromedio,a.ticketPromedio),piezasPorTicket:cambio(k.piezasPorTicket,a.piezasPorTicket)},
   canales:desglose(actual.canales,'canal',total),origenes:desglose(actual.origenes,'origen',total),
   tipos:desglose(actual.tipos,'tipo',total),pagos:desglose(actual.pagos,'pago',total),
-  dias,horas,diaPico:pico(dias),horaPico:pico(horas),
+  dias,horas,diaPico:dias.length?dias.reduce((m,x)=>((x.ventaNetaPromedioDia??0)>(m.ventaNetaPromedioDia??0)?x:m)):null,horaPico:pico(horas),
   semanas:actual.semanas.map(x=>({semana:x.semana,ventaNeta:r2(Number(x.ventas)),tickets:Number(x.tickets)})),
   categorias:actual.categorias.map(x=>({categoria:x.categoria,ventaNeta:r2(Number(x.ventas)),piezas:Number(x.piezas)})),
  };

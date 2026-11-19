@@ -27,10 +27,12 @@ test('validar: productos con búsqueda y categoría opcionales',()=>{
  for(const [a,re] of casos)assert.throws(()=>validarArgumentos('productos',a),re,JSON.stringify(a));
 });
 test('validar: bi hasta 93 días, canal y comparación',()=>{
- assert.deepEqual(validarArgumentos('bi',{desde:'2026-11-09',hasta:'2026-11-15'}),{herramienta:'bi',desde:'2026-11-09',hasta:'2026-11-15',sucursal:null,canal:null,comparar:'anterior'});
- assert.deepEqual(validarArgumentos('bi',{desde:'2026-08-01',hasta:'2026-10-31',sucursal:SUC,canal:'rappi',comparar:'anio'}),{herramienta:'bi',desde:'2026-08-01',hasta:'2026-10-31',sucursal:SUC,canal:'rappi',comparar:'anio'});
+ assert.deepEqual(validarArgumentos('bi',{desde:'2026-11-09',hasta:'2026-11-15'}),{herramienta:'bi',desde:'2026-11-09',hasta:'2026-11-15',sucursal:null,canal:null,comparar:'anterior',dias:null});
+ assert.deepEqual(validarArgumentos('bi',{desde:'2026-08-01',hasta:'2026-10-31',sucursal:SUC,canal:'rappi',comparar:'anio'}),{herramienta:'bi',desde:'2026-08-01',hasta:'2026-10-31',sucursal:SUC,canal:'rappi',comparar:'anio',dias:null});
+ assert.deepEqual(validarArgumentos('bi',{desde:'2026-11-16',hasta:'2026-11-19',comparar:'semana',dias:[6,5,5]}),{herramienta:'bi',desde:'2026-11-16',hasta:'2026-11-19',sucursal:null,canal:null,comparar:'semana',dias:[5,6]});
+ assert.equal((validarArgumentos('bi',{desde:'2026-11-16',hasta:'2026-11-19',dias:[]}) as {dias:unknown}).dias,null);
  assert.equal((validarArgumentos('bi',{desde:'2026-11-09',hasta:'2026-11-15',canal:'',comparar:null}) as {canal:unknown}).canal,null);
- const casos:[unknown,RegExp][]=[[{desde:'2026-08-01',hasta:'2026-11-02'},/1 a 93 días/],[{desde:'2026-11-15',hasta:'2026-11-09'},/1 a 93 días/],[{desde:'2026-11-09',hasta:'2026-11-15',canal:'uber'},/canal/],[{desde:'2026-11-09',hasta:'2026-11-15',comparar:'mes'},/comparar/],[{desde:'2026-02-30',hasta:'2026-03-01'},/Fecha inválida/]];
+ const casos:[unknown,RegExp][]=[[{desde:'2026-08-01',hasta:'2026-11-02'},/1 a 93 días/],[{desde:'2026-11-15',hasta:'2026-11-09'},/1 a 93 días/],[{desde:'2026-11-09',hasta:'2026-11-15',canal:'uber'},/canal/],[{desde:'2026-11-09',hasta:'2026-11-15',comparar:'mes'},/comparar/],[{desde:'2026-11-09',hasta:'2026-11-15',dias:[8]},/dias/],[{desde:'2026-11-09',hasta:'2026-11-15',dias:'viernes'},/dias/],[{desde:'2026-02-30',hasta:'2026-03-01'},/Fecha inválida/]];
  for(const [a,re] of casos)assert.throws(()=>validarArgumentos('bi',a),re,JSON.stringify(a));
 });
 test('validar: tiempos hasta 31 días',()=>{

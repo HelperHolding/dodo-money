@@ -7,6 +7,10 @@ admin la lee). Límites: 10 por minuto, 300 por día.
 
 ## 1. Supabase (proyecto de producción)
 
+Cada migración se corre **una sola vez**. En producción ya corrieron `20261119120000_grok_mcp.sql` y
+`20261119190000_grok_mcp_productos.sql`: no las vuelvas a correr, en especial la de productos después de la de bi y
+tiempos, porque regresaría el registro a siete herramientas. En un proyecto nuevo:
+
 1. SQL Editor → corre, en orden, `supabase/migrations/20261119120000_grok_mcp.sql`,
    `supabase/migrations/20261119190000_grok_mcp_productos.sql` y `supabase/migrations/20261120120000_grok_mcp_bi_tiempos.sql`.
 2. Corre la prueba de cada una: `supabase/pruebas/20261119120000_grok_mcp.sql`,
