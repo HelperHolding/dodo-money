@@ -1,8 +1,8 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ErrorDodo, recepcionesDe, tokenDeAcceso, ventasDelDia } from "@/lib/dodois/cliente";
+import { ErrorDodo, recepcionesDe, tiemposDelDia, tokenDeAcceso, ventasDelDia } from "@/lib/dodois/cliente";
 import { DIAS_RECEPCIONES, traducirRecepciones, ventanaRecepciones } from "@/lib/dodois/recepciones";
-import { fechaASincronizar, traducirVentas, ventanaDelDia, type OrigenSincronizacion } from "@/lib/dodois/ventas";
+import { fechaASincronizar, tiemposDePedidos, traducirVentas, ventanaDelDia, type OrigenSincronizacion } from "@/lib/dodois/ventas";
 import { tamanoPorNombre } from "@/lib/ventas/calculos";
 import { ivaDe, resumirDias } from "@/lib/ventas/pedidos";
 
@@ -38,14 +38,21 @@ export async function sincronizarVentas(admin: SupabaseClient, origen: OrigenSin
     let r: ResultadoDia;
     try {
       const ventas = await ventasDelDia(token, s.dodois_unit_id, ventanaDelDia(fecha));
-      const t = traducirVentas(ventas, { sucursalDeUnidad: new Map([[s.dodois_unit_id, s.id]]), tamanoDe: tamanoPorNombre, ivaDe });
+      // Los tiempos de cocina van aparte: si fallan, las ventas se guardan igual y la base conserva los tiempos que ya tenía.
+      let tiempos: ReturnType<typeof tiemposDePedidos> | undefined, sinTiempos = "";
+      try {
+        tiempos = tiemposDePedidos(await tiemposDelDia(token, s.dodois_unit_id, ventanaDelDia(fecha)));
+      } catch (e) {
+        sinTiempos = ` Sin tiempos de cocina: ${(e as Error).message}`;
+      }
+      const t = traducirVentas(ventas, { sucursalDeUnidad: new Map([[s.dodois_unit_id, s.id]]), tamanoDe: tamanoPorNombre, ivaDe, tiempos });
       desconocidos = t.desconocidos;
-      const omitidos = t.callCenter.pedidos ? ` ${t.callCenter.pedidos} pedidos de call center ignorados (${t.callCenter.total.toFixed(2)}); Rappi sale del portal.` : "";
+      const omitidos = (t.callCenter.pedidos ? ` ${t.callCenter.pedidos} pedidos de call center ignorados (${t.callCenter.total.toFixed(2)}); Rappi sale del portal.` : "") + sinTiempos;
       const pedidos = t.pedidos.filter((p) => p.fecha === fecha);
       const ids = new Set(pedidos.map((p) => p.dodo_id));
       const productos = t.productos.filter((x) => ids.has(x.pedido_id));
       const dia = resumirDias(
-        pedidos.map((p) => ({ ...p, sucursal: s.id, inicio_coccion: null, listo: null, entregado: null })),
+        pedidos.map((p) => ({ ...p, sucursal: s.id })),
         productos.map((x) => ({ pedido_id: x.pedido_id, nombre: x.nombre, precio: x.precio, combo: x.combo })))[0];
       const resumen = dia && {
         ...dia.resumen,

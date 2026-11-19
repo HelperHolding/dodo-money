@@ -49,7 +49,7 @@ test("traducirVentas: ids en mayúsculas, hora en minutos, pago y origen, totale
 test("el día resumido con la misma lógica de Datos brutos", () => {
   const t = traducirVentas(VENTAS, opciones);
   const dias = resumirDias(
-    t.pedidos.map((x) => ({ ...x, sucursal: x.sucursal_id, inicio_coccion: null, listo: null, entregado: null })),
+    t.pedidos.map((x) => ({ ...x, sucursal: x.sucursal_id })),
     t.productos.map((x) => ({ pedido_id: x.pedido_id, nombre: x.nombre, precio: x.precio, combo: x.combo })));
   assert.equal(dias.length, 1);
   assert.deepEqual(dias[0].resumen, { pedidos: 4, total: 1017, efectivo: 614, tarjeta: 403, en_linea: 0, iva: 140.27 });
@@ -95,4 +95,40 @@ test("traducirVentas: ignora los pedidos de call center (caja Delivery / agregad
   assert.deepEqual(t.callCenter, { pedidos: 2, total: 219 });
   assert.equal(esCallCenter({ cashBoxType: "Dine-in", orderSource: "MobileApp", aggregatorName: null }), false);
   assert.equal(esCallCenter({ cashBoxType: "Delivery", orderSource: null, aggregatorName: null }), true);
+});
+
+import { tiemposDePedidos, type TiempoApi } from "./ventas.ts";
+import { tiempos as tiemposDeCocina } from "../ventas/pedidos.ts";
+test("tiempos de cocina y entrega de Producción → orders-handover-time, con las columnas del Excel", () => {
+  // Pedido real de Zapopan-1 del 18/11/2026 (Dine-in): entra al tracking 12:25:16, espera 87 s, cocina 431 s, repisa 19 s.
+  const api: TiempoApi[] = [
+    { orderId: "11f1e37d449b7d35937e681445897fe6", orderTrackingStartAtLocal: "2026-11-18T12:25:16", trackingPendingTime: 87, cookingTime: 431, heatedShelfTime: 19 },
+    // Cruza la medianoche: la fecha avanza.
+    { orderId: "aa01", orderTrackingStartAtLocal: "2026-11-18T23:58:30", trackingPendingTime: 30, cookingTime: 300, heatedShelfTime: 60 },
+    { orderId: "", orderTrackingStartAtLocal: "2026-11-18T12:00:00", trackingPendingTime: 1, cookingTime: 1, heatedShelfTime: 1 },
+  ];
+  const mapa = tiemposDePedidos(api);
+  assert.equal(mapa.size, 2);
+  assert.deepEqual(mapa.get("11F1E37D449B7D35937E681445897FE6"), {
+    inicio_coccion: "2026-11-18T12:26:43-06:00", listo: "2026-11-18T12:33:54-06:00", entregado: "2026-11-18T12:34:13-06:00" });
+  assert.deepEqual(mapa.get("AA01"), { inicio_coccion: "2026-11-18T23:59:00-06:00", listo: "2026-11-19T00:04:00-06:00", entregado: "2026-11-19T00:05:00-06:00" });
+
+  const ventas = [
+    venta("11f1e37d449b7d35937e681445897fe6", "2026-11-18T12:25:16", "Card", "Dine-in", [p("bb01", "Pepperoni Grande", 159, 159)]),
+    // Solo bebida: Dodo IS no le da tiempos; queda en null como en el Excel.
+    venta("11f1e37ec0ffee00000000000000beef", "2026-11-18T12:36:40", "Cash", "Dine-in", [p("bb02", "Coca Cola 0,6 L", 33, 33)]),
+  ];
+  const t = traducirVentas(ventas, { ...opciones, tiempos: mapa });
+  assert.deepEqual(t.pedidos.map((x) => [x.inicio_coccion, x.listo, x.entregado]), [
+    ["2026-11-18T12:26:43-06:00", "2026-11-18T12:33:54-06:00", "2026-11-18T12:34:13-06:00"],
+    [null, null, null],
+  ]);
+  // Sin el mapa (los tiempos fallaron), los pedidos salen igual, sin tiempos.
+  assert.ok(traducirVentas(ventas, opciones).pedidos.every((x) => x.inicio_coccion === null && x.listo === null && x.entregado === null));
+
+  // Lo que la sección de tiempos de Ventas y la herramienta tiempos del conector calculan con esto.
+  const r = tiemposDeCocina(t.pedidos);
+  assert.equal(Math.round(r.medianaCocina! * 60), 431);
+  assert.equal(Math.round(r.medianaEntrega! * 60), 553); // hora del pedido 12:25 (en minutos) → 12:34:13
+  assert.equal(r.sinTiempo, 1);
 });

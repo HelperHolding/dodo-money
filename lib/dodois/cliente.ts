@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerPaginas } from "./paginas";
 import { ErrorDodo, tokenDeAcceso as resolverToken, type Almacen } from "./tokens";
 import type { RecepcionApi } from "./recepciones";
-import type { VentaApi } from "./ventas";
+import type { TiempoApi, VentaApi } from "./ventas";
 import type { ExistenciaApi } from "../inventario";
 
 export { ErrorDodo };
@@ -72,6 +72,13 @@ export async function ventasDelDia(token: string, unitId: string, ventana: { fro
     return { items: r.sales ?? [], fin: r.isEndOfListReached };
   }).catch((e) => { throw new ErrorDodo((e as Error).message); });
   return [...new Map(ventas.map((v) => [v.orderId, v])).values()];
+}
+
+/** Tiempos de cocina y entrega por pedido de una unidad (máx. 31 días; la respuesta no viene por páginas). */
+export async function tiemposDelDia(token: string, unitId: string, ventana: { from: string; to: string }): Promise<TiempoApi[]> {
+  const r = await getDodo<{ ordersHandoverTime?: TiempoApi[] }>(token,
+    `${API}/dodopizza/mx/production/orders-handover-time?units=${unitId}&from=${ventana.from}&to=${ventana.to}`);
+  return r.ordersHandoverTime ?? [];
 }
 
 /**
