@@ -9,7 +9,7 @@ export const maxDuration=60;
 // Conector MCP de solo lectura para Grok Bot (docs/superpowers/specs/2026-11-19-grok-mcp-design.md).
 async function conectar(origen:string):Promise<Conexion> {
  const supabase=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim(),{auth:{persistSession:false,autoRefreshToken:false}});
- const {data,error}=await supabase.auth.signInWithPassword({email:process.env.GROK_MCP_CUENTA_EMAIL!,password:process.env.GROK_MCP_CUENTA_PASSWORD!});
+ const {data,error}=await supabase.auth.signInWithPassword({email:process.env.GROK_MCP_CUENTA_EMAIL!.trim(),password:process.env.GROK_MCP_CUENTA_PASSWORD!});
  if(error||!data.user){console.error('grok-mcp: inicio de sesión fallido',error?.message);throw Error('La cuenta de Grok no está configurada.');}
  const {data:perfil}=await supabase.from('perfiles').select('rol,activo,debe_cambiar_contrasena').eq('id',data.user.id).maybeSingle<{rol:string;activo:boolean;debe_cambiar_contrasena:boolean}>();
  if(!perfil||!perfil.activo||perfil.debe_cambiar_contrasena||!['admin','corporativo'].includes(perfil.rol))throw Error('Sin acceso al conector.');

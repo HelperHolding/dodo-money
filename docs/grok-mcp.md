@@ -27,7 +27,8 @@ Settings → Environment Variables:
 | `GROK_MCP_CUENTA_EMAIL` | Correo de la cuenta Grok Bot |
 | `GROK_MCP_CUENTA_PASSWORD` | Su contraseña |
 
-Después, Redeploy del último despliegue de producción.
+Pega la contraseña exactamente como es, sin espacios ni saltos de línea al final; la llave y el correo se recortan
+solos. Después, Redeploy del último despliegue de producción.
 
 ## 3. Grok Bot
 

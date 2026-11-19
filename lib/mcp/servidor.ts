@@ -19,8 +19,10 @@ async function conTiempo<T>(p:Promise<T>,ms:number):Promise<T> {
 }
 
 export async function manejarMCP(e:Entrada,d:Dependencias):Promise<Salida> {
- if(!d.llave||!d.configurada)return {status:503,cuerpo:{error:'Conector no configurado.'}};
- if(!llaveValida(e.autorizacion,d.llave))return {status:401,cuerpo:{error:'No autorizado.'}};
+ // Vercel conserva espacios o saltos de línea pegados por error en la variable; se ignoran.
+ const llave=d.llave?.trim();
+ if(!llave||!d.configurada)return {status:503,cuerpo:{error:'Conector no configurado.'}};
+ if(!llaveValida(e.autorizacion,llave))return {status:401,cuerpo:{error:'No autorizado.'}};
  if(e.metodo!=='POST')return {status:405,cuerpo:{error:'Método no permitido.'}};
  if(e.cuerpo.length>LIMITE_CUERPO)return {status:413,cuerpo:fallo(null,-32600,'Petición demasiado grande.')};
  const p=leerPeticion(e.cuerpo);

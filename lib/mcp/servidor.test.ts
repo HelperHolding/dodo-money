@@ -71,3 +71,8 @@ test('servidor: fallas de conexión, límite, consulta, tiempo y cierre',async()
  const sc=await manejarMCP(post(rpc('tools/call',{name:'sucursales'})),deps(sinCierre.c));
  assert.deepEqual(texto(sc),{content:[{type:'text',text:'La respuesta no pudo registrarse. Vuelve a intentar.'}],isError:true});
 });
+test('servidor: la llave configurada con espacios o salto de línea al final sigue funcionando',async()=>{
+ for(const llave of [`${LLAVE}\n`,` ${LLAVE} `,`${LLAVE}\r\n`])
+  assert.equal((await manejarMCP(post(rpc('ping')),deps(undefined,{llave}))).status,200,JSON.stringify(llave));
+ assert.equal((await manejarMCP(post(rpc('ping')),deps(undefined,{llave:'  \n'}))).status,503);
+});
