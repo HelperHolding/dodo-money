@@ -7,6 +7,7 @@ test('herramientas: siete, con esquema cerrado',()=>{
  assert.deepEqual(HERRAMIENTAS.map(h=>h.name),['sucursales','ventas','productos','cortes','costos','manuales','pl']);
  for(const h of HERRAMIENTAS){assert.equal((h.inputSchema as {additionalProperties:boolean}).additionalProperties,false,h.name);assert.ok(h.description.length>20,h.name);}
  assert.match(INSTRUCCIONES,/no es cero/);
+ assert.match(HERRAMIENTAS.find(h=>h.name==='productos')!.description,/porSabor/);
 });
 test('validar: casos válidos',()=>{
  assert.deepEqual(validarArgumentos('sucursales',{}),{herramienta:'sucursales'});

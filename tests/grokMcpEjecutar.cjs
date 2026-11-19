@@ -38,5 +38,6 @@ test('ejecutar: productos usa las ventas del tablero, filtra y enlaza al periodo
  assert.deepEqual(r.totales,{piezas:3,importe:600,ventaNeta:517.24});
  assert.deepEqual(r.diasConDatos,['2026-11-10','2026-11-11']);
  assert.equal(r.fuente,'https://dodo.test/ventas?desde=2026-11-09&hasta=2026-11-15&sucursal='+SUC);
- assert.match(r.nota,/tamaño/);
+ assert.match(r.nota,/porSabor/);assert.match(r.nota,/Mitad y mitad/);assert.match(r.nota,/rappiSinVincular/);assert.match(r.nota,/sinCoincidencias/);
+ assert.deepEqual(r.porSabor.map(x=>x.sabor),['Pizza Pepperoni'.replace(/^Pizza /,'')]);
 });

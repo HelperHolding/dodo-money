@@ -26,7 +26,7 @@ export async function ejecutarHerramienta(supabase:SupabaseClient,rol:string,a:A
    const p={desde:a.desde,hasta:a.hasta},datos=await datosVentas(supabase,sucursal,p,periodoAnterior(p));
    return absolutizar({periodo:p,sucursal:sucursal??'Consolidado',filtro:{busqueda:a.busqueda,categoria:a.categoria},...resumenProductos(datos.renglones,a),
     diasConDatos:[...new Set(datos.dias.map(d=>d.fecha))],
-    nota:'importe es venta cobrada (con IVA y descuentos); ventaNeta resta IVA. Cada tamaño es un producto distinto. Dodo IS y Rappi combinados como en el tablero. Un día sin datos no es venta cero. totales suma todos los productos que coinciden aunque la lista venga recortada.',
+    nota:'importe es venta cobrada (con IVA y descuentos); ventaNeta resta IVA. Dodo IS y Rappi combinados como en el tablero. Para un sabor usa porSabor, que suma sus tamaños sin mezclar sabores parecidos; totales suma todo lo que coincide (sin rappiSinVincular) aunque la lista venga recortada. rappiSinVincular son combos o renglones de Rappi con varias piezas: no son pizzas sueltas del sabor. Las pizzas Mitad y mitad no registran sabor (mitadYMitad): dilo si preguntan por un sabor. sinCoincidencias=true significa que ningún nombre coincide, no venta cero. Un día sin datos no es venta cero.',
     fuente:`/ventas?${new URLSearchParams({...p,...(sucursal?{sucursal}:{})})}`},origen);
   }
   case 'cortes':return conFuentes(await c.cortes(a.desde,a.hasta));

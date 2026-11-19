@@ -41,3 +41,44 @@ test('productos: recorta la lista al límite pero los totales cuentan todo',()=>
  assert.equal(s.productos.length,50);assert.equal(s.totalProductos,60);assert.equal(s.truncado,true);
  assert.equal(s.totales.piezas,60);assert.equal(s.productos[0].importe,159);
 });
+
+// Nombres reales de Dodo IS y Rappi (catálogo y cargas del repo).
+const REALES=[
+ r(11,'Pepperoni Grande','pizza',10,2000),
+ r(12,'Pepperoni Mediano T','pizza',5,700),
+ r(13,'Pepperoni 30Т','pizza',2,300),
+ r(14,'Doble pepperoni 35','pizza',3,750),
+ r(15,'Pepperoni Mango Grande','pizza',4,880),
+ r(16,'Mitad y mitad Grande','pizza',6,1260),
+ r(-901,'Plan Dúo · Pepperoni Grande, Hawaiana Grande',null,2,700),
+ r(17,'Dip ranch','snack',8,160),
+];
+test('productos: agrupa por sabor sin tamaño y no mezcla sabores parecidos',()=>{
+ const s=resumenProductos(REALES,{busqueda:'pepperoni',categoria:null});
+ assert.deepEqual(s.porSabor.map(x=>[x.sabor,x.piezas]),[['Pepperoni',17],['Pepperoni Mango',4],['Doble pepperoni',3]]);
+ assert.equal(s.productos.find(p=>p.dodo_id===14)!.sabor,'Doble pepperoni');
+});
+test('productos: los renglones de Rappi sin vincular (combos) van aparte y no entran a totales ni a sabores',()=>{
+ const s=resumenProductos(REALES,{busqueda:'pepperoni',categoria:null});
+ assert.equal(s.productos.find(p=>p.dodo_id===-901)!.rappiSinVincular,true);
+ assert.deepEqual(s.rappiSinVincular,{productos:1,piezas:2,importe:700});
+ assert.equal(s.totales.piezas,24);
+});
+test('productos: al buscar un sabor informa las Mitad y mitad del periodo como no atribuibles',()=>{
+ assert.deepEqual(resumenProductos(REALES,{busqueda:'pepperoni',categoria:null}).mitadYMitad,{piezas:6,importe:1260});
+ assert.equal(resumenProductos(REALES,{busqueda:null,categoria:'pizza'}).mitadYMitad,null);
+});
+test('productos: "pizza pepperoni" busca por palabras e ignora "pizza"',()=>{
+ const s=resumenProductos(REALES,{busqueda:'Pizza de Pepperoni',categoria:null});
+ assert.equal(s.totales.piezas,24);assert.equal(s.sinCoincidencias,false);
+});
+test('productos: sin coincidencias lo dice en lugar de parecer venta cero',()=>{
+ const s=resumenProductos(REALES,{busqueda:'calzone',categoria:null});
+ assert.equal(s.sinCoincidencias,true);
+ assert.equal(resumenProductos(REALES,{busqueda:null,categoria:'postre'}).sinCoincidencias,false);
+});
+test('productos: con filtro de categoría cuenta lo que quedó fuera por no tener categoría',()=>{
+ const s=resumenProductos(REALES,{busqueda:'pepperoni',categoria:'pizza'});
+ assert.deepEqual(s.sinCategoria,{productos:1,piezas:2});
+ assert.equal(resumenProductos(REALES,{busqueda:'pepperoni',categoria:null}).sinCategoria,null);
+});
