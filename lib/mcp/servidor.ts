@@ -1,5 +1,8 @@
+// @ts-expect-error Node strip-types requiere extensión explícita.
 import {llaveValida} from './auth.ts';
+// @ts-expect-error Node strip-types requiere extensión explícita.
 import {leerPeticion,esRespuesta,ok,fallo,inicializar,resultadoTexto} from './protocolo.ts';
+// @ts-expect-error Node strip-types requiere extensión explícita.
 import {HERRAMIENTAS,INSTRUCCIONES,validarArgumentos,type Argumentos} from './herramientas.ts';
 
 export type Conexion={rol:string;reservar(herramienta:string,argumentos:Record<string,unknown>):Promise<string>;cerrar(id:string,estado:'completada'|'error',error:string|null):Promise<void>;ejecutar(a:Argumentos):Promise<unknown>};

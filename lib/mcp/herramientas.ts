@@ -1,3 +1,4 @@
+// @ts-expect-error Node strip-types requiere extensión explícita.
 import {fechaIA,rangoIA} from '../ia/validacion.ts';
 
 export type Argumentos=

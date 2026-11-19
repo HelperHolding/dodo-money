@@ -1,7 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {consultasIA} from '@/lib/ia/consultas';
 import type {FuenteIA} from '@/lib/ia/validacion';
-import {absolutizar,type Argumentos} from './herramientas.ts';
+import {absolutizar,type Argumentos} from './herramientas';
 
 // Ejecuta una herramienta ya validada con la sesión de la cuenta de servicio; RLS sigue aplicando.
 export async function ejecutarHerramienta(supabase:SupabaseClient,rol:string,a:Argumentos,origen:string):Promise<unknown> {
@@ -16,10 +16,12 @@ export async function ejecutarHerramienta(supabase:SupabaseClient,rol:string,a:A
   if(error||!data)throw Error('Sucursal no disponible. Usa la herramienta sucursales para ver los id válidos.');
  }
  const fuentes:FuenteIA[]=[],c=consultasIA(supabase,sucursal,rol,fuentes);
- const r=a.herramienta==='ventas'?await c.ventas(a.desde,a.hasta)
-  :a.herramienta==='cortes'?await c.cortes(a.desde,a.hasta)
-  :a.herramienta==='costos'?await c.costos(a.busqueda,a.fecha)
-  :a.herramienta==='manuales'?await c.manuales(a.busqueda)
-  :await c.pl(a.tipo,a.clave);
- return absolutizar({...r,fuentes},origen);
+ const conFuentes=(r:object)=>absolutizar({...r,fuentes},origen);
+ switch(a.herramienta){
+  case 'ventas':return conFuentes(await c.ventas(a.desde,a.hasta));
+  case 'cortes':return conFuentes(await c.cortes(a.desde,a.hasta));
+  case 'costos':return conFuentes(await c.costos(a.busqueda,a.fecha));
+  case 'manuales':return conFuentes(await c.manuales(a.busqueda));
+  case 'pl':return conFuentes(await c.pl(a.tipo,a.clave));
+ }
 }
