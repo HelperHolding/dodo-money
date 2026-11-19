@@ -675,6 +675,73 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .linea-historial-punto { fill: var(--accion); stroke: var(--superficie); stroke-width: 2; }
 .linea-historial-punto[data-parcial] { fill: var(--superficie); stroke: var(--accion); }
 
+/* ─── Gráficas de Ventas BI ─── */
+.bi-medidor { margin: 0; text-align: center; }
+.bi-medidor svg { width: 100%; max-width: 280px; height: auto; }
+.bi-medidor-tramo { fill: none; stroke-width: 16; }
+.bi-medidor-tramo-bajo { stroke: var(--alerta); }
+.bi-medidor-tramo-medio { stroke: var(--ambar); }
+.bi-medidor-tramo-alto { stroke: var(--cuadra); }
+.bi-medidor-aguja { transform-box: view-box; transform-origin: 100px 100px; stroke: var(--tinta-2); fill: var(--tinta-2); }
+.bi-medidor-aguja line { stroke-width: 3; stroke-linecap: round; }
+.bi-medidor-valor { font-size: 18px; font-weight: 700; fill: currentColor; }
+.bi-medidor-titulo { color: var(--tinta-2); font-size: 13px; }
+.bi-barras-h { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.bi-barras-h-fila { display: grid; grid-template-columns: minmax(80px, 28%) 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
+.bi-barras-h-pista { display: block; height: 14px; }
+.bi-barras-h-barra { display: flex; height: 100%; min-width: 2px; border-radius: 3px; overflow: hidden; background: var(--accion); }
+.bi-barras-h-parte { display: block; height: 100%; background: var(--cat, var(--dato-otro)); }
+.cat-efectivo { --cat: var(--dato-1); }
+.cat-tarjeta { --cat: var(--dato-4); }
+.cat-en_linea { --cat: var(--dato-3); }
+.cat-otro-pago { --cat: var(--dato-otro); }
+.bi-barras-h-detalle { color: var(--tinta-2); white-space: nowrap; }
+.bi-barras-linea, .bi-lineas-anios { margin: 0; }
+.bi-barras-linea svg, .bi-lineas-anios svg { width: 100%; height: auto; }
+.bi-barras-linea-guia, .bi-lineas-anios-guia { stroke: var(--linea); stroke-width: 1; }
+.bi-barras-linea-eje, .bi-lineas-anios-eje { fill: var(--tinta-2); font-size: 11px; }
+.bi-barras-linea-barra { fill: var(--accion); opacity: .5; }
+.bi-barras-linea-trazo { fill: none; stroke: var(--dato-2); stroke-width: 2.5; }
+.bi-barras-linea-punto { fill: var(--dato-2); }
+.bi-lineas-anios-trazo { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linejoin: round; }
+.bi-lineas-anios-punto { fill: currentColor; }
+.bi-lineas-anios-leyenda { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+.bi-lineas-anios-muestra { display: inline-block; width: 12px; height: 3px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+
+/* ─── Pantalla Ventas BI: filtros plegables, KPIs, medidores y filas de gráficas. Colores solo con tokens (día y noche) ─── */
+.cat-pos { --cat: var(--dato-pos, var(--dato-1)); }
+.cat-kiosco { --cat: var(--violeta); }
+/* Origen «otro» de Dodo IS: cat-otro es la categoría de producto; el agregador ya va como Rappi, así que toma su color. */
+.cat-otro-origen { --cat: var(--dato-4); }
+.cat-sin_categoria { --cat: var(--dato-sin); }
+.bi-filtros { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); padding: 12px 16px; min-width: 0; }
+.bi-filtros > summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+.bi-filtros[open] > summary { margin-bottom: 12px; }
+.bi-filtros-campos { display: grid; gap: 14px; min-width: 0; }
+.bi-filtros-fila { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); align-items: start; }
+.bi-filtros-campos :is(input:not([type="checkbox"]), select) { width: 100%; min-width: 0; }
+.bi-casillas > div { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.bi-casillas label { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; min-height: 32px; }
+.bi-cuerpo { display: grid; gap: 16px; min-width: 0; margin-top: 16px; }
+.bi-cuerpo[aria-busy="true"] { opacity: .55; transition: opacity var(--dur-media) var(--curva); cursor: progress; }
+.bi-kpis { display: grid; gap: 12px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.bi-medidores { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+.bi-fila { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.bi-fila-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bi-bloque { min-width: 0; }
+.bi-bloque > h2 { font-size: 1.05rem; }
+.bi-nota { color: var(--tinta-2); font-size: var(--t-sm, .85rem); }
+.bi-diferencia { font: 700 1.8rem var(--display); font-variant-numeric: tabular-nums; }
+.bi-diferencia[data-signo="mas"] { color: var(--cuadra); }
+.bi-diferencia[data-signo="menos"] { color: var(--alerta); }
+.bi-leyenda { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; }
+.bi-leyenda li { display: inline-flex; align-items: center; gap: 6px; }
+.bi-faltan { margin: 6px 0 0; padding-left: 18px; }
+.bi-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 1100px) { .bi-fila-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .bi-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .bi-fila, .bi-fila-3 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .bi-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bi-medidores { grid-template-columns: minmax(0, 1fr); } .bi-filtros { padding: 10px 12px; } }
+
 /* ─── Menú por áreas: secciones con título pequeño y áreas con ícono; pestañas del área arriba de la página ─── */
 .lateral-seccion { padding: 10px 8px 2px; }
 .lateral-seccion ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
