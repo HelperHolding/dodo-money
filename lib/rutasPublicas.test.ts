@@ -15,3 +15,8 @@ test("correos: seguimiento, n8n y baja sin sesión; la sección no", () => {
   for (const r of ["/api/correos/siguiente", "/api/correos/resultado", "/api/correos/a/tok", "/api/correos/c/tok", "/baja/tok"]) assert.equal(rutaSinSesion(r), true, r);
   for (const r of ["/correos", "/correos/contactos", "/bajas"]) assert.equal(rutaSinSesion(r), false, r);
 });
+
+test("conector de Grok: /api/mcp se autentica con su llave; subrutas no", () => {
+  assert.equal(rutaSinSesion("/api/mcp"), true);
+  for (const r of ["/api/mcp/x", "/api/mcpx", "/api"]) assert.equal(rutaSinSesion(r), false, r);
+});
