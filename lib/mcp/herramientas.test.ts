@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {HERRAMIENTAS,INSTRUCCIONES,validarArgumentos,absolutizar} from './herramientas.ts';
 
 const SUC='0c9a8b7e-1234-4abc-8def-0123456789ab';
-test('herramientas: siete, con esquema cerrado',()=>{
- assert.deepEqual(HERRAMIENTAS.map(h=>h.name),['sucursales','ventas','productos','cortes','costos','manuales','pl']);
+test('herramientas: nueve, con esquema cerrado',()=>{
+ assert.deepEqual(HERRAMIENTAS.map(h=>h.name),['sucursales','ventas','productos','bi','tiempos','cortes','costos','manuales','pl']);
  for(const h of HERRAMIENTAS){assert.equal((h.inputSchema as {additionalProperties:boolean}).additionalProperties,false,h.name);assert.ok(h.description.length>20,h.name);}
  assert.match(INSTRUCCIONES,/no es cero/);
  assert.match(HERRAMIENTAS.find(h=>h.name==='productos')!.description,/porSabor/);
@@ -25,6 +25,18 @@ test('validar: productos con búsqueda y categoría opcionales',()=>{
  for(const vacio of ['',null])assert.deepEqual(validarArgumentos('productos',{desde:'2026-11-09',hasta:'2026-11-09',busqueda:vacio,categoria:vacio}),{herramienta:'productos',desde:'2026-11-09',hasta:'2026-11-09',sucursal:null,busqueda:null,categoria:null});
  const casos:[unknown,RegExp][]=[[{desde:'2026-11-15',hasta:'2026-11-09'},/1 a 31 días/],[{desde:'2026-11-09',hasta:'2026-11-15',busqueda:'p'},/2 a 100 caracteres/],[{desde:'2026-11-09',hasta:'2026-11-15',categoria:'pizzas'},/categoria inválida/],[{desde:'2026-11-09',hasta:'2026-11-15',limite:5},/no permitido: limite/]];
  for(const [a,re] of casos)assert.throws(()=>validarArgumentos('productos',a),re,JSON.stringify(a));
+});
+test('validar: bi hasta 93 días, canal y comparación',()=>{
+ assert.deepEqual(validarArgumentos('bi',{desde:'2026-11-09',hasta:'2026-11-15'}),{herramienta:'bi',desde:'2026-11-09',hasta:'2026-11-15',sucursal:null,canal:null,comparar:'anterior'});
+ assert.deepEqual(validarArgumentos('bi',{desde:'2026-08-01',hasta:'2026-10-31',sucursal:SUC,canal:'rappi',comparar:'anio'}),{herramienta:'bi',desde:'2026-08-01',hasta:'2026-10-31',sucursal:SUC,canal:'rappi',comparar:'anio'});
+ assert.equal((validarArgumentos('bi',{desde:'2026-11-09',hasta:'2026-11-15',canal:'',comparar:null}) as {canal:unknown}).canal,null);
+ const casos:[unknown,RegExp][]=[[{desde:'2026-08-01',hasta:'2026-11-02'},/1 a 93 días/],[{desde:'2026-11-15',hasta:'2026-11-09'},/1 a 93 días/],[{desde:'2026-11-09',hasta:'2026-11-15',canal:'uber'},/canal/],[{desde:'2026-11-09',hasta:'2026-11-15',comparar:'mes'},/comparar/],[{desde:'2026-02-30',hasta:'2026-03-01'},/Fecha inválida/]];
+ for(const [a,re] of casos)assert.throws(()=>validarArgumentos('bi',a),re,JSON.stringify(a));
+});
+test('validar: tiempos hasta 31 días',()=>{
+ assert.deepEqual(validarArgumentos('tiempos',{desde:'2026-11-09',hasta:'2026-11-15',sucursal:SUC}),{herramienta:'tiempos',desde:'2026-11-09',hasta:'2026-11-15',sucursal:SUC});
+ assert.throws(()=>validarArgumentos('tiempos',{desde:'2026-10-01',hasta:'2026-11-15'}),/1 a 31 días/);
+ assert.throws(()=>validarArgumentos('tiempos',{desde:'2026-11-09',hasta:'2026-11-15',canal:'pos'}),/no permitido: canal/);
 });
 test('validar: errores claros sin llegar a Supabase',()=>{
  const casos:[string,unknown,RegExp][]=[

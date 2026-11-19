@@ -1,14 +1,16 @@
 # Conector de Grok (Grok Bot → dodo-money)
 
 Endpoint MCP de solo lectura: `https://dodo-money-j31t.vercel.app/api/mcp`. Herramientas: sucursales, ventas,
-productos (piezas y venta por producto), cortes, costos, manuales y P&L. Cada llamada queda en `mcp_llamadas` (solo
+productos (piezas y venta por producto), bi (venta por hora, día, canal y pago, ticket promedio, comparada con
+el periodo anterior o el año pasado), tiempos (tiempos de cocina y entrega), cortes, costos, manuales y P&L. Cada llamada queda en `mcp_llamadas` (solo
 admin la lee). Límites: 10 por minuto, 300 por día.
 
 ## 1. Supabase (proyecto de producción)
 
-1. SQL Editor → corre `supabase/migrations/20261119120000_grok_mcp.sql` y después
-   `supabase/migrations/20261119190000_grok_mcp_productos.sql`.
-2. Corre `supabase/pruebas/20261119120000_grok_mcp.sql` y `supabase/pruebas/20261119190000_grok_mcp_productos.sql`.
+1. SQL Editor → corre, en orden, `supabase/migrations/20261119120000_grok_mcp.sql`,
+   `supabase/migrations/20261119190000_grok_mcp_productos.sql` y `supabase/migrations/20261120120000_grok_mcp_bi_tiempos.sql`.
+2. Corre la prueba de cada una: `supabase/pruebas/20261119120000_grok_mcp.sql`,
+   `supabase/pruebas/20261119190000_grok_mcp_productos.sql` y `supabase/pruebas/20261120120000_grok_mcp_bi_tiempos.sql`.
    Cada una debe terminar con el error **PRUEBAS OK** (deshace todo). No las corras entre 00:00 y 00:02.
 3. Authentication → Users → Add user → Create new user: correo propio para el bot, contraseña larga generada por tu
    gestor de contraseñas, y marca **Auto Confirm User**.
