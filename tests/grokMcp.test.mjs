@@ -7,6 +7,8 @@ const migracion=load('supabase/migrations/20261119120000_grok_mcp.sql');
 const pruebas=load('supabase/pruebas/20261119120000_grok_mcp.sql');
 const migracionProductos=load('supabase/migrations/20261119190000_grok_mcp_productos.sql');
 const pruebasProductos=load('supabase/pruebas/20261119190000_grok_mcp_productos.sql');
+const migracionBI=load('supabase/migrations/20261120120000_grok_mcp_bi_tiempos.sql');
+const pruebasBI=load('supabase/pruebas/20261120120000_grok_mcp_bi_tiempos.sql');
 
 // Lo mínimo de Supabase: roles, auth.uid(), el enum real de roles, perfiles y kb_activo/kb_admin copiados de 0039.
 const BASE=`create role anon;create role authenticated;create schema auth;
@@ -52,5 +54,21 @@ test('Grok MCP productos: sin la nueva migración la prueba SQL no pasa',async()
  try{
   await db.exec(BASE);await db.exec(migracion);
   await assert.rejects(db.exec(pruebasProductos),e=>{assert.doesNotMatch(e.message,/^PRUEBAS OK$/);return true;});
+ }finally{await db.close();}
+});
+
+test('Grok MCP bi y tiempos: con las tres migraciones pasan todas las pruebas SQL',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(BASE);await db.exec(migracion);await db.exec(migracionProductos);await db.exec(migracionBI);
+  for(const p of [pruebasBI,pruebasProductos,pruebas])await assert.rejects(db.exec(p),e=>{assert.match(e.message,/^PRUEBAS OK$/);return true;});
+ }finally{await db.close();}
+});
+
+test('Grok MCP bi y tiempos: sin la nueva migración la prueba SQL no pasa',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(BASE);await db.exec(migracion);await db.exec(migracionProductos);
+  await assert.rejects(db.exec(pruebasBI),e=>{assert.doesNotMatch(e.message,/^PRUEBAS OK$/);return true;});
  }finally{await db.close();}
 });
