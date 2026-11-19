@@ -1,13 +1,15 @@
 # Conector de Grok (Grok Bot → dodo-money)
 
-Endpoint MCP de solo lectura: `https://<dominio de producción>/api/mcp`. Herramientas: sucursales, ventas, cortes,
-costos, manuales y P&L. Cada llamada queda en `mcp_llamadas` (solo admin la lee). Límites: 10 por minuto, 300 por día.
+Endpoint MCP de solo lectura: `https://dodo-money-j31t.vercel.app/api/mcp`. Herramientas: sucursales, ventas,
+productos (piezas y venta por producto), cortes, costos, manuales y P&L. Cada llamada queda en `mcp_llamadas` (solo
+admin la lee). Límites: 10 por minuto, 300 por día.
 
 ## 1. Supabase (proyecto de producción)
 
-1. SQL Editor → corre `supabase/migrations/20261119120000_grok_mcp.sql`.
-2. Corre `supabase/pruebas/20261119120000_grok_mcp.sql`. Debe terminar con el error **PRUEBAS OK** (deshace todo).
-   No lo corras entre 00:00 y 00:02.
+1. SQL Editor → corre `supabase/migrations/20261119120000_grok_mcp.sql` y después
+   `supabase/migrations/20261119190000_grok_mcp_productos.sql`.
+2. Corre `supabase/pruebas/20261119120000_grok_mcp.sql` y `supabase/pruebas/20261119190000_grok_mcp_productos.sql`.
+   Cada una debe terminar con el error **PRUEBAS OK** (deshace todo). No las corras entre 00:00 y 00:02.
 3. Authentication → Users → Add user → Create new user: correo propio para el bot, contraseña larga generada por tu
    gestor de contraseñas, y marca **Auto Confirm User**.
 4. SQL Editor (cambia el correo):

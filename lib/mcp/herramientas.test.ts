@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import {HERRAMIENTAS,INSTRUCCIONES,validarArgumentos,absolutizar} from './herramientas.ts';
 
 const SUC='0c9a8b7e-1234-4abc-8def-0123456789ab';
-test('herramientas: seis, con esquema cerrado',()=>{
- assert.deepEqual(HERRAMIENTAS.map(h=>h.name),['sucursales','ventas','cortes','costos','manuales','pl']);
+test('herramientas: siete, con esquema cerrado',()=>{
+ assert.deepEqual(HERRAMIENTAS.map(h=>h.name),['sucursales','ventas','productos','cortes','costos','manuales','pl']);
  for(const h of HERRAMIENTAS){assert.equal((h.inputSchema as {additionalProperties:boolean}).additionalProperties,false,h.name);assert.ok(h.description.length>20,h.name);}
  assert.match(INSTRUCCIONES,/no es cero/);
+ assert.match(HERRAMIENTAS.find(h=>h.name==='productos')!.description,/porSabor/);
 });
 test('validar: casos válidos',()=>{
  assert.deepEqual(validarArgumentos('sucursales',{}),{herramienta:'sucursales'});
@@ -17,6 +18,13 @@ test('validar: casos válidos',()=>{
  assert.deepEqual(validarArgumentos('manuales',{busqueda:'apertura'}),{herramienta:'manuales',busqueda:'apertura'});
  assert.deepEqual(validarArgumentos('pl',{tipo:'mes',clave:'2026-10'}),{herramienta:'pl',tipo:'mes',clave:'2026-10',sucursal:null});
  assert.deepEqual(validarArgumentos('pl',{tipo:'semana',clave:'2026-W45',sucursal:SUC}),{herramienta:'pl',tipo:'semana',clave:'2026-W45',sucursal:SUC});
+});
+test('validar: productos con búsqueda y categoría opcionales',()=>{
+ assert.deepEqual(validarArgumentos('productos',{desde:'2026-11-09',hasta:'2026-11-15'}),{herramienta:'productos',desde:'2026-11-09',hasta:'2026-11-15',sucursal:null,busqueda:null,categoria:null});
+ assert.deepEqual(validarArgumentos('productos',{desde:'2026-11-09',hasta:'2026-11-15',sucursal:SUC,busqueda:' Pepperoni ',categoria:'pizza'}),{herramienta:'productos',desde:'2026-11-09',hasta:'2026-11-15',sucursal:SUC,busqueda:'Pepperoni',categoria:'pizza'});
+ for(const vacio of ['',null])assert.deepEqual(validarArgumentos('productos',{desde:'2026-11-09',hasta:'2026-11-09',busqueda:vacio,categoria:vacio}),{herramienta:'productos',desde:'2026-11-09',hasta:'2026-11-09',sucursal:null,busqueda:null,categoria:null});
+ const casos:[unknown,RegExp][]=[[{desde:'2026-11-15',hasta:'2026-11-09'},/1 a 31 días/],[{desde:'2026-11-09',hasta:'2026-11-15',busqueda:'p'},/2 a 100 caracteres/],[{desde:'2026-11-09',hasta:'2026-11-15',categoria:'pizzas'},/categoria inválida/],[{desde:'2026-11-09',hasta:'2026-11-15',limite:5},/no permitido: limite/]];
+ for(const [a,re] of casos)assert.throws(()=>validarArgumentos('productos',a),re,JSON.stringify(a));
 });
 test('validar: errores claros sin llegar a Supabase',()=>{
  const casos:[string,unknown,RegExp][]=[
