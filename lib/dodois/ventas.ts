@@ -13,11 +13,21 @@ export type VentaApi = {
   salesChannel: string | null; orderSource: string | null; aggregatorName: string | null; products: ProductoApi[];
   cashBoxType?: string | null;
 };
+/**
+ * Producción → Tiempo de entrega del pedido (`/production/orders-handover-time`, scope productionefficiency): por pedido,
+ * cuándo entró al tracking (hora local) y cuántos segundos esperó, se horneó y estuvo en la repisa caliente. Dodo IS deja
+ * fuera los pedidos sin productos horneados (bebidas, dips, postres): esos quedan sin tiempos.
+ * https://docs.dodois.io/docs/dodo-is/c48a37d12f9e9-proizvodstvo-vremya-vydachi-zakaza
+ */
+export type TiempoApi = {
+  orderId: string; orderTrackingStartAtLocal: string; trackingPendingTime: number; cookingTime: number; heatedShelfTime: number;
+};
+export type TiemposPedido = { inicio_coccion: string | null; listo: string | null; entregado: string | null };
 export type PedidoCarga = {
   dodo_id: string; sucursal_id: string; fecha: string; hora: string; pago: Pago; tipo: TipoPedido; origen: Origen;
   origen_dodo: string | null; para_llevar: boolean; estado: "entregado"; total: number; total_sin_descuento: number; iva: number;
   productos: number; promocion: string | null; turno_dodo: string | null; agregador: string | null;
-};
+} & TiemposPedido;
 export type ProductoCarga = {
   pedido_id: string; renglon: number; dodo_uuid: string; nombre: string; tamano: string | null;
   precio: number; precio_sin_descuento: number; combo: string | null;
@@ -30,6 +40,32 @@ const EN_TIENDA = new Set(["dine-in", "takeaway", "pickup"]);
 const PARA_LLEVAR = new Set(["takeaway", "pickup"]);
 const centavos = (n: number) => Math.round(n * 100) / 100;
 const clave = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+const SIN_TIEMPOS: TiemposPedido = { inicio_coccion: null, listo: null, entregado: null };
+
+/** Hora local de Dodo IS (sin zona) + segundos → instante con la zona de la sucursal (UTC−6, como el Excel). */
+function momentoMas(local: string, segundos: number): string | null {
+  const base = Date.parse(`${local.slice(0, 19)}Z`);
+  if (!Number.isFinite(base) || !Number.isFinite(segundos)) return null;
+  return `${new Date(base + Math.round(segundos) * 1000).toISOString().slice(0, 19)}-06:00`;
+}
+
+/**
+ * Tiempos por pedido con las columnas del Excel: inicio de cocción = entrada al tracking + espera; listo = inicio +
+ * cocción; entregado = listo + repisa caliente (al cliente o al repartidor). La llave es el id en mayúsculas.
+ */
+export function tiemposDePedidos(tiempos: readonly TiempoApi[]): Map<string, TiemposPedido> {
+  const mapa = new Map<string, TiemposPedido>();
+  for (const t of tiempos) {
+    if (!t.orderId || !t.orderTrackingStartAtLocal) continue;
+    const espera = Number(t.trackingPendingTime ?? 0), coccion = Number(t.cookingTime ?? 0), repisa = Number(t.heatedShelfTime ?? 0);
+    mapa.set(t.orderId.toUpperCase(), {
+      inicio_coccion: momentoMas(t.orderTrackingStartAtLocal, espera),
+      listo: momentoMas(t.orderTrackingStartAtLocal, espera + coccion),
+      entregado: momentoMas(t.orderTrackingStartAtLocal, espera + coccion + repisa),
+    });
+  }
+  return mapa;
+}
 
 /**
  * Pedido capturado desde call center: caja «Delivery» o con origen/agregador de agregador. Hoy son los pedidos de Rappi
@@ -41,6 +77,7 @@ export const esCallCenter = (v: Pick<VentaApi, "cashBoxType" | "orderSource" | "
 
 export function traducirVentas(ventas: readonly VentaApi[], o: {
   sucursalDeUnidad: ReadonlyMap<string, string>; tamanoDe: (nombre: string) => string | null; ivaDe: (precios: readonly number[]) => number;
+  tiempos?: ReadonlyMap<string, TiemposPedido>;
 }) {
   const pedidos: PedidoCarga[] = [], productos: ProductoCarga[] = [];
   const desconocidos = new Set<string>();
@@ -64,7 +101,7 @@ export function traducirVentas(ventas: readonly VentaApi[], o: {
       estado: "entregado", total: centavos(precios.reduce((s, x) => s + x, 0)),
       total_sin_descuento: centavos(v.products.reduce((s, x) => s + Number(x.price), 0)), iva: o.ivaDe(precios),
       productos: v.products.length, promocion: v.products.find((x) => x.discount?.bonusActionName)?.discount?.bonusActionName ?? null,
-      turno_dodo: v.shiftId, agregador: v.aggregatorName || null,
+      turno_dodo: v.shiftId, agregador: v.aggregatorName || null, ...(o.tiempos?.get(id) ?? SIN_TIEMPOS),
     });
     v.products.forEach((x, i) => productos.push({
       pedido_id: id, renglon: i + 1, dodo_uuid: x.productId.toUpperCase(), nombre: x.defaultProductName, tamano: o.tamanoDe(x.defaultProductName),
