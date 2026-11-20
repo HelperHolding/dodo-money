@@ -40,7 +40,7 @@ historial deja quién hizo qué y cuándo. La factura muestra sus tareas abierta
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | uuid PK | |
-| `numero` | bigint, secuencia `tareas_numero` | Se muestra como clave `DODO-<numero>` |
+| `numero` | bigint, secuencia `tareas_numero` | Se muestra como clave `T-<numero>` con tres dígitos (`T-001`) |
 | `titulo` | text not null | 3–200 caracteres |
 | `descripcion` | text | hasta 4000 |
 | `estado` | `estado_tarea` enum | `por_hacer` (default), `en_curso`, `en_revision`, `hecho`, `cancelada` |
@@ -197,7 +197,7 @@ Umbrales por defecto (editables en `/tareas/reglas`): sin revisar 3, por vencer 
 ## 8. Pruebas
 
 - `lib/tareas.ts` con pruebas en `lib/tareas.test.ts`: transiciones permitidas por puesto, agrupación por
-  vencimiento, clave `DODO-n`, título prellenado por tipo de documento y orden de «Tus pendientes».
+  vencimiento, clave `T-001`, título prellenado por tipo de documento y orden de «Tus pendientes».
 - Pruebas SQL en PGlite (`supabase/pruebas` + `tests/tareas.test.mjs`): migración aplicada sobre stubs que copian
   los CHECK y enums reales; cada puesto ve y mueve solo lo que debe; historial completo; un solo documento por
   tarea; cancelación exige motivo.

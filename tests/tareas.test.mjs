@@ -304,6 +304,28 @@ test('tareas: la prueba SQL de Sebastián termina en PRUEBAS OK',{skip:!existsSy
  try{
   await db.exec(`insert into facturas values('00000000-0000-0000-0000-0000000000fc','7a7a7a7a-aaaa-bbbb-cccc-000000000003','B','77','GAS DEL NORTE','${S.z}','por_pagar')`);
   await assert.rejects(db.exec(load('supabase/pruebas/20261102120000_tareas.sql')),e=>{assert.match(e.message,/^PRUEBAS OK$/);return true;});
+  // No gastó números: la siguiente tarea real sigue siendo la T-001.
+  assert.equal(await crear(db,U.admin,{titulo:'Primera real',asignado_a:U.admin}),1);
+ }finally{await db.close();}
+});
+
+test('tareas: la corrección renumera desde 1 y la siguiente toma el número que sigue',async()=>{
+ const db=await nueva();
+ try{
+  await db.exec(`select setval('public.tareas_numero',79)`);
+  const a=await crear(db,U.admin,{titulo:'Primera',asignado_a:U.ana,sucursal_id:S.z});
+  await db.exec(`select nextval('public.tareas_numero')`);
+  const b=await crear(db,U.admin,{titulo:'Segunda',asignado_a:U.admin});
+  assert.deepEqual([a,b],[80,82]);
+  const correccion=load('supabase/correcciones/2026-11-02_tareas_renumerar.sql');
+  // El ensayo (ROLLBACK) no cambia nada, ni la secuencia.
+  await db.exec(correccion);
+  assert.deepEqual((await db.query(`select numero::int from tareas order by numero`)).rows.map(r=>r.numero),[80,82]);
+  assert.equal(await crear(db,U.admin,{titulo:'Tercera',asignado_a:U.admin}),83);
+  await db.exec(correccion.replace(/ROLLBACK;\s*$/,'COMMIT;'));
+  assert.deepEqual((await db.query(`select numero::int,titulo from tareas order by numero`)).rows,[{numero:1,titulo:'Primera'},{numero:2,titulo:'Segunda'},{numero:3,titulo:'Tercera'}]);
+  assert.equal((await db.query(`select count(*)::int n from tarea_historial h join tareas t on t.id=h.tarea_id where t.numero=1 and h.campo='creada'`)).rows[0].n,1);
+  assert.equal(await crear(db,U.admin,{titulo:'Cuarta',asignado_a:U.admin}),4);
  }finally{await db.close();}
 });
 
