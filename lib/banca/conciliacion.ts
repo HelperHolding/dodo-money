@@ -26,7 +26,7 @@ export type Concepto = (typeof CONCEPTOS)[number]["clave"];
 export const TIPOS = ["pago_proveedor", "cobro_tarjeta", "cobro_rappi", "nomina", "sin_documento"] as const;
 export type TipoConciliacion = (typeof TIPOS)[number];
 
-/** El Excel de Banregio recorta la descripción a ~60 caracteres; parte de la información vive en la referencia, así que las reglas leen descripción y referencia (`textoDe`). CLABE: solo descripción. */
+/** Parte de la información vive en la referencia (por ejemplo, el de un préstamo), así que las reglas leen descripción y referencia (`textoDe`). CLABE: solo descripción. */
 export type MovimientoBanco = { id: string; fecha: string; fila: number; descripcion: string; referencia: string; cargo: number; abono: number };
 export type PagoCandidato = { id: string; fecha: string; monto: number; clabe: string | null; proveedor: string; cuenta: CuentaPl | null };
 export type VentaTarjeta = { id: string; fecha: string; tarjeta: number };
