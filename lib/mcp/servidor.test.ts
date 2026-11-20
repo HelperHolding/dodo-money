@@ -30,7 +30,7 @@ test('servidor: errores de JSON-RPC, notificaciones y métodos',async()=>{
  const ini=await manejarMCP(post(rpc('initialize',{protocolVersion:'2025-03-26'})),deps());
  assert.equal((ini.cuerpo as {result:{protocolVersion:string}}).result.protocolVersion,'2025-03-26');
  const lista=await manejarMCP(post(rpc('tools/list')),deps());
- assert.equal((lista.cuerpo as {result:{tools:unknown[]}}).result.tools.length,9);
+ assert.equal((lista.cuerpo as {result:{tools:unknown[]}}).result.tools.length,13);
  assert.deepEqual((await manejarMCP(post(rpc('ping')),deps())).cuerpo,{jsonrpc:'2.0',id:1,result:{}});
  const desconocido=await manejarMCP(post(rpc('resources/list')),deps());
  assert.equal((desconocido.cuerpo as {error:{code:number}}).error.code,-32601);

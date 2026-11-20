@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {HERRAMIENTAS,INSTRUCCIONES,validarArgumentos,absolutizar} from './herramientas.ts';
 
 const SUC='0c9a8b7e-1234-4abc-8def-0123456789ab';
-test('herramientas: nueve, con esquema cerrado',()=>{
- assert.deepEqual(HERRAMIENTAS.map(h=>h.name),['sucursales','ventas','productos','bi','tiempos','cortes','costos','manuales','pl']);
+test('herramientas: trece, con esquema cerrado',()=>{
+ assert.deepEqual(HERRAMIENTAS.map(h=>h.name),['sucursales','ventas','productos','bi','tiempos','por_pagar','pagos','compras','ordenes','cortes','costos','manuales','pl']);
  for(const h of HERRAMIENTAS){assert.equal((h.inputSchema as {additionalProperties:boolean}).additionalProperties,false,h.name);assert.ok(h.description.length>20,h.name);}
  assert.match(INSTRUCCIONES,/no es cero/);
  assert.match(HERRAMIENTAS.find(h=>h.name==='productos')!.description,/porSabor/);
@@ -61,4 +61,19 @@ test('validar: errores claros sin llegar a Supabase',()=>{
 test('absolutizar: fuente y href relativos a URL completa, sin tocar lo demás',()=>{
  const r=absolutizar({fuente:'/ventas?x=1',nota:'/no-es-enlace',lista:[{href:'/conocimiento/manuales/7',titulo:'M'}],externo:{href:'https://otra.com/a'},doble:{href:'//evil.com'},n:5},'https://dodo.test');
  assert.deepEqual(r,{fuente:'https://dodo.test/ventas?x=1',nota:'/no-es-enlace',lista:[{href:'https://dodo.test/conocimiento/manuales/7',titulo:'M'}],externo:{href:'https://otra.com/a'},doble:{href:'//evil.com'},n:5});
+});
+
+test('validar: compras y pagos con proveedor por nombre y sucursal',()=>{
+ assert.deepEqual(validarArgumentos('por_pagar',{}),{herramienta:'por_pagar',sucursal:null,proveedor:null});
+ assert.deepEqual(validarArgumentos('por_pagar',{proveedor:' Lácteos ',sucursal:SUC}),{herramienta:'por_pagar',sucursal:SUC,proveedor:'Lácteos'});
+ assert.deepEqual(validarArgumentos('ordenes',{proveedor:''}),{herramienta:'ordenes',sucursal:null,proveedor:null});
+ assert.deepEqual(validarArgumentos('pagos',{desde:'2026-10-01',hasta:'2026-10-31'}),{herramienta:'pagos',desde:'2026-10-01',hasta:'2026-10-31',sucursal:null,proveedor:null});
+ assert.deepEqual(validarArgumentos('compras',{desde:'2026-08-01',hasta:'2026-10-31',proveedor:'harinas'}),{herramienta:'compras',desde:'2026-08-01',hasta:'2026-10-31',sucursal:null,proveedor:'harinas'});
+ const casos:[string,unknown,RegExp][]=[['pagos',{desde:'2026-07-01',hasta:'2026-10-31'},/1 a 93 días/],['compras',{hasta:'2026-10-31'},/Fecha inválida/],['por_pagar',{proveedor:'x'},/2 a 100 caracteres en proveedor/],['ordenes',{estado:'cerrada'},/no permitido: estado/],['por_pagar',{rfc:'ABC'},/no permitido: rfc/]];
+ for(const [n,a,re] of casos)assert.throws(()=>validarArgumentos(n,a),re,n+JSON.stringify(a));
+});
+test('herramientas: compras y pagos avisan que no traen datos bancarios ni RFC',()=>{
+ for(const n of ['por_pagar','pagos','compras','ordenes'])assert.match(HERRAMIENTAS.find(h=>h.name===n)!.description,/proveedor/,n);
+ assert.match(HERRAMIENTAS.find(h=>h.name==='por_pagar')!.description,/estimad/);
+ assert.doesNotMatch(HERRAMIENTAS.find(h=>h.name==='compras')!.description,/cuenta del P&L/);
 });
