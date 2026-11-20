@@ -250,7 +250,6 @@ html[data-luz="noche"]:has(.marco) .esqueleto { background-color: #242424; }
    Las rejillas se acomodan por el ancho del contenido (consultas de contenedor), no de la ventana: el menú lateral
    ya ocupa 264 px. Colores de las barras de reparto validados con la skill dataviz (día sobre blanco, noche sobre
    carbón): naranja, azul, verde agua y violeta; el color sigue al concepto y la leyenda escribe nombre, importe y %. */
-.pagina:has(> .tablero-graficas) { max-width: 1280px; }
 
 /* Resumen del periodo: venta, pedidos y ticket junto a los canales; cada cifra en su tarjeta,
    las cinco del mismo ancho y alto en un solo renglón */
