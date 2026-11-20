@@ -69,10 +69,11 @@ test('validar: compras y pagos con proveedor por nombre y sucursal',()=>{
  assert.deepEqual(validarArgumentos('ordenes',{proveedor:''}),{herramienta:'ordenes',sucursal:null,proveedor:null});
  assert.deepEqual(validarArgumentos('pagos',{desde:'2026-10-01',hasta:'2026-10-31'}),{herramienta:'pagos',desde:'2026-10-01',hasta:'2026-10-31',sucursal:null,proveedor:null});
  assert.deepEqual(validarArgumentos('compras',{desde:'2026-08-01',hasta:'2026-10-31',proveedor:'harinas'}),{herramienta:'compras',desde:'2026-08-01',hasta:'2026-10-31',sucursal:null,proveedor:'harinas'});
- const casos:[string,unknown,RegExp][]=[['pagos',{desde:'2026-07-01',hasta:'2026-10-31'},/1 a 93 días/],['compras',{hasta:'2026-10-31'},/Fecha inválida/],['por_pagar',{proveedor:'x'},/2 a 100 caracteres/],['ordenes',{estado:'cerrada'},/no permitido: estado/],['por_pagar',{rfc:'ABC'},/no permitido: rfc/]];
+ const casos:[string,unknown,RegExp][]=[['pagos',{desde:'2026-07-01',hasta:'2026-10-31'},/1 a 93 días/],['compras',{hasta:'2026-10-31'},/Fecha inválida/],['por_pagar',{proveedor:'x'},/2 a 100 caracteres en proveedor/],['ordenes',{estado:'cerrada'},/no permitido: estado/],['por_pagar',{rfc:'ABC'},/no permitido: rfc/]];
  for(const [n,a,re] of casos)assert.throws(()=>validarArgumentos(n,a),re,n+JSON.stringify(a));
 });
 test('herramientas: compras y pagos avisan que no traen datos bancarios ni RFC',()=>{
  for(const n of ['por_pagar','pagos','compras','ordenes'])assert.match(HERRAMIENTAS.find(h=>h.name===n)!.description,/proveedor/,n);
  assert.match(HERRAMIENTAS.find(h=>h.name==='por_pagar')!.description,/estimad/);
+ assert.doesNotMatch(HERRAMIENTAS.find(h=>h.name==='compras')!.description,/cuenta del P&L/);
 });

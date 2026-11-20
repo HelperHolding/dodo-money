@@ -33,7 +33,8 @@ test('por_pagar: lee facturas_saldo por pagar, resuelve el proveedor por nombre 
  assert.equal(r.porRazonSocial[0].razonSocial,'Helper Comercializadora Master');
  assert.ok(r.fuente.startsWith('https://dodo.test/compras/pagos?proveedor='),r.fuente);
  assert.ok(db.consultas.some(c=>c.startsWith('facturas_saldo:')&&!/uuid|xml|pdf/.test(c)),'columnas explícitas sin uuid ni archivos');
- assert.ok(!db.consultas.some(c=>c.startsWith('proveedores:')&&/clabe|banco|cuenta|correo|telefono/.test(c)),'sin datos bancarios en el select');
+ assert.ok(!db.consultas.some(c=>c.startsWith('proveedores:')&&/rfc|clabe|banco|cuenta|correo|telefono/.test(c)),'sin RFC ni datos bancarios en el select');
+ assert.equal(r.compromisosSinFactura.disponible,true);
  sinSecretos(r);
 });
 
@@ -59,7 +60,7 @@ test('compras: facturas emitidas en el periodo, neto, sin canceladas',async()=>{
  const db=cliente({...BASE,facturas_saldo:[f('1','2026-10-05'),f('2','2026-10-06',{estado:'cancelada'}),f('3','2026-11-01'),f('4','2026-10-07',{tipo:'egreso'})]});
  const r=await ejecutarHerramienta(db,'corporativo',{herramienta:'compras',desde:'2026-10-01',hasta:'2026-10-31',sucursal:null,proveedor:null},ORIGEN);
  assert.deepEqual([r.total,r.facturas],[1160,1]);
- assert.match(r.nota,/neto/);
+ assert.match(r.nota,/neto/);assert.match(r.nota,/notas de crédito/);assert.equal('porCuentaPL' in r,false);
  sinSecretos(r);
 });
 
@@ -70,8 +71,19 @@ test('ordenes: confirmadas con lo pendiente, sin notas',async()=>{
   renglones_recibido:[{orden_id:'o1',descripcion:'Queso mozzarella kg',cantidad:'10',precio:'100',tasa_iva:'16',recibido:'4',ordenes_compra:{estado:'confirmada'}},
    {orden_id:'o2',descripcion:'Harina',cantidad:'1',precio:'1',tasa_iva:'16',recibido:'0',ordenes_compra:{estado:'borrador'}}]});
  const r=await ejecutarHerramienta(db,'corporativo',{herramienta:'ordenes',sucursal:null,proveedor:null},ORIGEN);
- assert.deepEqual(r.resumen,{ordenes:1,atrasadas:1,hoy:0,aTiempo:0,sinFecha:0});
+ assert.deepEqual(r.resumen,{ordenes:1,atrasadas:1,atrasadasMas30Dias:1,hoy:0,aTiempo:0,sinFecha:0,totalPendiente:696});
+ assert.match(r.nota,/30 días/);
  assert.deepEqual(r.ordenes[0].pendientes,[{descripcion:'Queso mozzarella kg',pedido:10,recibido:4,falta:6}]);
  assert.ok(!JSON.stringify(r).includes('NOTA PRIVADA'));
  assert.equal(r.fuente,'https://dodo.test/compras/recepciones');
+});
+
+test('por_pagar: proveedor ambiguo devuelve los candidatos, no una suma mezclada',async()=>{
+ const db=cliente({...BASE,proveedores:[...BASE.proveedores,{id:'cccccccc-0000-4000-8000-00000000000c',razon_social:'Lácteos del Norte SA',nombre_comercial:null,rfc:'LNO010101AB3'}],facturas_saldo:[]});
+ await assert.rejects(ejecutarHerramienta(db,'corporativo',{herramienta:'por_pagar',sucursal:null,proveedor:'lacteos'},ORIGEN),/Varios proveedores coinciden.*Lácteos Bajío.*Lácteos del Norte SA/);
+});
+test('por_pagar: si los compromisos fallan se marca no disponible y la deuda sale igual',async()=>{
+ const db=cliente({...BASE,facturas_saldo:[{id:'f1',serie:'A',folio:'10',saldo:'100',vence_el:'2099-01-15',pago_programado_el:null,estado:'por_pagar',tipo:'ingreso',proveedor_id:P1,sucursal_id:S1,rfc_receptor:null,proveedores:nombres}]},{compromisos_en_rango:{data:null,error:{message:'boom'}}});
+ const r=await ejecutarHerramienta(db,'corporativo',{herramienta:'por_pagar',sucursal:null,proveedor:null},ORIGEN);
+ assert.equal(r.resumen.saldoTotal,100);assert.equal(r.compromisosSinFactura.disponible,false);assert.match(r.nota,/disponible/);
 });
