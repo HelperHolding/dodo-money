@@ -55,3 +55,22 @@ export async function datosReporteVentas(q: { desde?: string; hasta?: string; su
     dias: filasPorDia(d.dias),
   };
 }
+
+/** Lo que lleva el Excel por producto: mismo periodo y sucursal que el tablero, con los productos de POS / Dodo IS y Rappi. */
+export async function datosReporteProductos(q: { desde?: string; hasta?: string; sucursal?: string }) {
+  const { supabase, perfil } = await obtenerPerfil();
+  if (!puedeVerVentas(perfil.rol)) redirect("/");
+  const { data: sucursales, error } = await supabase.from("sucursales").select("id, nombre").returns<{ id: string; nombre: string }[]>();
+  if (error) throw new Error(`No se pudieron cargar las sucursales: ${error.message}`);
+  const nombreDe = new Map((sucursales ?? []).map((s) => [s.id, s.nombre]));
+  const sucursal = sucursalElegida(veVentasDeTodas(perfil.rol), q.sucursal, perfil.sucursal_id, (id) => nombreDe.has(id));
+  if (!(await ultimoDiaConDatos(supabase, sucursal))) return null;
+  const periodo = periodoElegido(q.desde, q.hasta, periodosRapidos(hoyMX())[0].rango);
+  const d = await datosVentas(supabase, sucursal, periodo, periodoAnterior(periodo));
+  return {
+    titulo: sucursal ? nombreDe.get(sucursal) ?? "Sucursal" : "Todas las sucursales",
+    periodo,
+    generadoPor: perfil.nombre,
+    canales: [{ nombre: "POS / Dodo IS", renglones: d.canales.pos.renglones }, { nombre: "Rappi", renglones: d.canales.rappi.renglones }],
+  };
+}

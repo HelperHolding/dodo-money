@@ -150,6 +150,7 @@ export default async function PaginaVentas({ searchParams }: { searchParams: Pro
         acciones={<>
           <Link className="boton boton-secundario" href={`/reporte/ventas?${filtroReporte}`} target="_blank"><Icono nombre="documento" /> Reporte PDF</Link>
           <a className="boton boton-secundario" href={`/reporte/ventas/excel?${filtroReporte}`} download><Icono nombre="descargar" /> Descargar Excel</a>
+          <a className="boton boton-secundario" href={`/reporte/ventas/productos/excel?${filtroReporte}`} download><Icono nombre="descargar" /> Excel por producto</a>
         </>} />
       {avisoDodo && <p className="aviso aviso-error">{avisoDodo} <Link href="/ventas/dodois">Revisar</Link></p>}
 
