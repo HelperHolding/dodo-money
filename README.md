@@ -299,3 +299,36 @@ Migración `0013_compras_facturas.sql` y su prueba `supabase/pruebas/0013_compra
 - **Pagos** (fase 4): un pago se registra con su fecha, forma, cuenta, referencia y comprobante; el monto se reparte solo entre las facturas del proveedor que se pagan antes (ajustable) y puede cubrir varias, completas o en abono. La base revisa que nada pase del saldo, que todo sea del mismo proveedor y que una factura que no cuadra con su orden esté revisada. Anular un pago (con motivo) devuelve los saldos. Cada factura se puede programar para otra fecha. Las facturas PPD pagadas muestran "falta complemento" hasta que se sube el XML del complemento de pago. **Calendario** en Compras → Pagos: vencido, esta semana, próximos 30 días y pagado en el mes, y cada día con lo que hay que pagar. Corporativo ve lo vencido y lo de la semana en su vista general.
 
 Migración `0014_compras_pagos.sql` y su prueba `supabase/pruebas/0014_compras_pagos.sql`. La `0015_compras_reabrir.sql` reabre una orden que se cerró sola ("Recibida y facturada") si su factura se cancela o se desliga; las cerradas a mano no se tocan. En Compras las fechas son de calendario en Ciudad de México (cambian a medianoche); caja, cierre y ventas siguen con el día operativo de 4:00 a 4:00.
+
+## Facturación de tickets
+
+Pública en `/facturar` (sin sesión, pensada para celular). El cliente factura su ticket sin que la oficina intervenga: encuentra el ticket, captura sus datos fiscales y recibe PDF y XML timbrados en Facturapi. Solo factura a nombre de **Helper Comercializadora Master** (RFC HCM260306B93), sucursal Mariano Otero. El CSD vive solo en Facturapi; el repositorio y la base nunca lo guardan.
+
+Variables de entorno (solo servidor, en Vercel):
+
+- `FACTURAPI_KEY`: llave de prueba (`sk_test_…`) en Preview y la real en Production. Sin ella no se timbra.
+- `SUPABASE_SERVICE_ROLE_KEY`: obligatoria; la usan las funciones del portal.
+
+**Cómo encuentra el cliente su ticket.** Captura fecha, hora y total tal como vienen impresos. El sistema busca un pedido entregado de la sucursal con esa fecha, el total exacto y una hora a ±3 minutos. Si hay una coincidencia, muestra los productos para confirmar.
+
+**Reglas:**
+
+- Solo tickets del mes en curso, en hora de Ciudad de México. Los de meses anteriores ya van en la factura global.
+- No se facturan en el portal: pedidos cancelados, comidas del personal, pedidos de Rappi u otros agregadores (se concilian aparte) ni pedidos con pago "otro".
+- No se acepta el RFC genérico (`XAXX010101000` ni `XEXX010101000`).
+- Límite de 10 búsquedas por IP cada 10 minutos y, aparte, 10 lecturas de constancia por IP cada 10 minutos (columna `tipo` de `facturacion_intentos`, incluida en la misma migración).
+- Al timbrar, el portal envía la factura al correo capturado (Facturapi no lo hace solo). Si el envío falla, el cliente igual puede descargarla y usar "Reenviar".
+- Un ticket, una factura. Si ya está facturado, el portal ofrece reenviarla al correo original. Para cambiar el RFC, la oficina cancela primero.
+- Forma de pago: efectivo 01; tarjeta o pago en línea, el cliente elige crédito (04) o débito (28).
+
+**Oficina.** En Finanzas → Facturación de tickets, el admin cancela una factura con motivo 02 o 03 (no hay sustitución) y el cliente puede volver a facturar el ticket. Si Facturapi ya canceló pero el registro aquí falló, basta volver a pulsar Cancelar: no se llama de nuevo a Facturapi. Corporativo consulta. El botón "Excel del mes" genera la lista de lo facturado por ticket para que el contador la reste de la factura global.
+
+**Factura "Por confirmar".** Significa que la fila quedó reservada, pero Facturapi no respondió o aún está timbrando. No hay que cancelar nada todavía:
+
+1. El admin pulsa "Revisar en Facturapi" en la tarjeta: busca la factura por `external_id` (el id de la fila). Si existe la confirma; si no existe y la fila tiene más de 10 minutos, libera el ticket; si sigue timbrándose, avisa que se revise más tarde.
+2. También se reconcilia sola cuando el cliente vuelve a intentar con los mismos datos: confirma sin timbrar de nuevo.
+3. Si Facturapi no la tiene, el reintento libera la reserva después de 10 minutos y timbra una sola vez más.
+
+**Claves SAT.** La clave de producto `90101501` y la unidad `E48` son constantes en `lib/facturacion/conceptos.ts`. Están pendientes de confirmación del contador; si cambian, se ajustan ahí en un PR.
+
+**Orden para publicar.** Primero se aplica la migración `supabase/migrations/20261106120000_facturacion_clientes.sql` en producción y su prueba `supabase/pruebas/20261106120000_facturacion_clientes.sql`, que debe imprimir `ERROR: PRUEBAS OK`. Después, y no antes, se publica `/facturar`.

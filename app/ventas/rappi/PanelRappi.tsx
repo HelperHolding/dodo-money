@@ -114,7 +114,7 @@ export function PanelRappi({ ordenes, dodo = [], turbo = [], catalogo, periodo, 
               <strong className="indicador-valor">{pesosRedondos(r.total)}</strong>
               {cambio(kpi.total)}
               <span className="indicador-detalle">{dodo.length ? "Portal: después del descuento restaurante; días en Dodo IS: lo capturado (lo que paga el cliente) · con IVA." : "Después del descuento restaurante · con IVA."}</span>
-              {turboTotal > 0 && <span className="indicador-detalle">Normal {pesosRedondos(Math.round((r.total - turboTotal) * 100) / 100)} · Turbo {pesosRedondos(turboTotal)} ({porcentaje(r.total ? turboTotal / r.total : null)}){turboEstimado ? " · Turbo estimado en días de Dodo IS" : ""}</span>}
+              {turboTotal > 0 && <span className="indicador-detalle">Normal {pesosRedondos(Math.round((r.total - turboTotal) * 100) / 100)} ({porcentaje(r.total ? (r.total - turboTotal) / r.total : null)}) · Turbo {pesosRedondos(turboTotal)} ({porcentaje(r.total ? turboTotal / r.total : null)}){turboEstimado ? " · Turbo estimado en días de Dodo IS" : ""}</span>}
             </div>
             <div className="indicador">
               <span className="indicador-etiqueta">Órdenes sumadas</span>

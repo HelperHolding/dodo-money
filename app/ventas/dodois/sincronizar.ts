@@ -42,6 +42,7 @@ export async function sincronizarVentas(admin: SupabaseClient, origen: OrigenSin
       const ventas = await ventasDelDia(token, s.dodois_unit_id, ventanaDelDia(fecha));
       const t = traducirVentas(ventas, { sucursalDeUnidad: new Map([[s.dodois_unit_id, s.id]]), tamanoDe: tamanoPorNombre, ivaDe });
       desconocidos = t.desconocidos;
+      const omitidos = t.callCenter.pedidos ? ` ${t.callCenter.pedidos} pedidos de call center ignorados (${t.callCenter.total.toFixed(2)}); Rappi sale del portal.` : "";
       const pedidos = t.pedidos.filter((p) => p.fecha === fecha);
       const ids = new Set(pedidos.map((p) => p.dodo_id));
       const productos = t.productos.filter((x) => ids.has(x.pedido_id));
@@ -54,7 +55,7 @@ export async function sincronizarVentas(admin: SupabaseClient, origen: OrigenSin
         suma_productos: dia.productos.suma, productos: dia.productos.piezas,
       };
       if (opciones.simular) {
-        r = { tipo: "ventas", sucursal: s.nombre, fecha, estado: "ok", pedidos: resumen?.pedidos ?? 0, total: resumen?.total ?? 0, mensaje: "Simulación: no se guardó." };
+        r = { tipo: "ventas", sucursal: s.nombre, fecha, estado: "ok", pedidos: resumen?.pedidos ?? 0, total: resumen?.total ?? 0, mensaje: `Simulación: no se guardó.${omitidos}` };
       } else {
         const { data, error } = await admin.rpc("sincronizar_ventas_dodo", {
           p_sucursal: s.id, p_fecha: fecha, p_resumen: resumen ?? { pedidos: 0, total: 0, efectivo: 0, tarjeta: 0, en_linea: 0, iva: 0, venta_m2: null, suma_productos: 0, productos: 0 },
@@ -62,7 +63,7 @@ export async function sincronizarVentas(admin: SupabaseClient, origen: OrigenSin
         });
         if (error) throw new Error(error.message);
         const estado = data === "ok" ? "ok" : "omitido";
-        const mensaje = data === "excel" ? "Día importado de Excel: se respeta." : data === "vacio" ? "Sin ventas todavía." : "";
+        const mensaje = (data === "excel" ? "Día importado de Excel: se respeta." : data === "vacio" ? "Sin ventas todavía." : "") + omitidos;
         r = { tipo: "ventas", sucursal: s.nombre, fecha, estado, pedidos: resumen?.pedidos ?? 0, total: resumen?.total ?? 0, mensaje };
       }
     } catch (e) {

@@ -1,15 +1,16 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');const ts=require('typescript');
-function escenario({rol='admin',gasto=true,errorRpc=null}={}) {
+function escenario({rol='admin',gasto=true,errorRpc=null,fotoPrevia=null}={}) {
  const llamadas=[];
- const consulta={select:()=>consulta,eq:(k,v)=>{llamadas.push(['filtro',k,v]);return consulta;},maybeSingle:async()=>({data:gasto?{id:'gasto'}:null,error:null})};
- const supabase={from:n=>{llamadas.push(['tabla',n]);return consulta;},rpc:async(n,p)=>{llamadas.push(['rpc',n,p]);return {error:errorRpc?{message:errorRpc}:null};}};
- const mocks={'@/lib/contexto':{obtenerContextoParaEscribir:async()=>({supabase,perfil:{rol},sucursal:{id:'sucursal-activa'}})},'next/navigation':{redirect:url=>{throw {redirect:url};}},'next/cache':{revalidatePath:(...p)=>llamadas.push(['revalidar',...p])}};
+ const consulta={select:()=>consulta,eq:(k,v)=>{llamadas.push(['filtro',k,v]);return consulta;},maybeSingle:async()=>({data:gasto?{id:'gasto',foto_path:fotoPrevia}:null,error:null})};
+ const storage={from:b=>({upload:async(r,a,o)=>{llamadas.push(['subir',b,r,o.contentType]);return {error:null};},remove:async rs=>{llamadas.push(['borrar',b,rs]);return {error:null};}})};
+ const supabase={storage,from:n=>{llamadas.push(['tabla',n]);return consulta;},rpc:async(n,p)=>{llamadas.push(['rpc',n,p]);return {error:errorRpc?{message:errorRpc}:null};}};
+ const mocks={'@/lib/contexto':{obtenerContextoParaEscribir:async()=>({supabase,perfil:{rol},sucursal:{id:'sucursal-activa'}})},'next/navigation':{redirect:url=>{throw {redirect:url};}},'next/cache':{revalidatePath:(...p)=>llamadas.push(['revalidar',...p])},'@/lib/fotos':{BUCKET_FOTOS:'fotos',rutaFoto:(s,id)=>`${s}/${id}.jpg`,validarFoto:a=>!a||a.type.startsWith('image/')?null:'Sube una foto.'}};
  const js=ts.transpileModule(fs.readFileSync('app/(app)/caja-chica/administrar.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  const mod={exports:{}};new Function('require','module','exports',js)(id=>mocks[id]??require(id),mod,mod.exports);
  const fd=new FormData();for(const [k,v] of Object.entries({id:'gasto',version:'2',solicitud:'sol',accion:'eliminar',motivo:'Captura equivocada',confirmado:'si'}))fd.set(k,v);
- return {accion:mod.exports.administrarGasto,fd,llamadas};
+ return {accion:mod.exports.administrarGasto,agregarFoto:mod.exports.agregarFotoGasto,fd,llamadas};
 }
 const destino=t=>e=>e.redirect?.includes(`?${t}=`);
 test('gastos: solo admin alcanza consulta y escritura',async()=>{
@@ -27,4 +28,23 @@ test('gastos: RPC recibe versión e identificador; borrar no envía datos editab
 });
 test('gastos: error de saldo o versión no informa éxito',async()=>{
  const s=escenario({errorRpc:'El gasto cambió'});await assert.rejects(s.accion(s.fd),destino('error'));assert.ok(!s.llamadas.some(c=>c[0]==='revalidar'));
+});
+
+const conFoto=s=>{s.fd.set('foto',new File(['x'],'ticket.jpg',{type:'image/jpeg'}));return s;};
+test('agregar foto: solo admin y sin tocar nada si no es admin',async()=>{
+ for(const rol of ['gerente','encargado','operacion','corporativo']){const s=conFoto(escenario({rol}));await assert.rejects(s.agregarFoto(s.fd),destino('error'));assert.equal(s.llamadas.length,0);}
+});
+test('agregar foto: exige archivo y gasto de la sucursal activa sin foto previa',async()=>{
+ let s=escenario();await assert.rejects(s.agregarFoto(s.fd),destino('error'));assert.equal(s.llamadas.length,0);
+ s=conFoto(escenario({gasto:false}));await assert.rejects(s.agregarFoto(s.fd),destino('error'));assert.ok(s.llamadas.some(c=>c[1]==='sucursal_id'&&c[2]==='sucursal-activa'));assert.ok(!s.llamadas.some(c=>c[0]==='subir'));
+ s=conFoto(escenario({fotoPrevia:'sucursal-activa/t.jpg'}));await assert.rejects(s.agregarFoto(s.fd),destino('error'));assert.ok(!s.llamadas.some(c=>c[0]==='subir'||c[0]==='rpc'));
+});
+test('agregar foto: sube a la sucursal y llama la RPC sin datos de importe',async()=>{
+ const s=conFoto(escenario());await assert.rejects(s.agregarFoto(s.fd),destino('ok'));
+ const ruta=s.llamadas.find(c=>c[0]==='subir')[2];assert.ok(ruta.startsWith('sucursal-activa/'));
+ assert.deepEqual(s.llamadas.find(c=>c[0]==='rpc').slice(1),['agregar_foto_gasto_admin',{p_solicitud:'sol',p_id:'gasto',p_version:2,p_foto:ruta}]);
+});
+test('agregar foto: si la RPC falla, borra la foto subida y no informa éxito',async()=>{
+ const s=conFoto(escenario({errorRpc:'El gasto cambió'}));await assert.rejects(s.agregarFoto(s.fd),destino('error'));
+ const ruta=s.llamadas.find(c=>c[0]==='subir')[2];assert.deepEqual(s.llamadas.find(c=>c[0]==='borrar'),['borrar','fotos',[ruta]]);assert.ok(!s.llamadas.some(c=>c[0]==='revalidar'));
 });

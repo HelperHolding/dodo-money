@@ -9,11 +9,12 @@ export type ColorGuardado = {agrupacion:string;clave:string;color:string};
 export type Grupo = {clave:string;nombre:string;color:string;predeterminado:string};
 
 // Predeterminados; administración los cambia en la tabla apertura_colores.
-export const COLORES_ETAPA:Record<keyof typeof ETAPAS,string> = {P1:'#2563eb',P2:'#7c3aed',P3:'#db2777',P4:'#ea580c',P5:'#ca8a04',P6:'#16a34a',P7:'#0891b2'};
-export const COLORES_CATEGORIA:Record<CategoriaApertura|'sin',string> = {
- equipo_cocina:'#dc2626',mobiliario:'#9333ea',camara_fria:'#0284c7',puertas:'#92400e',zoclos:'#78716c',pisos:'#57534e',acabados:'#d97706',
- paneles:'#65a30d',contactos:'#e11d48',salidas_cable:'#0d9488',baja_tension:'#4f46e5',iluminacion:'#eab308',plafones:'#a3a3a3',
- sanitarios:'#06b6d4',senaletica_interior:'#c026d3',senaletica_fachada:'#f97316',sin:'#94a3b8',
+// Pastel de la paleta Dodo (naranja de marca, azul, rosa, aqua, violeta, turquesa); el texto encima siempre es oscuro.
+export const COLORES_ETAPA:Record<keyof typeof ETAPAS,string> = {P1:"#ffd2bd",P2:"#c9ddf5",P3:"#f7cddc",P4:"#ffe3a8",P5:"#bfe8d6",P6:"#ddd0f5",P7:"#c3e6e6"};
+export const COLORES_CATEGORIA:Record<CategoriaApertura|"sin",string> = {
+ equipo_cocina:"#ffcfb8",mobiliario:"#e3d4f7",camara_fria:"#c7e0f7",puertas:"#e8d5c4",zoclos:"#e0dcd7",pisos:"#d6d3d1",acabados:"#ffe2b0",
+ paneles:"#d7ebc4",contactos:"#f8cbd6",salidas_cable:"#c3e8e1",baja_tension:"#d0d4f7",iluminacion:"#fff0a8",plafones:"#e6e6e6",
+ sanitarios:"#c4ecf3",senaletica_interior:"#f2cdf0",senaletica_fachada:"#ffd9bd",sin:"#e2e8f0",
 };
 
 export const esColor = (v:string) => /^#[0-9a-f]{6}$/i.test(v);

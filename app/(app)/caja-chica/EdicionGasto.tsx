@@ -1,9 +1,9 @@
 import {BotonEnviar} from '@/components/BotonEnviar';
 import {hoyMX,fechaTexto,pesos} from '@/lib/formato';
 import {NOMBRE_CUENTA,CUENTAS_GASTO} from '@/lib/finanzas/cuentas';
-import {NOMBRE_ORIGEN} from '@/lib/gastos';
+import {fotoDelGasto,NOMBRE_ORIGEN} from '@/lib/gastos';
 import type {Gasto} from './ListaGastos';
-import {administrarGasto} from './administrar';
+import {administrarGasto,agregarFotoGasto} from './administrar';
 export type HistorialGasto={id:string;gasto_id:string;autor_id:string;accion:string;motivo:string;antes:Gasto;despues:Gasto;creado_en:string};
 export function EdicionGasto({g,personas}:{g:Gasto;personas:Map<string,string>}) {
  const comun=<><input type="hidden" name="id" value={g.id}/><input type="hidden" name="version" value={g.version}/></>;
@@ -23,6 +23,12 @@ export function EdicionGasto({g,personas}:{g:Gasto;personas:Map<string,string>})
    <p>Se conserva el comprobante original y el historial. Los cambios de monto u origen ajustan el saldo actual; no reescriben cierres anteriores. {g.informativo&&'Este gasto ya estaba cuadrado: sigue siendo informativo y no mueve efectivo.'}</p>
    <BotonEnviar confirmar="¿Guardar la corrección del gasto y su efecto en saldo y P&L?">Guardar corrección</BotonEnviar>
   </form></details>
+  {!fotoDelGasto(g)&&<details><summary>Agregar foto</summary><form action={agregarFotoGasto} className="formulario">
+   {comun}<input type="hidden" name="solicitud" value={crypto.randomUUID()}/>
+   <label>Foto del ticket<input name="foto" type="file" className="caja-chica-archivo" accept="image/*" required/></label>
+   <p>Solo se guarda la foto. El importe, el origen, el saldo y el P&L no cambian, y queda registrado en el historial.</p>
+   <BotonEnviar className="boton boton-secundario" pendiente="Subiendo…">Agregar foto</BotonEnviar>
+  </form></details>}
   <details><summary>Eliminar captura equivocada</summary><form action={administrarGasto} className="formulario">
    {comun}<input type="hidden" name="solicitud" value={crypto.randomUUID()}/><input type="hidden" name="accion" value="eliminar"/>
    <p>El gasto de {pesos(g.monto)} dejará de contar en el P&L y de descontarse del saldo. El registro y sus comprobantes quedarán en Eliminados.</p>
@@ -35,7 +41,7 @@ export function EdicionGasto({g,personas}:{g:Gasto;personas:Map<string,string>})
 export function HistorialDelGasto({filas,nombres}:{filas:HistorialGasto[];nombres:Map<string,string>}) {
  if(!filas.length)return null;
  return <details><summary>Historial de cambios ({filas.length})</summary><ul>{filas.map(h=><li key={h.id}>
-  <strong>{h.accion==='eliminar'?'Eliminado':'Corregido'}: {h.motivo}</strong><p>{nombres.get(h.autor_id)??'Administración'} · {new Date(h.creado_en).toLocaleString('es-MX',{timeZone:'America/Mexico_City'})}</p>
-  <p>{fechaTexto(h.antes.fecha)} → {fechaTexto(h.despues.fecha)} · {pesos(h.antes.monto)} → {pesos(h.despues.monto)} · {NOMBRE_ORIGEN[h.antes.origen]} → {NOMBRE_ORIGEN[h.despues.origen]}</p>
+  <strong>{h.accion==='agregar_foto'?'Foto agregada':`${h.accion==='eliminar'?'Eliminado':'Corregido'}: ${h.motivo}`}</strong><p>{nombres.get(h.autor_id)??'Administración'} · {new Date(h.creado_en).toLocaleString('es-MX',{timeZone:'America/Mexico_City'})}</p>
+  {h.accion==='agregar_foto'?<p>Sin cambios en importe, origen ni saldo.</p>:<p>{fechaTexto(h.antes.fecha)} → {fechaTexto(h.despues.fecha)} · {pesos(h.antes.monto)} → {pesos(h.despues.monto)} · {NOMBRE_ORIGEN[h.antes.origen]} → {NOMBRE_ORIGEN[h.despues.origen]}</p>}
  </li>)}</ul></details>;
 }
