@@ -1,0 +1,212 @@
+{
+  "name": "Help Desk dodo-money",
+  "nodes": [
+    {
+      "id": "848fd1a5-6966-48d1-9ca0-51385a4c79e2",
+      "name": "Cada minuto",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a368f285-848b-4b17-8d40-edd72fff8f25",
+      "name": "Pedir avisos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://dodo-money-j31t.vercel.app/api/soporte/avisos",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"lote\":10}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "5349b171-41ca-4280-8b3f-2527184a2f3e",
+      "name": "Uno por uno",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "274edc42-7666-4838-89ad-8afc041bf4dc",
+      "name": "Enviar correo",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        660,
+        0
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "smtp": {
+          "id": "PIYhrRSVazBc0OGo",
+          "name": "SMTP account"
+        }
+      },
+      "parameters": {
+        "fromEmail": "Help Desk DODO MX <hola@dodopizza.mx>",
+        "toEmail": "={{ $json.para }}",
+        "subject": "={{ $json.asunto }}",
+        "emailFormat": "both",
+        "text": "={{ $json.texto }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false,
+          "replyTo": "hola@dodopizza.mx"
+        }
+      }
+    },
+    {
+      "id": "94467292-db05-4a67-a719-519f2735aeeb",
+      "name": "Clasificar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const src = $('Uno por uno').item;\nif (!src?.json?.aviso_id) throw new Error('Falta aviso_id del lote');\nconst ok = !$json.error && Array.isArray($json.accepted) && $json.accepted.map(String).map(x=>x.toLowerCase()).includes(String(src.json.para).toLowerCase());\nconst error = ok ? null : String($json.error?.message ?? $json.error ?? $json.response ?? 'Resultado incierto').slice(0, 1500);\nreturn { json: { aviso_id: src.json.aviso_id, ok, error } };"
+      }
+    },
+    {
+      "id": "9f7e5f25-9048-432a-bfd7-7cfcd1926d69",
+      "name": "Reportar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://dodo-money-j31t.vercel.app/api/soporte/avisos/resultado",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Cada minuto": {
+      "main": [
+        [
+          {
+            "node": "Pedir avisos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pedir avisos": {
+      "main": [
+        [
+          {
+            "node": "Uno por uno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uno por uno": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Enviar correo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar correo": {
+      "main": [
+        [
+          {
+            "node": "Clasificar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar": {
+      "main": [
+        [
+          {
+            "node": "Reportar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reportar": {
+      "main": [
+        [
+          {
+            "node": "Uno por uno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Mexico_City",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all"
+  }
+}

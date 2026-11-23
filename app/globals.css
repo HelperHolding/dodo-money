@@ -2155,3 +2155,9 @@ body { background: var(--papel-2); }
  .ap-gantt-tarea .ap-gantt-nombre { padding-left:0; }
  .ap-gantt-etapa > summary { padding:12px 0; }
 }
+
+/* Help Desk */
+.tarjeta-ticket[data-sin-leer] { border-left: 4px solid var(--accion); }
+.soporte-captura { display: block; max-width: 100%; max-height: 420px; margin-top: 0.75rem; border-radius: 8px; border: 1px solid var(--neutro-borde, #e5e5e5); }
+.filtros-soporte { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; align-items: end; }
+.hilo-tarea li[data-soporte] { background: var(--info-fondo, #eef6ff); }

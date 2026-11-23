@@ -1,0 +1,24 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const wf=JSON.parse(readFileSync(new URL('../docs/n8n/soporte-dodo-money.json',import.meta.url),'utf8')),txt=JSON.stringify(wf);
+const N=Object.fromEntries(wf.nodes.map(n=>[n.name,n]));
+const conexion=(de,i)=>(wf.connections[de].main[i]||[]).map(c=>c.node);
+test('n8n soporte: cada minuto pide avisos, manda por SMTP sin reintento y reporta con reintentos',()=>{
+ assert.equal(wf.name,'Help Desk dodo-money');
+ assert.equal(N['Cada minuto'].parameters.rule.interval[0].field,'minutes');
+ assert.match(JSON.stringify(N['Pedir avisos'].parameters),/\/api\/soporte\/avisos"/);
+ const smtp=N['Enviar correo'];
+ assert.equal(smtp.type,'n8n-nodes-base.emailSend');assert.notEqual(smtp.retryOnFail,true);assert.equal(smtp.onError,'continueErrorOutput');
+ assert.equal(smtp.parameters.fromEmail,'Help Desk DODO MX <hola@dodopizza.mx>');
+ assert.equal(smtp.parameters.toEmail,'={{ $json.para }}');assert.equal(smtp.parameters.html,'={{ $json.html }}');assert.equal(smtp.parameters.text,'={{ $json.texto }}');
+ assert.deepEqual(Object.keys(smtp.credentials),['smtp']);
+ assert.deepEqual(conexion('Enviar correo',0),['Clasificar']);assert.deepEqual(conexion('Enviar correo',1),['Clasificar']);
+ const r=N['Reportar'];
+ assert.match(JSON.stringify(r.parameters),/\/api\/soporte\/avisos\/resultado/);
+ assert.equal(r.retryOnFail,true);assert.equal(r.maxTries,3);assert.equal(r.onError,'continueRegularOutput');
+ assert.deepEqual(conexion('Reportar',0),['Uno por uno']);
+ assert.match(N['Clasificar'].parameters.jsCode,/aviso_id/);
+ assert.doesNotMatch(txt,/SOPORTE_API_KEY|headerParameters|"value"\s*:/i);
+ assert.equal(wf.settings.timezone,'America/Mexico_City');
+});

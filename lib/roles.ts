@@ -78,12 +78,19 @@ export type Menu = { inicio: Enlace; grupos: GrupoMenu[] };
 const area = (titulo: string, icono: NombreIcono, seccion: Seccion, enlaces: Enlace[]): GrupoMenu[] =>
   enlaces.length ? [{ titulo, icono, seccion, enlaces }] : [];
 
+/** Help Desk: todos reportan; soporte (admin) además configura los avisos. */
+const ayuda = (rol: Rol): GrupoMenu[] => area("Ayuda", "alerta", "General", [
+  { href: "/soporte", texto: rol === "admin" ? "Tickets" : "Mis tickets" },
+  { href: "/soporte/nuevo", texto: "Reportar" },
+  ...(rol === "admin" ? [{ href: "/soporte/ajustes", texto: "Ajustes" }] : []),
+]);
+
 /** Menú lateral por áreas, en el orden de SECCIONES. Cada puesto ve solo lo suyo (mismas reglas de siempre). */
 export function menuLateral(rol: Rol): Menu {
   const correos = area("Correos", "bandeja", "Marca", puedeVerCorreos(rol)
     ? [{ href: "/correos", texto: "Campañas" }, ...(puedeEditarCorreos(rol) ? [{ href: "/correos/contactos", texto: "Contactos" }] : [])] : []);
   // Marketing solo usa Correos.
-  if (esMarketing(rol)) return { inicio: { href: "/correos", texto: "Campañas" }, grupos: correos };
+  if (esMarketing(rol)) return { inicio: { href: "/correos", texto: "Campañas" }, grupos: [...ayuda(rol), ...correos] };
   const corporativo = esCorporativo(rol);
   const inicio: Enlace = corporativo ? { href: "/corporativo", texto: "Vista general" } : { href: "/", texto: "Inicio" };
   const compras = puedeVerCompras(rol), finanzas = puedeVerFinanzas(rol);
@@ -96,6 +103,7 @@ export function menuLateral(rol: Rol): Menu {
     ]),
     // Todos reciben tareas; operación solo ve las suyas, sin tablero.
     ...area("Tareas", "ok", "General", [{ href: "/tareas", texto: "Mis tareas" }, ...(rol !== "operacion" ? [{ href: "/tareas/tablero", texto: "Tablero" }] : [])]),
+    ...ayuda(rol),
     ...area("Ventas", "grafica", "General", puedeVerVentas(rol) ? [
       { href: "/ventas", texto: "Tablero" },
       { href: "/ventas/rappi", texto: "Rappi" },
