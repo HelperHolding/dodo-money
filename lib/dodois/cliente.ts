@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerPaginas } from "./paginas";
 import { ErrorDodo, tokenDeAcceso as resolverToken, type Almacen } from "./tokens";
+import type { MermaInsumoApi, MermaProductoApi } from "./mermas";
 import type { RecepcionApi } from "./recepciones";
 import type { VentaApi } from "./ventas";
 import type { ExistenciaApi } from "../inventario";
@@ -86,6 +87,17 @@ export async function existenciasDe(token: string, unitIds: readonly string[]): 
       `${API}/dodopizza/mx/accounting/inventory-stocks?units=${unitIds.join(",")}&includeUnconfirmed=true&skip=${skip}&take=1000`);
     return { items: r.stocks ?? [], fin: r.isEndOfListReached };
   }).catch((e) => { throw new ErrorDodo((e as Error).message); });
+}
+
+/** Bajas (mermas) de una unidad en una ventana: productos terminados con su receta e insumos sueltos (ver lib/dodois/mermas.ts). */
+export async function mermasDe(token: string, unitId: string, ventana: { from: string; to: string }): Promise<{ productos: MermaProductoApi[]; insumos: MermaInsumoApi[] }> {
+  const leer = <T>(ruta: string) => leerPaginas(async (skip) => {
+    const r = await getDodo<{ writeOffs: T[]; isEndOfListReached: boolean }>(token,
+      `${API}/dodopizza/mx/accounting/write-offs/${ruta}?units=${unitId}&from=${ventana.from}&to=${ventana.to}&skip=${skip}&take=1000`);
+    return { items: r.writeOffs ?? [], fin: r.isEndOfListReached };
+  }).catch((e) => { throw new ErrorDodo((e as Error).message); });
+  const [productos, insumos] = await Promise.all([leer<MermaProductoApi>("products"), leer<MermaInsumoApi>("stock-items")]);
+  return { productos, insumos };
 }
 
 /** Recepciones de insumos de una unidad en una ventana, página por página; las líneas iguales se conservan. */

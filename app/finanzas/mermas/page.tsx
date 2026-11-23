@@ -10,7 +10,7 @@ import {resumirMermas} from "@/lib/finanzas/mermasDodo";
 import {Aviso} from "@/components/Aviso";
 import {BotonEnviar} from "@/components/BotonEnviar";
 import {Formulario} from "./Formulario";
-import {guardarCostoMerma,anularCostoMerma} from "./acciones";
+import {guardarCostoMerma,anularCostoMerma,traerMermasApi} from "./acciones";
 import {referenciaBOM,type VersionBOM} from "@/lib/finanzas/referenciaMerma";
 import {leerTodo} from "@/lib/ventas/paginar";
 export default async function Mermas({searchParams}:{searchParams:Promise<{mes?:string;sucursal?:string;ok?:string;error?:string}>}) {
@@ -36,11 +36,16 @@ export default async function Mermas({searchParams}:{searchParams:Promise<{mes?:
     const r=mermaParaPL(valoradas.filter(r=>r.sucursal_id===s.id),dias.filter(d=>d.sucursal_id===s.id),desde,hasta);
     return <div key={s.id}><h3>{s.nombre}</h3><p>Productos terminados: <strong>{r.monto===null?"Sin dato":pesos(r.monto)}</strong>{r.parcial?" · parcial/pendiente":" · cobertura completa"}</p>
      <p>Insumos: <strong>{r.insumosMonto===null?"Sin dato":pesos(r.insumosMonto)}</strong>{r.insumosParcial?" · parcial/pendiente":" · cobertura completa"}</p>
+     {r.marketingFilas.length>0&&<p>Productos regalados (baja Marketing): <strong>{pesos(r.marketing)}</strong> · van a Marketing, no a merma{r.marketingSinCosto?` · ${r.marketingSinCosto} sin costo`:""}</p>}
      <p className="saldo-nota">{r.sinImportar} días sin importar · {r.sinCobertura} días sin cobertura de productos confirmada · {r.sinCosto} renglones de productos sin costo · {r.sinCostoInsumos} renglones de insumos sin costo.</p>
     </div>;
    })}
    <ConInfo titulo="Importes incorporados al P&L" etiqueta="Cómo leer esto">Los costos desconocidos no cuentan como cero. Si falta cobertura o costo, el margen y EBITDA muestran que el resultado es provisional. El P&L usa su propio periodo, que puede terminar antes de hoy.</ConInfo>
   </section>
+  {edita&&<section className="seccion"><h2>Traer de Dodo IS</h2>
+   <p className="saldo-nota">Cada noche se reemplazan solos los últimos 3 días. Aquí puedes traer un rango (máximo 31 días): reemplaza esos días completos con las bajas de la API, costeadas con el último precio de recepción sin IVA; sin precio, el renglón queda pendiente.</p>
+   <form action={traerMermasApi} className="barra-filtros"><label htmlFor="api-desde">Desde</label><input id="api-desde" name="desde" type="date" defaultValue={desde} max={hoyCalendarioMX()} required/><label htmlFor="api-hasta">Hasta</label><input id="api-hasta" name="hasta" type="date" defaultValue={hasta} max={hoyCalendarioMX()} required/><BotonEnviar className="boton boton-compacto" pendiente="Trayendo…">Traer de Dodo IS</BotonEnviar></form>
+  </section>}
   {edita&&<Formulario/>}
   {productos.length>0&&<section className="seccion"><h2>Costos de productos y referencias del BOM</h2><ConInfo titulo="Costos de productos y referencias del BOM" etiqueta="Cómo leer esto">El costo importado de Dodo IS es sin IVA. El BOM es una referencia de receta con sus ajustes y empaque; confirma unidad, IVA y componentes antes de usarlo como costo de una baja. No agregamos el 1 % de periféricos a las mermas.</ConInfo>
    {productos.map(r=>{

@@ -24,8 +24,8 @@ export async function actualizarAhora(fd: FormData) {
   const simular = fd.get("simular") === "si";
   const r = await sincronizarVentas(crearClienteAdmin(), "manual", { fecha: fecha || undefined, simular });
   revalidatePath("/ventas", "layout");
-  const texto = r.map((x) => x.tipo === "recepciones"
-    ? `Recepciones ${x.sucursal}: ${x.estado === "error" ? `error — ${x.mensaje}` : x.mensaje}`
+  const texto = r.map((x) => x.tipo !== "ventas"
+    ? `${x.tipo === "mermas" ? "Mermas" : "Recepciones"} ${x.sucursal}: ${x.estado === "error" ? `error — ${x.mensaje}` : x.mensaje}`
     : `Ventas ${x.sucursal} ${x.fecha}: ${x.estado === "error" ? `error — ${x.mensaje}` : `${x.pedidos} pedidos, ${pesos(x.total)}${x.mensaje ? ` (${x.mensaje})` : ""}`}`).join(" · ");
   volver(r.some((x) => x.estado === "error") ? "error" : "ok", texto);
 }
