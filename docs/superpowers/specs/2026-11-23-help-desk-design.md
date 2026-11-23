@@ -30,7 +30,7 @@ Una sección **Help Desk** dentro de DODO MX donde cualquier persona que usa la 
    - **Título**: 5–150 caracteres.
    - **Descripción**: «¿Qué pasó?» o «¿Qué propones?» según el tipo; 10–4000 caracteres.
    - **¿Te impide trabajar?** sí/no (solo para Problema). Sí → prioridad inicial Alta; no → Media. Mejora → Baja.
-   - **Captura** opcional: una imagen (jpg, png, webp, heic) de hasta 5 MB.
+   - **Captura** opcional: una imagen (jpg, png, webp, heic) de hasta 4 MB (mismo límite que caja chica, `MAX_FOTO_BYTES`).
 3. Se guarda con su puesto, sucursal (si tiene) y la ruta `desde`. Ve la confirmación «HD-14 recibido».
 4. `/soporte` le muestra **sus tickets en tarjetas** (clave, tipo, título, estado, fecha, marca «Respuesta nueva»). En el detalle puede leer el hilo y comentar mientras el ticket no esté Descartado.
 
@@ -99,7 +99,7 @@ Una sección **Help Desk** dentro de DODO MX donde cualquier persona que usa la 
 
 - Validación en el cliente y de nuevo en la base; los mensajes P0001 llegan al usuario y el resto se reemplaza por un genérico (como `mensajeDe` de Tareas).
 - La captura se sube antes de crear el ticket; si la creación falla, se borra.
-- Imagen inválida o >5 MB: mensaje y el ticket no se manda.
+- Imagen inválida o >4 MB: mensaje y el ticket no se manda.
 
 ## Pruebas
 

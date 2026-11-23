@@ -241,3 +241,11 @@ test('soporte: permisos de funciones, tablas y bucket de capturas',async()=>{
   }finally{await db.exec('reset role');}
  }finally{await db.close();}
 });
+
+test('soporte: el script de supabase/pruebas termina en PRUEBAS OK',async()=>{
+ const db=await nueva();
+ try{
+  const pruebas=readFileSync(new URL('../supabase/pruebas/20261123120000_soporte.sql',import.meta.url),'utf8');
+  await rechaza(db.exec(pruebas),/PRUEBAS OK/);
+ }finally{await db.close();}
+});
