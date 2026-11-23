@@ -193,4 +193,134 @@ revoke all on function public.registrar_historial_ticket(),public.encolar_aviso_
 revoke all on function public.es_soporte(),public.puede_ver_ticket(uuid),public.crear_ticket(jsonb),public.tickets_visibles(bigint) from public,anon;
 -- es_soporte y puede_ver_ticket también las necesita la RLS, que corre como el usuario.
 grant execute on function public.es_soporte(),public.puede_ver_ticket(uuid),public.crear_ticket(jsonb),public.tickets_visibles(bigint) to authenticated;
+
+-- Lee el ticket para escribir: usuario activo, ticket visible y en la revisión que vio la pantalla.
+create function public.ticket_para_escribir(p_numero bigint,p_revision integer) returns public.soporte_tickets
+language plpgsql security definer set search_path='' as $$
+declare t public.soporte_tickets;
+begin
+ if public.mi_rol() is null then raise exception 'Tu usuario no está activo.';end if;
+ select * into t from public.soporte_tickets where numero=p_numero for update;
+ if not found or not public.puede_ver_ticket(t.creado_por) then raise exception 'Ticket no encontrado.';end if;
+ if p_revision is not null and t.revision<>p_revision then raise exception 'El ticket cambió mientras lo veías. Recarga e intenta de nuevo.';end if;
+ return t;
+end $$;
+
+create function public.marcar_leido_soporte(p_ticket uuid) returns void
+language sql security definer set search_path='' as $$
+ insert into public.soporte_lecturas(ticket_id,usuario_id,leido_en) values(p_ticket,auth.uid(),now())
+ on conflict (ticket_id,usuario_id) do update set leido_en=excluded.leido_en
+$$;
+
+create function public.comentar_ticket(p_numero bigint,p_texto text) returns void
+language plpgsql security definer set search_path='' as $$
+declare t public.soporte_tickets;s boolean:=public.es_soporte();txt text:=trim(coalesce(p_texto,''));cid bigint;
+begin
+ t:=public.ticket_para_escribir(p_numero,null);
+ if txt='' then raise exception 'Escribe un comentario.';end if;
+ if length(txt)>4000 then raise exception 'El comentario es demasiado largo (máximo 4000 caracteres).';end if;
+ if t.estado::text='descartado' and not s then raise exception 'El ticket está descartado. Si sigue pasando, levanta uno nuevo.';end if;
+ insert into public.soporte_comentarios(ticket_id,autor_id,es_soporte,texto) values(t.id,auth.uid(),s,txt) returning id into cid;
+ if s then
+  update public.soporte_tickets set novedad_reporta=now(),actualizado_en=now() where id=t.id;
+ else
+  update public.soporte_tickets set novedad_soporte=now(),actualizado_en=now() where id=t.id;
+  perform public.encolar_aviso_soporte(t.id,'comentario',cid);
+ end if;
+ perform public.marcar_leido_soporte(t.id);
+end $$;
+
+-- Soporte cambia estado, prioridad y responsable; una clave ausente no cambia. Cerrar exige respuesta.
+create function public.cambiar_ticket(p_numero bigint,p_revision integer,p_datos jsonb) returns void
+language plpgsql security definer set search_path='' as $$
+declare t public.soporte_tickets;e text;pr text;resp uuid;nota text;cambia boolean;
+begin
+ t:=public.ticket_para_escribir(p_numero,p_revision);
+ if p_revision is null then raise exception 'El ticket cambió mientras lo veías. Recarga e intenta de nuevo.';end if;
+ if not public.es_soporte() then raise exception 'Solo soporte puede cambiar el ticket.';end if;
+ if jsonb_typeof(p_datos) is distinct from 'object'
+   or exists(select 1 from jsonb_object_keys(p_datos) k where k<>all(array['estado','prioridad','responsable','comentario'])) then
+  raise exception 'Datos del ticket inválidos.';
+ end if;
+ e:=coalesce(nullif(p_datos->>'estado',''),t.estado::text);
+ pr:=coalesce(nullif(p_datos->>'prioridad',''),t.prioridad::text);
+ nota:=trim(coalesce(p_datos->>'comentario',''));
+ if e not in ('nuevo','en_revision','en_progreso','resuelto','descartado') then raise exception 'Estado inválido.';end if;
+ if pr not in ('alta','media','baja') then raise exception 'Prioridad inválida.';end if;
+ cambia:=e<>t.estado::text;
+ if cambia and t.estado::text||'>'||e not in ('nuevo>en_revision','nuevo>en_progreso','nuevo>resuelto','nuevo>descartado',
+   'en_revision>en_progreso','en_revision>resuelto','en_revision>descartado','en_progreso>en_revision','en_progreso>resuelto',
+   'en_progreso>descartado','resuelto>en_progreso','descartado>en_revision') then
+  raise exception 'No puedes hacer ese cambio de estado.';
+ end if;
+ if cambia and e in ('resuelto','descartado') and length(nota)<5 then
+  raise exception 'Para cerrar el ticket escribe la respuesta para quien lo levantó (al menos 5 caracteres).';
+ end if;
+ if length(nota)>4000 then raise exception 'El comentario es demasiado largo (máximo 4000 caracteres).';end if;
+ if p_datos ? 'responsable' then
+  if nullif(p_datos->>'responsable','') is null then resp:=null;
+  elsif p_datos->>'responsable' !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    or not exists(select 1 from public.perfiles p where p.id=(p_datos->>'responsable')::uuid and p.activo and p.rol::text='admin') then
+   raise exception 'Esa persona no puede ser responsable.';
+  else resp:=(p_datos->>'responsable')::uuid;
+  end if;
+ else resp:=t.responsable;
+ end if;
+ if not cambia and pr=t.prioridad::text and resp is not distinct from t.responsable and nota='' then raise exception 'No hay cambios que guardar.';end if;
+ update public.soporte_tickets set estado=e::public.estado_ticket,prioridad=pr::public.prioridad_tarea,responsable=resp,
+  revision=revision+1,actualizado_en=now(),
+  cerrado_en=case when e in ('resuelto','descartado') then case when cambia then now() else cerrado_en end end,
+  novedad_reporta=case when cambia or nota<>'' then now() else novedad_reporta end
+ where id=t.id;
+ if nota<>'' then insert into public.soporte_comentarios(ticket_id,autor_id,es_soporte,texto) values(t.id,auth.uid(),true,nota);end if;
+ perform public.marcar_leido_soporte(t.id);
+end $$;
+
+create function public.marcar_ticket_leido(p_numero bigint) returns void
+language plpgsql security definer set search_path='' as $$
+declare tid uuid;
+begin
+ select t.id into tid from public.soporte_tickets t where t.numero=p_numero and public.puede_ver_ticket(t.creado_por);
+ if tid is not null then perform public.marcar_leido_soporte(tid);end if;
+end $$;
+
+-- Soporte: tickets nuevos o con comentarios sin leer (urgente si hay un problema que bloquea sin atender).
+-- Quien reporta: sus tickets con respuesta o cambio de estado sin leer.
+create function public.contar_soporte() returns table(pendientes integer,urgente boolean)
+language sql stable security definer set search_path='' as $$
+ select count(*)::integer,
+  coalesce(bool_or(public.es_soporte() and t.estado::text='nuevo' and t.tipo::text='problema' and t.prioridad::text='alta'),false)
+ from public.soporte_tickets t
+ left join public.soporte_lecturas l on l.ticket_id=t.id and l.usuario_id=auth.uid()
+ where public.mi_rol() is not null and case when public.es_soporte()
+  then t.estado::text='nuevo' or t.novedad_soporte>coalesce(l.leido_en,'-infinity'::timestamptz)
+  else t.creado_por=auth.uid() and coalesce(t.novedad_reporta>coalesce(l.leido_en,'-infinity'::timestamptz),false) end
+$$;
+
+-- Comentarios e historial juntos, en orden. En cambios de responsable, antes/después ya vienen como nombres.
+create function public.hilo_ticket(p_numero bigint)
+returns table(tipo text,autor text,es_soporte boolean,texto text,campo text,antes text,despues text,fecha timestamptz)
+language sql stable security definer set search_path='' as $$
+ with t as (select x.id from public.soporte_tickets x where x.numero=p_numero and public.puede_ver_ticket(x.creado_por))
+ select u.tipo,u.autor,u.es_soporte,u.texto,u.campo,u.antes,u.despues,u.fecha from (
+  select 'comentario'::text tipo,p.nombre autor,c.es_soporte,c.texto,null::text campo,null::text antes,null::text despues,c.fecha,c.id
+  from public.soporte_comentarios c join t on t.id=c.ticket_id join public.perfiles p on p.id=c.autor_id
+  union all
+  select 'cambio',p.nombre,null::boolean,null,h.campo,
+   case when h.campo='responsable' then (select y.nombre from public.perfiles y where y.id=h.antes::uuid) else h.antes end,
+   case when h.campo='responsable' then (select y.nombre from public.perfiles y where y.id=h.despues::uuid) else h.despues end,h.fecha,h.id
+  from public.soporte_historial h join t on t.id=h.ticket_id left join public.perfiles p on p.id=h.usuario_id
+ ) u order by u.fecha,u.tipo,u.id
+$$;
+
+create function public.personas_soporte() returns table(id uuid,nombre text)
+language sql stable security definer set search_path='' as $$
+ select p.id,p.nombre from public.perfiles p where public.es_soporte() and p.activo and p.rol::text='admin' order by p.nombre
+$$;
+
+revoke all on function public.ticket_para_escribir(bigint,integer),public.marcar_leido_soporte(uuid) from public,anon,authenticated;
+revoke all on function public.comentar_ticket(bigint,text),public.cambiar_ticket(bigint,integer,jsonb),public.marcar_ticket_leido(bigint),
+ public.contar_soporte(),public.hilo_ticket(bigint),public.personas_soporte() from public,anon;
+grant execute on function public.comentar_ticket(bigint,text),public.cambiar_ticket(bigint,integer,jsonb),public.marcar_ticket_leido(bigint),
+ public.contar_soporte(),public.hilo_ticket(bigint),public.personas_soporte() to authenticated;
 commit;

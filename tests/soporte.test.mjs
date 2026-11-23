@@ -70,3 +70,82 @@ test('soporte: cada quien ve solo lo suyo; admin ve todo (también por RLS)',asy
   }finally{await db.exec('reset role');}
  }finally{await db.close();}
 });
+
+const cambiar=(db,id,n,rev,datos)=>q(db,id,`select public.cambiar_ticket($1,$2,$3::jsonb)`,[n,rev,JSON.stringify(datos)]);
+const comentar=(db,id,n,txt)=>q(db,id,`select public.comentar_ticket($1,$2)`,[n,txt]);
+const contar=async(db,id)=>{const [r]=await q(db,id,`select * from public.contar_soporte()`);return {pendientes:r.pendientes,urgente:r.urgente};};
+const revision=async(db,n)=>(await db.query(`select revision from public.soporte_tickets where numero=$1`,[n])).rows[0].revision;
+
+test('soporte: comentarios avisan a soporte o a quien reporta; leer limpia el contador',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.ana,PROBLEMA);
+  assert.deepEqual(await contar(db,U.seba),{pendientes:1,urgente:true});
+  assert.deepEqual(await contar(db,U.ana),{pendientes:0,urgente:false});
+  await q(db,U.seba,`select public.marcar_ticket_leido($1)`,[n]);
+  await comentar(db,U.seba,n,'¿Desde qué celular?');
+  assert.deepEqual(await contar(db,U.ana),{pendientes:1,urgente:false});
+  assert.equal((await q(db,U.ana,`select sin_leer from public.tickets_visibles($1)`,[n]))[0].sin_leer,true);
+  await q(db,U.ana,`select public.marcar_ticket_leido($1)`,[n]);
+  assert.deepEqual(await contar(db,U.ana),{pendientes:0,urgente:false});
+  await comentar(db,U.ana,n,'Desde un Motorola');
+  const avisos=(await db.query(`select evento from public.soporte_avisos order by creado_en`)).rows.map(r=>r.evento);
+  assert.deepEqual(avisos,['nuevo','comentario']);
+  assert.equal((await q(db,U.seba,`select sin_leer from public.tickets_visibles($1)`,[n]))[0].sin_leer,true);
+  await rechaza(comentar(db,U.ana,n,'   '),/Escribe un comentario/);
+  await rechaza(comentar(db,U.luis,n,'No es mío'),/Ticket no encontrado/);
+  await rechaza(comentar(db,U.ana,n,'x'.repeat(4001)),/máximo 4000/);
+ }finally{await db.close();}
+});
+
+test('soporte: solo admin cambia; transiciones, cierre con respuesta, reabrir y revisión',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.ana,PROBLEMA);
+  await rechaza(cambiar(db,U.ana,n,1,{estado:'en_revision'}),/Solo soporte puede cambiar/);
+  await rechaza(cambiar(db,U.corp,n,1,{estado:'en_revision'}),/Ticket no encontrado/);
+  await rechaza(cambiar(db,U.seba,n,1,{estado:'volando'}),/Estado inválido/);
+  await rechaza(cambiar(db,U.seba,n,1,{estado:'resuelto'}),/escribe la respuesta/);
+  await rechaza(cambiar(db,U.seba,n,1,{prioridad:'urgente'}),/Prioridad inválida/);
+  await rechaza(cambiar(db,U.seba,n,1,{responsable:U.ana}),/no puede ser responsable/);
+  await rechaza(cambiar(db,U.seba,n,1,{}),/No hay cambios/);
+  await rechaza(cambiar(db,U.seba,n,1,{otra:'x'}),/Datos del ticket inválidos/);
+  await cambiar(db,U.seba,n,1,{estado:'en_progreso',prioridad:'media',responsable:U.julio});
+  await rechaza(cambiar(db,U.julio,n,1,{estado:'en_revision'}),/cambió mientras lo veías/);
+  await rechaza(cambiar(db,U.seba,n,2,{estado:'nuevo'}),/No puedes hacer ese cambio de estado/);
+  await cambiar(db,U.seba,n,2,{estado:'resuelto',comentario:'Ya quedó, actualiza la app.'});
+  let [t]=await db.query(`select estado,cerrado_en,responsable from public.soporte_tickets where numero=$1`,[n]).then(r=>r.rows);
+  assert.equal(t.estado,'resuelto');assert.ok(t.cerrado_en);assert.equal(t.responsable,U.julio);
+  assert.deepEqual(await contar(db,U.ana),{pendientes:1,urgente:false});
+  await comentar(db,U.ana,n,'Sigue pasando');
+  assert.equal((await db.query(`select estado from public.soporte_tickets where numero=$1`,[n])).rows[0].estado,'resuelto');
+  await cambiar(db,U.seba,n,await revision(db,n),{estado:'en_progreso'});
+  [t]=(await db.query(`select estado,cerrado_en from public.soporte_tickets where numero=$1`,[n])).rows;
+  assert.equal(t.estado,'en_progreso');assert.equal(t.cerrado_en,null);
+  await cambiar(db,U.seba,n,await revision(db,n),{estado:'descartado',comentario:'Es del celular, no del sistema.',responsable:''});
+  await rechaza(comentar(db,U.ana,n,'¿Por qué?'),/descartado/);
+  await comentar(db,U.seba,n,'Escríbeme si vuelve a pasar.');
+  await cambiar(db,U.seba,n,await revision(db,n),{estado:'en_revision'});
+  const campos=(await db.query(`select campo,antes,despues from public.soporte_historial order by id`)).rows.map(r=>`${r.campo}:${r.antes??''}>${r.despues??''}`);
+  assert.deepEqual(campos,['creado:>nuevo',`estado:nuevo>en_progreso`,'prioridad:alta>media',`responsable:${U.seba}>${U.julio}`,'estado:en_progreso>resuelto',
+   'estado:resuelto>en_progreso','estado:en_progreso>descartado',`responsable:${U.julio}>`,'estado:descartado>en_revision']);
+ }finally{await db.close();}
+});
+
+test('soporte: hilo con nombres, etiqueta de soporte y responsables por nombre; personas_soporte',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.ana,PROBLEMA);
+  await cambiar(db,U.seba,n,1,{responsable:U.julio,comentario:'Lo revisa Julio.'});
+  await comentar(db,U.ana,n,'Gracias');
+  const hilo=await q(db,U.ana,`select tipo,autor,es_soporte,texto,campo,antes,despues from public.hilo_ticket($1)`,[n]);
+  assert.deepEqual(hilo.map(h=>[h.tipo,h.autor,h.es_soporte,h.texto??h.campo,h.antes,h.despues]),[
+   ['cambio','Ana (op Z)',null,'creado',null,'nuevo'],
+   ['cambio','Sebastián',null,'responsable','Sebastián','Julio'],
+   ['comentario','Sebastián',true,'Lo revisa Julio.',null,null],
+   ['comentario','Ana (op Z)',false,'Gracias',null,null]]);
+  assert.deepEqual(await q(db,U.luis,`select * from public.hilo_ticket($1)`,[n]),[]);
+  assert.deepEqual((await q(db,U.julio,`select nombre from public.personas_soporte()`)).map(r=>r.nombre),['Julio','Sebastián']);
+  assert.deepEqual(await q(db,U.ana,`select * from public.personas_soporte()`),[]);
+ }finally{await db.close();}
+});
