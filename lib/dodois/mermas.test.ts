@@ -32,6 +32,16 @@ test("masa por pieza: peso de la bola en el BOM × precio por kg de la versión 
   assert.equal(precio("Masa 25", "Quantity", "2026-09-30"), null); // sin versión vigente
 });
 
+test("masa por pieza: una receta aislada con otro peso no bloquea el peso de casi todas", () => {
+  // Como UC Mexico: 44 recetas con Dough 30 de 345 g y Hawaii con 460 g (la de 35).
+  const v = versionBOM("2026-10-01");
+  v.modelo.recetas = [...Array.from({ length: 44 }, (_, i) => receta(`Pizza 30 #${i}`, [material("Dough 30 (Masa 30)", 345)])), receta("Hawaii", [material("Dough 30 (Masa 30)", 460)])];
+  assert.equal(precioMasaBOM([v])("Masa 30", "Quantity", "2026-11-18"), 5.0232); // 0.345 kg × $14.56
+  // Sin una mayoría clara (menos del 90 % de las recetas) sigue sin adivinar.
+  v.modelo.recetas = [...Array.from({ length: 8 }, (_, i) => receta(`Pizza 30 #${i}`, [material("Dough 30 (Masa 30)", 345)])), receta("A", [material("Dough 30 (Masa 30)", 460)]), receta("B", [material("Dough 30 (Masa 30)", 330)])];
+  assert.equal(precioMasaBOM([v])("Masa 30", "Quantity", "2026-11-18"), null);
+});
+
 test("mermas API: la masa sin precio de recepción toma el precio por pieza del BOM", () => {
   const masa25: MermaInsumoApi = { unitId: "11f187558e757f53b0570d952420b810", writtenOffAtLocal: "2026-11-18T22:00:00", reason: "Expired",
     stockItemId: "11f1956cbf1369fb0acc2ceb65811140", stockItemName: "Masa 25", quantity: 24, measurementUnit: "Quantity" };
