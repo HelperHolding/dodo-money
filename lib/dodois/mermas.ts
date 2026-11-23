@@ -2,7 +2,8 @@
  * Mermas desde la API de Dodo IS: /accounting/write-offs/products (productos terminados, con su receta) y
  * /accounting/write-offs/stock-items (insumos dados de baja sueltos; no repiten los de los productos).
  * Se convierten a los mismos renglones que el Excel de Bajas para reemplazar días completos con importar_mermas_dodo.
- * El costo sin IVA sale del precio de recepción de cada insumo en Dodo IS; sin precio, el renglón queda pendiente.
+ * El costo sin IVA sale del precio de recepción de cada insumo en Dodo IS. Si a la receta de un producto le falta algún
+ * precio, el producto toma el costo teórico del catálogo (el mismo de Alimento en el P&L); sin ninguno, queda pendiente.
  */
 import type { DiaMerma, MermaDodo } from "../finanzas/mermasDodo";
 
@@ -19,6 +20,8 @@ export type MermaInsumoApi = {
 };
 /** Precio sin IVA por unidad de un insumo de Dodo IS a una fecha, o null si no se conoce. */
 export type PrecioInsumo = (insumoId: string, fecha: string) => number | null;
+/** Costo teórico sin IVA por pieza de un producto de Dodo IS a una fecha (catálogo: receta + periférico), o null. */
+export type CostoProducto = (productoId: string, fecha: string) => number | null;
 
 /** Las bajas con razón Marketing (producto regalado) no son merma: el P&L las manda a Marketing. */
 export const MARKETING = "marketing:";
@@ -34,6 +37,8 @@ const fechaValida = (f: string) => /^\d{4}-\d{2}-\d{2}$/.test(f) && new Date(`${
 export function traducirMermas(p: {
   sucursalId: string; unitId: string; desde: string; hasta: string;
   productos: readonly MermaProductoApi[]; insumos: readonly MermaInsumoApi[]; precio: PrecioInsumo;
+  /** Respaldo cuando algún insumo de la receta no tiene precio de recepción (p. ej. la masa, que no se compra). */
+  costoProducto?: CostoProducto;
 }): { dias: DiaMerma[]; filas: MermaDodo[] } {
   const dias: DiaMerma[] = [];
   for (let f = p.desde; f <= p.hasta; f = sumarDias(f, 1)) dias.push({ sucursal_id: p.sucursalId, fecha: f, productos_completos: true });
@@ -53,6 +58,10 @@ export function traducirMermas(p: {
     for (const i of x.stockItems ?? []) {
       const pr = p.precio(i.id, fecha);
       if (pr === null) faltaPrecio = true; else costo += Number(i.quantity) * pr;
+    }
+    if (faltaPrecio) {
+      const unitario = p.costoProducto?.(x.productId, fecha) ?? null;
+      if (unitario !== null && unitario > 0) { costo = Number(x.quantity) * unitario; faltaPrecio = false; }
     }
     const clave = `${mkt ? MARKETING : ""}${x.productName.trim().toLowerCase()}`;
     sumar(`${fecha}|producto|${clave}`, {
@@ -95,6 +104,26 @@ export function precioDesdeRecepciones(
     if (!l?.length) return null;
     const propias = l.filter((r) => r.suc), lista = propias.length ? propias : l;
     return (lista.filter((r) => r.fecha <= fecha).at(-1) ?? lista[0]).precio;
+  };
+}
+
+/**
+ * Costo por pieza desde el catálogo: el producto de Dodo IS (productId) se liga a productos_venta con productos_codigos
+ * (dodo_uuid → dodo_id) y toma el costos_producto con el vigente_desde más reciente que no pasa de la fecha.
+ */
+export function costoDesdeCatalogo(
+  codigos: readonly { dodo_uuid: string; dodo_id: number | null }[],
+  costos: readonly { dodo_id: number; costo: number; vigente_desde: string }[],
+): CostoProducto {
+  const idDe = new Map(codigos.filter((c) => c.dodo_id !== null).map((c) => [c.dodo_uuid.toUpperCase(), Number(c.dodo_id)]));
+  const porProducto = new Map<number, { costo: number; vigente_desde: string }[]>();
+  for (const c of costos) porProducto.set(Number(c.dodo_id), [...(porProducto.get(Number(c.dodo_id)) ?? []), c]);
+  return (productoId, fecha) => {
+    const id = idDe.get(productoId.toUpperCase());
+    if (id === undefined) return null;
+    let mejor: { costo: number; vigente_desde: string } | null = null;
+    for (const c of porProducto.get(id) ?? []) if (c.vigente_desde <= fecha && (!mejor || c.vigente_desde > mejor.vigente_desde)) mejor = c;
+    return mejor ? Number(mejor.costo) : null;
   };
 }
 

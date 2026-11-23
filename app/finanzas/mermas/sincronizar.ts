@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mermasDe } from "@/lib/dodois/cliente";
-import { precioDesdeRecepciones, traducirMermas } from "@/lib/dodois/mermas";
+import { costoDesdeCatalogo, precioDesdeRecepciones, traducirMermas } from "@/lib/dodois/mermas";
 import { leerTodo } from "@/lib/ventas/paginar";
 
 export type ResultadoMermas = { sucursal: string; sucursal_id: string; desde: string; hasta: string; estado: "ok" | "error"; filas: number; costo: number; sinCosto: number; mensaje: string };
@@ -11,8 +11,8 @@ const siguiente = (f: string) => new Date(Date.parse(`${f}T00:00:00Z`) + 86_400_
 const centavos = (n: number) => Math.round(n * 100) / 100;
 
 /**
- * Trae de Dodo IS las bajas de cada sucursal ligada en la ventana, las costea con el precio de recepción y reemplaza
- * esos días. `guardar` decide la función: la del cron (service_role, sin usuario) o la de la app (admin con sesión).
+ * Trae de Dodo IS las bajas de cada sucursal ligada en la ventana, las costea con el precio de recepción (un producto
+ * sin precio completo toma el costo del catálogo) y reemplaza esos días. `guardar` decide la función: la del cron (service_role, sin usuario) o la de la app (admin con sesión).
  */
 export async function sincronizarMermas(
   lector: SupabaseClient, token: string, sucursales: readonly Sucursal[], ventana: { desde: string; hasta: string },
@@ -21,6 +21,13 @@ export async function sincronizarMermas(
   const recepciones = await leerTodo<{ sucursal_id: string; dodo_insumo_id: string; fecha: string; precio: number }>((d, h) =>
     lector.from("recepciones_dodo").select("sucursal_id, dodo_insumo_id, fecha, precio").lte("fecha", ventana.hasta).gt("precio", 0)
       .order("id").range(d, h));
+  // Respaldo de productos: costo teórico del catálogo (receta + periférico), ligado por el id de producto de Dodo IS.
+  const [codigos, costos] = await Promise.all([
+    leerTodo<{ dodo_uuid: string; dodo_id: number | null }>((d, h) => lector.from("productos_codigos").select("dodo_uuid, dodo_id").order("dodo_uuid").range(d, h)),
+    leerTodo<{ dodo_id: number; costo: number; vigente_desde: string }>((d, h) =>
+      lector.from("costos_producto").select("dodo_id, costo, vigente_desde").lte("vigente_desde", ventana.hasta).order("dodo_id").order("vigente_desde").range(d, h)),
+  ]);
+  const costoProducto = costoDesdeCatalogo(codigos, costos);
   const resultados: ResultadoMermas[] = [];
   for (const s of sucursales) {
     const base = { sucursal: s.nombre, sucursal_id: s.id, desde: ventana.desde, hasta: ventana.hasta };
@@ -28,7 +35,7 @@ export async function sincronizarMermas(
       const api = await mermasDe(token, s.dodois_unit_id, { from: `${ventana.desde}T00:00:00`, to: `${siguiente(ventana.hasta)}T00:00:00` });
       const { dias, filas } = traducirMermas({
         sucursalId: s.id, unitId: s.dodois_unit_id, desde: ventana.desde, hasta: ventana.hasta, ...api,
-        precio: precioDesdeRecepciones(recepciones, s.id),
+        precio: precioDesdeRecepciones(recepciones, s.id), costoProducto,
       });
       const huella = createHash("sha256").update(JSON.stringify({ dias, filas })).digest("hex");
       const { error } = await guardar(dias, filas, huella);

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { esMarketing, precioDesdeRecepciones, traducirMermas, ventanaMermas, type MermaInsumoApi, type MermaProductoApi } from "./mermas.ts";
+import { costoDesdeCatalogo, esMarketing, precioDesdeRecepciones, traducirMermas, ventanaMermas, type MermaInsumoApi, type MermaProductoApi } from "./mermas.ts";
 
 const UNIDAD = "11f187558e757f53b0570d952420b810";
 const MASA = "11f1956cbf1369fb0acc2ceb65811140", SALSA = "11f1956ebe2fa94298e49ab1e6fe1b30", MOZZA = "11f187589c9da51d27da591f2ff6a0c0";
@@ -53,6 +53,33 @@ test("mermas API: sin precio de algún insumo queda sin costo (pendiente), no en
   const sinPrecio = { ...base, precio: (id: string) => (id.toUpperCase() === MOZZA.toUpperCase() ? null : precio(id)) };
   const r = traducirMermas({ ...sinPrecio, productos: [pepperoni], insumos: [{ ...masaVencida, stockItemId: MOZZA, stockItemName: "Mozzarella", measurementUnit: "Kilogram", quantity: 0.5 }] });
   assert.ok(r.filas.every((f) => f.sin_costo));
+});
+
+// Costo teórico del catálogo (receta + periférico, sin IVA) por pieza: el mismo que usa el P&L para Alimento.
+const catalogo = costoDesdeCatalogo(
+  [{ dodo_uuid: pepperoni.productId.toUpperCase(), dodo_id: 81 }],
+  [{ dodo_id: 81, costo: 52.4, vigente_desde: "2026-10-01" }, { dodo_id: 81, costo: 55, vigente_desde: "2026-10-18" }],
+);
+
+test("mermas API: si falta el precio de algún insumo, el producto toma el costo del catálogo vigente a la fecha", () => {
+  const sinPrecio = { ...base, precio: (id: string) => (id.toUpperCase() === MASA.toUpperCase() ? null : precio(id)), costoProducto: catalogo };
+  const [p] = traducirMermas({ ...sinPrecio, productos: [pepperoni], insumos: [] }).filas;
+  // 2 piezas × $52.40 (vigente el 17-oct; el de $55 entra el 18-oct).
+  assert.equal(p.costo, 104.8);
+  assert.equal(p.sin_costo, false);
+  const mkt = traducirMermas({ ...sinPrecio, productos: [{ ...pepperoni, reason: "Marketing", quantity: 1, writtenOffAtLocal: "2026-10-18T12:00:00" }], insumos: [] }).filas[0];
+  assert.deepEqual([mkt.clave, mkt.costo, mkt.sin_costo], ["marketing:doble pepperoni grande", 55, false]);
+});
+
+test("mermas API: con todos los precios de recepción no usa el catálogo; sin catálogo ni precio queda pendiente", () => {
+  const [conPrecios] = traducirMermas({ ...base, costoProducto: catalogo, productos: [pepperoni], insumos: [] }).filas;
+  assert.equal(conPrecios.costo, 76.72);
+  const sinNada = { ...base, precio: () => null, costoProducto: costoDesdeCatalogo([], []) };
+  const [p] = traducirMermas({ ...sinNada, productos: [pepperoni], insumos: [] }).filas;
+  assert.deepEqual([p.costo, p.sin_costo], [0, true]);
+  // Antes de que exista un costo vigente tampoco se inventa.
+  assert.equal(catalogo(pepperoni.productId, "2026-09-30"), null);
+  assert.equal(catalogo("otro", "2026-10-17"), null);
 });
 
 test("mermas API: razón Marketing va aparte (clave marketing:) para que el P&L la mande a Marketing", () => {
