@@ -149,3 +149,95 @@ test('soporte: hilo con nombres, etiqueta de soporte y responsables por nombre; 
   assert.deepEqual(await q(db,U.ana,`select * from public.personas_soporte()`),[]);
  }finally{await db.close();}
 });
+
+const tomar=(db,lote)=>db.query(`select * from public.soporte_tomar_avisos($1)`,[lote]).then(r=>r.rows);
+const resultado=(db,id,ok,err)=>db.query(`select public.soporte_resultado_aviso($1,$2,$3)`,[id,ok,err]);
+const estadoAviso=async(db,id)=>(await db.query(`select estado,intentos,ultimo_error from public.soporte_avisos where id=$1`,[id])).rows[0];
+
+test('soporte: n8n toma avisos con datos del ticket, reporta, reintenta y marca fallido',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.ana,PROBLEMA);
+  await comentar(db,U.ana,n,'<b>Urgente</b>');
+  const lote=await tomar(db,10);
+  assert.equal(lote.length,2);
+  assert.deepEqual({...lote[0],aviso_id:undefined,numero:Number(lote[0].numero)},{aviso_id:undefined,para:'scervera@dodopizza.mx',evento:'nuevo',numero:1,tipo:'problema',titulo:'No guarda la foto',
+   descripcion:'Al guardar el gasto se queda cargando.',seccion:'Gastos (caja chica)',prioridad:'alta',sucursal:'Zapopan-1',creador:'Ana (op Z)',rol_creador:'operacion',con_captura:false,comentario:null,autor_comentario:null});
+  assert.equal(lote[1].comentario,'<b>Urgente</b>');assert.equal(lote[1].autor_comentario,'Ana (op Z)');
+  assert.equal((await tomar(db,10)).length,0,'los que están enviando no se vuelven a tomar');
+  await resultado(db,lote[0].aviso_id,true,null);
+  assert.equal((await estadoAviso(db,lote[0].aviso_id)).estado,'enviado');
+  await rechaza(resultado(db,lote[0].aviso_id,true,null),/no está en envío/);
+  const id=lote[1].aviso_id;
+  await resultado(db,id,false,'535 auth');
+  assert.deepEqual(await estadoAviso(db,id),{estado:'pendiente',intentos:1,ultimo_error:'535 auth'});
+  for(let i=2;i<=5;i++){const [a]=await tomar(db,1);assert.equal(a.aviso_id,id);await resultado(db,id,false,`fallo ${i}`);}
+  assert.deepEqual(await estadoAviso(db,id),{estado:'fallido',intentos:5,ultimo_error:'fallo 5'});
+  assert.equal((await tomar(db,10)).length,0);
+ }finally{await db.close();}
+});
+
+test('soporte: un aviso tomado hace más de 10 minutos vuelve a la cola; lote entre 1 y 10',async()=>{
+ const db=await nueva();
+ try{
+  for(let i=0;i<12;i++) await crear(db,U.ana,{...PROBLEMA,titulo:`Problema número ${i}`});
+  assert.equal((await tomar(db,50)).length,10);
+  assert.equal((await tomar(db,0)).length,1);
+  await db.query(`update public.soporte_avisos set tomado_en=now()-interval '11 minutes' where estado='enviando'`);
+  assert.equal((await tomar(db,10)).length,10);
+  assert.equal((await db.query(`select count(*)::int n from public.soporte_avisos where ultimo_error='n8n no reportó el resultado.'`)).rows[0].n,11);
+ }finally{await db.close();}
+});
+
+test('soporte: ajustes solo admin; correos normalizados; apagar avisos deja de encolar',async()=>{
+ const db=await nueva();
+ try{
+  const guardar=(id,resp,correos,nuevos,coment)=>q(db,id,`select public.guardar_ajustes_soporte($1::uuid,$2::text[],$3::boolean,$4::boolean)`,[resp,correos,nuevos,coment]);
+  await rechaza(guardar(U.ana,null,['x@y.mx'],true,true),/Solo soporte/);
+  await rechaza(guardar(U.seba,null,['no-es-correo'],true,true),/no es válido/);
+  await rechaza(guardar(U.seba,null,[],true,false),/al menos un correo/);
+  await rechaza(guardar(U.seba,U.ana,['x@y.mx'],true,true),/no puede ser responsable/);
+  await rechaza(guardar(U.seba,null,Array.from({length:11},(_,i)=>`p${i}@y.mx`),true,true),/Máximo 10/);
+  await guardar(U.seba,U.julio,[' SCervera@DodoPizza.mx ','julio@dodopizza.mx','scervera@dodopizza.mx',''],true,false);
+  const [a]=(await db.query(`select responsable_default,correos,avisar_nuevos,avisar_comentarios from public.soporte_ajustes`)).rows;
+  assert.deepEqual(a,{responsable_default:U.julio,correos:['julio@dodopizza.mx','scervera@dodopizza.mx'],avisar_nuevos:true,avisar_comentarios:false});
+  const n=await crear(db,U.ana,PROBLEMA);
+  await comentar(db,U.ana,n,'Más datos');
+  assert.deepEqual((await db.query(`select evento,para from public.soporte_avisos order by para`)).rows,[{evento:'nuevo',para:'julio@dodopizza.mx'},{evento:'nuevo',para:'scervera@dodopizza.mx'}]);
+  assert.equal((await q(db,U.ana,`select responsable from public.tickets_visibles($1)`,[n]))[0].responsable,U.julio);
+  await guardar(U.seba,null,[],false,false);
+  await crear(db,U.ana,PROBLEMA);
+  assert.equal((await db.query(`select count(*)::int n from public.soporte_avisos`)).rows[0].n,2);
+ }finally{await db.close();}
+});
+
+test('soporte: permisos de funciones, tablas y bucket de capturas',async()=>{
+ const db=await nueva();
+ try{
+  const puede=async(rol,fn)=>(await db.query(`select has_function_privilege($1,$2,'execute') p`,[rol,fn])).rows[0].p;
+  for(const fn of ['public.soporte_tomar_avisos(integer)','public.soporte_resultado_aviso(uuid,boolean,text)']){
+   assert.equal(await puede('authenticated',fn),false,fn);assert.equal(await puede('anon',fn),false,fn);assert.equal(await puede('service_role',fn),true,fn);
+  }
+  for(const fn of ['public.encolar_aviso_soporte(uuid,text,bigint)','public.ticket_para_escribir(bigint,integer)','public.marcar_leido_soporte(uuid)'])
+   assert.equal(await puede('authenticated',fn),false,fn);
+  for(const fn of ['public.crear_ticket(jsonb)','public.comentar_ticket(bigint,text)','public.cambiar_ticket(bigint,integer,jsonb)','public.guardar_ajustes_soporte(uuid,text[],boolean,boolean)'])
+   {assert.equal(await puede('authenticated',fn),true,fn);assert.equal(await puede('anon',fn),false,fn);}
+  for(const t of ['soporte_tickets','soporte_comentarios','soporte_historial','soporte_lecturas','soporte_ajustes','soporte_avisos'])
+   for(const p of ['insert','update','delete']) assert.equal((await db.query(`select has_table_privilege('authenticated',$1,$2) p`,[`public.${t}`,p])).rows[0].p,false,`${p} ${t}`);
+  const [b]=(await db.query(`select public,file_size_limit,allowed_mime_types from storage.buckets where id='soporte'`)).rows;
+  assert.deepEqual({...b,file_size_limit:Number(b.file_size_limit)},{public:false,file_size_limit:4194304,allowed_mime_types:['image/jpeg','image/png','image/webp','image/heic','image/heif']});
+  // Políticas: Ana sube a su carpeta, no a la de Luis; borra una captura suelta, no la ligada a un ticket; admin lee todas.
+  const ruta=`${U.ana}/00000000-0000-0000-0000-000000000001.jpg`,suelta=`${U.ana}/00000000-0000-0000-0000-000000000002.jpg`;
+  await db.exec('grant select,insert,delete on storage.objects to authenticated');
+  await db.exec('set role authenticated');
+  try{
+   await q(db,U.ana,`insert into storage.objects(bucket_id,name) values('soporte',$1),('soporte',$2)`,[ruta,suelta]);
+   await rechaza(q(db,U.ana,`insert into storage.objects(bucket_id,name) values('soporte',$1)`,[`${U.luis}/00000000-0000-0000-0000-000000000003.jpg`]),/row-level security/);
+   await crear(db,U.ana,{...PROBLEMA,captura:ruta});
+   await q(db,U.ana,`delete from storage.objects where bucket_id='soporte'`);
+   assert.deepEqual((await q(db,U.ana,`select name from storage.objects`)).map(r=>r.name),[ruta]);
+   assert.deepEqual((await q(db,U.luis,`select name from storage.objects`)),[]);
+   assert.deepEqual((await q(db,U.julio,`select name from storage.objects`)).map(r=>r.name),[ruta]);
+  }finally{await db.exec('reset role');}
+ }finally{await db.close();}
+});

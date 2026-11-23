@@ -323,4 +323,86 @@ revoke all on function public.comentar_ticket(bigint,text),public.cambiar_ticket
  public.contar_soporte(),public.hilo_ticket(bigint),public.personas_soporte() from public,anon;
 grant execute on function public.comentar_ticket(bigint,text),public.cambiar_ticket(bigint,integer,jsonb),public.marcar_ticket_leido(bigint),
  public.contar_soporte(),public.hilo_ticket(bigint),public.personas_soporte() to authenticated;
+
+-- n8n (service_role) toma hasta 10 avisos: los que llevan más de 10 minutos "enviando" sin respuesta vuelven a la cola
+-- (o quedan fallidos al quinto intento). Devuelve los datos para que la app arme el correo.
+create function public.soporte_tomar_avisos(p_lote integer)
+returns table(aviso_id uuid,para text,evento text,numero bigint,tipo text,titulo text,descripcion text,seccion text,prioridad text,
+ sucursal text,creador text,rol_creador text,con_captura boolean,comentario text,autor_comentario text)
+language plpgsql security definer set search_path='' as $$
+#variable_conflict use_column
+begin
+ update public.soporte_avisos set estado=case when intentos>=5 then 'fallido' else 'pendiente' end,
+  ultimo_error=coalesce(ultimo_error,'n8n no reportó el resultado.')
+ where estado='enviando' and tomado_en<now()-interval '10 minutes';
+ return query
+ with elegidos as (
+  select x.id from public.soporte_avisos x where x.estado='pendiente' order by x.creado_en,x.id
+  limit least(greatest(coalesce(p_lote,10),1),10) for update skip locked
+ ), tomados as (
+  update public.soporte_avisos a set estado='enviando',tomado_en=now(),intentos=a.intentos+1
+  from elegidos e where a.id=e.id returning a.id,a.para,a.evento,a.ticket_id,a.comentario_id,a.creado_en
+ )
+ select k.id,k.para,k.evento,t.numero,t.tipo::text,t.titulo,t.descripcion,t.seccion,t.prioridad::text,s.nombre,p.nombre,t.rol_creador,
+  t.captura is not null,c.texto,pc.nombre
+ from tomados k
+ join public.soporte_tickets t on t.id=k.ticket_id
+ join public.perfiles p on p.id=t.creado_por
+ left join public.sucursales s on s.id=t.sucursal_id
+ left join public.soporte_comentarios c on c.id=k.comentario_id
+ left join public.perfiles pc on pc.id=c.autor_id
+ order by k.creado_en,k.id;
+end $$;
+
+create function public.soporte_resultado_aviso(p_aviso uuid,p_ok boolean,p_error text) returns void
+language plpgsql security definer set search_path='' as $$
+declare a public.soporte_avisos;
+begin
+ select * into a from public.soporte_avisos where id=p_aviso for update;
+ if not found then raise exception 'Aviso no encontrado.';end if;
+ if a.estado<>'enviando' then raise exception 'El aviso no está en envío.';end if;
+ if coalesce(p_ok,false) then
+  update public.soporte_avisos set estado='enviado',enviado_en=now(),ultimo_error=null where id=p_aviso;
+ else
+  update public.soporte_avisos set estado=case when a.intentos>=5 then 'fallido' else 'pendiente' end,
+   ultimo_error=left(coalesce(nullif(trim(p_error),''),'Error sin detalle.'),1500)
+  where id=p_aviso;
+ end if;
+end $$;
+
+create function public.guardar_ajustes_soporte(p_responsable uuid,p_correos text[],p_avisar_nuevos boolean,p_avisar_comentarios boolean) returns void
+language plpgsql security definer set search_path='' as $$
+declare limpios text[];
+begin
+ if not public.es_soporte() then raise exception 'Solo soporte puede cambiar los ajustes.';end if;
+ select coalesce(array_agg(distinct lower(trim(c)) order by lower(trim(c))) filter(where trim(c)<>''),array[]::text[])
+  into limpios from unnest(coalesce(p_correos,array[]::text[])) c;
+ if cardinality(limpios)>10 then raise exception 'Máximo 10 correos.';end if;
+ if exists(select 1 from unnest(limpios) c where c !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$') then raise exception 'Revisa los correos: hay uno que no es válido.';end if;
+ if (coalesce(p_avisar_nuevos,false) or coalesce(p_avisar_comentarios,false)) and cardinality(limpios)=0 then
+  raise exception 'Escribe al menos un correo para recibir avisos.';
+ end if;
+ if p_responsable is not null and not exists(select 1 from public.perfiles p where p.id=p_responsable and p.activo and p.rol::text='admin') then
+  raise exception 'Esa persona no puede ser responsable.';
+ end if;
+ update public.soporte_ajustes set responsable_default=p_responsable,correos=limpios,avisar_nuevos=coalesce(p_avisar_nuevos,false),
+  avisar_comentarios=coalesce(p_avisar_comentarios,false),actualizado_en=now();
+end $$;
+
+revoke all on function public.soporte_tomar_avisos(integer),public.soporte_resultado_aviso(uuid,boolean,text) from public,anon,authenticated;
+grant execute on function public.soporte_tomar_avisos(integer),public.soporte_resultado_aviso(uuid,boolean,text) to service_role;
+revoke all on function public.guardar_ajustes_soporte(uuid,text[],boolean,boolean) from public,anon;
+grant execute on function public.guardar_ajustes_soporte(uuid,text[],boolean,boolean) to authenticated;
+
+-- Capturas: cada quien sube a su carpeta (<usuario>/<uuid>.<ext>); la dueña y soporte las leen; solo se borra una
+-- captura que no quedó ligada a un ticket (cuando falla el alta).
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+ values('soporte','soporte',false,4194304,array['image/jpeg','image/png','image/webp','image/heic','image/heif']);
+create policy soporte_subir on storage.objects for insert to authenticated
+ with check(bucket_id='soporte' and (storage.foldername(name))[1]=auth.uid()::text and public.mi_rol() is not null);
+create policy soporte_leer on storage.objects for select to authenticated
+ using(bucket_id='soporte' and ((storage.foldername(name))[1]=auth.uid()::text or public.es_soporte()));
+create policy soporte_borrar on storage.objects for delete to authenticated
+ using(bucket_id='soporte' and (storage.foldername(name))[1]=auth.uid()::text
+  and not exists(select 1 from public.soporte_tickets t where t.captura=name));
 commit;
