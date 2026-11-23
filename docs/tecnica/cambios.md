@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-23 · Mermas de masa: peso mayoritario del BOM · sin migración
+
+En UC Mexico, 44 recetas usan «Dough 30» de 345 g y Hawaii lo trae con 460 g (el peso de la 35), así que la Masa 30 quedaba sin costo por ambigüedad. `precioMasaBOM` ahora toma el peso de al menos el 90 % de las recetas; si no hay esa mayoría, sigue pendiente. Pruebas en `lib/dodois/mermas.test.ts`.
+
 ## 2026-11-23 · Mermas de la API: masas por pieza con el peso y precio del BOM · sin migración
 
 Las masas (Masa 25/30/35) se dan de baja por pieza y no tienen recepción en Dodo IS porque no se compran, así que quedaban pendientes. Ahora, sin precio de recepción, una masa dada de baja por pieza toma el peso de la bola en las recetas del BOM (en gramos, el mismo en todas) por el precio por kg del insumo, con la versión del BOM vigente a la fecha (`precioMasaBOM` en `lib/dodois/mermas.ts`). Solo masas: en otros insumos la cantidad de la receta es una porción, no el peso de una pieza. Si el peso es ambiguo o falta el BOM, sigue pendiente. Pruebas en `lib/dodois/mermas.test.ts`.

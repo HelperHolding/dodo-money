@@ -136,9 +136,9 @@ export function costoDesdeCatalogo(
 }
 
 /**
- * Precio por pieza de una masa dada de baja por pieza: el peso de la bola en las recetas del BOM (en gramos; debe ser el
- * mismo en todas) por el precio por kg del insumo, con la versión del BOM vigente a la fecha. Solo masas, porque en
- * otros insumos la cantidad de la receta es una porción, no el peso de una pieza. Sin dato o ambiguo, null.
+ * Precio por pieza de una masa dada de baja por pieza: el peso de la bola en las recetas del BOM (en gramos; el de al
+ * menos el 90 % de las recetas) por el precio por kg del insumo, con la versión del BOM vigente a la fecha. Solo masas,
+ * porque en otros insumos la cantidad de la receta es una porción, no el peso de una pieza. Sin dato o sin mayoría, null.
  */
 export function precioMasaBOM(versiones: readonly Pick<VersionBOM, "id" | "vigente_desde" | "actualizado_en" | "modelo">[]): PrecioRespaldoInsumo {
   const orden = [...versiones].sort((a, b) => b.vigente_desde.localeCompare(a.vigente_desde) || b.actualizado_en.localeCompare(a.actualizado_en) || b.id.localeCompare(a.id));
@@ -152,11 +152,14 @@ export function precioMasaBOM(versiones: readonly Pick<VersionBOM, "id" | "vigen
     if (!v) return null;
     const insumos = v.modelo.insumos.filter((i) => coincide(i.nombre, nombre));
     if (insumos.length !== 1 || insumos[0].unidad !== "kg" || !(Number(insumos[0].precio) > 0)) return null;
-    const pesos = new Set<number>();
+    const pesos = new Map<number, number>();
     for (const r of [...v.modelo.recetas, ...v.modelo.preparaciones])
-      for (const m of r.materiales) if (coincide(m.nombre, nombre) && m.unidad === "g" && Number(m.cantidad) > 0) pesos.add(Number(m.cantidad));
-    if (pesos.size !== 1) return null;
-    return Math.round(([...pesos][0] / 1000) * Number(insumos[0].precio) * 10000) / 10000;
+      for (const m of r.materiales) if (coincide(m.nombre, nombre) && m.unidad === "g" && Number(m.cantidad) > 0) pesos.set(Number(m.cantidad), (pesos.get(Number(m.cantidad)) ?? 0) + 1);
+    // El peso de casi todas las recetas (al menos 90 %) manda: una receta aislada con otro peso suele ser un error del BOM.
+    const total = [...pesos.values()].reduce((t, n) => t + n, 0);
+    const [peso, veces] = [...pesos].sort((a, b) => b[1] - a[1])[0] ?? [0, 0];
+    if (!total || veces / total < 0.9) return null;
+    return Math.round((peso / 1000) * Number(insumos[0].precio) * 10000) / 10000;
   };
 }
 
