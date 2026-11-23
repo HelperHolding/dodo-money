@@ -38,8 +38,8 @@ create table public.soporte_tickets (
  sucursal_id uuid references public.sucursales(id),
  responsable uuid references public.perfiles(id),
  revision integer not null default 1,
- -- Última novedad que le toca ver a soporte (alta, comentario de quien reporta) y a quien reporta (respuesta o cambio de estado).
- novedad_soporte timestamptz not null default now(),
+ -- Último comentario de quien reporta que soporte aún puede no haber visto (null si no hay; el alta cuenta por estado Nuevo) y a quien reporta (respuesta o cambio de estado).
+ novedad_soporte timestamptz,
  novedad_reporta timestamptz,
  creado_en timestamptz not null default now(),
  actualizado_en timestamptz not null default now(),
@@ -138,7 +138,7 @@ begin
  if length(trim(coalesce(p_datos->>'seccion',''))) not between 1 and 60 then raise exception 'Elige la sección del sistema.';end if;
  bloquea:=tipo='problema' and coalesce(p_datos->>'bloquea','')='true';
  ruta:=nullif(p_datos->>'ruta_origen','');
- if ruta is not null and (ruta !~ '^/(?!/)' or length(ruta)>300) then ruta:=null;end if;
+ if ruta is not null and (ruta !~ '^/(?![/\\])' or ruta ~ '[[:cntrl:]]' or length(ruta)>300) then ruta:=null;end if;
  cap:=nullif(p_datos->>'captura','');
  if cap is not null and cap !~ ('^'||auth.uid()::text||'/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|heic|heif)$') then
   raise exception 'La captura no es válida.';
@@ -163,7 +163,7 @@ language sql stable security definer set search_path='' as $$
  select t.id,t.numero,t.tipo::text,t.estado::text,t.prioridad::text,t.titulo,t.descripcion,t.seccion,t.ruta_origen,
   t.bloquea,t.captura,t.creado_por,c.nombre,t.rol_creador,t.sucursal_id,s.nombre,t.responsable,r.nombre,
   t.revision,t.creado_en,t.actualizado_en,t.cerrado_en,
-  case when public.es_soporte() then t.novedad_soporte>coalesce(l.leido_en,'-infinity'::timestamptz)
+  case when public.es_soporte() then coalesce(t.novedad_soporte>coalesce(l.leido_en,'-infinity'::timestamptz),false)
    else coalesce(t.novedad_reporta>coalesce(l.leido_en,'-infinity'::timestamptz),false) end
  from public.soporte_tickets t
  join public.perfiles c on c.id=t.creado_por
@@ -293,7 +293,7 @@ language sql stable security definer set search_path='' as $$
  from public.soporte_tickets t
  left join public.soporte_lecturas l on l.ticket_id=t.id and l.usuario_id=auth.uid()
  where public.mi_rol() is not null and case when public.es_soporte()
-  then t.estado::text='nuevo' or t.novedad_soporte>coalesce(l.leido_en,'-infinity'::timestamptz)
+  then t.estado::text='nuevo' or coalesce(t.novedad_soporte>coalesce(l.leido_en,'-infinity'::timestamptz),false)
   else t.creado_por=auth.uid() and coalesce(t.novedad_reporta>coalesce(l.leido_en,'-infinity'::timestamptz),false) end
 $$;
 
@@ -310,6 +310,7 @@ language sql stable security definer set search_path='' as $$
    case when h.campo='responsable' then (select y.nombre from public.perfiles y where y.id=h.antes::uuid) else h.antes end,
    case when h.campo='responsable' then (select y.nombre from public.perfiles y where y.id=h.despues::uuid) else h.despues end,h.fecha,h.id
   from public.soporte_historial h join t on t.id=h.ticket_id left join public.perfiles p on p.id=h.usuario_id
+  where h.campo<>'prioridad' or public.es_soporte()
  ) u order by u.fecha,u.tipo,u.id
 $$;
 
@@ -386,7 +387,8 @@ begin
   raise exception 'Esa persona no puede ser responsable.';
  end if;
  update public.soporte_ajustes set responsable_default=p_responsable,correos=limpios,avisar_nuevos=coalesce(p_avisar_nuevos,false),
-  avisar_comentarios=coalesce(p_avisar_comentarios,false),actualizado_en=now();
+  avisar_comentarios=coalesce(p_avisar_comentarios,false),actualizado_en=now()
+ where id;
 end $$;
 
 revoke all on function public.soporte_tomar_avisos(integer),public.soporte_resultado_aviso(uuid,boolean,text) from public,anon,authenticated;

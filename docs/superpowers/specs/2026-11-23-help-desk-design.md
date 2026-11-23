@@ -103,14 +103,14 @@ Una sección **Help Desk** dentro de DODO MX donde cualquier persona que usa la 
 
 ## Pruebas
 
-- PGlite (`supabase/pruebas/soporte.sql`, termina con «PRUEBAS OK»): cada quien ve solo lo suyo; admin ve todo; no admin no cambia estado; transiciones inválidas rechazadas; Resuelto/Descartado exigen comentario; avisos creados según ajustes y solo por comentarios de quien reporta; reintentos y paso a `fallido`; contadores.
+- PGlite (`supabase/pruebas/20261123120000_soporte.sql`, termina con «PRUEBAS OK»): cada quien ve solo lo suyo; admin ve todo; no admin no cambia estado; transiciones inválidas rechazadas; Resuelto/Descartado exigen comentario; avisos creados según ajustes y solo por comentarios de quien reporta; reintentos y paso a `fallido`; contadores.
 - Unitarias de `lib/soporte.ts`, `lib/soporte/correo.ts` y `lib/roles.test.ts`.
 - `tsc` y `next build`.
 - Navegador: en la vista previa de Vercel después de que Sebastián corra la migración (no hay `.env.local`).
 
 ## Puesta en marcha (Sebastián)
 
-1. Correr la migración y `supabase/pruebas/soporte.sql` en Supabase de producción → «PRUEBAS OK».
+1. Correr la migración y `supabase/pruebas/20261123120000_soporte.sql` en Supabase de producción → «PRUEBAS OK».
 2. Crear `SOPORTE_API_KEY` en Vercel.
 3. Activar el flujo de n8n con la credencial `x-api-key` y mandar un ticket de prueba.
 4. Fusionar el PR a `main`.

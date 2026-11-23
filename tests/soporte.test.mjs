@@ -249,3 +249,56 @@ test('soporte: el script de supabase/pruebas termina en PRUEBAS OK',async()=>{
   await rechaza(db.exec(pruebas),/PRUEBAS OK/);
  }finally{await db.close();}
 });
+
+test('soporte: ningún update de la migración va sin where (safeupdate de PostgREST)',()=>{
+ const sinComentarios=migracion.replace(/--[^\n]*/g,'');
+ const updates=sinComentarios.match(/\bupdate\s+public\.\w+(\s+\w+)?\s+set\b[^;]*;/gi)??[];
+ assert.ok(updates.length>=5);
+ for(const u of updates)assert.match(u,/\bwhere\b/i,`update sin where: ${u}`);
+ for(const d of sinComentarios.match(/\bdelete\s+from\s+public\.\w+[^;]*;/gi)??[])assert.match(d,/\bwhere\b/i,`delete sin where: ${d}`);
+});
+
+test('soporte: guardar_ajustes_soporte actualiza la fila única con where id',async()=>{
+ const db=await nueva();
+ try{
+  await q(db,U.julio,`select public.guardar_ajustes_soporte($1,$2::text[],true,false)`,[U.julio,['a@b.mx']]);
+  const [a]=(await db.query(`select responsable_default r,correos,avisar_comentarios c from public.soporte_ajustes`)).rows;
+  assert.equal(a.r,U.julio);assert.deepEqual(a.correos,['a@b.mx']);assert.equal(a.c,false);
+ }finally{await db.close();}
+});
+
+test('soporte: contador de admin = Nuevo + comentarios de quien reporta; el segundo admin no se infla',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.ana,PROBLEMA);
+  assert.equal((await contar(db,U.julio)).pendientes,1);
+  await cambiar(db,U.seba,n,1,{estado:'en_progreso'});
+  assert.equal((await contar(db,U.julio)).pendientes,0);
+  assert.equal((await q(db,U.julio,`select sin_leer from public.tickets_visibles($1)`,[n]))[0].sin_leer,false);
+  await comentar(db,U.ana,n,'Sigue igual');
+  assert.equal((await contar(db,U.julio)).pendientes,1);
+  assert.equal((await q(db,U.julio,`select sin_leer from public.tickets_visibles($1)`,[n]))[0].sin_leer,true);
+  await q(db,U.julio,`select public.marcar_ticket_leido($1)`,[n]);
+  assert.equal((await contar(db,U.julio)).pendientes,0);
+ }finally{await db.close();}
+});
+
+test('soporte: ruta_origen con barra invertida o caracteres de control se descarta',async()=>{
+ const db=await nueva();
+ try{
+  for(const r of ['/\\evil.com','/a\nb','//x'])await crear(db,U.ana,{...PROBLEMA,ruta_origen:r});
+  const f=await q(db,U.julio,`select ruta_origen from public.tickets_visibles()`);
+  assert.deepEqual(f.map(x=>x.ruta_origen),[null,null,null]);
+ }finally{await db.close();}
+});
+
+test('soporte: quien reporta no ve cambios de prioridad en el hilo; soporte sí',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.ana,PROBLEMA);
+  await cambiar(db,U.seba,n,1,{prioridad:'baja'});
+  const campos=async id=>(await q(db,id,`select campo from public.hilo_ticket($1) where tipo='cambio'`,[n])).map(r=>r.campo);
+  assert.ok(!(await campos(U.ana)).includes('prioridad'));
+  assert.ok((await campos(U.seba)).includes('prioridad'));
+ }finally{await db.close();}
+});

@@ -15,7 +15,7 @@ export default async function Soporte({ searchParams }: { searchParams: Promise<
   const { supabase, perfil } = await obtenerPerfil();
   let tickets;
   try { tickets = await leerTickets(supabase); }
-  catch { return <p className="aviso aviso-error">No se pudo consultar el Help Desk. Revisa que la migración 20261123120000_soporte esté aplicada y vuelve a intentar.</p>; }
+  catch { return <p className="aviso aviso-error">No se pudo consultar el Help Desk. Vuelve a intentar en un momento.</p>; }
   const nuevo = <Link className="boton" href="/soporte/nuevo">Reportar</Link>;
 
   if (!esSoporte(perfil.rol)) {
