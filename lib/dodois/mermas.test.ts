@@ -1,6 +1,46 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { costoDesdeCatalogo, esMarketing, precioDesdeRecepciones, traducirMermas, ventanaMermas, type MermaInsumoApi, type MermaProductoApi } from "./mermas.ts";
+import { costoDesdeCatalogo, esMarketing, precioDesdeRecepciones, precioMasaBOM, traducirMermas, ventanaMermas, type MermaInsumoApi, type MermaProductoApi } from "./mermas.ts";
+
+// BOM mínimo: la masa cuesta por kg y cada receta pide una bola con su peso en gramos (como UC Mexico).
+const material = (nombre: string, gramos: number) => ({ nombre, cantidad: gramos, unidad: "g" as const, precio: 14.56, importe: null, porciones: null, medida: `${gramos} × Gram`, referencia: "" });
+const receta = (nombre: string, materiales: ReturnType<typeof material>[]) => ({ clave: nombre, nombre, hoja: "h", referencia: "", categoria: "pizza" as const, tamano: null, precioVenta: null, costo: null, materiales, avisos: [] });
+const insumoBOM = (nombre: string, precio: number | null, unidad: "kg" | "pieza" | null = "kg") => ({ nombre, precio, unidad, medida: "", merma: null, referencia: "", avisos: [] });
+const versionBOM = (vigente_desde: string, precioMasa = 14.56) => ({
+  id: vigente_desde, vigente_desde, archivo: "UC Mexico.xlsx", actualizado_en: vigente_desde,
+  modelo: {
+    insumos: [insumoBOM("Dough 25 (Masa 25)", precioMasa), insumoBOM("Dough 35 (Masa 35)", precioMasa), insumoBOM("Dough 30 (Masa 30)", precioMasa), insumoBOM("Chimichurri", 113.71)],
+    recetas: [
+      receta("Pepperoni 25", [material("Dough 25 (Masa 25)", 235), material("Chimichurri", 20)]),
+      receta("Rolls", [material("Dough 25 (Masa 25)", 235)]),
+      receta("Pepperoni 35", [material("Dough 35 (Masa 35)", 460)]),
+      // Dos pesos distintos para la misma masa: no se adivina cuál es.
+      receta("Margherita 30", [material("Dough 30 (Masa 30)", 345)]), receta("Otra 30", [material("Dough 30 (Masa 30)", 330)]),
+    ],
+    preparaciones: [], avisos: [],
+  },
+});
+
+test("masa por pieza: peso de la bola en el BOM × precio por kg de la versión vigente", () => {
+  const precio = precioMasaBOM([versionBOM("2026-10-01"), versionBOM("2026-11-20", 20)]);
+  assert.equal(precio("Masa 25", "Quantity", "2026-11-18"), 3.4216); // 0.235 kg × $14.56
+  assert.equal(precio("Masa 35", "Quantity", "2026-11-18"), 6.6976);
+  assert.equal(precio("Masa 35", "Quantity", "2026-11-22"), 9.2); // versión del 20-nov
+  assert.equal(precio("Masa 30", "Quantity", "2026-11-18"), null); // peso ambiguo
+  assert.equal(precio("Chimichurri", "Kilogram", "2026-11-18"), null); // solo masas
+  assert.equal(precio("Masa 25", "Kilogram", "2026-11-18"), null); // solo bajas por pieza
+  assert.equal(precio("Masa 25", "Quantity", "2026-09-30"), null); // sin versión vigente
+});
+
+test("mermas API: la masa sin precio de recepción toma el precio por pieza del BOM", () => {
+  const masa25: MermaInsumoApi = { unitId: "11f187558e757f53b0570d952420b810", writtenOffAtLocal: "2026-11-18T22:00:00", reason: "Expired",
+    stockItemId: "11f1956cbf1369fb0acc2ceb65811140", stockItemName: "Masa 25", quantity: 24, measurementUnit: "Quantity" };
+  const r = traducirMermas({ sucursalId: "s", unitId: masa25.unitId, desde: "2026-11-18", hasta: "2026-11-18", productos: [], insumos: [masa25],
+    precio: () => null, precioRespaldo: precioMasaBOM([versionBOM("2026-10-01")]) });
+  assert.deepEqual([r.filas[0].costo, r.filas[0].sin_costo], [82.12, false]); // 24 × $3.4216
+  const sinBOM = traducirMermas({ sucursalId: "s", unitId: masa25.unitId, desde: "2026-11-18", hasta: "2026-11-18", productos: [], insumos: [masa25], precio: () => null });
+  assert.deepEqual([sinBOM.filas[0].costo, sinBOM.filas[0].sin_costo], [0, true]);
+});
 
 const UNIDAD = "11f187558e757f53b0570d952420b810";
 const MASA = "11f1956cbf1369fb0acc2ceb65811140", SALSA = "11f1956ebe2fa94298e49ab1e6fe1b30", MOZZA = "11f187589c9da51d27da591f2ff6a0c0";

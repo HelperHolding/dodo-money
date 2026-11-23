@@ -4,8 +4,12 @@
  * Se convierten a los mismos renglones que el Excel de Bajas para reemplazar días completos con importar_mermas_dodo.
  * El costo sin IVA sale del precio de recepción de cada insumo en Dodo IS. Si a la receta de un producto le falta algún
  * precio, el producto toma el costo teórico del catálogo (el mismo de Alimento en el P&L); sin ninguno, queda pendiente.
+ * Las masas dadas de baja por pieza, sin recepción (no se compran), toman el peso de la bola y el precio por kg del BOM.
  */
 import type { DiaMerma, MermaDodo } from "../finanzas/mermasDodo";
+import type { VersionBOM } from "../finanzas/referenciaMerma";
+// @ts-expect-error El ejecutor nativo de pruebas de Node necesita la extensión .ts.
+import { normalizar } from "../costeo/bom.ts";
 
 type InsumoReceta = { id: string; name: string; quantity: number; measurementUnit: string };
 export type MermaProductoApi = {
@@ -22,6 +26,8 @@ export type MermaInsumoApi = {
 export type PrecioInsumo = (insumoId: string, fecha: string) => number | null;
 /** Costo teórico sin IVA por pieza de un producto de Dodo IS a una fecha (catálogo: receta + periférico), o null. */
 export type CostoProducto = (productoId: string, fecha: string) => number | null;
+/** Precio sin IVA por la unidad de la baja (nombre y unidad de Dodo IS) cuando no hay recepción, o null. */
+export type PrecioRespaldoInsumo = (nombre: string, unidad: string, fecha: string) => number | null;
 
 /** Las bajas con razón Marketing (producto regalado) no son merma: el P&L las manda a Marketing. */
 export const MARKETING = "marketing:";
@@ -39,6 +45,8 @@ export function traducirMermas(p: {
   productos: readonly MermaProductoApi[]; insumos: readonly MermaInsumoApi[]; precio: PrecioInsumo;
   /** Respaldo cuando algún insumo de la receta no tiene precio de recepción (p. ej. la masa, que no se compra). */
   costoProducto?: CostoProducto;
+  /** Respaldo para insumos sueltos sin precio de recepción (masas por pieza con el BOM). */
+  precioRespaldo?: PrecioRespaldoInsumo;
 }): { dias: DiaMerma[]; filas: MermaDodo[] } {
   const dias: DiaMerma[] = [];
   for (let f = p.desde; f <= p.hasta; f = sumarDias(f, 1)) dias.push({ sucursal_id: p.sucursalId, fecha: f, productos_completos: true });
@@ -74,7 +82,7 @@ export function traducirMermas(p: {
   for (const x of p.insumos) {
     if (!dentro(x.unitId, x.writtenOffAtLocal) || !(Number(x.quantity) > 0)) continue;
     const fecha = x.writtenOffAtLocal.slice(0, 10), mkt = x.reason === "Marketing";
-    const pr = p.precio(x.stockItemId, fecha);
+    const pr = p.precio(x.stockItemId, fecha) ?? p.precioRespaldo?.(x.stockItemName, x.measurementUnit, fecha) ?? null;
     const clave = `${mkt ? MARKETING : ""}${x.stockItemId.toUpperCase()}`;
     sumar(`${fecha}|insumo|${clave}`, {
       sucursal_id: p.sucursalId, fecha, tipo: "insumo", clave, nombre: x.stockItemName.trim(),
@@ -124,6 +132,31 @@ export function costoDesdeCatalogo(
     let mejor: { costo: number; vigente_desde: string } | null = null;
     for (const c of porProducto.get(id) ?? []) if (c.vigente_desde <= fecha && (!mejor || c.vigente_desde > mejor.vigente_desde)) mejor = c;
     return mejor ? Number(mejor.costo) : null;
+  };
+}
+
+/**
+ * Precio por pieza de una masa dada de baja por pieza: el peso de la bola en las recetas del BOM (en gramos; debe ser el
+ * mismo en todas) por el precio por kg del insumo, con la versión del BOM vigente a la fecha. Solo masas, porque en
+ * otros insumos la cantidad de la receta es una porción, no el peso de una pieza. Sin dato o ambiguo, null.
+ */
+export function precioMasaBOM(versiones: readonly Pick<VersionBOM, "id" | "vigente_desde" | "actualizado_en" | "modelo">[]): PrecioRespaldoInsumo {
+  const orden = [...versiones].sort((a, b) => b.vigente_desde.localeCompare(a.vigente_desde) || b.actualizado_en.localeCompare(a.actualizado_en) || b.id.localeCompare(a.id));
+  const coincide = (nombreBOM: string, buscado: string) => {
+    const opciones = [nombreBOM, nombreBOM.replace(/\([^)]*\)/g, ""), ...[...nombreBOM.matchAll(/\(([^)]*)\)/g)].map((m) => m[1])];
+    return opciones.some((n) => normalizar(n) === normalizar(buscado));
+  };
+  return (nombre, unidad, fecha) => {
+    if ((unidad ?? "").toLowerCase() !== "quantity" || !/\b(masa|dough)\b/i.test(nombre)) return null;
+    const v = orden.find((x) => x.vigente_desde <= fecha);
+    if (!v) return null;
+    const insumos = v.modelo.insumos.filter((i) => coincide(i.nombre, nombre));
+    if (insumos.length !== 1 || insumos[0].unidad !== "kg" || !(Number(insumos[0].precio) > 0)) return null;
+    const pesos = new Set<number>();
+    for (const r of [...v.modelo.recetas, ...v.modelo.preparaciones])
+      for (const m of r.materiales) if (coincide(m.nombre, nombre) && m.unidad === "g" && Number(m.cantidad) > 0) pesos.add(Number(m.cantidad));
+    if (pesos.size !== 1) return null;
+    return Math.round(([...pesos][0] / 1000) * Number(insumos[0].precio) * 10000) / 10000;
   };
 }
 
