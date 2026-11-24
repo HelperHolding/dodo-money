@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Previsto } from "@/lib/compras/compromisos";
 import {TablaFacturasPago,type FacturaTablaPago} from "./TablaFacturasPago";
+import type {FiltroRazon} from "./SubtotalesRazon";
 import { Icono } from "@/components/Icono";
 import { useState } from "react";
 import { fechaTexto, pesos, pesosCortos } from "@/lib/formato";
@@ -18,7 +19,7 @@ const tituloMes = (anio: number, mes: number) => {
 };
 
 /** Cada día muestra lo que se paga ese día (programado o por vencer); en rojo si incluye vencidas. Al tocarlo, sus facturas. */
-export function CalendarioPagos({ hoy, porDia, previstos={}, filtros={}, rangoInicial }: { hoy: string; porDia: Record<string, FacturaDelDia[]>;previstos?:Record<string,Previsto[]>;filtros?:{proveedor?:string;sucursal?:string;complemento?:string};rangoInicial?:{desde:string;hasta:string} }) {
+export function CalendarioPagos({ hoy, porDia, previstos={}, filtros={}, rangoInicial, filtroRazon }: { hoy: string; porDia: Record<string, FacturaDelDia[]>;previstos?:Record<string,Previsto[]>;filtros?:{proveedor?:string;sucursal?:string;empresa?:string;complemento?:string};rangoInicial?:{desde:string;hasta:string};filtroRazon?:FiltroRazon }) {
   const [mes, setMes] = useState(mesDe(rangoInicial?.desde??hoy));
   const [dia, setDia] = useState<string | null>(rangoInicial?.desde===rangoInicial?.hasta?rangoInicial?.desde??null:null);
   const limites=(m:{anio:number;mes:number})=>{const primero=`${m.anio}-${String(m.mes).padStart(2,'0')}-01`;const ultimo=new Date(Date.UTC(m.anio,m.mes,0)).toISOString().slice(0,10);return {desde:primero,hasta:ultimo};};
@@ -72,7 +73,7 @@ export function CalendarioPagos({ hoy, porDia, previstos={}, filtros={}, rangoIn
                   <p>Vence {fechaTexto(p.vence)} · sin factura todavía</p>{p.variable && <p className="saldo-nota">Monto variable: paga el de la factura</p>}</div><strong>{pesos(p.variable ? 0 : p.monto)}</strong></div>
                 <span className="insignia" data-tono={p.vencido ? "peligro" : "info"}>{p.vencido ? "Previsto vencido" : "Previsto"}</span>
               </article>))}</div>}
-            {lista.length > 0 && <TablaFacturasPago filas={lista}/>}
+            {lista.length > 0 && <TablaFacturasPago filas={lista} filtroRazon={filtroRazon}/>}
           </>
         )}
       </div>

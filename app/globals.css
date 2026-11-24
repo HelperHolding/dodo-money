@@ -1291,6 +1291,26 @@ button.ap-check-marca:hover { box-shadow:0 0 0 3px var(--dato-pista); }
 .subtotal-razon-nombre { font-weight:700; font-size:var(--t-sm); overflow-wrap:anywhere; }
 .subtotal-razon small { color:var(--tinta-2); font-size:.8rem; }
 .subtotal-razon dd { margin:0; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+/* Tarjeta de razón social como filtro: toda la tarjeta es la liga; la elegida queda marcada. */
+.subtotal-razon-filtro { position:relative; cursor:pointer; transition:border-color .15s, background .15s; }
+.subtotal-razon-filtro:hover { border-color:var(--accion); }
+.subtotal-razon-filtro[data-activa="si"] { border-color:var(--accion); border-width:2px; background:color-mix(in srgb, var(--accion) 8%, var(--superficie)); }
+.subtotal-razon-enlace { color:inherit; text-decoration:none; }
+.subtotal-razon-enlace::after { content:""; position:absolute; inset:0; border-radius:inherit; }
+.subtotal-razon-enlace:focus-visible { outline:none; }
+.subtotal-razon-filtro:has(.subtotal-razon-enlace:focus-visible) { outline:2px solid var(--accion); outline-offset:2px; }
+.pagos-razones-cabecera { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 16px; margin-bottom:12px; }
+.pagos-razones-cabecera p { margin:0; color:var(--tinta-2); }
+/* Facturas de un mismo proveedor, juntas. */
+.pagos-proveedor { margin:0 0 20px; }
+.pagos-proveedor-encabezado { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; padding:8px 0; margin-bottom:10px; border-bottom:1px solid var(--linea); }
+.pagos-proveedor-encabezado h3 { margin:0; font-size:var(--t-md, 1.05rem); }
+.pagos-proveedor-encabezado span { color:var(--tinta-2); }
+.pagos-proveedor-encabezado strong { margin-left:auto; font-variant-numeric:tabular-nums; }
+.pagos-grupo th { text-align:left; background:var(--superficie-2, var(--superficie)); padding:10px 12px; }
+.pagos-grupo th > span { font-weight:800; margin-right:12px; }
+.pagos-grupo th > small { color:var(--tinta-2); font-weight:600; margin-right:12px; }
+.pagos-grupo th > strong { font-variant-numeric:tabular-nums; margin-right:12px; }
 
 
 /* ─── Insignias de estado (PLAN-REDISENO §4.4): un solo tamaño y forma para todos los sistemas de "badge" ─── */

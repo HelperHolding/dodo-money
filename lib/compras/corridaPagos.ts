@@ -5,7 +5,7 @@ export type FacturaCorrida={
  fechaPago:string;formaPrevista:string|null;estado:string;tipo:string;saldo:number;total:number;origen:string;falta_complemento:boolean;conceptos:string[];
 };
 export type LigaCorrida={factura_id:string;sucursal_id:string|null};
-export type FiltroCorrida={desde:string;hasta:string;fecha:string;proveedor?:string;sucursal?:string;complemento?:string};
+export type FiltroCorrida={desde:string;hasta:string;fecha:string;proveedor?:string;sucursal?:string;empresa?:string;complemento?:string};
 export type LineaCorrida=FacturaCorrida&{fechaPago:string;destino:string;destinoId:string;sinDistribuir:boolean;advertencias:string[]};
 const centavos=(n:number)=>Math.round(Number(n)*100);
 const total=(filas:readonly {saldo:number}[])=>filas.reduce((n,f)=>n+centavos(f.saldo),0)/100;
@@ -24,7 +24,7 @@ export function seleccionarCorrida(facturas:readonly FacturaCorrida[],ligas:read
  for(const f of facturas){
   if(usados.has(f.id))continue;usados.add(f.id);
   const fechaPago=f.fechaPago,sedes=destinos.get(f.id)??new Set([f.sucursal_id??'oficina']);
-  if(f.tipo!=='ingreso'||!['por_pagar','parcial'].includes(f.estado)||!(Number(f.saldo)>0)||fechaPago<filtro.desde||fechaPago>filtro.hasta||filtro.proveedor&&f.proveedor_id!==filtro.proveedor||filtro.sucursal&&!sedes.has(filtro.sucursal)||filtro.complemento==='si'&&!f.falta_complemento)continue;
+  if(f.tipo!=='ingreso'||!['por_pagar','parcial'].includes(f.estado)||!(Number(f.saldo)>0)||fechaPago<filtro.desde||fechaPago>filtro.hasta||filtro.proveedor&&f.proveedor_id!==filtro.proveedor||filtro.empresa&&(f.rfc_receptor??'').toUpperCase()!==filtro.empresa.toUpperCase()||filtro.sucursal&&!sedes.has(filtro.sucursal)||filtro.complemento==='si'&&!f.falta_complemento)continue;
   if(!Number.isFinite(Number(f.saldo))||!Number.isFinite(Number(f.total)))throw Error('Hay importes no válidos en la corrida.');
   const sinDistribuir=sedes.size>1,destinoId=sinDistribuir?'sin_distribuir':[...sedes][0];
   const destino=sinDistribuir?[...sedes].map(s=>s==='oficina'?'Oficina':sucursales.get(s)??s).sort().join(', '):destinoId==='oficina'?'Oficina':sucursales.get(destinoId)??destinoId;
@@ -47,7 +47,7 @@ const moneda=(valor:number):Celda=>({valor,formato:'pesos'});
 const formula=(formula:string,resultado:number|string,formato:'pesos'|'general'='pesos'):Celda=>({formula,resultado,formato});
 export function urlCalendarioCorrida(f:FiltroCorrida){
  const q=new URLSearchParams({desde:f.desde,hasta:f.hasta});
- for(const k of ['proveedor','sucursal','complemento'] as const)if(f[k])q.set(k,f[k]!);
+ for(const k of ['proveedor','sucursal','empresa','complemento'] as const)if(f[k])q.set(k,f[k]!);
  return `https://dodo-money-j31t.vercel.app/compras/pagos?${q}`;
 }
 const refHoja=(nombre:string)=>`'${nombre.replace(/'/g,"''")}'`;
