@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 2026-11-23 · Ventas Rappi: reporte PDF y Excel · sin migración
+
+Ventas → Rappi tiene los botones «Reporte PDF» y «Descargar Excel», con el periodo y la sucursal de la página (como en Ventas). `lib/ventas/reporteRappi.ts` convierte las órdenes en vivo del portal y los pedidos de agregador de Dodo IS en renglones con tienda (Rappi, Rappi Turbo o Dodo IS), fuente y si cuentan en la venta (finalizadas con fuente Rappi; las «Incluidas en Dodo IS» no se repiten). `resumenReporteRappi` saca totales, días, día de la semana, horas, productos y formas de pago. `/reporte/rappi` es la página para imprimir con indicadores, hallazgos y gráficas (por día con Turbo, de la venta bruta a lo facturado, estados, día de la semana, hora y más vendidos). `/reporte/rappi/excel` descarga las hojas Resumen, Por día, Órdenes, Productos y Más vendidos; los totales son fórmulas sobre «Órdenes». Con las órdenes reales de octubre da 376 órdenes y $82,793.15, igual que la página. Pruebas en `lib/ventas/reporteRappi.test.ts`.
+
 ## 2026-11-23 · Mermas de masa: peso mayoritario del BOM · sin migración
 
 En UC Mexico, 44 recetas usan «Dough 30» de 345 g y Hawaii lo trae con 460 g (el peso de la 35), así que la Masa 30 quedaba sin costo por ambigüedad. `precioMasaBOM` ahora toma el peso de al menos el 90 % de las recetas; si no hay esa mayoría, sigue pendiente. Pruebas en `lib/dodois/mermas.test.ts`.

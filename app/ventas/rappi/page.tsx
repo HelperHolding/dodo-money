@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { ConInfo } from "@/components/ConInfo";
+import { Icono } from "@/components/Icono";
 import {CalendarioVentas} from "@/components/CalendarioVentas";
 import {MAX_DIAS,periodoElegido} from "@/lib/ventas/calculos";
 import {mesDe,moverMes} from "@/lib/ventas/calendario";
@@ -47,7 +49,10 @@ export default async function Rappi({searchParams}:{searchParams:Promise<{mes?:s
   const totalDodo=pedidosAgregador.reduce((s,o)=>s+Number(o.subtotal_restaurante),0);
   // Cotejo: solo días con venta de agregador en Dodo IS (ahí Dodo IS es la fuente y Rappi sirve para revisar).
   const cotejo=cotejoRappiDodo(ordenes,agregador).filter(d=>d.dodoTotal>0),difCotejo=cotejo.filter(d=>Math.abs(d.diferencia)>=1);
-  return <><EncabezadoPagina titulo="Ventas Rappi" descripcion={pedidosAgregador.length?<>{sucursal?nombres.get(sucursal):"Todas las sucursales"} · {ventas.length+pedidosAgregador.length} órdenes · <strong>{pesos(total+totalDodo)}</strong> ({pesos(total)} del portal y {pesos(totalDodo)} de agregador en Dodo IS)</>:<>{sucursal?nombres.get(sucursal):"Todas las sucursales"} · {ventas.length} órdenes finalizadas · <strong>{pesos(total)}</strong> de subtotal restaurante</>}/><Aviso ok={q.ok} error={q.error}/>
+  const filtroReporte=new URLSearchParams({desde,hasta,...(sucursal?{sucursal}:{})}).toString();
+  const acciones=<><Link className="boton boton-secundario" href={`/reporte/rappi?${filtroReporte}`} target="_blank"><Icono nombre="documento"/> Reporte PDF</Link>
+    <a className="boton boton-secundario" href={`/reporte/rappi/excel?${filtroReporte}`} download><Icono nombre="descargar"/> Descargar Excel</a></>;
+  return <><EncabezadoPagina titulo="Ventas Rappi" acciones={acciones} descripcion={pedidosAgregador.length?<>{sucursal?nombres.get(sucursal):"Todas las sucursales"} · {ventas.length+pedidosAgregador.length} órdenes · <strong>{pesos(total+totalDodo)}</strong> ({pesos(total)} del portal y {pesos(totalDodo)} de agregador en Dodo IS)</>:<>{sucursal?nombres.get(sucursal):"Todas las sucursales"} · {ventas.length} órdenes finalizadas · <strong>{pesos(total)}</strong> de subtotal restaurante</>}/><Aviso ok={q.ok} error={q.error}/>
     <CalendarioVentas key={`${desde}|${hasta}|${sucursal??""}`} venta={diario.venta} periodo={periodo} hoy={hoy}
       maxDias={MAX_DIAS} sucursal={sucursal} sucursales={veVentasDeTodas(perfil.rol)?sucursales??[]:null} ruta="/ventas/rappi"/>
     <div className="rappi-titulo"><h2>Órdenes en vivo</h2><ConInfo titulo="Órdenes en vivo" etiqueta="Qué suma de Rappi">Solo órdenes que llegan en vivo del portal de Rappi (cada 15 minutos, con un repaso del día anterior a las 6:30). Las órdenes subidas por Excel y los reportes financieros importados no se muestran aquí. El calendario muestra el subtotal restaurante de órdenes finalizadas con fuente Rappi; los descuentos de Rappi quedan separados.</ConInfo>
