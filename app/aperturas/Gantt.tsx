@@ -4,6 +4,11 @@ import {ESTADOS,MARCAS,type ItemApertura,type ProyectoApertura} from '@/lib/aper
 import {avanceGeneral,escalaGantt,ganttEtapas,type Escala} from '@/lib/aperturasGantt';
 import {fechaTexto} from '@/lib/formato';
 import {fuenteGantt} from './fuenteGantt';
+import {BotonEnviar} from '@/components/BotonEnviar';
+import {crearTarea} from '@/app/tareas/acciones';
+import {clave,ESTADOS as ESTADOS_TAREA} from '@/lib/tareas';
+import type {Persona} from '@/app/tareas/datos';
+import type {PendienteGantt} from './pendientesGantt';
 
 const corta=(d:string)=>new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(`${d}T00:00:00Z`));
 const rango=(a:string,b:string)=>a===b?corta(a):`${corta(a)} – ${corta(b)}`;
@@ -15,7 +20,27 @@ function Guias({escala,hoy,objetivo}:{escala:Escala;hoy:string;objetivo:string})
   {objetivo>=escala.desde&&objetivo<=escala.hasta&&<span className="ap-gantt-objetivo" style={{left:`${escala.pos(objetivo)}%`}}/>}</>;
 }
 
-export function Gantt({proyecto:p,items,hoy,colores}:{proyecto:ProyectoApertura;items:ItemApertura[];hoy:string;colores:Record<string,string>}) {
+// Pendientes de una tarea del Gantt y, para quien puede ligarlos, «Asignar pendiente» con responsable y fecha.
+function Pendientes({item,pendientes,personas,volverA}:{item:ItemApertura;pendientes:PendienteGantt[];personas:Persona[];volverA:string}) {
+ if(!pendientes.length&&!personas.length)return null;
+ return <div className="ap-gantt-pendientes">
+  {pendientes.map(t=><Link key={t.numero} className="ap-gantt-pendiente" data-estado={t.estado} href={`/tareas/${t.numero}`} title={`Pendiente ${clave(t.numero)} · ${ESTADOS_TAREA[t.estado]}`}>{clave(t.numero)} · {t.asignado} · {ESTADOS_TAREA[t.estado]}</Link>)}
+  {personas.length>0&&item.estado!=='completado'&&item.estado!=='no_aplica'&&<details className="ap-gantt-asignar">
+   <summary>Asignar pendiente</summary>
+   <form action={crearTarea} className="ap-gantt-asignar-form">
+    <input type="hidden" name="titulo" value={item.nombre.slice(0,200)}/><input type="hidden" name="prioridad" value="media"/>
+    <input type="hidden" name="documento_tipo" value="apertura_item"/><input type="hidden" name="documento_id" value={item.id}/>
+    <input type="hidden" name="volver_a" value={volverA}/><input type="hidden" name="quedarse" value="si"/>
+    <label>Responsable<select name="asignado_a" required defaultValue=""><option value="" disabled>Elige una persona</option>{personas.map(x=><option key={x.id} value={x.id}>{x.nombre}</option>)}</select></label>
+    <label>Para el<input type="date" name="vence" defaultValue={item.fin??''}/></label>
+    <BotonEnviar>Asignar</BotonEnviar>
+   </form>
+   <small>Al quedar hechos todos sus pendientes, esta tarea se marca completada.</small>
+  </details>}
+ </div>;
+}
+
+export function Gantt({proyecto:p,items,hoy,colores,pendientes={},personas=[],volverA=''}:{proyecto:ProyectoApertura;items:ItemApertura[];hoy:string;colores:Record<string,string>;pendientes?:Record<string,PendienteGantt[]>;personas?:Persona[];volverA?:string}) {
  const etapas=ganttEtapas(items,hoy),general=avanceGeneral(etapas),base=`/aperturas/${p.id}`;
  const escala=escalaGantt([...etapas.flatMap(e=>[e.desde,e.hasta]),p.objetivo_desde,p.objetivo_hasta,hoy]);
  const conFechas=etapas.some(e=>e.desde);
@@ -56,7 +81,8 @@ export function Gantt({proyecto:p,items,hoy,colores}:{proyecto:ProyectoApertura;
     <div className="ap-gantt-tareas">
      {e.tareas.map(t=><div key={t.item.id} className="ap-gantt-fila ap-gantt-tarea">
       <div className="ap-gantt-nombre"><span className="ap-gantt-marca" data-marca={t.marca}>{MARCAS[t.marca].icono}</span>
-       <div><Link href={`${base}/items/${t.item.id}`}>{t.item.nombre}</Link><small>{rango(t.desde,t.hasta)} · {ESTADOS[t.item.estado]}{t.item.responsable?` · ${t.item.responsable}`:''}{t.vencida?' · vencida':''}</small></div></div>
+       <div><Link href={`${base}/items/${t.item.id}`}>{t.item.nombre}</Link><small>{rango(t.desde,t.hasta)} · {ESTADOS[t.item.estado]}{t.item.responsable?` · ${t.item.responsable}`:''}{t.vencida?' · vencida':''}</small>
+       <Pendientes item={t.item} pendientes={pendientes[t.item.id]??[]} personas={personas} volverA={volverA}/></div></div>
       <div className="ap-gantt-linea">{escala&&<><Guias escala={escala} hoy={hoy} objetivo={p.objetivo_hasta}/>
        <Link className="ap-gantt-tbarra" data-marca={t.marca} data-vencida={t.vencida||undefined} href={`${base}/items/${t.item.id}`} aria-label={`${t.item.nombre}, ${rango(t.desde,t.hasta)}`}
         style={{left:`${escala.pos(t.desde)}%`,width:`${escala.ancho(t.desde,t.hasta)}%`}}>{t.marca==='listo'?'✓':''}</Link></>}</div>
