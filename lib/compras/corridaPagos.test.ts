@@ -69,3 +69,10 @@ test('corrida: liga conserva fechas y filtros con codificación segura',()=>{
  const url=new URL(urlCalendarioCorrida({...filtro,proveedor:'p&1',sucursal:'z',complemento:'si'}));
  assert.equal(url.pathname,'/compras/pagos');assert.equal(url.searchParams.get('desde'),filtro.desde);assert.equal(url.searchParams.get('hasta'),filtro.hasta);assert.equal(url.searchParams.get('proveedor'),'p&1');assert.equal(url.searchParams.get('sucursal'),'z');assert.equal(url.searchParams.get('complemento'),'si');
 });
+
+test('corrida: el filtro de razón social deja solo lo que se paga desde ese RFC y viaja en la liga',()=>{
+ const sitru={...factura,id:'f2',rfc_receptor:'CMS230321FI8',empresa:'COMERCIALIZADORA MASTER SITRU'};
+ assert.deepEqual(seleccionarCorrida([factura,sitru],[],sedes,{...filtro,empresa:'cms230321fi8'}).map(f=>f.id),['f2']);
+ assert.equal(seleccionarCorrida([factura,sitru],[],sedes,filtro).length,2);
+ assert.ok(urlCalendarioCorrida({...filtro,empresa:'CMS230321FI8'}).includes('empresa=CMS230321FI8'));
+});
