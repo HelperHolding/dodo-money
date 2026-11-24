@@ -23,3 +23,18 @@ test('soporte: solo admin ve tablero, gestión y ajustes; el detalle marca leíd
  const t=leer('app/soporte/TableroSoporte.tsx');
  assert.match(t,/pideComentario/);assert.match(t,/solo-celular/);
 });
+test('tablero: tarjeta limpia y arrastre a todas las columnas, Resuelto pide la respuesta',()=>{
+ const c=leer('app/soporte/TarjetaTicket.tsx');
+ assert.match(c,/className="ticket-arriba"/);assert.match(c,/className="ticket-pie"/);assert.match(c,/ticket-avatar/);
+ assert.match(c,/draggable=\{false\}/,'los enlaces no secuestran el arrastre');
+ const t=leer('app/soporte/TableroSoporte.tsx');
+ assert.match(t,/<TarjetaTicket/);
+ assert.match(t,/dataTransfer\.setData/,'Firefox no arrastra sin setData');
+ assert.match(t,/data-destino/);assert.match(t,/data-sobre/);
+ assert.match(t,/<dialog/);assert.match(t,/name="comentario"[^>]*required/);
+ assert.match(t,/className="tarea-mover solo-celular"/,'el selector solo en celular');
+ assert.doesNotMatch(t,/filter\(\(a\) => !pideComentario\(a\)\)/,'Resuelto ya no queda fuera del arrastre');
+ assert.match(leer('lib/soporte.ts'),/resuelto: "exito"/);
+ const css=leer('app/globals.css');
+ assert.match(css,/\.tablero-columna\[data-sobre\]/);assert.match(css,/\.ticket-avatar/);
+});

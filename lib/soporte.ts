@@ -10,7 +10,7 @@ export const COLUMNAS: EstadoTicket[] = ["nuevo", "en_revision", "en_progreso", 
 export const PRIORIDADES = { alta: "Alta", media: "Media", baja: "Baja" } as const;
 export type Prioridad = keyof typeof PRIORIDADES;
 export const TONO_PRIORIDAD: Record<Prioridad, string> = { alta: "peligro", media: "aviso", baja: "info" };
-export const TONO_ESTADO: Record<EstadoTicket, string | undefined> = { nuevo: "aviso", en_revision: "info", en_progreso: "info", resuelto: "ok", descartado: undefined };
+export const TONO_ESTADO: Record<EstadoTicket, string | undefined> = { nuevo: "aviso", en_revision: "info", en_progreso: "info", resuelto: "exito", descartado: undefined };
 export const BUCKET_SOPORTE = "soporte";
 export const OTRA_SECCION = "Otra / general";
 
