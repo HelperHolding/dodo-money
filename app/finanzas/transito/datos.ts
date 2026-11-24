@@ -13,7 +13,7 @@ export const DESDE = "2026-10-01";
 export const DIAS_NORMALES = { tarjeta: 4, rappi: 10, recoleccion: 7, deposito: 7 } as const;
 
 export type Filtro = { sucursal: string; empresa: string };
-export type Cuentas = { tarjeta: CuentaPuente; rappi: CuentaPuente; recoleccion: CuentaPuente; deposito: CuentaPuente };
+export type Cuentas = { tarjeta: CuentaPuente; rappi: CuentaPuente; recoleccion: CuentaPuente; deposito: CuentaPuente; corteBanco: string | null };
 
 type MovBanca = {
   movimiento_id: string;
@@ -22,7 +22,7 @@ type MovBanca = {
 };
 
 export async function leerTransito(supabase: SupabaseClient, filtro: Filtro, hoy: string): Promise<Cuentas> {
-  const [dias, desglose, conciliaciones, banca, rappi, recolecciones, razones] = await Promise.all([
+  const [dias, desglose, conciliaciones, banca, rappi, recolecciones, razones, corte] = await Promise.all([
     leerTodo<{ id: string; importacion_id: string; sucursal_id: string; fecha: string; total: number; efectivo: number; tarjeta: number; en_linea: number }>((d, h) =>
       supabase.from("ventas_dia").select("id, importacion_id, sucursal_id, fecha, total, efectivo, tarjeta, en_linea").gte("fecha", DESDE).lte("fecha", hoy).order("id").range(d, h)),
     leerTodo<{ ventas_dia_id: string; tarjeta: number }>((d, h) => supabase.from("ventas_dia_desglose").select("ventas_dia_id, tarjeta, ventas_dia!inner(fecha)")
@@ -38,7 +38,11 @@ export async function leerTransito(supabase: SupabaseClient, filtro: Filtro, hoy
     leerTodo<{ id: string; sucursal_id: string; desde: string; hasta: string; creado_en: string; contado_corporativo: number | null; recibido_en: string | null }>((d, h) =>
       supabase.from("recolecciones_corporativo").select("id, sucursal_id, desde, hasta, creado_en, contado_corporativo, recibido_en").gte("creado_en", `${DESDE}T06:00:00Z`).order("id").range(d, h)),
     supabase.from("razon_social_sucursales").select("rfc, sucursal_id").returns<{ rfc: string; sucursal_id: string }[]>(),
+    // Último día del banco importado: lo posterior aún no puede haber llegado, así que no se cuenta como atraso.
+    supabase.from("banca_movimientos").select("fecha").order("fecha", { ascending: false }).limit(1).maybeSingle<{ fecha: string }>(),
   ]);
+  const corteBanco = corte.data?.fecha ?? null;
+  const alCorte = corteBanco && corteBanco < hoy ? corteBanco : hoy;
   const sucursalesDe = new Map<string, Set<string>>();
   for (const r of razones.data ?? []) sucursalesDe.set(r.rfc, (sucursalesDe.get(r.rfc) ?? new Set()).add(r.sucursal_id));
   // Una partida entra si es de la sucursal elegida y, con razón social, de una sucursal de esa razón social (o de su cuenta).
@@ -56,13 +60,13 @@ export async function leerTransito(supabase: SupabaseClient, filtro: Filtro, hoy
     .map((m) => ({ fecha: m.banca_movimientos!.fecha, monto: Number(m.banca_movimientos![campo]), texto: m.banca_movimientos!.descripcion }))
     .filter((p) => p.monto > 0);
   // Las comisiones NetPay también cierran la venta: lo cobrado = depósito + comisión.
-  const tarjeta = cuentaPuente(ventasTarjeta, [...banco(["cobranza_tarjeta"], "abono"), ...banco(["comisiones_cobro"], "cargo")], hoy, DIAS_NORMALES.tarjeta);
+  const tarjeta = cuentaPuente(ventasTarjeta, [...banco(["cobranza_tarjeta"], "abono"), ...banco(["comisiones_cobro"], "cargo")], alCorte, DIAS_NORMALES.tarjeta);
 
   // Rappi → banco: neto de cada paidlot liquidado contra depósitos conciliados como cobranza Rappi.
   const lotes: Partida[] = rappi.filter((r) => deCuenta(r.sucursal_id, r.rfc))
     .flatMap((r) => lotesLiquidados(r.reporte?.movimientos ?? []).map((l) => ({ fecha: l.fecha, monto: l.neto, texto: `Paidlot ${l.lote}`, href: "/banca?vista=rappi" })))
     .filter((l) => l.fecha >= DESDE);
-  const rappiCuenta = cuentaPuente(lotes, banco(["cobranza_rappi"], "abono"), hoy, DIAS_NORMALES.rappi);
+  const rappiCuenta = cuentaPuente(lotes, banco(["cobranza_rappi"], "abono"), alCorte, DIAS_NORMALES.rappi);
 
   // Bóveda → corporativo: cada recolección (no rechazada) hasta que corporativo la recibe.
   const ids = recolecciones.map((r) => r.id);
@@ -80,7 +84,7 @@ export async function leerTransito(supabase: SupabaseClient, filtro: Filtro, hoy
   // Corporativo → banco: lo recibido en corporativo contra depósitos de efectivo conciliados.
   const recibido: Partida[] = validas.filter((r) => r.recibido_en)
     .map((r) => ({ fecha: fechaMX(r.recibido_en!), monto: Number(r.contado_corporativo ?? mov.get(r.id)!.monto), texto: `Recibido en corporativo (${r.desde === r.hasta ? r.desde : `${r.desde} a ${r.hasta}`})`, href: "/efectivo" }));
-  const deposito = cuentaPuente(recibido, banco(["deposito_efectivo"], "abono"), hoy, DIAS_NORMALES.deposito);
+  const deposito = cuentaPuente(recibido, banco(["deposito_efectivo"], "abono"), alCorte, DIAS_NORMALES.deposito);
 
-  return { tarjeta, rappi: rappiCuenta, recoleccion, deposito };
+  return { tarjeta, rappi: rappiCuenta, recoleccion, deposito, corteBanco };
 }

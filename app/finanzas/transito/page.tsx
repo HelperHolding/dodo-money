@@ -8,17 +8,19 @@ import type { CuentaPuente } from "@/lib/finanzas/transito";
 import { DESDE, DIAS_NORMALES, leerTransito } from "./datos";
 
 const CUENTAS = [
-  { clave: "tarjeta", titulo: "Tarjeta → banco", entra: "Venta con tarjeta (conciliada con NetPay)", sale: "Depósito NetPay + comisiones conciliados en Banca", dias: DIAS_NORMALES.tarjeta },
-  { clave: "rappi", titulo: "Rappi → banco", entra: "Lote liquidado (neto del reporte financiero)", sale: "Depósito de Rappi conciliado en Banca", dias: DIAS_NORMALES.rappi },
-  { clave: "recoleccion", titulo: "Bóveda → corporativo", entra: "Recolección que sale de la bóveda", sale: "Recibida en corporativo", dias: DIAS_NORMALES.recoleccion },
-  { clave: "deposito", titulo: "Corporativo → banco", entra: "Efectivo recibido en corporativo", sale: "Depósito de efectivo conciliado en Banca", dias: DIAS_NORMALES.deposito },
+  { clave: "tarjeta", titulo: "Tarjeta → banco", entra: "Venta con tarjeta (conciliada con NetPay)", sale: "Depósito NetPay + comisiones conciliados en Banca", dias: DIAS_NORMALES.tarjeta, banco: true },
+  { clave: "rappi", titulo: "Rappi → banco", entra: "Lote liquidado (neto del reporte financiero)", sale: "Depósito de Rappi conciliado en Banca", dias: DIAS_NORMALES.rappi, banco: true },
+  { clave: "recoleccion", titulo: "Bóveda → corporativo", entra: "Recolección que sale de la bóveda", sale: "Recibida en corporativo", dias: DIAS_NORMALES.recoleccion, banco: false },
+  { clave: "deposito", titulo: "Corporativo → banco", entra: "Efectivo recibido en corporativo", sale: "Depósito de efectivo conciliado en Banca", dias: DIAS_NORMALES.deposito, banco: true },
 ] as const;
 
-function Tarjeta({ c, cuenta }: { c: (typeof CUENTAS)[number]; cuenta: CuentaPuente }) {
+function Tarjeta({ c, cuenta, corte }: { c: (typeof CUENTAS)[number]; cuenta: CuentaPuente; corte: string | null }) {
+  const despuesDelCorte = (fecha: string) => c.banco && !!corte && fecha > corte;
   return (
     <section className="seccion transito-cuenta" aria-labelledby={`t-${c.clave}`} data-alerta={cuenta.atrasados ? "si" : undefined}>
       <div className="transito-cabecera">
-        <div><h2 id={`t-${c.clave}`}>{c.titulo}</h2><p className="saldo-nota">Entra: {c.entra} · Sale: {c.sale}</p></div>
+        <div><h2 id={`t-${c.clave}`}>{c.titulo}</h2><p className="saldo-nota">Entra: {c.entra} · Sale: {c.sale}</p>
+          {c.banco && corte && <p className="saldo-nota">Banco importado hasta el {fechaTexto(corte)}: los días se cuentan hasta ahí y lo posterior se espera en el siguiente estado de cuenta.</p>}</div>
         <div className="transito-saldo"><span>En tránsito</span><strong>{pesos(cuenta.saldo)}</strong>
           <small>{cuenta.pendientes.length ? `${cuenta.pendientes.length} ${cuenta.pendientes.length === 1 ? "partida" : "partidas"} · la más vieja de ${cuenta.diasMasViejo} ${cuenta.diasMasViejo === 1 ? "día" : "días"}` : "Nada en tránsito"}</small></div>
       </div>
@@ -35,7 +37,7 @@ function Tarjeta({ c, cuenta }: { c: (typeof CUENTAS)[number]; cuenta: CuentaPue
             {cuenta.pendientes.map((p, i) => (
               <li key={`${p.fecha}-${i}`} data-alerta={p.atrasado ? "si" : undefined}>
                 <span>{fechaTexto(p.fecha)} · {p.href ? <Link href={p.href}>{p.texto}</Link> : p.texto}</span>
-                <span>{p.dias} {p.dias === 1 ? "día" : "días"}{p.atrasado ? " · atrasado" : ""}</span>
+                <span>{despuesDelCorte(p.fecha) ? "después del corte del banco" : `${p.dias} ${p.dias === 1 ? "día" : "días"}${p.atrasado ? " · atrasado" : ""}`}</span>
                 <strong>{pesos(p.restante)}{p.restante !== p.monto ? <small> de {pesos(p.monto)}</small> : null}</strong>
               </li>
             ))}
@@ -73,7 +75,7 @@ export default async function DineroEnTransito({ searchParams }: { searchParams:
           <select id="empresa" name="empresa" defaultValue={empresa}><option value="">Todas las razones sociales</option>{razones.map((r) => <option key={r.rfc} value={r.rfc}>{r.razon_social}</option>)}</select></div>
         <button className="boton boton-secundario boton-compacto" type="submit">Filtrar</button>
       </form>
-      {CUENTAS.map((c) => <Tarjeta key={c.clave} c={c} cuenta={cuentas[c.clave]} />)}
+      {CUENTAS.map((c) => <Tarjeta key={c.clave} c={c} cuenta={cuentas[c.clave]} corte={cuentas.corteBanco} />)}
     </>
   );
 }
