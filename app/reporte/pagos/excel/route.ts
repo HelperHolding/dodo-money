@@ -10,7 +10,7 @@ export async function GET(request:Request){
  const {supabase,perfil}=await obtenerPerfil();
  if(!puedeVerCompras(perfil.rol))return new Response('Sin permiso',{status:403});
  const q=new URL(request.url).searchParams;
- const filtro:FiltroCorrida={desde:q.get('desde')??'',hasta:q.get('hasta')??'',fecha:q.get('fecha')??hoyCalendarioMX(),proveedor:q.get('proveedor')??'',sucursal:q.get('sucursal')??'',complemento:q.get('complemento')??''};
+ const filtro:FiltroCorrida={desde:q.get('desde')??'',hasta:q.get('hasta')??'',fecha:q.get('fecha')??hoyCalendarioMX(),proveedor:q.get('proveedor')??'',sucursal:q.get('sucursal')??'',empresa:q.get('empresa')??'',complemento:q.get('complemento')??''};
  const error=validarFiltroCorrida(filtro);if(error)return new Response(error,{status:400});
  const ahora=new Date().toISOString();
  const filas=await cargarCorrida(supabase,filtro,hoyCalendarioMX());
