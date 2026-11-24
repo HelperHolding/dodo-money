@@ -25,6 +25,8 @@ export async function crearTarea(fd: FormData) {
   if ("error" in r) return volver(ruta, "error", r.error);
   const { data, error } = await supabase.rpc("crear_tarea", { p_datos: r.datos });
   if (error) return volver(ruta, "error", mensajeDe(error));
+  // Desde el Gantt de aperturas se queda en la misma pantalla.
+  if (texto(fd, "quedarse") === "si") { revalidatePath("/aperturas", "layout"); listo(ruta, `${clave(Number(data))} creada y asignada.`); }
   listo(`/tareas/${data}`, `${clave(Number(data))} creada y asignada.`);
 }
 

@@ -2134,6 +2134,17 @@ body { background: var(--papel-2); }
 .ap-gantt-sin { position:absolute; top:5px; left:0; line-height:24px; font-size:.8rem; color:var(--tinta-3); }
 .ap-gantt-tareas { padding:0 0 12px; }
 .ap-gantt-tarea { padding:4px 0; }
+/* Pendientes ligados a una tarea del Gantt: chips suaves y «Asignar pendiente» plegable. */
+.ap-gantt-pendientes { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; margin-top:4px; }
+.ap-gantt-pendiente { font-size:.75rem; font-weight:600; padding:2px 8px; border-radius:999px; background:#eef2fb; color:#34507a; text-decoration:none; }
+.ap-gantt-pendiente[data-estado="en_curso"], .ap-gantt-pendiente[data-estado="en_revision"] { background:#fdf0e1; color:#8a4b12; }
+.ap-gantt-pendiente[data-estado="hecho"] { background:#e3f4ea; color:#2f6b4a; }
+.ap-gantt-asignar summary { font-size:.78rem; font-weight:600; color:var(--accion); cursor:pointer; list-style:none; }
+.ap-gantt-asignar summary::-webkit-details-marker { display:none; }
+.ap-gantt-asignar[open] { flex-basis:100%; padding:8px 10px; border:1px solid var(--linea); border-radius:var(--r-md); background:var(--superficie); }
+.ap-gantt-asignar-form { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px 12px; margin:8px 0 4px; }
+.ap-gantt-asignar-form label { display:flex; flex-direction:column; gap:2px; font-size:.78rem; color:var(--tinta-2); }
+.ap-gantt-asignar small { color:var(--tinta-2); font-size:.75rem; }
 .ap-gantt-tarea .ap-gantt-linea { height:22px; }
 .ap-gantt-tarea .ap-gantt-nombre { grid-template-columns:auto minmax(0,1fr); padding-left:38px; }
 .ap-gantt-tarea .ap-gantt-nombre a { color:var(--tinta); font-size:.88rem; text-decoration:none; overflow-wrap:anywhere; }
