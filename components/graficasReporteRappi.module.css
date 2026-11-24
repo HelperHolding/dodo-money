@@ -1,0 +1,12 @@
+.grafica { width: 100%; height: auto; display: block; }
+.eje { font-size: 9px; fill: #7a6f66; }
+.etiqueta { font-size: 10.5px; fill: #2b2622; }
+.valor { font-size: 10px; fill: #7a6f66; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 14px; margin: 4px 0 0; font-size: 0.85rem; color: #7a6f66; }
+.dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.dos > * { margin: 0; }
+@media (max-width: 760px) { .dos { grid-template-columns: 1fr; } }
+.hallazgos { margin: 0; padding-left: 1.2em; line-height: 1.5; }
+.hallazgos li { margin: 3px 0; }
+.estados { display: flex; height: 16px; border-radius: 5px; overflow: hidden; margin: 6px 0 10px; }
+.leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
