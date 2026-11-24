@@ -2218,3 +2218,24 @@ body { background: var(--papel-2); }
 .soporte-captura { display: block; max-width: 100%; max-height: 420px; margin-top: 0.75rem; border-radius: 8px; border: 1px solid var(--neutro-borde, #e5e5e5); }
 .filtros-soporte { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; align-items: end; }
 .hilo-tarea li[data-soporte] { background: var(--info-fondo, #eef6ff); }
+
+/* Dinero en tránsito: una tarjeta por cuenta puente, con su saldo y lo que sigue pendiente. */
+.transito-cuenta[data-alerta="si"] { border-left:4px solid var(--alerta); }
+.transito-cabecera { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px 24px; align-items:flex-start; }
+.transito-cabecera h2 { margin:0 0 4px; }
+.transito-saldo { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+.transito-saldo span { color:var(--tinta-2); font-size:var(--t-sm); }
+.transito-saldo strong { font-size:1.6rem; font-variant-numeric:tabular-nums; }
+.transito-saldo small { color:var(--tinta-2); }
+.transito-totales { display:grid; gap:8px; grid-template-columns:repeat(auto-fill, minmax(min(100%, 200px), 1fr)); margin:14px 0; }
+.transito-totales div { padding:8px 12px; border:1px solid var(--linea); border-radius:var(--r-md); background:var(--superficie); }
+.transito-totales div[data-alerta="si"] { border-color:var(--alerta); }
+.transito-totales dt { color:var(--tinta-2); font-size:.8rem; }
+.transito-totales dd { margin:2px 0 0; font-weight:800; font-variant-numeric:tabular-nums; }
+.transito-lista { list-style:none; padding:0; margin:10px 0 0; display:grid; gap:6px; }
+.transito-lista li { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:12px; align-items:baseline; padding:8px 12px; border-radius:var(--r-md); background:var(--superficie); }
+.transito-lista li[data-alerta="si"] { background:color-mix(in srgb, var(--alerta) 10%, var(--superficie)); }
+.transito-lista li span:nth-child(2) { color:var(--tinta-2); font-size:.85rem; }
+.transito-lista strong { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.transito-lista small { color:var(--tinta-2); font-weight:400; }
+@media (max-width: 640px) { .transito-lista li { grid-template-columns:1fr auto; } .transito-lista li span:nth-child(2) { grid-column:1; } .transito-saldo { align-items:flex-start; } }
