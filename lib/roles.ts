@@ -141,6 +141,7 @@ export function menuLateral(rol: Rol): Menu {
       { href: "/finanzas", texto: "P&L" },
       { href: "/finanzas/flujo", texto: "Flujo de efectivo" },
       { href: "/finanzas/mermas", texto: "Mermas Dodo IS" },
+      { href: "/finanzas/transito", texto: "Dinero en tránsito" },
       { href: "/finanzas/parametros", texto: "Parámetros y metas" },
     ] : []),
     ...area("Banca", "banco", "Finanzas", finanzas ? [{ href: "/banca", texto: "Banca" }] : []),
