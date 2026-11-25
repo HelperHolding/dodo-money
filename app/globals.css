@@ -2561,3 +2561,65 @@ html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas i
   .ap-plano-marca { cursor:default; box-shadow:none; }
   .ap-plano-leyenda button { border-color:var(--linea-fuerte); }
 }
+
+/* HD-16 · Fotos Dodo por partida: importador de matrices y foto real */
+.ap-dodo-barra { display:flex; justify-content:flex-end; margin:0 0 12px; }
+.ap-dodo-modal .formulario, .ap-dodo-resumen { display:grid; gap:14px; }
+.ap-dodo-cifras { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+@media (min-width:640px) { .ap-dodo-cifras { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+.ap-dodo-cifras > div { display:grid; gap:2px; padding:12px; border-radius:var(--r-md); background:var(--accion-tinte); border:1px solid var(--accion-suave-borde); text-align:center; }
+.ap-dodo-cifras > div:nth-child(2) { background:var(--cuadra-fondo); border-color:var(--cuadra-borde); }
+.ap-dodo-cifras > div:nth-child(3) { background:var(--neutro-fondo); border-color:var(--linea); }
+.ap-dodo-cifras strong { font-size:1.4rem; font-variant-numeric:tabular-nums; }
+.ap-dodo-cifras span { color:var(--tinta-2); font-size:.85rem; }
+.ap-dodo-sinfoto summary { cursor:pointer; font-weight:600; min-height:44px; display:flex; align-items:center; }
+.ap-dodo-sinfoto ul { list-style:none; margin:0; padding:0; display:grid; gap:6px; max-height:45dvh; overflow:auto; }
+.ap-dodo-sinfoto li { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:2px 10px; align-items:baseline; padding:8px 10px; border-radius:var(--r-md); background:var(--papel-2); }
+.ap-dodo-sinfoto li small { grid-column:1 / -1; color:var(--tinta-2); }
+.ap-dodo-clave { font-weight:700; font-variant-numeric:tabular-nums; }
+.ap-dodo-nombre { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ap-dodo-sinfoto code { font-size:.8rem; color:var(--info); }
+.ap-dodo-foto-real { display:grid; gap:10px; }
+.ap-dodo-foto-real img { display:block; max-width:100%; max-height:360px; object-fit:contain; border-radius:var(--r-md); border:1px solid var(--linea); background:var(--papel-2); }
+@media(max-width:600px) { .ap-dodo-sinfoto li { grid-template-columns:auto minmax(0,1fr); }.ap-dodo-sinfoto code { grid-column:1 / -1; } }
+.ap-concepto-foto { display:flex; align-items:center; gap:10px; }
+.ap-miniatura { flex:none; display:block; width:40px; height:40px; object-fit:contain; border-radius:var(--r-sm); border:1px solid var(--linea); background:var(--papel-2); }
+.ap-miniatura-ficha { display:block; width:96px; height:96px; object-fit:contain; margin:0 0 10px; border-radius:var(--r-md); border:1px solid var(--linea); background:var(--papel-2); }
+.ap-foto-seccion { display:grid; gap:12px; }
+.ap-foto-par { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.ap-foto-par figure { margin:0; display:grid; gap:6px; align-content:start; }
+.ap-foto-par figcaption { font-size:.85rem; font-weight:700; color:var(--tinta-2); }
+.ap-foto-par img { display:block; max-width:100%; max-height:320px; object-fit:contain; border-radius:var(--r-md); border:1px solid var(--linea); background:var(--papel-2); }
+.ap-foto-vacia { display:grid; place-items:center; min-height:120px; border-radius:var(--r-md); border:1px dashed var(--linea-fuerte); background:var(--papel-2); color:var(--tinta-3); font-size:.9rem; }
+@media(max-width:600px) {
+  .ap-foto-par { grid-template-columns:1fr; }
+}
+@media(max-width:640px) {
+  .tabla-tarjetas td.ap-celda-concepto { justify-content:flex-start; text-align:left; }
+  .tabla-tarjetas td.ap-celda-concepto::before { content:none; }
+}
+
+/* HD-16 · Solicitud de cotización imprimible (se acota con .ap-cotizacion-imprimible para no tocar el plano) */
+.ap-cot-botones { margin:0 0 12px; }
+.ap-cotizacion-imprimible { display:grid; gap:12px; }
+.ap-cot-encabezado h1 { margin:0; font-size:1.3rem; }
+.ap-cot-encabezado p { margin:4px 0 0; color:var(--tinta-2); }
+.ap-cot-tabla { min-width:900px; }
+.ap-cot-tabla th, .ap-cot-tabla td { vertical-align:middle; }
+.ap-cot-foto { display:block; width:80px; height:80px; object-fit:contain; border-radius:var(--r-sm); border:1px solid var(--linea); background:var(--papel-2); }
+.ap-cot-vacia { min-width:110px; }
+.ap-cot-aviso { margin:0; padding:8px 12px; border-radius:var(--r-sm); background:var(--papel-2); color:var(--tinta-2); font-size:.9rem; }
+.ap-cot-pie { margin:0; color:var(--tinta-2); font-size:.9rem; }
+@page cotizacion { size: letter landscape; margin:10mm; }
+@media print {
+  .ap-cotizacion-imprimible { page:cotizacion; }
+  body:has(.ap-cotizacion-imprimible) *:not(:has(.ap-cotizacion-imprimible), .ap-cotizacion-imprimible, .ap-cotizacion-imprimible *) { display:none !important; }
+  body:has(.ap-cotizacion-imprimible) :has(.ap-cotizacion-imprimible) { margin:0 !important; padding:0 !important; border:0 !important; box-shadow:none !important; background:none !important; display:block !important; max-width:none !important; width:auto !important; }
+  .ap-cotizacion-imprimible, .ap-cotizacion-imprimible * { color:#000; background:#fff; }
+  .ap-cot-aviso { display:none !important; }
+  .ap-cotizacion-imprimible .tabla-contenedor { overflow:visible; }
+  .ap-cot-tabla { min-width:0; width:100%; font-size:10pt; }
+  .ap-cot-tabla thead { display:table-header-group; }
+  .ap-cot-tabla tr { break-inside:avoid; }
+  .ap-cot-tabla td, .ap-cot-tabla th { border:1px solid #999; }
+}
