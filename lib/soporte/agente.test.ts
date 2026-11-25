@@ -79,3 +79,10 @@ test("el modelo falla → la promesa se rechaza (quien llama marca fallido)", as
   const m = new MockLanguageModelV4({ doGenerate: async () => { throw new Error("529 overloaded"); } });
   await assert.rejects(atenderTicket({ modelo: m, consultas: sinDatos, parecidos: async () => [], ticket: T, hoy: "2026-11-24" }));
 });
+
+test("gerente: cortes vacío no respalda 'resuelto'; con turnos sí", async () => {
+  const g = (cortes: () => Promise<unknown>) => atenderTicket({ modelo: modelo(llamada("cortes", { desde: "2026-11-23", hasta: "2026-11-23" }), llamada("cerrar", CIERRE)).m,
+    consultas: { ...sinDatos, cortes }, parecidos: async () => [], ticket: { ...T, rol: "gerente" }, hoy: "2026-11-24" });
+  assert.equal((await g(async () => ({ turnos: [] }))).cierre.desenlace, "escalado");
+  assert.equal((await g(async () => ({ turnos: [{ fecha: "2026-11-23" }] }))).cierre.desenlace, "resuelto");
+});

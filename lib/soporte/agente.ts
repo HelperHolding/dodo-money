@@ -70,10 +70,14 @@ Descripción:
 ${t.descripcion}
 </ticket>`;
 
+const CAMPO_RESULTADO: Record<string, string> = { manuales: "manuales", cortes: "turnos", costos: "productos", ventas: "diasConDatos", pl: "filas" };
+/** Una fuente cuenta solo si trae datos reales: una estructura vacía (sin turnos, productos, días o filas) no respalda una respuesta. */
 const tieneResultado = (nombre: string, r: unknown) => {
   if (!r || typeof r !== "object" || "error" in r) return false;
-  if (nombre === "manuales") { const m = (r as { manuales?: unknown }).manuales; return Array.isArray(m) && m.length > 0; }
-  return true;
+  const campo = CAMPO_RESULTADO[nombre];
+  if (!campo) return false;
+  const v = (r as Record<string, unknown>)[campo];
+  return Array.isArray(v) && v.length > 0;
 };
 
 export async function atenderTicket(o: { modelo: LanguageModel; consultas: ConsultasAgente; parecidos: (busqueda: string) => Promise<unknown>;
