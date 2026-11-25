@@ -116,7 +116,7 @@ test('aperturas akton: el valor de días nunca es negativo',()=>{
  assert.deepEqual(textoDiasApertura({tipo:'vencida',dias:1}),{valor:'Vencida hace 1 día',tono:'no'});
  assert.deepEqual(textoDiasApertura({tipo:'faltan',dias:7}),{valor:'7',tono:'destacado'});
  assert.deepEqual(textoDiasApertura({tipo:'hoy',dias:0}),{valor:'Hoy',tono:'destacado'});
- assert.deepEqual(textoDiasApertura({tipo:'abierta',dias:3}),{valor:'Abierta',tono:'destacado'});
+ assert.deepEqual(textoDiasApertura({tipo:'abierta',dias:3}),{valor:'Abierta',tono:'si'});
 });
 test('aperturas akton: el KPI de vencidas cuenta lo mismo que la lectura y el cronograma',()=>{
  const items=[

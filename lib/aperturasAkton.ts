@@ -40,9 +40,10 @@ export function avanceComparado(items:Concepto[],hoy:string):Avance {
 
 export type DiasApertura = {tipo:'faltan'|'hoy'|'vencida'|'abierta';dias:number};
 // Valor grande del KPI: nunca días negativos.
-export function textoDiasApertura(d:DiasApertura):{valor:string;tono:'destacado'|'no'} {
+export function textoDiasApertura(d:DiasApertura):{valor:string;tono:'destacado'|'no'|'si'} {
  if(d.tipo==='vencida')return {valor:`Vencida hace ${d.dias} ${d.dias===1?'día':'días'}`,tono:'no'};
- return {valor:d.tipo==='faltan'?String(d.dias):d.tipo==='hoy'?'Hoy':'Abierta',tono:'destacado'};
+ if(d.tipo==='abierta')return {valor:'Abierta',tono:'si'};
+ return {valor:d.tipo==='faltan'?String(d.dias):'Hoy',tono:'destacado'};
 }
 export function diasParaApertura(objetivo:string,hoy:string,todoListo:boolean):DiasApertura {
  const d=diasEntre(hoy,objetivo);
