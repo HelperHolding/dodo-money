@@ -39,6 +39,8 @@ Cuando un reporte nuevo tenga métricas, contra meta o explicación, usa estas p
 | ⓘ | `.akton-info` | Enlaza a la nota al pie `#akton-pie-N`. |
 | Nota al margen | `.akton-nota` | Texto corto con borde izquierdo naranja, dentro de la columna Notas. |
 | Pie | `.akton-pie` | Notas numeradas, la meta usada y las fuentes. |
+| Pestañas | `.akton-pestanas` | Cambiar de vista dentro de un tablero. Fondo blanco con borde; la activa en negro (`aria-current="page"`). |
+| Gantt | `.akton-tabla-marco.ap-gantt` | Barras grises con el avance en gris oscuro. Verde solo para tareas listas y rojo para vencidas o bloqueadas. Hoy va en negro y la fecha objetivo en naranja. |
 
 En celular (≤ 640 px) la tabla pasa a tarjetas (`.tabla-tarjetas`). Cada renglón es una tarjeta con «etiqueta: valor».
 Los subtotales conservan su fondo y las notas van al final de la tarjeta.
@@ -58,6 +60,9 @@ Los subtotales conservan su fondo y las notas van al final de la tarjeta.
   - `favorable`: un gasto es favorable abajo de su meta; un ingreso o total, arriba.
 - **Prime cost**: alimento + merma + nómina (cocina y gerencia) sobre la venta neta. El rango de mercado es 55–65 %
   (`PRIME_COST_MERCADO`).
+- **Aperturas, avance esperado a hoy** (`lib/aperturasAkton.ts`): cada concepto con fechas espera 0 antes de su
+  inicio, 1 después de su fin y la parte proporcional en medio (incluye hoy). La variación compara real y esperado
+  de los mismos conceptos con fecha. Es favorable si queda ≥ −5 pts (`TOLERANCIA_AVANCE`).
 - **Ticket**: venta neta del canal entre pedidos del canal.
   - POS: `ventas_dia.pedidos`.
   - Rappi: órdenes finalizadas que suman como canal propio.

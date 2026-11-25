@@ -11,13 +11,13 @@ export type EtapaGantt<T> = {clave:keyof typeof ETAPAS;nombre:string;conceptos:n
 
 // Mismo criterio que el Checklist: sin no aplica, y el equipo y las referencias por validar quedan fuera.
 export const cuentaEnAvance = (i:Pick<ItemApertura,'tipo'|'estado'>) => i.estado!=='no_aplica'&&!((i.tipo==='equipo'||i.tipo==='referencia')&&i.estado==='por_validar');
-const terminada = (estado:string) => ['completado','verificado'].includes(estado);
+// Listo con el criterio del Checklist (incluye equipo instalado): lo listo no sale como vencido.
 
 export function ganttEtapas<T extends TareaGantt>(items:T[],hoy:string):EtapaGantt<T>[] {
  return (Object.keys(ETAPAS) as (keyof typeof ETAPAS)[]).map(clave=>{
   const de=items.filter(i=>i.etapa===clave&&cuentaEnAvance(i));
   const listos=de.filter(i=>marcaItem(i)==='listo').length;
-  const tareas=de.flatMap(item=>{const r=rangoItem(item);return r?[{item,desde:r.desde,hasta:r.hasta,marca:marcaItem(item),vencida:r.hasta<hoy&&!terminada(item.estado)}]:[];})
+  const tareas=de.flatMap(item=>{const r=rangoItem(item);return r?[{item,desde:r.desde,hasta:r.hasta,marca:marcaItem(item),vencida:r.hasta<hoy&&marcaItem(item)!=='listo'}]:[];})
    .sort((a,b)=>a.desde.localeCompare(b.desde)||a.hasta.localeCompare(b.hasta)||a.item.nombre.localeCompare(b.item.nombre));
   return {clave,nombre:ETAPAS[clave],conceptos:de.length,listos,porcentaje:de.length?Math.round(listos/de.length*100):null,
    desde:tareas.length?tareas[0].desde:null,hasta:tareas.length?tareas.map(t=>t.hasta).sort().at(-1)!:null,

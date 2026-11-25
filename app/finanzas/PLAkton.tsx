@@ -17,7 +17,7 @@ const textoPts = (p: number) => `${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.abs(p
 const entero = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 1 });
 
-function Kpi({ etiqueta, valor, pie, tono }: { etiqueta: string; valor: ReactNode; pie: ReactNode; tono?: "destacado" | "si" | "no" }) {
+export function Kpi({ etiqueta, valor, pie, tono }: { etiqueta: string; valor: ReactNode; pie: ReactNode; tono?: "destacado" | "si" | "no" }) {
   return (
     <div className="akton-kpi" data-tono={tono}>
       <span className="akton-kpi-etiqueta">{etiqueta}</span>

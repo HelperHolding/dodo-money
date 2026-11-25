@@ -1,9 +1,7 @@
 import Link from 'next/link';
-import type {CSSProperties} from 'react';
 import {ESTADOS,MARCAS,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
-import {avanceGeneral,escalaGantt,ganttEtapas,type Escala} from '@/lib/aperturasGantt';
+import {escalaGantt,ganttEtapas,type Escala} from '@/lib/aperturasGantt';
 import {fechaTexto} from '@/lib/formato';
-import {fuenteGantt} from './fuenteGantt';
 import {BotonEnviar} from '@/components/BotonEnviar';
 import {crearTarea} from '@/app/tareas/acciones';
 import {clave,ESTADOS as ESTADOS_TAREA} from '@/lib/tareas';
@@ -40,15 +38,14 @@ function Pendientes({item,pendientes,personas,volverA}:{item:ItemApertura;pendie
  </div>;
 }
 
-export function Gantt({proyecto:p,items,hoy,colores,pendientes={},personas=[],volverA=''}:{proyecto:ProyectoApertura;items:ItemApertura[];hoy:string;colores:Record<string,string>;pendientes?:Record<string,PendienteGantt[]>;personas?:Persona[];volverA?:string}) {
- const etapas=ganttEtapas(items,hoy),general=avanceGeneral(etapas),base=`/aperturas/${p.id}`;
+export function Gantt({proyecto:p,items,hoy,pendientes={},personas=[],volverA=''}:{proyecto:ProyectoApertura;items:ItemApertura[];hoy:string;pendientes?:Record<string,PendienteGantt[]>;personas?:Persona[];volverA?:string}) {
+ const etapas=ganttEtapas(items,hoy),base=`/aperturas/${p.id}`;
  const escala=escalaGantt([...etapas.flatMap(e=>[e.desde,e.hasta]),p.objetivo_desde,p.objetivo_hasta,hoy]);
  const conFechas=etapas.some(e=>e.desde);
- return <section className={`ap-panel ap-gantt ${fuenteGantt.className}`}>
+ return <section className="akton-tabla-marco ap-gantt">
   <div className="ap-gantt-cabecera">
-   <div><h2>Cronograma (Gantt)</h2><p className="ap-nota">Apertura objetivo: {fechaTexto(p.objetivo_hasta)} · da clic en una etapa para ver sus tareas.</p></div>
-   <div className="ap-gantt-general"><span>Avance general</span><strong>{general===null?'—':`${general} %`}</strong><progress value={general??0} max={100} aria-label="Avance general"/></div>
-  </div>
+   <div><h2 className="akton-titulo">Gantt</h2><p className="ap-nota">Apertura objetivo: {fechaTexto(p.objetivo_hasta)} · da clic en una etapa para ver sus tareas.</p></div>
+    </div>
   <ul className="ap-gantt-leyenda">
    <li><span className="ap-gantt-ley-hoy"/>Hoy</li><li><span className="ap-gantt-ley-objetivo"/>Apertura objetivo</li>
    <li><span className="ap-gantt-ley-tarea" data-marca="listo"/>{MARCAS.listo.texto}</li><li><span className="ap-gantt-ley-tarea" data-marca="curso"/>{MARCAS.curso.texto}</li>
@@ -58,9 +55,8 @@ export function Gantt({proyecto:p,items,hoy,colores,pendientes={},personas=[],vo
   {escala&&<div className="ap-gantt-fila ap-gantt-escala" aria-hidden="true"><div/><div className="ap-gantt-linea">{escala.marcas.map((m,k)=>{const paso=Math.max(1,Math.ceil(escala.marcas.length/8));return k%paso===0&&!(hoy>=escala.desde&&hoy<=escala.hasta&&Math.abs(escala.pos(hoy)-m.pos)<9)&&<span key={m.dia} data-impar={(k/paso)%2===1||undefined} style={{left:`${m.pos}%`}}>{m.etiqueta}</span>;})}
    {hoy>=escala.desde&&hoy<=escala.hasta&&<b className="ap-gantt-hoy-etiqueta" style={{left:`${escala.pos(hoy)}%`}}>Hoy</b>}</div></div>}
   {etapas.map((e,n)=>{
-   const color=colores[e.clave]??'#64748b',estilo={'--ap-c':color} as CSSProperties;
    const ancho=escala&&e.desde&&e.hasta?escala.ancho(e.desde,e.hasta):0,adentro=ancho>=14;
-   return <details key={e.clave} className="ap-gantt-etapa" style={estilo}>
+   return <details key={e.clave} className="ap-gantt-etapa">
     <summary className="ap-gantt-fila">
      <div className="ap-gantt-nombre">
       <span className="ap-gantt-num">{n+1}</span>
@@ -87,7 +83,7 @@ export function Gantt({proyecto:p,items,hoy,colores,pendientes={},personas=[],vo
        <Link className="ap-gantt-tbarra" data-marca={t.marca} data-vencida={t.vencida||undefined} href={`${base}/items/${t.item.id}`} aria-label={`${t.item.nombre}, ${rango(t.desde,t.hasta)}`}
         style={{left:`${escala.pos(t.desde)}%`,width:`${escala.ancho(t.desde,t.hasta)}%`}}>{t.marca==='listo'?'✓':''}</Link></>}</div>
      </div>)}
-     {e.sinFecha>0&&<p className="ap-nota">{e.sinFecha} {e.sinFecha===1?'concepto sin fecha':'conceptos sin fecha'} · <Link href={`${base}?vista=calendario&color=etapa`}>programar en el Calendario</Link></p>}
+     {e.sinFecha>0&&<p className="ap-nota">{e.sinFecha} {e.sinFecha===1?'concepto sin fecha':'conceptos sin fecha'} · <Link href={`${base}?vista=calendario`}>programar en el Calendario</Link></p>}
      {e.conceptos===0&&<p className="ap-nota">Esta etapa no tiene conceptos.</p>}
     </div>
    </details>;
