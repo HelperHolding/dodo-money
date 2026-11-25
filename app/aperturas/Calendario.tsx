@@ -32,11 +32,21 @@ export function Calendario({proyecto,items,modo,mes,semana,persona,todos,hoy,edi
  const personaDe=(i:ItemCalendario)=>porClave.get(clavePersona(i.responsable));
  const [ocultos,setOcultos]=useState<Set<string>>(()=>new Set());
  // Ocultos guardados por proyecto en este navegador; con ?resp= de un enlace viejo, solo esa persona.
+ // Se aplica una sola vez: al guardar algo la página se refresca y no debe volver a ocultar a quien ya marcaste.
+ const respAplicado=useRef(false),llaveClaves=claves.join('|');
  useEffect(()=>{
   try{setPanel(localStorage.getItem('calPanel')!=='plegado');}catch{/* sin almacenamiento */}
-  if(persona&&claves.includes(persona)){setOcultos(new Set(claves.filter(c=>c!==persona)));return;}
-  try{setOcultos(leerOcultos(localStorage.getItem(`calOcultos:${proyecto}`),claves));}catch{/* sin almacenamiento */}
- },[proyecto,persona,claves]);
+  const lista=llaveClaves?llaveClaves.split('|'):[];
+  if(!respAplicado.current&&persona&&lista.includes(persona)){respAplicado.current=true;setOcultos(new Set(lista.filter(c=>c!==persona)));return;}
+  if(respAplicado.current)return;
+  try{setOcultos(leerOcultos(localStorage.getItem(`calOcultos:${proyecto}`),lista));}catch{/* sin almacenamiento */}
+ },[proyecto,persona,llaveClaves]);
+ // El cajón del panel (celular) se cierra con Esc.
+ useEffect(()=>{
+  if(!cajon)return;
+  const tecla=(e:KeyboardEvent)=>{if(e.key==='Escape')setCajon(false);};
+  window.addEventListener('keydown',tecla);return ()=>window.removeEventListener('keydown',tecla);
+ },[cajon]);
  const alternar=(clave:string)=>setOcultos(prev=>{
   const n=new Set(prev);if(n.has(clave))n.delete(clave);else n.add(clave);
   try{localStorage.setItem(`calOcultos:${proyecto}`,JSON.stringify([...n]));}catch{/* solo esta visita */}
@@ -65,7 +75,7 @@ export function Calendario({proyecto,items,modo,mes,semana,persona,todos,hoy,edi
  const irA=(dia:string)=>{setCajon(false);router.push(enlace({mes:dia.slice(0,7),semana:semanaDe(dia)[0].dia}));};
  const paso=(n:number)=>modo==='semana'
   ?enlace({semana:moverDias(dias7[0].dia,7*n),mes:moverDias(dias7[0].dia,7*n+3).slice(0,7)})
-  :enlace({mes:moverMesTexto(mes,n),semana:semanaDe(`${moverMesTexto(mes,n)}-01`)[0].dia});
+  :(m=>enlace({mes:m,semana:semanaDe(m===hoy.slice(0,7)?hoy:`${m}-01`)[0].dia}))(moverMesTexto(mes,n));
  const todosOcultos=personas.length>0&&personas.every(p=>ocultos.has(p.clave));
 
  return <section className="seccion ap-gcal" data-panel={panel?'abierto':'plegado'} data-cajon={cajon||undefined}>
@@ -82,17 +92,19 @@ export function Calendario({proyecto,items,modo,mes,semana,persona,todos,hoy,edi
   </div>
   <div className="ap-gcal-cuerpo">
    {cajon&&<button type="button" className="ap-gcal-velo" aria-label="Cerrar panel" onClick={()=>setCajon(false)}/>}
-   <PanelCalendario hoy={hoy} modo={modo} mes={mes} semana={semana} personas={personas} ocultos={ocultos} conteo={conteo} todos={todos} edita={edita}
-    irA={irA} alternar={alternar} enlaceTipos={enlace({tipos:todos?'':'todos'})}
+   {/* key: el mini mes vuelve al periodo visible cada vez que cambia la vista principal. */}
+   <PanelCalendario key={modo==='semana'?semana:mes} hoy={hoy} modo={modo} mes={mes} semana={semana} personas={personas} ocultos={ocultos} conteo={conteo} todos={todos} edita={edita}
+    irA={irA} alternar={alternar} enlaceTipos={enlace({tipos:todos?'':'todos'})} alElegir={()=>setCajon(false)}
     programar={()=>{setCajon(false);setAbierta({tipo:'dia',dia:hoy>=periodo.desde&&hoy<=periodo.hasta?hoy:periodo.desde});}}/>
    <div className="ap-gcal-vista">
     {sinFecha>0&&<p className="ap-nota">{sinFecha} {sinFecha===1?'tarea sin fecha':'tareas sin fecha'}.{edita?' Prográmalas con «+ Programar tarea».':''}</p>}
     {todosOcultos?<p className="aviso">Ocultaste a todos los responsables. Marca alguno en el panel.</p>
      :modo==='mes'?<VistaMes mes={mes} hoy={hoy} items={visibles} colorDe={colorDe} tono={tono} abrirDia={dia=>setAbierta({tipo:'dia',dia})} abrirItem={item=>setAbierta({tipo:'item',item})} abrirMas={(dia,ancla)=>setMas({dia,ancla})}/>
      :<VistaSemana semana={semana} hoy={hoy} items={visibles} personas={personas} colorDe={colorDe} tono={tono} abrirDia={dia=>setAbierta({tipo:'dia',dia})} abrirItem={item=>setAbierta({tipo:'item',item})}/>}
+    {!todosOcultos&&delPeriodo.length===0&&<p className="ap-nota ap-gcal-vacio">Sin tareas programadas {modo==='semana'?'esta semana':'este mes'}.{edita?' Usa «+ Programar tarea».':''}</p>}
     {/* En celular: tarjetas del periodo en orden, con el color de su responsable. */}
     {!todosOcultos&&<div className="ap-cal-agenda">
-     {delPeriodo.length===0?<p className="ap-nota">Sin tareas programadas {modo==='semana'?'esta semana':'este mes'}.</p>:<ul>{delPeriodo.map(i=><li key={i.id}><button type="button" data-tono={tono(i)} style={{borderLeftColor:colorDe(i)}} onClick={()=>setAbierta({tipo:'item',item:i})}>
+     {delPeriodo.length===0?null:<ul>{delPeriodo.map(i=><li key={i.id}><button type="button" data-tono={tono(i)} style={{borderLeftColor:colorDe(i)}} onClick={()=>setAbierta({tipo:'item',item:i})}>
       <strong>{tono(i)==='alerta'&&'! '}{i.nombre}</strong><small>{rangoTexto(i)} · {nombreEstado(i)} · {personaDe(i)?.nombre??'Sin asignar'}</small><small>{grupoTexto(i)}</small></button></li>)}</ul>}
     </div>}
    </div>

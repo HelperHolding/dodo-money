@@ -2460,7 +2460,7 @@ body { background: var(--papel-2); }
 .ap-gcal-bloque strong { font-size:.78rem; overflow-wrap:anywhere; }
 .ap-gcal-bloque small { font-size:.7rem; opacity:.9; }
 .ap-gcal-velo { display:none; }
-html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas input:checked, .ap-gcal-bolita, .ap-gcal-tira) { filter:brightness(.85); }
+html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas input:checked, .ap-gcal-bolita, .ap-gcal-tira) { filter:brightness(.9); }
 .ap-gcal .ap-cal-agenda { display:none; }
 @media (max-width:700px) {
  .ap-gcal-cuerpo, .ap-gcal[data-panel="plegado"] .ap-gcal-cuerpo { grid-template-columns:minmax(0,1fr); }

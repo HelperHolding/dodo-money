@@ -5,7 +5,7 @@ import {miniMes,moverMesTexto,nombreMes,semanaDe,type ModoCalendario,type Person
 
 const INI=['L','M','M','J','V','S','D'];
 // Panel izquierdo como Google: programar, mini mes, responsables con casilla de color y qué mostrar.
-export function PanelCalendario({hoy,modo,mes,semana,personas,ocultos,conteo,todos,edita,irA,alternar,enlaceTipos,programar}:{hoy:string;modo:ModoCalendario;mes:string;semana:string;personas:Persona[];ocultos:ReadonlySet<string>;conteo:Record<string,number>;todos:boolean;edita:boolean;irA:(dia:string)=>void;alternar:(clave:string)=>void;enlaceTipos:string;programar:()=>void}) {
+export function PanelCalendario({hoy,modo,mes,semana,personas,ocultos,conteo,todos,edita,irA,alternar,enlaceTipos,programar,alElegir}:{alElegir:()=>void;hoy:string;modo:ModoCalendario;mes:string;semana:string;personas:Persona[];ocultos:ReadonlySet<string>;conteo:Record<string,number>;todos:boolean;edita:boolean;irA:(dia:string)=>void;alternar:(clave:string)=>void;enlaceTipos:string;programar:()=>void}) {
  const [mini,setMini]=useState(mes);
  const deSemana=new Set(modo==='semana'?semanaDe(semana).map(c=>c.dia):[]);
  return <aside className="ap-gcal-panel" aria-label="Panel del calendario">
@@ -26,6 +26,6 @@ export function PanelCalendario({hoy,modo,mes,semana,personas,ocultos,conteo,tod
    <input type="checkbox" checked={!ocultos.has(p.clave)} onChange={()=>alternar(p.clave)} style={{'--ap-c':p.color} as CSSProperties}/>
    <span>{p.nombre}</span><small>{conteo[p.clave]??0}</small></label></li>)}</ul>
   <h3 className="ap-gcal-panel-titulo">Mostrar</h3>
-  <Link className="ap-gcal-mostrar" href={enlaceTipos} aria-pressed={!todos}><span className="ap-gcal-check" data-activo={!todos||undefined} aria-hidden="true"/>Solo actividades</Link>
+  <Link className="ap-gcal-mostrar" href={enlaceTipos} onClick={alElegir} role="checkbox" aria-checked={!todos}><span className="ap-gcal-check" data-activo={!todos||undefined} aria-hidden="true"/>Solo actividades</Link>
  </aside>;
 }
