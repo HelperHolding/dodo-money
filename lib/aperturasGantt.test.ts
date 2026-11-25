@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {avanceGeneral,cuentaEnAvance,escalaGantt,ganttEtapas,type TareaGantt} from './aperturasGantt.ts';
+import {cuentaEnAvance,escalaGantt,ganttEtapas,type TareaGantt} from './aperturasGantt.ts';
 
 const t=(d:Partial<TareaGantt>):TareaGantt=>({id:'i',nombre:'Tarea',tipo:'actividad',etapa:'P1',estado:'pendiente',inicio:null,fin:null,responsable:null,...d});
 
@@ -13,7 +13,8 @@ test('gantt de aperturas: el avance de la etapa cuenta actividades, equipo y val
   t({id:'e',etapa:'P4',tipo:'equipo',estado:'por_validar'}),
   t({id:'f',etapa:'P4',estado:'no_aplica'}),
  ],'2026-11-19').find(x=>x.clave==='P4')!;
- assert.equal(e.conceptos,4);assert.equal(e.listos,2);assert.equal(e.porcentaje,50);
+ // Promedio de puntos: completado 1 + instalado 1 + pedido 0.5 + en curso 1/3 = 2.83 / 4 → 71.
+ assert.equal(e.conceptos,4);assert.equal(e.listos,2);assert.equal(e.porcentaje,71);
  assert.ok(!cuentaEnAvance({tipo:'referencia',estado:'por_validar'}));
 });
 test('gantt de aperturas: la ventana va de la primera fecha a la última; sin fecha se cuenta aparte',()=>{
@@ -34,11 +35,9 @@ test('gantt de aperturas: vencidas y bloqueadas',()=>{
  assert.equal(e.vencidos,1);assert.equal(e.bloqueados,1);
  assert.equal(e.tareas.find(x=>x.item.id==='a')!.vencida,true);
 });
-test('gantt de aperturas: etapas vacías no tienen porcentaje y el general pondera por conceptos',()=>{
+test('gantt de aperturas: etapas vacías no tienen porcentaje',()=>{
  const e=ganttEtapas([],'2026-11-19');
  assert.equal(e.length,7);assert.ok(e.every(x=>x.porcentaje===null&&x.desde===null));
- assert.equal(avanceGeneral([{conceptos:10,listos:10},{conceptos:30,listos:0},{conceptos:0,listos:0}]),25);
- assert.equal(avanceGeneral([]),null);
 });
 test('gantt de aperturas: escala por semanas que empieza en lunes y cabe en 0–100',()=>{
  const s=escalaGantt(['2026-11-04','2026-12-10',null])!;
@@ -59,4 +58,9 @@ test('gantt de aperturas: más de cuatro meses marca meses',()=>{
 test('gantt de aperturas: equipo instalado con fecha pasada no sale vencido',()=>{
  const e=ganttEtapas([t({id:'x',tipo:'equipo',etapa:'P4',estado:'instalado',fin:'2026-11-10'})],'2026-11-19').find(x=>x.clave==='P4')!;
  assert.equal(e.vencidos,0);assert.equal(e.tareas[0].vencida,false);
+});
+test('gantt de aperturas: la etapa muestra 100 solo si todo tiene 1 punto; si no, tope 99',()=>{
+ const casi=[...Array.from({length:199},(_,n)=>t({id:`a${n}`,estado:'completado'})),t({id:'z',estado:'por_cerrar'})];
+ assert.equal(ganttEtapas(casi,'2026-11-19').find(x=>x.clave==='P1')!.porcentaje,99); // 0.998 → 99
+ assert.equal(ganttEtapas(casi.map(i=>({...i,estado:'completado'})),'2026-11-19').find(x=>x.clave==='P1')!.porcentaje,100);
 });

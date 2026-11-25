@@ -4,7 +4,7 @@ import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 import {useRouter} from 'next/navigation';
 import {Icono} from '@/components/Icono';
-import {ESTADOS,ETAPAS,CATEGORIAS} from '@/lib/aperturas';
+import {nombreEstado,ETAPAS,CATEGORIAS} from '@/lib/aperturas';
 import {MOMENTOS,barrasSemana,clavePersona,conteoDia,cubreDia,diaPorPersona,enCalendario,esActividad,moverDias,moverMesTexto,nombreMes,personasDe,rangoItem,semanaDe,semanasCalendario,tituloSemana,type Celda,type ItemCalendario,type ModoCalendario,type Persona} from '@/lib/aperturasCalendario';
 import {tonoConcepto,type TonoConcepto} from '@/lib/aperturasAkton';
 import {fijarFechasApertura} from './accionesCalendario';
@@ -96,7 +96,7 @@ export function Calendario({proyecto,items,modo,mes,semana,persona,todos,hoy,edi
   {modo!=='cuadros'&&<div className="ap-cal-agenda">
    {edita&&<button type="button" className="boton" onClick={()=>setAbierta({tipo:'dia',dia:hoy>=periodo.desde&&hoy<=periodo.hasta?hoy:periodo.desde})}>Programar tarea</button>}
    {delPeriodo.length===0?<p className="ap-nota">Sin tareas {modo==='semana'?'esta semana':'este mes'}.</p>:<ul>{delPeriodo.map(i=><li key={i.id}><button type="button" data-tono={tono(i)} onClick={()=>setAbierta({tipo:'item',item:i})}>
-    <strong>{i.nombre}</strong><small>{rangoTexto(i)} · {ESTADOS[i.estado]} · {personaDe(i)?.nombre??'Sin asignar'}</small><small>{grupoTexto(i)}</small></button></li>)}</ul>}
+    <strong>{i.nombre}</strong><small>{rangoTexto(i)} · {nombreEstado(i)} · {personaDe(i)?.nombre??'Sin asignar'}</small><small>{grupoTexto(i)}</small></button></li>)}</ul>}
   </div>}
 
   <Ventana grande={abierta?.tipo==='dia'} abierta={abierta!==null} alCerrar={()=>setAbierta(null)} titulo={abierta?.tipo==='dia'?fechaLarga(abierta.dia):abierta?.tipo==='item'?abierta.item.nombre:''}>
@@ -140,7 +140,7 @@ function Semana({semana,items,hoy,limite,tono,etiqueta,abrirDia,abrirItem}:{sema
   {barras.filter(b=>b.carril<limite).map(b=>{return <button key={b.item.id} type="button" className="ap-cal-tarea"
    data-antes={b.empiezaAntes||undefined} data-despues={b.sigueDespues||undefined} data-tono={tono(b.item)}
    style={{gridColumn:`${b.col+1} / span ${b.span}`,gridRow:b.carril+2}}
-   title={`${b.item.nombre} · ${rangoTexto(b.item)} · ${ESTADOS[b.item.estado]}${b.item.responsable?` · ${b.item.responsable}`:''}`} onClick={()=>abrirItem(b.item)}>{etiqueta(b.item)}</button>;})}
+   title={`${b.item.nombre} · ${rangoTexto(b.item)} · ${nombreEstado(b.item)}${b.item.responsable?` · ${b.item.responsable}`:''}`} onClick={()=>abrirItem(b.item)}>{etiqueta(b.item)}</button>;})}
   {ocultas.map((n,col)=>n>0&&<button key={col} type="button" className="ap-cal-mas" style={{gridColumn:col+1,gridRow:limite+2}} onClick={()=>abrirDia(semana[col].dia)}>+{n} más</button>)}
  </div>;
 }
@@ -183,7 +183,7 @@ function Dia({dia,items,visibles,personas,proyecto,tono,edita,abrir,listo}:{dia:
    <ul className="ap-dia-tarjetas">{g.tareas.map(({item:i,momento})=><li key={i.id} className="ap-dia-tarjeta" data-tono={tono(i)}>
     <Link href={`/aperturas/${proyecto}/items/${i.id}`} className="ap-dia-nombre">{i.nombre}</Link>
     <div className="ap-dia-datos">
-     <span className="ap-estado" data-tono={tono(i)}>{ESTADOS[i.estado]}</span>
+     <span className="ap-estado" data-tono={tono(i)}>{nombreEstado(i)}</span>
      <span className="ap-momento" data-momento={momento}>{MOMENTOS[momento]}</span>
      <small>{rangoTexto(i)}</small>
     </div>
@@ -208,7 +208,7 @@ function Tarea({item:i,persona,proyecto,edita,listo}:{item:ItemCalendario;person
  const {ocupado,error,guardar}=useGuardar(listo);
  const enviar=(a:string,b:string)=>guardar(()=>fijarFechasApertura(formulario({item_id:i.id,inicio:a,fin:b})));
  return <>
-  <p className="ap-nota">{grupoTexto(i)} · {ESTADOS[i.estado]} · {i.responsable??persona?.nombre??'Sin asignar'}</p>
+  <p className="ap-nota">{grupoTexto(i)} · {nombreEstado(i)} · {i.responsable??persona?.nombre??'Sin asignar'}</p>
   {edita?<form className="formulario" onSubmit={e=>{e.preventDefault();void enviar(inicio,fin);}}>
    <div className="rejilla"><div className="campo"><label htmlFor="ap-cal-inicio">Inicio</label><input id="ap-cal-inicio" type="date" value={inicio} onChange={e=>{setInicio(e.target.value);if(!fin||e.target.value>fin)setFin(e.target.value);}} required disabled={ocupado}/></div>
    <div className="campo"><label htmlFor="ap-cal-fin2">Fin</label><input id="ap-cal-fin2" type="date" min={inicio} value={fin} onChange={e=>setFin(e.target.value)} required disabled={ocupado}/></div></div>

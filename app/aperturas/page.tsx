@@ -16,13 +16,14 @@ type ConceptoPortada=Concepto&{proyecto_id:string};
 
 /**
  * Portada de Aperturas en estilo Akton (docs/diseno/estilo-akton.md): franja de indicadores y una tarjeta por sucursal
- * con días para abrir y avance contra lo esperado a hoy. Primero la apertura más próxima.
+ * con días para abrir y avance contra lo esperado a hoy. El avance es el global ponderado por bloque (avanceApertura),
+ * el mismo del checklist; por eso la consulta trae la categoría. Primero la apertura más próxima.
  */
 export default async function Aperturas() {
  const {supabase}=await obtenerPerfil();
  const [{data,error},items,inversion]=await Promise.all([
   supabase.from('apertura_proyectos').select('*,sucursales(nombre)').returns<ProyectoApertura[]>(),
-  leerTodo<ConceptoPortada>((d,h)=>supabase.from('apertura_items').select('id,proyecto_id,nombre,tipo,etapa,estado,inicio,fin,responsable,notas').order('id').range(d,h).returns<ConceptoPortada[]>()).catch(()=>null),
+  leerTodo<ConceptoPortada>((d,h)=>supabase.from('apertura_items').select('id,proyecto_id,nombre,tipo,etapa,estado,categoria,inicio,fin,responsable,notas').order('id').range(d,h).returns<ConceptoPortada[]>()).catch(()=>null),
   // Si la tabla de inversión no existe o falla, la franja muestra «—».
   Promise.resolve(supabase.from('inversion_apertura_fuentes').select('total').returns<{total:number}[]>()).then(r=>r.error?null:{total:(r.data??[]).reduce((s,f)=>s+Number(f.total),0),fuentes:(r.data??[]).length}).catch(()=>null),
  ]);
@@ -49,7 +50,7 @@ export default async function Aperturas() {
      {sinAvance&&pasada?<strong className="ap-tarjeta-dias">Sin dato de avance</strong>
       :<strong className="ap-tarjeta-dias" data-tono={dias.tono}>{dias.valor}{t.dias.tipo==='faltan'&&<small> {t.dias.dias===1?'día':'días'}</small>}</strong>}
      <small className="ap-tarjeta-dato">{p.responsable} · {rango(p.objetivo_desde,p.objetivo_hasta)}</small>
-     {!sinAvance&&<span className="ap-tarjeta-linea">Avance {a.real===null?'—':`${a.real} %`} · esperado {a.esperado===null?'sin fechas':`${a.esperado} %`}
+     {!sinAvance&&<span className="ap-tarjeta-linea">Avance {a.real===null?'—':`${a.real} %`} · {a.esperado===null||a.realConFecha===null?'esperado sin fechas':`con fecha ${a.realConFecha} % vs ${a.esperado} % esperado`}
       {a.variacion!==null&&<b className="akton-var" data-favorable={a.favorable??undefined}> {textoPts(a.variacion)}</b>}</span>}
      {(t.vencidas>0||t.bloqueadas>0)&&<p className="akton-nota">{[t.vencidas?plural(t.vencidas,'vencida','vencidas'):'',t.bloqueadas?plural(t.bloqueadas,'bloqueada','bloqueadas'):''].filter(Boolean).join(' · ')}</p>}
     </Link>;
