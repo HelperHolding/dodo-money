@@ -39,6 +39,11 @@ export function avanceComparado(items:Concepto[],hoy:string):Avance {
 }
 
 export type DiasApertura = {tipo:'faltan'|'hoy'|'vencida'|'abierta';dias:number};
+// Valor grande del KPI: nunca días negativos.
+export function textoDiasApertura(d:DiasApertura):{valor:string;tono:'destacado'|'no'} {
+ if(d.tipo==='vencida')return {valor:`Vencida hace ${d.dias} ${d.dias===1?'día':'días'}`,tono:'no'};
+ return {valor:d.tipo==='faltan'?String(d.dias):d.tipo==='hoy'?'Hoy':'Abierta',tono:'destacado'};
+}
 export function diasParaApertura(objetivo:string,hoy:string,todoListo:boolean):DiasApertura {
  const d=diasEntre(hoy,objetivo);
  if(d>0)return {tipo:'faltan',dias:d};
@@ -49,7 +54,8 @@ export function diasParaApertura(objetivo:string,hoy:string,todoListo:boolean):D
 export type TareaCronograma = {item:Concepto;desde:string;hasta:string;diasVencida:number|null};
 export type FilaCronograma = {clave:keyof typeof ETAPAS;nombre:string;avance:Avance;desde:string|null;hasta:string|null;tareas:TareaCronograma[];sinFecha:number;bloqueadas:Concepto[];vencidas:TareaCronograma[];notas:string[]};
 
-const terminada=(estado:string)=>estado==='completado'||estado==='verificado';
+// Listo con el criterio del Checklist: equipo instalado también cuenta, así no sale como vencido.
+const terminada=(i:Concepto)=>marcaItem(i)==='listo';
 const plural=(n:number,uno:string,varios:string)=>`${n} ${n===1?uno:varios}`;
 function listaCorta(nombres:string[]) {
  if(nombres.length<=2)return nombres.join(' y ');
@@ -60,7 +66,7 @@ export function filasCronograma(items:Concepto[],hoy:string):FilaCronograma[] {
  return (Object.keys(ETAPAS) as (keyof typeof ETAPAS)[]).map(clave=>{
   const de=items.filter(i=>i.etapa===clave&&cuentaEnAvance(i));
   const tareas=de.flatMap(item=>{const r=rangoItem(item);if(!r)return [];
-   return [{item,desde:r.desde,hasta:r.hasta,diasVencida:r.hasta<hoy&&!terminada(item.estado)?diasEntre(r.hasta,hoy):null}];})
+   return [{item,desde:r.desde,hasta:r.hasta,diasVencida:r.hasta<hoy&&!terminada(item)?diasEntre(r.hasta,hoy):null}];})
    .sort((a,b)=>a.desde.localeCompare(b.desde)||a.hasta.localeCompare(b.hasta)||a.item.nombre.localeCompare(b.item.nombre));
   const vencidas=tareas.filter(t=>t.diasVencida!==null).sort((a,b)=>b.diasVencida!-a.diasVencida!||a.item.nombre.localeCompare(b.item.nombre));
   const bloqueadas=de.filter(i=>i.estado==='bloqueado');
@@ -77,11 +83,11 @@ export type IndicadoresProyecto = {dias:DiasApertura;avance:Avance;vencidas:numb
  compras:{monto:number;presupuesto:number|null;excede:boolean;firme:boolean;sinPrecio:number}};
 
 export function indicadoresProyecto(p:Pick<ProyectoApertura,'objetivo_hasta'|'presupuesto'>,items:ItemApertura[],hoy:string):IndicadoresProyecto {
- const r=indicadoresApertura(items,hoy),avance=avanceComparado(items,hoy),corte=cortePresupuesto(items),estimado=resumenApertura(items);
+ const r=indicadoresApertura(items,hoy),avance=avanceComparado(items,hoy),filas=filasCronograma(items,hoy),corte=cortePresupuesto(items),estimado=resumenApertura(items);
  const monto=corte?Math.round((corte.adquirido+corte.cotizado)*100)/100:estimado.cotizado;
  const presupuesto=corte?corte.total_sin_iva:p.presupuesto!==null&&Number(p.presupuesto)>0?Number(p.presupuesto):null;
  return {dias:diasParaApertura(p.objetivo_hasta,hoy,avance.conceptos>0&&avance.listos===avance.conceptos),avance,
-  vencidas:r.atrasados.length,bloqueadas:r.bloqueados.length,aplicables:items.filter(i=>i.estado!=='no_aplica').length,
+  vencidas:filas.reduce((s,f)=>s+f.vencidas.length,0),bloqueadas:r.bloqueados.length,aplicables:items.filter(i=>i.estado!=='no_aplica').length,
   recepcion:r.recepcion,recibidas:r.recibidas,unidades:r.unidades,
   compras:{monto,presupuesto,excede:presupuesto!==null&&monto>presupuesto,firme:corte!==null,sinPrecio:estimado.sinPrecio}};
 }
@@ -96,7 +102,7 @@ export function lecturaApertura(k:IndicadoresProyecto,filas:FilaCronograma[]):Le
   l.push({titulo:`Avance de ${a.realConFecha} % contra ${a.esperado} % esperado a hoy`,
    texto:a.favorable==='no'
     ?`Faltan ${-a.variacion} puntos. ${peores.length===1?'La etapa más atrasada':'Las etapas más atrasadas'}: ${peores.map(f=>`${f.nombre} (${textoPts(f.avance.variacion!)})`).join(' y ')}.`
-    :`Va al día (${textoPts(a.variacion)}).${mejor?` La etapa más adelantada es ${mejor.nombre} (${textoPts(mejor.avance.variacion!)}).`:''}`});
+    :`Va al día (${textoPts(a.variacion)}).${mejor?` ${mejor.avance.variacion!>=0?'La etapa más adelantada es':'La que menos se atrasa es'} ${mejor.nombre} (${textoPts(mejor.avance.variacion!)}).`:''}`});
  }
  const vencidas=filas.flatMap(f=>f.vencidas),bloqueadas=filas.flatMap(f=>f.bloqueadas);
  if(vencidas.length||bloqueadas.length){

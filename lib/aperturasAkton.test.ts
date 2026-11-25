@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {avanceComparado,diasParaApertura,esperadoItem,filasCronograma,indicadoresProyecto,lecturaApertura,textoPts,type Concepto} from './aperturasAkton.ts';
+import {avanceComparado,diasParaApertura,esperadoItem,filasCronograma,indicadoresProyecto,lecturaApertura,textoDiasApertura,textoPts,type Concepto} from './aperturasAkton.ts';
 import type {ItemApertura} from './aperturas.ts';
 
 export const c=(d:Partial<Concepto>):Concepto=>({id:'i',nombre:'Tarea',tipo:'actividad',etapa:'P1',estado:'pendiente',inicio:null,fin:null,responsable:null,notas:null,...d});
@@ -108,4 +108,33 @@ test('aperturas akton: la lectura omite lo que no aplica',()=>{
  assert.equal(l[0].titulo,'Avance de 100 % contra 100 % esperado a hoy');
  assert.equal(l[0].texto,'Va al día (0 pts). La etapa más adelantada es Local y alcance (0 pts).');
  assert.deepEqual(lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},[],'2026-11-24'),filasCronograma([],'2026-11-24')),[]);
+});
+
+// Revisión final.
+test('aperturas akton: el valor de días nunca es negativo',()=>{
+ assert.deepEqual(textoDiasApertura({tipo:'vencida',dias:4}),{valor:'Vencida hace 4 días',tono:'no'});
+ assert.deepEqual(textoDiasApertura({tipo:'vencida',dias:1}),{valor:'Vencida hace 1 día',tono:'no'});
+ assert.deepEqual(textoDiasApertura({tipo:'faltan',dias:7}),{valor:'7',tono:'destacado'});
+ assert.deepEqual(textoDiasApertura({tipo:'hoy',dias:0}),{valor:'Hoy',tono:'destacado'});
+ assert.deepEqual(textoDiasApertura({tipo:'abierta',dias:3}),{valor:'Abierta',tono:'destacado'});
+});
+test('aperturas akton: el KPI de vencidas cuenta lo mismo que la lectura y el cronograma',()=>{
+ const items=[
+  it({id:'a',inicio:'2026-11-10'}),                                   // solo inicio pasado: vencida
+  it({id:'b',tipo:'equipo',estado:'por_validar',fin:'2026-11-10'}),  // por validar: no cuenta
+ ];
+ const k=indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},items,'2026-11-24');
+ const filas=filasCronograma(items,'2026-11-24');
+ assert.equal(k.vencidas,1);
+ assert.equal(filas.flatMap(f=>f.vencidas).length,1);
+});
+test('aperturas akton: equipo instalado con fecha pasada no es vencido',()=>{
+ const f=filasCronograma([c({id:'x',tipo:'equipo',etapa:'P4',estado:'instalado',fin:'2026-11-10'})],'2026-11-24').find(x=>x.clave==='P4')!;
+ assert.equal(f.vencidas.length,0);assert.equal(f.tareas[0].diasVencida,null);
+});
+test('aperturas akton: al día sin etapas adelantadas no dice «más adelantada»',()=>{
+ // Dos etapas de 20 conceptos, 9 listos cada una: 45 % contra 50 % esperado → −5 pts (al día), ninguna etapa arriba.
+ const items=Array.from({length:40},(_,n)=>it({id:`x${n}`,etapa:n<20?'P1':'P2',inicio:'2026-11-01',fin:'2026-11-10',estado:n%20<9?'completado':'pendiente'}));
+ const l=lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},items,'2026-11-05'),filasCronograma(items,'2026-11-05'));
+ assert.equal(l[0].texto,'Va al día (−5 pts). La que menos se atrasa es Local y alcance (−5 pts).');
 });

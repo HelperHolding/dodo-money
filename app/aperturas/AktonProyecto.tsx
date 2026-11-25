@@ -1,17 +1,16 @@
 import Link from 'next/link';
 import {Kpi} from '@/app/finanzas/PLAkton';
 import {fechaTexto,pesos} from '@/lib/formato';
-import type {IndicadoresProyecto,Lectura} from '@/lib/aperturasAkton';
+import {textoDiasApertura,type IndicadoresProyecto,type Lectura} from '@/lib/aperturasAkton';
 
 // Franja y lectura del proyecto en el estilo Akton (docs/diseno/estilo-akton.md). Solo dibuja.
 const VISTAS=[['checklist','Checklist'],['calendario','Calendario'],['roadmap','Cronograma'],['actividades','Actividades'],['compras','Equipo y compras'],['tecnico','Validaciones técnicas'],['activos','Activos'],['alertas','Atención']] as const;
 
 export function IndicadoresProyectoAkton({k,objetivo}:{k:IndicadoresProyecto;objetivo:string}) {
  const d=k.dias,a=k.avance;
- const valorDias=d.tipo==='faltan'?d.dias:d.tipo==='hoy'?'Hoy':d.tipo==='abierta'?'Abierta':`−${d.dias}`;
- const pieDias=d.tipo==='vencida'?`Vencida hace ${d.dias} ${d.dias===1?'día':'días'} · objetivo ${fechaTexto(objetivo)}`:`Objetivo: ${fechaTexto(objetivo)}`;
+ const dias=textoDiasApertura(d);
  return <section className="akton-kpis" aria-label="Indicadores de la apertura">
-  <Kpi etiqueta="Días para la apertura" tono={d.tipo==='vencida'?'no':'destacado'} valor={valorDias} pie={pieDias}/>
+  <Kpi etiqueta="Días para la apertura" tono={dias.tono} valor={dias.valor} pie={`Objetivo: ${fechaTexto(objetivo)}`}/>
   <Kpi etiqueta="Avance general" tono={a.favorable??undefined} valor={a.real===null?'—':`${a.real} %`}
    pie={a.esperado===null?'Esperado a hoy: sin fechas':`Con fecha: ${a.realConFecha} % · esperado a hoy: ${a.esperado} %`}/>
   <Kpi etiqueta="Tareas vencidas" tono={k.vencidas?'no':undefined} valor={k.vencidas} pie={`De ${k.aplicables} aplicables`}/>

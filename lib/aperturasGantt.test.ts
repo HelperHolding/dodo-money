@@ -56,3 +56,7 @@ test('gantt de aperturas: más de cuatro meses marca meses',()=>{
  assert.deepEqual(s.marcas.map(m=>m.etiqueta),['oct 2026','nov 2026','dic 2026','ene 2027','feb 2027','mar 2027']);
  assert.equal(escalaGantt([null,undefined]),null);
 });
+test('gantt de aperturas: equipo instalado con fecha pasada no sale vencido',()=>{
+ const e=ganttEtapas([t({id:'x',tipo:'equipo',etapa:'P4',estado:'instalado',fin:'2026-11-10'})],'2026-11-19').find(x=>x.clave==='P4')!;
+ assert.equal(e.vencidos,0);assert.equal(e.tareas[0].vencida,false);
+});
