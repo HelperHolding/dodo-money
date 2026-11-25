@@ -194,7 +194,8 @@ export function compararConCierre(v: VentaDia, c: CierreDia): Diferencia[] {
     fila("Efectivo", v.efectivo, c.efectivo),
     fila("Tarjeta", v.tarjeta, c.tarjeta),
     fila("En línea (app + Rappi)", v.en_linea, Number(c.app) + Number(c.rappi)),
-    fila("IVA", v.iva, c.iva),
+    // ventas_dia.iva excluye Rappi (agregador): se compara con el IVA del cierre sobre (venta total − Rappi).
+    fila("IVA", v.iva, redondear((Number(c.efectivo) + Number(c.tarjeta) + Number(c.app) + Number(c.rappi) - Number(c.rappi)) * 16 / 116)),
     fila("Pedidos", v.pedidos, c.transacciones, true),
   ];
 }

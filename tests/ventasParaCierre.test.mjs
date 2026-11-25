@@ -5,6 +5,8 @@ import {PGlite} from '@electric-sql/pglite';
 const load=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8').replace(/^﻿/,'');
 const migracion=load('supabase/migrations/20261125150000_ventas_para_cierre.sql');
 const pruebas=load('supabase/pruebas/20261125150000_ventas_para_cierre.sql');
+const dia=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City'}).format(new Date(Date.now()+d*864e5));
+const HOY=dia(0),AYER=dia(-1),ANTES=dia(-2),MANANA=dia(1);
 const A='00000000-0000-0000-0000-00000000000a',B='00000000-0000-0000-0000-00000000000b';
 const U=n=>`00000000-0000-0000-0000-0000000000${n}`;
 const ROLES={enc:['encargado',A,'e1'],ger:['gerente',A,'e2'],adm:['admin',A,'e3'],ope:['operacion',A,'e4'],cor:['corporativo',A,'e5'],mkt:['marketing',A,'e6'],encB:['encargado',B,'e7']};
@@ -21,20 +23,20 @@ async function base(){
  create table importaciones_ventas(id uuid primary key default gen_random_uuid(),sucursal_id uuid not null references sucursales(id),fecha date not null,importado_en timestamptz not null default now());
  create table ventas_dia(id uuid primary key default gen_random_uuid(),sucursal_id uuid not null references sucursales(id),fecha date not null,pedidos integer not null default 0 check(pedidos>=0),total numeric(12,2) not null default 0,efectivo numeric(12,2) not null default 0,tarjeta numeric(12,2) not null default 0,en_linea numeric(12,2) not null default 0,iva numeric(12,2) not null default 0,importacion_id uuid not null references importaciones_ventas(id),unique(sucursal_id,fecha));`);
  for(const [rol,suc,n] of Object.values(ROLES))await db.query('insert into perfiles(id,rol,sucursal_id) values($1,$2,$3)',[U(n),rol,suc]);
- await db.exec(`insert into importaciones_ventas(id,sucursal_id,fecha,importado_en) values('00000000-0000-0000-0000-0000000000b1','${A}','2026-11-24','2026-11-24 20:00+00'),('00000000-0000-0000-0000-0000000000b2','${B}','2026-11-24','2026-11-24 21:00+00');
- insert into ventas_dia(sucursal_id,fecha,pedidos,total,efectivo,tarjeta,en_linea,iva,importacion_id) values('${A}','2026-11-24',10,1000,400,300,300,160,'00000000-0000-0000-0000-0000000000b1'),('${B}','2026-11-24',5,500,100,200,200,80,'00000000-0000-0000-0000-0000000000b2')`);
+ await db.exec(`insert into importaciones_ventas(id,sucursal_id,fecha,importado_en) values('00000000-0000-0000-0000-0000000000b1','${A}','${AYER}','${AYER} 20:00+00'),('00000000-0000-0000-0000-0000000000b2','${B}','${AYER}','${AYER} 21:00+00');
+ insert into ventas_dia(sucursal_id,fecha,pedidos,total,efectivo,tarjeta,en_linea,iva,importacion_id) values('${A}','${AYER}',10,1000,400,300,300,160,'00000000-0000-0000-0000-0000000000b1'),('${B}','${AYER}',5,500,100,200,200,80,'00000000-0000-0000-0000-0000000000b2')`);
  await db.exec(migracion);
  return db;
 }
 const como=(db,k)=>db.exec(`select set_config('request.jwt.claims','{"sub":"${U(ROLES[k][2])}","role":"authenticated"}',false)`);
-const ver=(db,f='2026-11-24')=>db.query('select * from public.ventas_para_cierre($1)',[f]);
+const ver=(db,f=AYER)=>db.query('select * from public.ventas_para_cierre($1)',[f]);
 
 test('encargado, gerente y admin reciben la fila del día con actualizado_en',async()=>{
  const db=await base();
  try{for(const k of ['enc','ger','adm']){await como(db,k);const {rows}=await ver(db);
   assert.equal(rows.length,1,k);const r=rows[0];
   assert.deepEqual([r.efectivo,r.tarjeta,r.en_linea,r.iva,r.total,r.pedidos].map(Number),[400,300,300,160,1000,10],k);
-  assert.equal(new Date(r.actualizado_en).toISOString(),'2026-11-24T20:00:00.000Z');}
+  assert.equal(new Date(r.actualizado_en).toISOString(),`${AYER}T20:00:00.000Z`);}
  }finally{await db.close();}
 });
 test('operación, corporativo y marketing reciben el error',async()=>{
@@ -50,7 +52,15 @@ test('encargado con debe_cambiar_contrasena (mi_rol nulo) recibe el error',async
 test('un encargado de B recibe la de B, no la de A; sin fila no hay filas',async()=>{
  const db=await base();
  try{await como(db,'encB');const {rows}=await ver(db);assert.equal(rows.length,1);assert.equal(Number(rows[0].total),500);
-  await como(db,'enc');assert.equal((await ver(db,'2026-01-01')).rows.length,0);
+  await como(db,'enc');assert.equal((await ver(db,HOY)).rows.length,0);
+ }finally{await db.close();}
+});
+test('solo hoy o ayer: una fecha más vieja o futura no devuelve filas ni error',async()=>{
+ const db=await base();
+ try{await db.exec(`insert into ventas_dia(sucursal_id,fecha,pedidos,total,importacion_id) values('${A}','${ANTES}',3,300,'00000000-0000-0000-0000-0000000000b1'),('${A}','${HOY}',2,200,'00000000-0000-0000-0000-0000000000b1'),('${A}','${MANANA}',1,100,'00000000-0000-0000-0000-0000000000b1')`);
+  for(const k of ['enc','ger','adm']){await como(db,k);
+   assert.equal((await ver(db,ANTES)).rows.length,0,k);assert.equal((await ver(db,MANANA)).rows.length,0,k);assert.equal((await ver(db,'2026-01-01')).rows.length,0,k);
+   assert.equal((await ver(db,HOY)).rows.length,1,k);assert.equal((await ver(db,AYER)).rows.length,1,k);}
  }finally{await db.close();}
 });
 test('security definer con search_path vacío; anon sin permiso, authenticated con permiso',async()=>{

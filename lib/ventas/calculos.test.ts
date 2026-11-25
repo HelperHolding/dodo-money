@@ -115,11 +115,20 @@ test("compararConCierre marca lo que difiere más de $1 o de 0 pedidos", () => {
   assert.equal(por["Total"].diferencia, -0.5);
   assert.equal(por["Total"].alerta, false);
   assert.equal(por["Tarjeta"].alerta, false);
-  assert.equal(por["IVA"].diferencia, -6.97);
-  assert.equal(por["IVA"].alerta, true);
+  assert.equal(por["IVA"].diferencia, 0);
+  assert.equal(por["IVA"].alerta, false);
   assert.equal(por["Pedidos"].diferencia, -1);
   assert.equal(por["Pedidos"].alerta, true);
   assert.equal(por["En línea (app + Rappi)"].alerta, false);
+});
+
+test("compararConCierre: el IVA del cierre se calcula sin Rappi, como el de Dodo IS", () => {
+  // Cierre con Rappi: 4299 + 3436.5 + 1000 (app) + 500 (Rappi). Dodo IS no trae el IVA de Rappi.
+  const cierre = { sucursal_id: "s", fecha: "2026-09-25", efectivo: 4299, tarjeta: 3436.5, app: 1000, rappi: 500, iva: 9999, transacciones: 38 };
+  const iva = compararConCierre({ ...dia, iva: 1204.9 }, cierre).find((x) => x.concepto === "IVA")!;
+  assert.equal(iva.cierre, 1204.9);
+  assert.equal(iva.diferencia, 0);
+  assert.equal(iva.alerta, false);
 });
 
 test("periodos", () => {
@@ -152,7 +161,7 @@ test("diasConCierre compara solo los días con cierre", () => {
   assert.equal(r.sinCierre, 1);
   assert.equal(r.comparados.length, 1);
   assert.equal(r.comparados[0].alerta, false);
-  assert.ok(r.comparados[0].filas.every((f) => f.diferencia === 0));
+  assert.ok(r.comparados[0].filas.filter((f) => f.concepto !== "IVA").every((f) => f.diferencia === 0));
 });
 
 test("errorDeCosto", () => {
