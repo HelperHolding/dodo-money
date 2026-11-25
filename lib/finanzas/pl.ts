@@ -64,7 +64,11 @@ export const RENGLONES: readonly { clave: ClaveRenglon; nombre: string; tipo: "v
 ];
 
 /** `bruta` lleva IVA; `brutaSinIva` la quita con la proporción (total − iva)/total de cada día. */
-export type CanalPL = { bruta: number | null; brutaSinIva: number | null; neta: number; alimento: number };
+export type CanalPL = {
+  bruta: number | null; brutaSinIva: number | null; neta: number; alimento: number;
+  /** Pedidos del canal (para el ticket promedio); sin dato en entradas que no lo traen. */
+  pedidos?: number;
+};
 
 /** La venta bruta exige que el detalle por producto cubra el total de cada día. */
 export function resumenCanalPL(
@@ -125,6 +129,7 @@ export function sumarEntradas(entradas: readonly EntradaPL[]): EntradaPL {
       a.bruta = a.bruta === null || b.bruta === null ? null : centavos(a.bruta + b.bruta);
       a.brutaSinIva = a.brutaSinIva === null || b.brutaSinIva === null ? null : centavos(a.brutaSinIva + b.brutaSinIva);
       a.neta = centavos(a.neta + b.neta); a.alimento = centavos(a.alimento + b.alimento);
+      if (b.pedidos !== undefined) a.pedidos = (a.pedidos ?? 0) + b.pedidos;
     }
     s.ventaNeta += e.ventaNeta; s.descuentos += e.descuentos; s.alimento += e.alimento;
     s.mermaPendiente ||= e.mermaPendiente;
