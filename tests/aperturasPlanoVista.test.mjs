@@ -67,3 +67,10 @@ test('CSS: marcas de 18 px y @media print del plano',()=>{
  assert.match(css,/\.ap-plano-marca\s*\{[^}]*width:18px/);
  assert.match(css,/@media print\s*\{[^@]*ap-plano/);
 });
+
+test('PlanoApertura: marcas sembradas desde marcasIniciales y refresh al guardar etapa',()=>{
+ const src=leer('app/aperturas/plano/PlanoApertura.tsx');
+ assert.match(src,/\[marcas,setMarcas\]=useState<[^>]*>>\(\(\)=>[^;]*marcasIniciales/);
+ assert.match(src,/router\.refresh\(\);\}\}\/>/);
+ assert.match(src,/urlImagen=imagen\.clave===clave/);
+});

@@ -22,7 +22,7 @@ type Arrastre={id:string;pointer:number;movio:boolean;x:number;y:number};
 export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasIniciales,url,items,edita}:{proyecto:string;base:string;hoy:string;hojas:HojaPlano[];activa:HojaPlano|null;marcas:MarcaPlano[];url:string|null;items:ItemPlano[];edita:boolean}) {
  const router=useRouter();
  const [porId,setPorId]=useState<Record<string,ItemPlano>>(()=>Object.fromEntries(items.map(i=>[i.id,i])));
- const [marcas,setMarcas]=useState<Record<string,{x:number;y:number}>>({});
+ const [marcas,setMarcas]=useState<Record<string,{x:number;y:number}>>(()=>Object.fromEntries(marcasIniciales.map(m=>[m.item_id,{x:Number(m.x),y:Number(m.y)}])));
  const [zoom,setZoom]=useState(1),[resalte,setResalte]=useState<ColorMarca|null>(null),[atencion,setAtencion]=useState(false),[responsable,setResponsable]=useState('');
  const [ficha,setFicha]=useState<string|null>(null),[editando,setEditando]=useState<ItemChecklist|null>(null);
  const [ubicar,setUbicar]=useState(false),[elegida,setElegida]=useState<string|null>(null),[busqueda,setBusqueda]=useState('');
@@ -39,6 +39,7 @@ export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasInici
  // La URL firmada cambia en cada recarga; se conserva la primera de esta versión para no volver a bajar la imagen.
  const clave=activa?`${activa.id}:${activa.revision}`:'';
  const [imagen,setImagen]=useState({clave,url});
+ const urlImagen=imagen.clave===clave&&imagen.url?imagen.url:url;
  useEffect(()=>setImagen(a=>a.clave===clave&&a.url?a:{clave,url}),[clave,url]);
 
  const marcadas=useMemo(()=>Object.keys(marcas).map(id=>porId[id]).filter((i):i is ItemPlano=>!!i),[marcas,porId]);
@@ -127,9 +128,9 @@ export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasInici
    <div className="ap-plano-imprimible">
     <h3 className="ap-plano-titulo">{activa.hoja} · {activa.nombre} · versión {ddmmaaaa(activa.version_fecha)}</h3>
     <div className="ap-plano-marco">
-     {imagen.url?<div ref={lienzo} className="ap-plano-lienzo" style={{width:`${zoom*100}%`,aspectRatio:`${activa.ancho} / ${activa.alto}`}} data-colocando={ubicar&&elegida?true:undefined} data-resalte={resalte??undefined} onClick={clicPlano}>
+     {urlImagen?<div ref={lienzo} className="ap-plano-lienzo" style={{width:`${zoom*100}%`,aspectRatio:`${activa.ancho} / ${activa.alto}`}} data-colocando={ubicar&&elegida?true:undefined} data-resalte={resalte??undefined} onClick={clicPlano}>
       {/* eslint-disable-next-line @next/next/no-img-element -- URL firmada del bucket privado */}
-      <img src={imagen.url} alt={`Plano ${activa.hoja}: ${activa.nombre}`} width={activa.ancho} height={activa.alto} draggable={false}/>
+      <img src={urlImagen} alt={`Plano ${activa.hoja}: ${activa.nombre}`} width={activa.ancho} height={activa.alto} draggable={false}/>
       {visibles.map(i=>{const m=colorMarca(i,hoy),p=marcas[i.id];return <button key={i.id} type="button" className="ap-plano-marca"
         data-color={m.color} data-alerta={m.alerta||undefined} data-no-aplica={m.noAplica||undefined} data-atenuada={resalte&&resalte!==m.color?true:undefined} data-activa={ficha===i.id||undefined}
         style={{left:`${p.x*100}%`,top:`${p.y*100}%`}} title={`${i.clave} · ${i.nombre}`} aria-label={`${i.clave} · ${i.nombre} · ${nombreEstado(i)}`}
@@ -159,6 +160,6 @@ export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasInici
      <button type="button" className="boton boton-secundario" disabled={ocupado} onClick={()=>quitar(actual.id)}>Quitar del plano</button></div>}
    </aside>}
   </div></>}
-  {edita&&<VentanaEstado concepto={editando} alCerrar={()=>setEditando(null)} alGuardar={c=>setPorId(a=>{const i=a[c.id];return i&&i.revision<c.revision?{...a,[c.id]:{...i,estado:c.estado,evidencia:c.evidencia,notas:c.notas,cantidad:c.cantidad,recibido:c.recibido,revision:c.revision}}:a;})}/>}
+  {edita&&<VentanaEstado concepto={editando} alCerrar={()=>setEditando(null)} alGuardar={c=>{setPorId(a=>{const i=a[c.id];return i&&i.revision<c.revision?{...a,[c.id]:{...i,estado:c.estado,evidencia:c.evidencia,notas:c.notas,cantidad:c.cantidad,recibido:c.recibido,revision:c.revision}}:a;});router.refresh();}}/>}
  </section>;
 }
