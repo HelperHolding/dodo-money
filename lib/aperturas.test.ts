@@ -150,6 +150,10 @@ test('bloqueDe: etapa y categoría de obra', () => {
   assert.equal(bloqueDe({ tipo: 'equipo', etapa: 'P4', categoria: 'contactos' }), 'obra');
   assert.equal(bloqueDe({ tipo: 'actividad', etapa: 'P5', categoria: null }), 'obra');
   assert.equal(bloqueDe({ tipo: 'actividad', etapa: 'P7', categoria: null }), 'apertura');
+  assert.equal(bloqueDe({ tipo: 'equipo', etapa: 'P5', categoria: null }), 'compras');
+  assert.equal(bloqueDe({ tipo: 'equipo', etapa: 'P2', categoria: null }), 'compras');
+  assert.equal(bloqueDe({ tipo: 'referencia', etapa: 'P2', categoria: null }), 'compras');
+  assert.equal(bloqueDe({ tipo: 'actividad', etapa: 'P5', categoria: null }), 'obra');
 });
 
 test('avanceApertura: pondera 20/35/30/15, reparte bloques vacíos y topa en 99', () => {

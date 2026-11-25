@@ -85,7 +85,7 @@ export const puntosItem = (i: Pick<ItemApertura,'tipo'|'estado'>) =>
 /** Bloque del avance: lo de categoría de obra va a Obra aunque su etapa sea otra (igual que el checklist). */
 export function bloqueDe(i: Pick<ItemApertura,'tipo'|'etapa'|'categoria'>): BloqueApertura {
   if (i.categoria !== null && CATEGORIAS[i.categoria]?.obra === true) return 'obra';
-  if (i.categoria !== null || i.etapa === 'P4') return 'compras';
+  if (i.categoria !== null || i.tipo === 'equipo' || i.tipo === 'referencia' || i.etapa === 'P4') return 'compras';
   if (i.etapa === 'P5') return 'obra';
   return i.etapa === 'P6' || i.etapa === 'P7' ? 'apertura' : 'proyecto';
 }
