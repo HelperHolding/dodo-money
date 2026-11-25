@@ -42,5 +42,5 @@ test('con el menú plegado, Ctrl K abre un buscador visible y el foco no se pier
 test('el interruptor se distingue de día y la impresión no deja franja en blanco', () => {
   const css = leer('app/marca.css');
   assert.match(css, /\.interruptor-luz-riel \{ background: var\(--tinta-3\); \}/);
-  assert.match(css, /@media print \{[^}]*html\[data-menu="plegado"\] \.marco-contenido \{ padding-top: 0; \}/);
+  assert.match(css, /@media print \{ \.marco-mostrar-menu, \.lateral-plegar \{[^}]*\} html\[data-menu="plegado"\] \.marco-contenido \{ padding-top: 0; \} \}/);
 });
