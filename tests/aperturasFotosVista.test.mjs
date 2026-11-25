@@ -134,7 +134,10 @@ test('ListaConceptos: casillas items en formulario GET hacia la cotización, sin
 
 test('Cotización imprimible: límite 150, window.print, columnas vacías y CSS de impresión',()=>{
  const p=leer('app/aperturas/[id]/cotizacion/page.tsx');
- assert.match(p,/150/);
+ assert.match(p,/MAX\s*=\s*150/);
+ assert.match(p,/Se incluyen las primeras \$\{MAX\} partidas seleccionadas\./);
+ assert.match(leer('app/globals.css'),/\.ap-cot-aviso/);
+ assert.match(leer('app/globals.css'),/color:\s*#000;\s*background:\s*#fff/);
  assert.match(p,/Precio unitario/);
  assert.match(p,/Tiempo de entrega/);
  assert.match(p,/Elige al menos una partida en Equipo y compras/);
@@ -142,4 +145,12 @@ test('Cotización imprimible: límite 150, window.print, columnas vacías y CSS 
  assert.match(p,/Dodo Pizza México/);
  assert.match(leer('app/aperturas/[id]/cotizacion/Imprimir.tsx'),/window\.print\(/);
  assert.match(leer('app/globals.css'),/size:\s*letter landscape/);
+});
+
+test('Respaldo por familia: importador usa buscarFoto y la ficha avisa «otra medida»',()=>{
+ const s=leer('app/aperturas/fotos/ImportarDodo.tsx');
+ assert.match(s,/buscarFoto\(/);
+ assert.match(s,/otra medida/);
+ assert.match(s,/No está en la matriz/);
+ assert.match(leer('app/aperturas/[id]/items/[item]/page.tsx'),/otra medida/);
 });

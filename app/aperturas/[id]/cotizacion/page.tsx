@@ -15,7 +15,8 @@ export default async function Cotizacion({params,searchParams}:{params:Promise<{
  const [{id},q]=await Promise.all([params,searchParams]);
  const {supabase}=await obtenerPerfil();
  const crudos=Array.isArray(q.items)?q.items:q.items?[q.items]:[];
- const ids=[...new Set(crudos.filter(x=>UUID.test(x)))].slice(0,MAX);
+ const validos=[...new Set(crudos.filter(x=>UUID.test(x)))];
+ const ids=validos.slice(0,MAX);
  const {data:p,error:ep}=await supabase.from('apertura_proyectos').select('id,sucursales(nombre)').eq('id',id).maybeSingle<{id:string;sucursales:{nombre:string}|null}>();
  if(ep)return <p className="aviso aviso-error">No se pudo cargar el proyecto.</p>;
  if(!p)notFound();
@@ -42,6 +43,7 @@ export default async function Cotizacion({params,searchParams}:{params:Promise<{
     <h1>Solicitud de cotización · {p.sucursales?.nombre??'Sucursal'}</h1>
     <p>{fechaTexto(hoy)} · Dodo Pizza México</p>
    </header>
+   {validos.length>MAX&&<p className="ap-cot-aviso">{`Se incluyen las primeras ${MAX} partidas seleccionadas.`}</p>}
    <div className="tabla-contenedor"><table className="akton-tabla ap-cot-tabla">
     <thead><tr><th>#</th><th>Foto</th><th>Clave</th><th>Concepto</th><th>Código</th><th>Descripción o modelo</th><th>Medidas</th><th>kW</th><th>Cantidad</th><th>Precio unitario</th><th>Tiempo de entrega</th></tr></thead>
     <tbody>{partidas.map((i,n)=>{const o=i.original??{};const cant=i.cantidad??(typeof o.cantidad==='number'?o.cantidad:null);const unidad=typeof o.unidad==='string'&&o.unidad?` ${o.unidad}`:'';return <tr key={i.id}>

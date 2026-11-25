@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { strToU8, unzipSync, zipSync } from "fflate";
 // @ts-expect-error Node strip-types requiere extensión explícita.
-import { codigoDeItem, leerMatriz, matrizDeCodigo, normalizarCodigo } from "./matrizDodo.ts";
+import { buscarFoto, codigoDeItem, familiaDeCodigo, leerMatriz, matrizDeCodigo, normalizarCodigo } from "./matrizDodo.ts";
 
 const textos = [
   "Артикул\nArticle No.", // 0
@@ -113,4 +113,29 @@ test("leerMatriz: una celda larga de instrucciones no cuenta como encabezado", (
   const r = leerMatriz(unzipSync(archivos));
   assert.deepEqual(r.hojasSinCodigo, ["Info"]);
   assert.equal(r.entradas.size, 0);
+});
+
+test("familiaDeCodigo: hasta el primer guion bajo o sin el sufijo -NN", () => {
+  assert.equal(familiaDeCodigo("N.03.1_060.030-01"), "N.03.1");
+  assert.equal(familiaDeCodigo("E.40.0-01"), "E.40.0");
+  assert.equal(familiaDeCodigo("FN.DXB.00_DC.1.1.1"), "FN.DXB.00");
+  assert.equal(familiaDeCodigo("D.15.2-01"), "D.15.2");
+});
+
+const ent = (foto: string | null, hoja = "H") => ({ foto, sustituto: null, hoja });
+test("buscarFoto: exacto con foto, respaldo por familia, exacto sin foto y ausente", () => {
+  const m = new Map([
+    ["N.03.1_050.030-01", ent("a.png")],
+    ["N.03.1_060.030-01", ent(null)],
+    ["N.03.1_070.030-01", ent("b.png")],
+    ["X.1_010-01", ent(null)],
+  ]);
+  assert.equal(buscarFoto(m, "N.03.1_070.030-01")?.codigo, "N.03.1_070.030-01");
+  const r = buscarFoto(m, "N.03.1_060.030-01");
+  assert.equal(r?.codigo, "N.03.1_050.030-01");
+  assert.equal(r?.entrada.foto, "a.png");
+  const sin = buscarFoto(m, "X.1_010-01");
+  assert.equal(sin?.codigo, "X.1_010-01");
+  assert.equal(sin?.entrada.foto, null);
+  assert.equal(buscarFoto(m, "Z.9-01"), null);
 });

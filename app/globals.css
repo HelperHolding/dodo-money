@@ -2607,11 +2607,14 @@ html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas i
 .ap-cot-tabla th, .ap-cot-tabla td { vertical-align:middle; }
 .ap-cot-foto { display:block; width:80px; height:80px; object-fit:contain; border-radius:var(--r-sm); border:1px solid var(--linea); background:var(--papel-2); }
 .ap-cot-vacia { min-width:110px; }
+.ap-cot-aviso { margin:0; padding:8px 12px; border-radius:var(--r-sm); background:var(--papel-2); color:var(--tinta-2); font-size:.9rem; }
 .ap-cot-pie { margin:0; color:var(--tinta-2); font-size:.9rem; }
 @media print {
   @page { size: letter landscape; margin: 10mm; }
   body:has(.ap-cotizacion-imprimible) *:not(:has(.ap-cotizacion-imprimible), .ap-cotizacion-imprimible, .ap-cotizacion-imprimible *) { display:none !important; }
   body:has(.ap-cotizacion-imprimible) :has(.ap-cotizacion-imprimible) { margin:0 !important; padding:0 !important; border:0 !important; box-shadow:none !important; background:none !important; display:block !important; max-width:none !important; width:auto !important; }
+  .ap-cotizacion-imprimible, .ap-cotizacion-imprimible * { color:#000; background:#fff; }
+  .ap-cot-aviso { display:none !important; }
   .ap-cotizacion-imprimible .tabla-contenedor { overflow:visible; }
   .ap-cot-tabla { min-width:0; width:100%; font-size:10pt; }
   .ap-cot-tabla thead { display:table-header-group; }

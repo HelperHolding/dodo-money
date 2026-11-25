@@ -37,6 +37,25 @@ export function codigoDeItem(original: Record<string, unknown>): string | null {
   return n === "" || n === "-" ? null : n;
 }
 
+// Familia de un código: lo que va antes del primer "_" (variantes por medida) o, sin "_", el código sin el sufijo "-NN".
+export function familiaDeCodigo(c: string): string {
+  const n = normalizarCodigo(c);
+  const g = n.indexOf("_");
+  return g >= 0 ? n.slice(0, g) : n.replace(/-\d+$/, "");
+}
+
+// Foto de un código: la exacta; si no, la primera de su familia con foto (otra medida); si no, la exacta sin foto (sirve para el sustituto).
+export function buscarFoto(
+  entradas: Map<string, EntradaMatriz>,
+  codigo: string,
+): { codigo: string; entrada: EntradaMatriz } | null {
+  const exacta = entradas.get(codigo);
+  if (exacta?.foto) return { codigo, entrada: exacta };
+  const familia = familiaDeCodigo(codigo);
+  for (const [c, entrada] of entradas) if (entrada.foto && familiaDeCodigo(c) === familia) return { codigo: c, entrada };
+  return exacta ? { codigo, entrada: exacta } : null;
+}
+
 const decodificar = (s: string) =>
   s
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))

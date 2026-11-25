@@ -2,7 +2,7 @@
 import {useRef,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {clienteNavegador} from '@/lib/supabase/navegador';
-import {leerMatriz,matrizDeCodigo,type EntradaMatriz,type Matriz} from '@/lib/aperturas/matrizDodo';
+import {buscarFoto,leerMatriz,matrizDeCodigo,type EntradaMatriz,type Matriz} from '@/lib/aperturas/matrizDodo';
 import {importarDodo,type FilaImportar} from './acciones';
 import {aJpeg} from './imagen';
 
@@ -14,7 +14,8 @@ const NOMBRE_MATRIZ:Record<Matriz,string>={digital:'Digital',mobiliario:'Mobilia
 const MIME:Record<string,string>={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',bmp:'image/bmp'};
 
 export type PartidaDodo={id:string;clave:string;nombre:string;codigo:string|null};
-type Hallazgo={entrada:EntradaMatriz;archivo:number;bytes:Uint8Array|null};
+// codigo: el de la matriz de donde salió la foto (el de la familia si fue de referencia).
+type Hallazgo={codigo:string;entrada:EntradaMatriz;archivo:number;bytes:Uint8Array|null};
 type Ligada={partida:PartidaDodo;codigo:string;hallazgo:Hallazgo;ruta:string|null};
 type Resumen={ligadas:Ligada[];sinFoto:{partida:PartidaDodo;codigo:string;motivo:string}[];sinCodigo:number;hojasSinCodigo:string[]};
 
@@ -49,6 +50,7 @@ export function ImportarDodo({proyecto,partidas}:{proyecto:string;partidas:Parti
   const buscados=new Set(partidas.flatMap(p=>p.codigo?[p.codigo]:[]));
   const hallazgos=new Map<string,Hallazgo>();
   const hojasSinCodigo:string[]=[];
+  const cargadas=new Set<Matriz>();
   const subidas:string[]=[];
   try{
    const {unzipSync}=await import('fflate');
@@ -59,12 +61,14 @@ export function ImportarDodo({proyecto,partidas}:{proyecto:string;partidas:Parti
     const zip=unzipSync(new Uint8Array(await f.arrayBuffer()));
     const {entradas,hojasSinCodigo:hs}=leerMatriz(zip);
     hojasSinCodigo.push(...hs.map(h=>`${f.name}: ${h}`));
-    // Gana la primera matriz que tenga foto; solo se guardan los bytes de las fotos que se van a usar.
-    for(const [codigo,entrada] of entradas){
-     if(!buscados.has(codigo))continue;
-     const previo=hallazgos.get(codigo);
-     if(previo&&(previo.entrada.foto||!entrada.foto))continue;
-     hallazgos.set(codigo,{entrada,archivo:i,bytes:entrada.foto?zip[entrada.foto]?.slice()??null:null}); // copia: no retener el zip entero
+    for(const c of entradas.keys()){const m=matrizDeCodigo(c);if(m)cargadas.add(m);}
+    // Gana la primera matriz que tenga foto (exacta o de otra medida de la familia); solo se guardan los bytes de las fotos que se van a usar.
+    for(const buscado of buscados){
+     const previo=hallazgos.get(buscado);
+     if(previo?.entrada.foto)continue;
+     const r=buscarFoto(entradas,buscado);
+     if(!r||(previo&&!r.entrada.foto))continue;
+     hallazgos.set(buscado,{codigo:r.codigo,entrada:r.entrada,archivo:i,bytes:r.entrada.foto?zip[r.entrada.foto]?.slice()??null:null}); // copia: no retener el zip entero
     }
    }
    const ligadas:Ligada[]=[],sinFoto:Resumen['sinFoto']=[];
@@ -72,8 +76,8 @@ export function ImportarDodo({proyecto,partidas}:{proyecto:string;partidas:Parti
    for(const p of partidas){
     if(!p.codigo){sinCodigo++;continue;}
     const h=hallazgos.get(p.codigo);
-    if(h)ligadas.push({partida:p,codigo:p.codigo,hallazgo:h,ruta:null});
-    else{const m=matrizDeCodigo(p.codigo);sinFoto.push({partida:p,codigo:p.codigo,motivo:m?`Falta la matriz ${NOMBRE_MATRIZ[m]}`:'Prefijo sin matriz conocida'});}
+    if(h)ligadas.push({partida:p,codigo:h.codigo,hallazgo:h,ruta:null});
+    else{const m=matrizDeCodigo(p.codigo);sinFoto.push({partida:p,codigo:p.codigo,motivo:m?(cargadas.has(m)?`No está en la matriz ${NOMBRE_MATRIZ[m]}`:`Falta la matriz ${NOMBRE_MATRIZ[m]}`):'Prefijo sin matriz conocida'});}
    }
    const conBytes=ligadas.filter(l=>l.hallazgo.bytes);
    let hechas=0,siguiente=0,fallo=false;
@@ -88,8 +92,10 @@ export function ImportarDodo({proyecto,partidas}:{proyecto:string;partidas:Parti
      try{jpeg=await aJpeg(original,800);}catch{jpeg=null;}
      if(jpeg){
       const ruta=`${proyecto}/${crypto.randomUUID()}.jpg`;
-      const {error:e}=await supabase().storage.from(BUCKET).upload(ruta,jpeg,{contentType:'image/jpeg',upsert:false});
-      if(e){fallo=true;throw new Error(`No se pudo subir la foto de ${l.partida.clave}: ${e.message}`);}
+      try{
+       const {error:e}=await supabase().storage.from(BUCKET).upload(ruta,jpeg,{contentType:'image/jpeg',upsert:false});
+       if(e)throw new Error(e.message);
+      }catch(e){fallo=true;throw new Error(`No se pudo subir la foto de ${l.partida.clave}: ${e instanceof Error&&e.message?e.message:'error de red'}`);}
       subidas.push(ruta);l.ruta=ruta;
      }
      hechas++;setOcupado(`Subiendo ${hechas} de ${conBytes.length}`);
@@ -99,7 +105,7 @@ export function ImportarDodo({proyecto,partidas}:{proyecto:string;partidas:Parti
    const resultados=await Promise.allSettled(Array.from({length:Math.min(PARALELO,conBytes.length)},trabajador));
    const rechazo=resultados.find((r):r is PromiseRejectedResult=>r.status==='rejected');
    if(rechazo)throw rechazo.reason;
-   for(const l of ligadas)if(!l.ruta)sinFoto.push({partida:l.partida,codigo:l.codigo,motivo:l.hallazgo.entrada.foto?'La foto no se pudo leer':'La matriz no trae foto'});
+   for(const l of ligadas)if(!l.ruta)sinFoto.push({partida:l.partida,codigo:l.partida.codigo??l.codigo,motivo:l.hallazgo.entrada.foto?'La foto no se pudo leer':'La matriz no trae foto'});
    sinFoto.sort((a,b)=>a.partida.clave.localeCompare(b.partida.clave,'es',{numeric:true}));
    pendientes.current=subidas;
    setResumen({ligadas,sinFoto,sinCodigo,hojasSinCodigo});
@@ -148,7 +154,7 @@ export function ImportarDodo({proyecto,partidas}:{proyecto:string;partidas:Parti
      <div className="acciones"><button type="button" className="boton" onClick={()=>modal.current?.close()}>Cerrar</button></div>
     </div>
    :resumen?<div className="ap-dodo-resumen">
-     <div className="ap-dodo-cifras"><div><strong>{resumen.ligadas.length}</strong><span>ligadas</span></div><div><strong>{resumen.ligadas.filter(l=>l.ruta).length}</strong><span>con foto</span></div><div><strong>{resumen.sinFoto.length}</strong><span>sin foto</span></div></div>
+     <div className="ap-dodo-cifras"><div><strong>{resumen.ligadas.length}</strong><span>ligadas</span></div><div><strong>{resumen.ligadas.filter(l=>l.ruta&&l.codigo===l.partida.codigo).length}</strong><span>con foto exacta</span></div><div><strong>{resumen.ligadas.filter(l=>l.ruta&&l.codigo!==l.partida.codigo).length}</strong><span>con foto de referencia (otra medida)</span></div><div><strong>{resumen.sinFoto.length}</strong><span>sin foto</span></div></div>
      {resumen.sinCodigo>0&&<p className="ap-nota">{resumen.sinCodigo} partidas no tienen código de Dodo.</p>}
      {resumen.hojasSinCodigo.length>0&&<p className="ap-nota">Hojas sin columna de código: {resumen.hojasSinCodigo.join(', ')}.</p>}
      {resumen.sinFoto.length>0&&<details className="ap-dodo-sinfoto" open={resumen.sinFoto.length<=20}><summary>Sin foto en las matrices cargadas ({resumen.sinFoto.length})</summary>
