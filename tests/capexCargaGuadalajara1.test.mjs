@@ -14,10 +14,11 @@ const P1='20000000-0000-0000-0000-000000000001',P2='20000000-0000-0000-0000-0000
 
 const BASE=`create role anon;create role authenticated;create schema auth;
  create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::json->>'sub')::uuid$$;
- create table perfiles(id uuid primary key,activo boolean not null default true,rol text not null,nombre text);
- insert into perfiles values('${ADMIN}',true,'admin','Admin'),('${CORP}',true,'corporativo','Corporativo');
+ create table perfiles(id uuid primary key,activo boolean not null default true,rol text not null,nombre text,debe_cambiar_contrasena boolean not null default false);
+ insert into perfiles(id,activo,rol,nombre) values('${ADMIN}',true,'admin','Admin'),('${CORP}',true,'corporativo','Corporativo');
+ create function mi_rol() returns text language sql stable as $$select rol from public.perfiles where id=auth.uid() and activo and not debe_cambiar_contrasena$$;
  create function ve_finanzas() returns boolean language sql stable as $$select exists(select 1 from public.perfiles where id=auth.uid() and rol in ('admin','corporativo'))$$;
- create function edita_finanzas() returns boolean language sql stable as $$select exists(select 1 from public.perfiles where id=auth.uid() and rol='admin')$$;
+ create function edita_finanzas() returns boolean language sql stable as $$select coalesce(public.mi_rol()='admin',false)$$;
  create function ve_compras() returns boolean language sql stable as $$select exists(select 1 from public.perfiles where id=auth.uid() and rol in ('admin','corporativo'))$$;
  create table sucursales(id uuid primary key,nombre text not null);
  insert into sucursales values('${S1}','Guadalajara-1 López Mateos'),('${S2}','Zapopan-1 La Calma');
@@ -86,5 +87,17 @@ test('carga: el script de pruebas termina en PRUEBAS OK y no deja cambios',async
   assert.equal((await db.query('select count(*)::int n from capex_presupuestos')).rows[0].n,0);
   await db.exec(carga);
   await assert.rejects(db.exec(pruebas),e=>{assert.match(e.message,/^PRUEBAS OK — ya existía presupuesto \(revisión 1\)/);return true;});
+ }finally{await db.close();}
+});
+
+test('carga: ignora al admin con cambio de contraseña pendiente aunque sea el primero por nombre',async()=>{
+ const db=await preparar();
+ try{
+  await db.query(`insert into perfiles(id,activo,rol,nombre,debe_cambiar_contrasena) values('00000000-0000-0000-0000-0000000000b1',true,'admin','Aaa',true)`);
+  await db.exec(carga);
+  assert.equal((await db.query('select sum(monto)::text s from capex_presupuestos where proyecto_id=$1',[P1])).rows[0].s,'2898381.34');
+  await db.query(`update perfiles set debe_cambiar_contrasena=true where id=$1`,[ADMIN]);
+  await db.query('delete from capex_presupuestos');
+  await assert.rejects(db.exec(carga),/sin cambio de contraseña pendiente/);
  }finally{await db.close();}
 });

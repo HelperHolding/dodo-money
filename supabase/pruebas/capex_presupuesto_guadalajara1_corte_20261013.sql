@@ -9,8 +9,8 @@ begin
  if v_rev is not null then
   raise exception 'PRUEBAS OK — ya existía presupuesto (revisión %), no se tocó',v_rev;
  end if;
- select id into v_admin from public.perfiles where activo and rol::text='admin' limit 1;
- if v_admin is null then raise exception 'FALTAN DATOS: un admin activo.';end if;
+ select id into v_admin from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' order by nombre,id limit 1;
+ if v_admin is null then raise exception 'Falta un admin activo sin cambio de contraseña pendiente.';end if;
  perform set_config('request.jwt.claims',json_build_object('sub',v_admin,'role','authenticated')::text,true);
  perform public.aprobar_capex_presupuesto(v_proyecto,0,jsonb_build_object(
   'obra_civil',1325236.75,'equipo_cocina',1226257.79,'tecnologia',128000.00,
