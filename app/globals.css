@@ -2289,3 +2289,75 @@ body { background: var(--papel-2); }
 .transito-lista strong { font-variant-numeric:tabular-nums; white-space:nowrap; }
 .transito-lista small { color:var(--tinta-2); font-weight:400; }
 @media (max-width: 640px) { .transito-lista li { grid-template-columns:1fr auto; } .transito-lista li span:nth-child(2) { grid-column:1; } .transito-saldo { align-items:flex-start; } }
+
+/* ─── Estilo Akton (P&L contra meta) · guía: docs/diseno/estilo-akton.md ───
+   Tarjetas blancas redondeadas sobre fondo claro, títulos en negro, cifras tabulares.
+   Naranja Dodo solo para EBITDA y alertas; verde/rojo solo para variaciones contra meta. */
+.akton { --akton-fondo: var(--papel-2); --akton-durazno: var(--accion-tinte); --akton-si: var(--cuadra); --akton-no: var(--alerta);
+  background: var(--akton-fondo); border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.akton > * { margin: 0; }
+
+.akton-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1280px) { .akton-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.akton-kpi { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.akton-kpi-etiqueta { font-size: 0.78rem; font-weight: 700; color: var(--tinta-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.akton-kpi-valor { font-size: 1.45rem; font-weight: 800; color: var(--tinta); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.akton-kpi-pie { font-size: 0.82rem; color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+.akton-kpi[data-tono="destacado"] { border-color: var(--accion); box-shadow: inset 0 4px 0 var(--accion); }
+.akton-kpi[data-tono="destacado"] .akton-kpi-valor { color: var(--accion-oscuro); }
+.akton-kpi[data-tono="si"] .akton-kpi-valor { color: var(--akton-si); }
+.akton-kpi[data-tono="no"] .akton-kpi-valor { color: var(--akton-no); }
+
+.akton-lectura { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; }
+.akton-lectura-numero { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--tinta); color: var(--blanco); display: grid; place-items: center; font-weight: 800; }
+.akton-lectura h2 { font-size: 1.05rem; margin: 2px 0 6px; color: var(--tinta); }
+.akton-lectura p { margin: 0; color: var(--tinta-2); line-height: 1.5; }
+.akton-si { color: var(--akton-si); font-weight: 700; }
+.akton-no { color: var(--akton-no); font-weight: 700; }
+
+.akton-tabla-marco { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-md); padding: 18px; }
+.akton-titulo { font-size: 1.1rem; margin: 0; color: var(--tinta); }
+.akton-subtitulo { margin: 2px 0 12px; font-size: 0.85rem; color: var(--tinta-3); }
+.akton-tabla { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.akton-tabla thead th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tinta-2); border-bottom: 2px solid var(--tinta); padding: 8px 10px; background: none; }
+.akton-tabla td { padding: 7px 8px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+.akton-tabla td.monto .importe { display: flex; min-width: 0; gap: 6px; }
+.akton-tabla .akton-pct { color: var(--tinta-2); }
+.akton-seccion th { text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--tinta-2); padding: 16px 10px 6px; border-bottom: 1px solid var(--linea-fuerte); background: none; }
+.akton-sub td:first-child { padding-left: 28px; color: var(--tinta-2); font-size: 0.9rem; }
+.akton-sub td { font-size: 0.9rem; color: var(--tinta-2); }
+.akton-subtotal td { background: var(--akton-durazno); font-weight: 700; border-bottom-color: var(--accion-suave-borde); }
+.akton-destacado td { background: var(--accion-suave); font-weight: 800; border-top: 2px solid var(--accion); border-bottom: 2px solid var(--accion); }
+.akton-destacado td:first-child { box-shadow: inset 4px 0 0 var(--accion); }
+.akton-var[data-favorable="si"] { color: var(--akton-si); font-weight: 700; }
+.akton-var[data-favorable="no"] { color: var(--akton-no); font-weight: 700; }
+.akton-nombre { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.akton-chip { font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--cuadra-fondo); color: var(--cuadra-texto); border: 1px solid var(--cuadra-borde); }
+.akton-info { font-size: 0.8rem; color: var(--tinta-3); text-decoration: none; }
+.akton-info:hover, .akton-info:focus-visible { color: var(--accion-oscuro); }
+.akton-tabla td:first-child { min-width: 220px; }
+.akton-nota-celda { width: 24%; min-width: 180px; }
+.akton-nota { border-left: 3px solid var(--accion); padding: 2px 0 2px 10px; font-size: 0.8rem; color: var(--tinta-2); line-height: 1.4; }
+.akton-nota p { margin: 0 0 4px; }
+.akton-nota p:last-child { margin-bottom: 0; }
+.akton-pie { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--linea); font-size: 0.8rem; color: var(--tinta-2); }
+.akton-pie ol { margin: 0 0 8px; padding-left: 20px; }
+.akton-pie li { margin-bottom: 2px; }
+.akton-pie li:target { background: var(--accion-tinte); }
+.akton-pie p { margin: 0; }
+
+@media (max-width: 640px) {
+  .akton { padding: 10px; border-radius: var(--r-md); }
+  .akton-tabla-marco { padding: 12px; }
+  .akton-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .akton-kpi-valor { font-size: 1.25rem; }
+  .akton-tabla tr.akton-seccion { border: 0; background: none; padding: 8px 0 0; margin: 0; }
+  .akton-tabla tr.akton-seccion th { display: block; padding: 8px 0 4px; }
+  .akton-tabla td, .akton-tabla tr.akton-subtotal td, .akton-tabla tr.akton-destacado td { border: 0; background: none; box-shadow: none; }
+  .akton-tabla tr.akton-subtotal { background: var(--akton-durazno); }
+  .akton-tabla tr.akton-destacado { background: var(--accion-suave); border-color: var(--accion); border-left-width: 4px; }
+  .akton-sub td:first-child { padding-left: 0; }
+  .akton-nota-celda { width: 100%; min-width: 0; }
+  .akton-tabla td.akton-nota-celda { display: block; text-align: left; }
+  .akton-tabla td.akton-nota-celda::before { content: none; }
+}

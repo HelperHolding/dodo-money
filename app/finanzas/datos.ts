@@ -201,6 +201,9 @@ export async function datosPL(supabase: SupabaseClient, rango: Rango): Promise<D
       rappi: resumenCanalPL(diasRappi, productosRappi, costeo(renglonesRappi).total.costo),
     };
     canales.rappi.neta=centavos(canales.rappi.neta-historicoCubierto.reduce((t,d)=>t+d.total-d.iva,0)+baseFin);
+    // Pedidos para el ticket promedio: los del día en Dodo IS y las órdenes Rappi finalizadas que suman como canal propio.
+    canales.dodo.pedidos = diasSuc.reduce((t, d) => t + Number(d.pedidos ?? 0), 0);
+    canales.rappi.pedidos = datosRappi.ordenes.filter((o) => o.sucursal_id === s.id && o.sumar && o.estado === "Finalizado" && o.fecha >= desde && o.fecha <= hasta).length;
     // Con reporte financiero la neta ya no sale de los días: la bruta sin IVA no se puede prorratear por día (Pendiente)…
     if(fin.length||historicoCubierto.length||baseFin!==0)canales.rappi.brutaSinIva=null;
     // …salvo que se tome del reporte: su Venta Bruta y el importe de productos de los días sin reporte llevan IVA del 16 %.
