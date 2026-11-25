@@ -808,6 +808,6 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   html[data-menu="plegado"] .marco { grid-template-columns: 0 minmax(0, 1fr); background: none; }
   html[data-menu="plegado"] .lateral { visibility: hidden; overflow: hidden; }
   html[data-menu="plegado"] .marco-mostrar-menu { display: inline-flex; position: fixed; top: 12px; left: 12px; z-index: 25; background: var(--superficie); box-shadow: 0 0 0 1px var(--menu-linea); }
-  html[data-menu="plegado"] .marco-contenido { padding-top: 8px; }
+  html[data-menu="plegado"] .marco-contenido { padding-top: 60px; }
 }
 @media print { .marco-mostrar-menu, .lateral-plegar { display: none !important; } }
