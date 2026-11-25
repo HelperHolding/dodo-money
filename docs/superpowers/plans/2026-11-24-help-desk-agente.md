@@ -36,8 +36,8 @@
 
 | Archivo | Responsabilidad |
 |---|---|
-| `supabase/migrations/20261124120000_soporte_agente.sql` | Columnas, RLS, funciones nuevas y reemplazos |
-| `supabase/pruebas/20261124120000_soporte_agente.sql` | Script manual que termina en PRUEBAS OK |
+| `supabase/migrations/20261124130000_soporte_agente.sql` | Columnas, RLS, funciones nuevas y reemplazos |
+| `supabase/pruebas/20261124130000_soporte_agente.sql` | Script manual que termina en PRUEBAS OK |
 | `tests/soporteAgente.test.mjs` | PGlite de la migración |
 | `lib/soporte/agente.ts` (+ `.test.ts`) | Agente puro: herramientas por puesto, instrucciones, validación, textos públicos |
 | `lib/soporte/agenteCorrer.ts` | Orquesta una corrida en servidor (Supabase, Anthropic, cierre) |
@@ -53,8 +53,8 @@
 ### Task 1: Migración, RLS y pruebas PGlite
 
 **Files:**
-- Create: `supabase/migrations/20261124120000_soporte_agente.sql`
-- Create: `supabase/pruebas/20261124120000_soporte_agente.sql`
+- Create: `supabase/migrations/20261124130000_soporte_agente.sql`
+- Create: `supabase/pruebas/20261124130000_soporte_agente.sql`
 - Create: `tests/soporteAgente.test.mjs`
 - Modify: `package.json` (script `test`: agregar `tests/soporteAgente.test.mjs`)
 
@@ -78,7 +78,7 @@ import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
 import {BASE,U,como} from './soporteBase.mjs';
 const leer=f=>readFileSync(new URL('../supabase/'+f,import.meta.url),'utf8').replace(/^\uFEFF/,'');
-const m1=leer('migrations/20261123120000_soporte.sql'),m2=leer('migrations/20261124120000_soporte_agente.sql');
+const m1=leer('migrations/20261123120000_soporte.sql'),m2=leer('migrations/20261124130000_soporte_agente.sql');
 const nueva=async({activo=true}={})=>{const db=new PGlite();await db.exec(BASE);await db.exec(m1);await db.exec(m2);
  if(activo)await db.exec(`update public.soporte_ajustes set agente_activo=true where id`);return db;};
 const q=async(db,id,sql,p=[])=>{await como(db,id);return (await db.query(sql,p)).rows;};
@@ -235,7 +235,7 @@ test('permisos: solo service_role cierra, resume y busca parecidos',async()=>{
 
 test('script de supabase/pruebas termina en PRUEBAS OK; ningún update sin where',async()=>{
  const db=await nueva({activo:false});
- try{await rechaza(db.exec(leer('pruebas/20261124120000_soporte_agente.sql')),/PRUEBAS OK/);}finally{await db.close();}
+ try{await rechaza(db.exec(leer('pruebas/20261124130000_soporte_agente.sql')),/PRUEBAS OK/);}finally{await db.close();}
  const sin=m2.replace(/--[^\n]*/g,'');
  for(const u of sin.match(/\bupdate\s+public\.\w+(\s+\w+)?\s+set\b[^;]*;/gi)??[])assert.match(u,/\bwhere\b/i,u);
  for(const d of sin.match(/\bdelete\s+from\s+public\.\w+[^;]*;/gi)??[])assert.match(d,/\bwhere\b/i,d);
@@ -245,9 +245,9 @@ test('script de supabase/pruebas termina en PRUEBAS OK; ningún update sin where
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `node --experimental-strip-types --test tests/soporteAgente.test.mjs`
-Expected: FAIL (ENOENT de `20261124120000_soporte_agente.sql`).
+Expected: FAIL (ENOENT de `20261124130000_soporte_agente.sql`).
 
-- [ ] **Step 3: Write the migration** — `supabase/migrations/20261124120000_soporte_agente.sql`:
+- [ ] **Step 3: Write the migration** — `supabase/migrations/20261124130000_soporte_agente.sql`:
 
 ```sql
 -- Agente del Help Desk: atiende cada ticket nuevo con la sesión de quien reporta (desde la app, con after()) y cierra con
@@ -533,10 +533,10 @@ commit;
 
 Si PGlite reporta otros nombres para las dos restricciones de `soporte_avisos`, consúltalos con `select conname,pg_get_constraintdef(oid) from pg_constraint where conrelid='public.soporte_avisos'::regclass` y usa los reales. Postgres genera los mismos en producción; anota en el reporte qué nombres encontraste.
 
-- [ ] **Step 4: Write the manual test script** — `supabase/pruebas/20261124120000_soporte_agente.sql`:
+- [ ] **Step 4: Write the manual test script** — `supabase/pruebas/20261124130000_soporte_agente.sql`:
 
 ```sql
--- Ejecutar completo después de 20261124120000_soporte_agente.sql. PRUEBAS OK revierte todo mediante un ERROR intencional.
+-- Ejecutar completo después de 20261124130000_soporte_agente.sql. PRUEBAS OK revierte todo mediante un ERROR intencional.
 do $$
 declare a uuid;o uuid;n bigint;tid uuid;r text;
 begin
@@ -581,7 +581,7 @@ Expected: PASS (todas). Si `plainto_tsquery('simple',...)` no está en PGlite, r
 - [ ] **Step 7: Commit**
 
 ```bash
-git add supabase/migrations/20261124120000_soporte_agente.sql supabase/pruebas/20261124120000_soporte_agente.sql tests/soporteAgente.test.mjs package.json
+git add supabase/migrations/20261124130000_soporte_agente.sql supabase/pruebas/20261124130000_soporte_agente.sql tests/soporteAgente.test.mjs package.json
 git commit -m "feat(soporte): migración del agente (cierre, notas internas, red de 5 min, resumen)"
 ```
 

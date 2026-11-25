@@ -1,4 +1,4 @@
--- Ejecutar completo después de 20261124120000_soporte_agente.sql. PRUEBAS OK revierte todo mediante un ERROR intencional.
+-- Ejecutar completo después de 20261124130000_soporte_agente.sql. PRUEBAS OK revierte todo mediante un ERROR intencional.
 do $$
 declare a uuid;o uuid;n bigint;tid uuid;r text;
 begin

@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
 import {BASE,U,como} from './soporteBase.mjs';
 const leer=f=>readFileSync(new URL('../supabase/'+f,import.meta.url),'utf8').replace(/^﻿/,'');
-const m1=leer('migrations/20261123120000_soporte.sql'),m2=leer('migrations/20261124120000_soporte_agente.sql');
+const m1=leer('migrations/20261123120000_soporte.sql'),m2=leer('migrations/20261124130000_soporte_agente.sql');
 const nueva=async({activo=true}={})=>{const db=new PGlite();await db.exec(BASE);await db.exec(m1);await db.exec(m2);
  if(activo)await db.exec(`update public.soporte_ajustes set agente_activo=true where id`);return db;};
 const q=async(db,id,sql,p=[])=>{await como(db,id);return (await db.query(sql,p)).rows;};
@@ -111,6 +111,26 @@ test('reapertura: quien reporta comenta en un resuelto por el agente → en revi
  }finally{await db.close();}
 });
 
+test('ticket tocado por soporte mientras estaba pendiente: el agente solo deja una nota interna',async()=>{
+ const db=await nueva();
+ try{
+  const n=await crear(db,U.ana,PROB),k=await crear(db,U.ana,PROB);
+  const rev=async x=>(await db.query(`select revision from public.soporte_tickets where numero=$1`,[x])).rows[0].revision;
+  await q(db,U.seba,`select public.cambiar_ticket($1,$2,'{"estado":"en_progreso"}'::jsonb)`,[n,await rev(n)]);
+  const antes=(await db.query(`select count(*)::int c from public.soporte_avisos`)).rows[0].c;
+  assert.equal(await cerrar(db,await idDe(db,n),'resuelto','Prueba esto.','Diagnóstico'),'resuelto');
+  const t=await ticket(db)(n);assert.deepEqual([t.estado,t.agente_estado,t.cerrado],['en_progreso','resuelto',false]);
+  assert.equal((await q(db,U.ana,`select count(*)::int c from public.hilo_ticket($1) where tipo='comentario'`,[n]))[0].c,0,'quien reporta no ve comentario del agente');
+  const notas=await q(db,U.seba,`select texto from public.hilo_ticket($1) where interna and es_agente`,[n]);
+  assert.equal(notas.length,1);assert.match(notas[0].texto,/Respuesta propuesta: Prueba esto./);
+  assert.equal((await db.query(`select count(*)::int c from public.soporte_avisos`)).rows[0].c,antes);
+  await q(db,U.seba,`select public.cambiar_ticket($1,$2,'{"prioridad":"baja"}'::jsonb)`,[k,await rev(k)]);
+  assert.equal(await cerrar(db,await idDe(db,k),'escalado','x','n','alta'),'escalado');
+  const tk=await ticket(db)(k);assert.deepEqual([tk.prioridad,tk.agente_estado],['baja','escalado']);
+  assert.equal((await db.query(`select count(*)::int c from public.soporte_avisos`)).rows[0].c,antes);
+ }finally{await db.close();}
+});
+
 test('RLS: quien reporta no lee notas internas directo de la tabla',async()=>{
  const db=await nueva();
  try{
@@ -139,6 +159,8 @@ test('ajustes: agente y resumen; con agente activo hace falta un correo',async()
  const db=await nueva({activo:false});
  try{
   const g=(...a)=>q(db,U.seba,`select public.guardar_ajustes_soporte($1,$2,$3,$4,$5,$6)`,a);
+  await q(db,U.seba,`select public.guardar_ajustes_soporte(p_responsable=>$1,p_correos=>$2,p_avisar_nuevos=>true,p_avisar_comentarios=>true)`,[U.seba,['scervera@dodopizza.mx']]);
+  assert.equal((await db.query(`select agente_activo from public.soporte_ajustes`)).rows[0].agente_activo,false,'llamada de 4 parámetros sigue funcionando');
   await rechaza(g(null,[],false,false,true,false),/al menos un correo/);
   await g(U.seba,['scervera@dodopizza.mx'],true,true,true,false);
   assert.deepEqual((await db.query(`select agente_activo,resumen_diario from public.soporte_ajustes`)).rows[0],{agente_activo:true,resumen_diario:false});
@@ -161,7 +183,7 @@ test('permisos: solo service_role cierra, resume y busca parecidos',async()=>{
 
 test('script de supabase/pruebas termina en PRUEBAS OK; ningún update sin where',async()=>{
  const db=await nueva({activo:false});
- try{await rechaza(db.exec(leer('pruebas/20261124120000_soporte_agente.sql')),/PRUEBAS OK/);}finally{await db.close();}
+ try{await rechaza(db.exec(leer('pruebas/20261124130000_soporte_agente.sql')),/PRUEBAS OK/);}finally{await db.close();}
  const sin=m2.replace(/--[^\n]*/g,'');
  for(const u of sin.match(/\bupdate\s+public\.\w+(\s+\w+)?\s+set\b[^;]*;/gi)??[])assert.match(u,/\bwhere\b/i,u);
  for(const d of sin.match(/\bdelete\s+from\s+public\.\w+[^;]*;/gi)??[])assert.match(d,/\bwhere\b/i,d);

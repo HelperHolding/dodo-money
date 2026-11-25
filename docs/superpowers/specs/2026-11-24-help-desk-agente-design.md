@@ -75,7 +75,7 @@ n8n llama a las 8:00 (hora de México) `POST /api/soporte/resumen` (`x-api-key: 
   - No promete fechas.
 - Se guardan en el ticket `agente_modelo`, `agente_tokens_entrada` y `agente_tokens_salida`.
 
-## Datos (migración `supabase/migrations/20261124120000_soporte_agente.sql`)
+## Datos (migración `supabase/migrations/20261124130000_soporte_agente.sql`)
 
 - `soporte_ajustes`: se agregan `agente_activo boolean not null default false` y `resumen_diario boolean not null default true`. `guardar_ajustes_soporte` recibe ambos (cambia la firma: se elimina la anterior y se crea la nueva).
 - `soporte_tickets`:
@@ -97,7 +97,7 @@ n8n llama a las 8:00 (hora de México) `POST /api/soporte/resumen` (`x-api-key: 
 - `soporte_tomar_avisos`: al inicio aplica la red de seguridad de 5 minutos.
 - `comentar_ticket`: aplica la reapertura descrita arriba.
 - `soporte_resumen_agente(p_desde timestamptz, p_hasta timestamptz)`: devuelve los tickets resueltos por el agente en el rango junto con su respuesta pública. Su ejecución está concedida solo a `service_role`.
-- Pruebas manuales en `supabase/pruebas/20261124120000_soporte_agente.sql`, que terminan en «PRUEBAS OK».
+- Pruebas manuales en `supabase/pruebas/20261124130000_soporte_agente.sql`, que terminan en «PRUEBAS OK».
 
 ## Código
 

@@ -160,6 +160,19 @@ begin
  nota:=left(nota,3000);
  if t.tipo::text='mejora' and d<>'fallido' then d:='mejora';end if;
  if t.tipo::text='problema' and d='mejora' then d:='escalado';end if;
+ -- Si una persona ya tocó el ticket mientras el agente trabajaba, el agente solo deja una nota interna: no pisa estado, responsable ni prioridad.
+ if t.estado::text<>'nuevo' or t.revision<>1 then
+  insert into public.soporte_comentarios(ticket_id,autor_id,es_soporte,es_agente,interna,texto)
+   values(t.id,null,true,true,true,left(case when d='fallido'
+    then 'El agente no pudo atender este ticket.'||case when nota<>'' then ' Detalle: '||nota else '' end
+    else 'El agente terminó ('||d||') después de que soporte tomó el ticket. Respuesta propuesta: '||pub||case when nota<>'' then E'
+
+Nota del agente: '||nota else '' end end,4000));
+  update public.soporte_tickets set agente_estado=d,agente_en=now(),agente_modelo=left(p_modelo,100),
+   agente_tokens_entrada=greatest(p_entrada,0),agente_tokens_salida=greatest(p_salida,0)
+  where id=t.id;
+  return d;
+ end if;
  if d='fallido' then
   insert into public.soporte_comentarios(ticket_id,autor_id,es_soporte,es_agente,interna,texto)
    values(t.id,null,true,true,true,left('El agente no pudo atender este ticket; se atiende como siempre.'||case when nota<>'' then ' Detalle: '||nota else '' end,4000));
@@ -248,7 +261,7 @@ end $$;
 
 drop function public.guardar_ajustes_soporte(uuid,text[],boolean,boolean);
 create function public.guardar_ajustes_soporte(p_responsable uuid,p_correos text[],p_avisar_nuevos boolean,p_avisar_comentarios boolean,
- p_agente_activo boolean,p_resumen_diario boolean) returns void
+ p_agente_activo boolean default false,p_resumen_diario boolean default true) returns void
 language plpgsql security definer set search_path='' as $$
 declare limpios text[];
 begin
