@@ -69,6 +69,14 @@
   --pl-oficina: #ead1dc;
   --pl-memo: #f2f2f2;
   --dato-pista: #edf0f4;
+  /* Plano de apertura (HD-14): marcas por etapa en pastel Dodo, con borde más oscuro para leerse sobre el plano. */
+  --plano-gris: #dcdcd8;     --plano-gris-borde: #7d7d78;
+  --plano-amarillo: #fbe3a1; --plano-amarillo-borde: #b98a12;
+  --plano-azul: #c4dcf7;     --plano-azul-borde: #2a78d6;
+  --plano-morado: #ddd0f2;   --plano-morado-borde: #67408d;
+  --plano-verde: #c3e6d2;    --plano-verde-borde: #1f6b4f;
+  --plano-texto: #1a1a1a;    /* fijo: el plano es claro también de noche */
+  --plano-lienzo: #ffffff;
 
   /* Menú lateral y barras negras */
   --oscuro-hover: #1c1c1c;
@@ -2471,4 +2479,85 @@ html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas i
  .ap-gcal .ap-cal-agenda { display:block; padding:0 10px; }
  .ap-gcal-titulo { font-size:1.1rem; flex-basis:100%; order:5; margin:4px 0 0; }
  .ap-gcal-modo { margin-left:auto; }
+}
+
+/* ─── Plano de apertura (HD-14) ─── */
+.ap-plano { display:flex; flex-direction:column; gap:12px; }
+.ap-plano-hojas { display:flex; flex-wrap:wrap; align-items:center; gap:4px; padding:4px; background:var(--superficie); border:1px solid var(--linea); border-radius:var(--r-md); }
+.ap-plano-hojas a { padding:6px 12px; border-radius:var(--r-sm); color:var(--tinta-2); text-decoration:none; font-weight:600; font-size:.9rem; }
+.ap-plano-hojas a:hover { background:var(--papel-2); color:var(--tinta); }
+.ap-plano-hojas a[aria-current="page"] { background:var(--accion-suave); color:var(--tinta); box-shadow:inset 0 0 0 1px var(--accion-suave-borde); }
+.ap-plano-hojas .boton { margin-left:auto; }
+.ap-plano-subir { border:1px solid var(--linea); border-radius:var(--r-md); padding:16px; background:var(--superficie); }
+.ap-plano-subir h3 { margin:0; font-size:1rem; }
+.ap-plano-barra { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px 16px; }
+.ap-plano-barra .acciones { margin-left:auto; }
+.ap-plano-zoom { display:inline-flex; gap:4px; }
+.ap-plano-zoom .boton { min-width:44px; font-variant-numeric:tabular-nums; }
+.ap-plano-casilla { display:inline-flex; align-items:center; gap:8px; font-size:.9rem; font-weight:600; min-height:44px; }
+.ap-plano-responsable { min-width:180px; margin:0; }
+.ap-plano-borrar { color:var(--alerta-texto); }
+.ap-plano-cuerpo { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
+.ap-plano-cuerpo:has(.ap-plano-ficha) { grid-template-columns:minmax(0,1fr) minmax(240px,320px); }
+.ap-plano-cuerpo[data-ubicar] { grid-template-columns:minmax(220px,280px) minmax(0,1fr); }
+.ap-plano-cuerpo[data-ubicar]:has(.ap-plano-ficha) { grid-template-columns:minmax(220px,280px) minmax(0,1fr) minmax(240px,300px); }
+.ap-plano-imprimible { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.ap-plano-titulo { margin:0; font-size:1rem; font-weight:600; }
+.ap-plano-marco { overflow:auto; max-height:75vh; border:1px solid var(--linea); border-radius:var(--r-md); background:var(--papel-2); overscroll-behavior:contain; }
+.ap-plano-lienzo { position:relative; min-width:0; }
+.ap-plano-lienzo > img { display:block; width:100%; height:auto; user-select:none; -webkit-user-drag:none; background:var(--plano-lienzo); }
+.ap-plano-lienzo[data-colocando] { cursor:crosshair; }
+/* La marca mide 18 px en pantalla a cualquier zoom: solo cambia su posición (left/top en %). */
+.ap-plano-marca {
+  position:absolute; width:18px; height:18px; margin:0; padding:0; transform:translate(-50%,-50%);
+  border-radius:50%; border:2px solid var(--plano-gris-borde); background:var(--plano-gris); color:var(--plano-texto);
+  font:700 11px/14px var(--fuente); text-align:center; cursor:pointer; box-shadow:0 1px 3px #0003; z-index:1;
+  print-color-adjust:exact; -webkit-print-color-adjust:exact;
+}
+.ap-plano-marca:hover, .ap-plano-marca[data-activa] { z-index:2; box-shadow:0 0 0 3px #fffc, 0 1px 4px #0005; }
+.ap-plano-marca:focus-visible { outline:3px solid var(--anillo); outline-offset:2px; z-index:2; }
+.ap-plano-cuerpo[data-ubicar] .ap-plano-marca { cursor:grab; touch-action:none; }
+:is(.ap-plano-marca, .ap-plano-punto)[data-color="amarillo"] { background:var(--plano-amarillo); border-color:var(--plano-amarillo-borde); }
+:is(.ap-plano-marca, .ap-plano-punto)[data-color="azul"] { background:var(--plano-azul); border-color:var(--plano-azul-borde); }
+:is(.ap-plano-marca, .ap-plano-punto)[data-color="morado"] { background:var(--plano-morado); border-color:var(--plano-morado-borde); }
+:is(.ap-plano-marca, .ap-plano-punto)[data-color="verde"] { background:var(--plano-verde); border-color:var(--plano-verde-borde); }
+:is(.ap-plano-marca, .ap-plano-punto)[data-alerta] { outline:2px solid var(--alerta); outline-offset:1px; }
+.ap-plano-marca[data-no-aplica] { opacity:.45; background-image:linear-gradient(to top right, transparent calc(50% - 1px), var(--plano-texto) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)); }
+.ap-plano-marca[data-atenuada] { opacity:.2; }
+.ap-plano-punto { display:inline-grid; place-items:center; width:14px; height:14px; border-radius:50%; border:2px solid var(--plano-gris-borde); background:var(--plano-gris); color:var(--plano-texto); font-size:9px; font-weight:700; vertical-align:middle; flex:none; box-sizing:border-box; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+.ap-plano-leyenda { display:flex; flex-wrap:wrap; gap:6px 10px; list-style:none; margin:0; padding:0; font-size:.85rem; }
+.ap-plano-leyenda li { display:inline-flex; align-items:center; gap:6px; }
+.ap-plano-leyenda button { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid var(--linea); border-radius:var(--r-full); background:var(--superficie); color:var(--tinta); font:inherit; cursor:pointer; min-height:32px; }
+.ap-plano-leyenda button strong { font-variant-numeric:tabular-nums; }
+.ap-plano-leyenda button[aria-pressed="true"] { border-color:var(--tinta); box-shadow:inset 0 0 0 1px var(--tinta); }
+.ap-plano-ley-extra { color:var(--tinta-2); }
+.ap-plano-panel, .ap-plano-ficha { display:flex; flex-direction:column; gap:10px; border:1px solid var(--linea); border-radius:var(--r-md); padding:14px; background:var(--superficie); min-width:0; }
+.ap-plano-panel h3, .ap-plano-ficha h3 { margin:0; font-size:1rem; overflow-wrap:anywhere; }
+.ap-plano-panel .campo { margin:0; }
+.ap-plano-instruccion { margin:0; padding:8px 10px; border-radius:var(--r-sm); background:var(--accion-tinte); border:1px solid var(--accion-suave-borde); font-size:.85rem; }
+.ap-plano-pendientes { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; max-height:55vh; overflow:auto; }
+.ap-plano-pendientes button { display:grid; grid-template-columns:auto auto minmax(0,1fr); align-items:center; gap:8px; width:100%; padding:7px 6px; border:0; border-top:1px solid var(--linea); background:none; color:var(--tinta); font:inherit; font-size:.85rem; text-align:left; cursor:pointer; }
+.ap-plano-pendientes button span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ap-plano-pendientes button:hover { background:var(--papel-2); }
+.ap-plano-pendientes button[aria-pressed="true"] { background:var(--accion-suave); }
+.ap-plano-ficha header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.ap-plano-ficha header p { margin:4px 0 0; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.ap-plano-ficha dl { display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 12px; margin:0; font-size:.88rem; }
+.ap-plano-ficha dt { color:var(--tinta-2); }
+.ap-plano-ficha dd { margin:0; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.ap-plano-ligas { display:flex; flex-wrap:wrap; gap:6px 14px; margin:0; font-size:.88rem; }
+@media (max-width: 900px) {
+  .ap-plano-cuerpo, .ap-plano-cuerpo:has(.ap-plano-ficha), .ap-plano-cuerpo[data-ubicar], .ap-plano-cuerpo[data-ubicar]:has(.ap-plano-ficha) { grid-template-columns:minmax(0,1fr); }
+  .ap-plano-barra .acciones { margin-left:0; }
+  .ap-plano-marco { max-height:65vh; }
+  .ap-plano-pendientes { max-height:30vh; }
+}
+/* Imprimir / PDF: solo la hoja, sus marcas y la leyenda, a ancho de página (sin zoom). */
+@media print {
+  body:has(.ap-plano-imprimible) *:not(:has(.ap-plano-imprimible), .ap-plano-imprimible, .ap-plano-imprimible *) { display:none !important; }
+  body:has(.ap-plano-imprimible) :has(.ap-plano-imprimible) { margin:0 !important; padding:0 !important; border:0 !important; box-shadow:none !important; background:none !important; display:block !important; max-width:none !important; width:auto !important; }
+  .ap-plano-marco { overflow:visible; max-height:none; border:0; background:none; }
+  .ap-plano-lienzo { width:100% !important; }
+  .ap-plano-marca { cursor:default; box-shadow:none; }
+  .ap-plano-leyenda button { border-color:var(--linea-fuerte); }
 }
