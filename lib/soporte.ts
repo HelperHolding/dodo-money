@@ -77,6 +77,7 @@ export type Ticket = {
   creado_por: string; creador: string; rol_creador: string; sucursal_id: string | null; sucursal: string | null;
   responsable: string | null; responsable_nombre: string | null; revision: number;
   creado_en: string; actualizado_en: string; cerrado_en: string | null; sin_leer: boolean;
+  agente_estado: string | null;
 };
 /** Una fila de hilo_ticket. */
 export type EntradaHilo = {

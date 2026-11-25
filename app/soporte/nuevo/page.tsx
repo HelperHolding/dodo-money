@@ -4,6 +4,8 @@ import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { rutaInterna, seccionDeRuta } from "@/lib/soporte";
 import { FormTicket } from "./FormTicket";
 
+export const maxDuration = 60;
+
 export default async function NuevoTicket({ searchParams }: { searchParams: Promise<{ desde?: string; ok?: string; error?: string }> }) {
   const p = await searchParams;
   const desde = rutaInterna(p.desde ?? "");
