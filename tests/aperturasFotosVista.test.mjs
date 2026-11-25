@@ -121,3 +121,25 @@ test('CSS de la celda Concepto no es global y usa el corte de tarjetas',()=>{
  assert.match(c,/@media\(max-width:640px\) \{\s*\.tabla-tarjetas td\.ap-celda-concepto/);
  assert.match(leer('app/aperturas/ListaConceptos.tsx'),/ap-celda-concepto/);
 });
+
+test('ListaConceptos: casillas items en formulario GET hacia la cotización, sin JS',()=>{
+ const s=leer('app/aperturas/ListaConceptos.tsx');
+ assert.match(s,/name="items"/);
+ assert.match(s,/method="get"/);
+ assert.match(s,/Solicitud de cotización/);
+ assert.match(s,/Incluir \$\{/);
+ assert.ok(!/^["']use client["']/.test(s));
+ assert.match(leer('app/aperturas/[id]/page.tsx'),/cotizar=\{vista==='compras'\?`\/aperturas\/\$\{id\}\/cotizacion`:undefined\}/);
+});
+
+test('Cotización imprimible: límite 150, window.print, columnas vacías y CSS de impresión',()=>{
+ const p=leer('app/aperturas/[id]/cotizacion/page.tsx');
+ assert.match(p,/150/);
+ assert.match(p,/Precio unitario/);
+ assert.match(p,/Tiempo de entrega/);
+ assert.match(p,/Elige al menos una partida en Equipo y compras/);
+ assert.match(p,/Precios sin IVA/);
+ assert.match(p,/Dodo Pizza México/);
+ assert.match(leer('app/aperturas/[id]/cotizacion/Imprimir.tsx'),/window\.print\(/);
+ assert.match(leer('app/globals.css'),/size:\s*letter landscape/);
+});

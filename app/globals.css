@@ -2597,3 +2597,24 @@ html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas i
   .tabla-tarjetas td.ap-celda-concepto { justify-content:flex-start; text-align:left; }
   .tabla-tarjetas td.ap-celda-concepto::before { content:none; }
 }
+
+/* HD-16 · Solicitud de cotización imprimible (se acota con .ap-cotizacion-imprimible para no tocar el plano) */
+.ap-cot-botones { margin:0 0 12px; }
+.ap-cotizacion-imprimible { display:grid; gap:12px; }
+.ap-cot-encabezado h1 { margin:0; font-size:1.3rem; }
+.ap-cot-encabezado p { margin:4px 0 0; color:var(--tinta-2); }
+.ap-cot-tabla { min-width:900px; }
+.ap-cot-tabla th, .ap-cot-tabla td { vertical-align:middle; }
+.ap-cot-foto { display:block; width:80px; height:80px; object-fit:contain; border-radius:var(--r-sm); border:1px solid var(--linea); background:var(--papel-2); }
+.ap-cot-vacia { min-width:110px; }
+.ap-cot-pie { margin:0; color:var(--tinta-2); font-size:.9rem; }
+@media print {
+  @page { size: letter landscape; margin: 10mm; }
+  body:has(.ap-cotizacion-imprimible) *:not(:has(.ap-cotizacion-imprimible), .ap-cotizacion-imprimible, .ap-cotizacion-imprimible *) { display:none !important; }
+  body:has(.ap-cotizacion-imprimible) :has(.ap-cotizacion-imprimible) { margin:0 !important; padding:0 !important; border:0 !important; box-shadow:none !important; background:none !important; display:block !important; max-width:none !important; width:auto !important; }
+  .ap-cotizacion-imprimible .tabla-contenedor { overflow:visible; }
+  .ap-cot-tabla { min-width:0; width:100%; font-size:10pt; }
+  .ap-cot-tabla thead { display:table-header-group; }
+  .ap-cot-tabla tr { break-inside:avoid; }
+  .ap-cot-tabla td, .ap-cot-tabla th { border:1px solid #999; }
+}
