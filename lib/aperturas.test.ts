@@ -13,9 +13,10 @@ test('aperturas: referencia por validar no infla el costo; precio desconocido qu
 });
 
 import {indicadoresApertura,grupoApertura} from './aperturas.ts';
-test('panel de apertura: avance solo de actividades aplicables, no de compras',()=>{
+test('panel de apertura: el avance es el global ponderado por bloque',()=>{
  const r=indicadoresApertura([item({tipo:'actividad',estado:'completado'}),item({tipo:'actividad',estado:'en_curso'}),item({tipo:'actividad',estado:'no_aplica'}),item({estado:'verificado'})],'2026-10-08');
- assert.equal(r.avance,50);assert.equal(r.terminadas,1);assert.equal(r.actividades.length,2);
+ // Todo cae en Compras (P4 / equipo): (1 + 1/3 + 1) / 3 = 0.78 → 78.
+ assert.equal(r.avance,78);assert.equal(r.terminadas,1);assert.equal(r.actividades.length,2);
  assert.equal(indicadoresApertura([],'2026-10-08').avance,null);
 });
 test('panel de apertura: recibe parcialmente sin inflar por excedentes ni referencias',()=>{
@@ -37,15 +38,15 @@ test('categorías de apertura: la obra no infla el equipo recibido',()=>{
  const r=indicadoresApertura([item({categoria:'equipo_cocina',cantidad:2,recibido:2,estado:'recibido'}),item({categoria:'pisos',cantidad:30,recibido:0,estado:'por_cotizar'})],'2026-11-02');
  assert.equal(r.unidades,2);assert.equal(r.recepcion,100);assert.equal(r.equipo.length,1);
 });
-test('categorías de apertura: avance por instalado o verificado, sin no aplica ni por validar',()=>{
+test('categorías de apertura: avance por puntos de etapa, sin no aplica ni por validar',()=>{
  const c=avanceCategorias([item({categoria:'iluminacion',estado:'instalado'}),item({categoria:'iluminacion',estado:'pedido'}),item({categoria:'iluminacion',estado:'no_aplica'}),item({categoria:'iluminacion',estado:'bloqueado'}),item({estado:'verificado'}),item({tipo:'referencia',estado:'cotizado'}),item({tipo:'actividad',estado:'completado'})]);
  const luz=c.find(x=>x.clave==='iluminacion')!;
- assert.equal(luz.conceptos,3);assert.equal(luz.listos,1);assert.equal(luz.porcentaje,33);assert.equal(luz.pedidos,1);assert.equal(luz.bloqueados,1);assert.equal(luz.obra,true);
+ assert.equal(luz.conceptos,3);assert.equal(luz.listos,1);assert.equal(luz.porcentaje,50/* instalado 1 + pedido 0.5 + bloqueado 0 = 1.5 / 3 */);assert.equal(luz.pedidos,1);assert.equal(luz.bloqueados,1);assert.equal(luz.obra,true);
  assert.deepEqual(c.map(x=>x.clave),['iluminacion',null]);
  assert.equal(esCategoria('pisos'),true);assert.equal(esCategoria('toString'),false);assert.equal(esCategoria(''),false);
 });
 import {checklistApertura} from './aperturas.ts';
-test('checklist de apertura: módulos por etapa, equipo por categoría y general promediado',()=>{
+test('checklist de apertura: módulos por etapa, equipo por categoría y general ponderado por bloque',()=>{
  const c=checklistApertura([
   item({id:'a1',tipo:'actividad',etapa:'P1',estado:'completado'}),item({id:'a2',tipo:'actividad',etapa:'P2',estado:'en_curso'}),item({id:'a3',tipo:'actividad',etapa:'P3',estado:'no_aplica'}),
   item({id:'t1',tipo:'tecnico',etapa:'P2',estado:'completado'}),item({id:'t2',tipo:'tecnico',etapa:'P2',estado:'bloqueado'}),
@@ -54,11 +55,14 @@ test('checklist de apertura: módulos por etapa, equipo por categoría y general
  ]);
  const [proyecto,compras,obra,apertura]=c.modulos;
  assert.deepEqual(proyecto.lineas.map(l=>[l.nombre,l.marca,l.listos,l.total]),[['Validaciones técnicas','bloqueado',1,2],['Horno','listo',1,1],['Horno','curso',0,1]]);
- assert.equal(proyecto.porcentaje,50);
+ // Proyecto: (1 + 1/3 + 1 + 0) / 4 = 0.58 → 58.
+ assert.equal(proyecto.porcentaje,58);
  assert.deepEqual(compras.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['equipo_cocina','curso',1,2],['sin','pendiente',0,1]]);
- assert.equal(compras.porcentaje,33);
+ // Compras: verificado 1 + pedido 0.5 + por cotizar 0 + referencia cotizada 0.25 = 1.75 / 4 → 44.
+ assert.equal(compras.porcentaje,44);
  assert.deepEqual(obra.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['pisos','listo',2,2]]);
- assert.equal(apertura.porcentaje,null);assert.equal(c.general,Math.round((50+33+100)/3));
+ // General: (0.20·0.583 + 0.35·0.4375 + 0.30·1) / 0.85 = 0.67 → 67 (Apertura vacía reparte su peso).
+ assert.equal(apertura.porcentaje,null);assert.equal(c.general,67);
  assert.deepEqual(checklistApertura([]).general,null);
  assert.deepEqual(proyecto.lineas[0].hijos,['t1','t2']);
  const con=checklistApertura([item({id:'a',tipo:'actividad',etapa:'P1',estado:'completado',categoria:'iluminacion'}),item({id:'b',tipo:'tecnico',etapa:'P2',estado:'en_curso',categoria:'iluminacion'}),item({id:'c',categoria:'iluminacion',estado:'instalado'})]);
@@ -97,9 +101,25 @@ test('checklist en vivo: gana la revisión más nueva y los números de Realtime
 });
 
 import {avancePorProyecto,cuentaRegresiva,ordenarProyectos} from './aperturas.ts';
-test('portada: avance por proyecto con la misma regla del resumen (no aplica fuera; completado o verificado cuentan)',()=>{
- const a=avancePorProyecto([{proyecto_id:'a',estado:'completado'},{proyecto_id:'a',estado:'verificado'},{proyecto_id:'a',estado:'en_curso'},{proyecto_id:'a',estado:'no_aplica'},{proyecto_id:'b',estado:'pendiente'}]);
- assert.deepEqual(a,{a:{terminados:2,total:3},b:{terminados:0,total:1}});
+test('portada: avance por proyecto con el global ponderado (no aplica fuera; listas = partidas con 1 punto)',()=>{
+ const x=(proyecto_id:string,tipo:ItemApertura['tipo'],etapa:ItemApertura['etapa'],estado:string)=>({proyecto_id,tipo,etapa,estado,categoria:null});
+ const a=avancePorProyecto([x('a','actividad','P1','completado'),x('a','equipo','P4','verificado'),x('a','actividad','P1','en_curso'),x('a','actividad','P1','no_aplica'),x('b','actividad','P1','pendiente')]);
+ // a: Proyecto (1 + 1/3) / 2 = 0.667 y Compras 1 → (0.20·0.667 + 0.35·1) / 0.55 = 0.88 → 88.
+ assert.deepEqual(a,{a:{listos:2,total:3,porcentaje:88},b:{listos:0,total:1,porcentaje:0}});
+});
+test('portada, checklist y avance general dan el mismo % para los mismos items',()=>{
+ const items=[
+  item({id:'a1',tipo:'actividad',etapa:'P1',estado:'completado'}),item({id:'a2',tipo:'actividad',etapa:'P2',estado:'por_cerrar'}),item({id:'a3',tipo:'actividad',etapa:'P6',estado:'en_curso'}),
+  item({id:'t1',tipo:'tecnico',etapa:'P5',estado:'en_curso'}),item({id:'t2',tipo:'tecnico',etapa:'P2',estado:'bloqueado'}),
+  item({categoria:'equipo_cocina',estado:'recibido'}),item({categoria:'equipo_cocina',estado:'pedido'}),item({estado:'por_cotizar'}),
+  item({categoria:'pisos',estado:'instalado'}),item({categoria:'iluminacion',estado:'aprobado'}),item({tipo:'referencia',estado:'cotizado'}),
+ ];
+ const g=avanceApertura(items).general;
+ assert.ok(g!==null&&g>0&&g<100);
+ assert.equal(checklistApertura(items).general,g);
+ assert.equal(avancePorProyecto(items).p.porcentaje,g);
+ const bloques=Object.fromEntries(avanceApertura(items).bloques.map(b=>[b.clave,b.porcentaje]));
+ for(const m of checklistApertura(items).modulos)assert.equal(m.porcentaje,bloques[m.clave],m.clave);
 });
 test('portada: cuenta regresiva según la ventana objetivo y el avance',()=>{
  const listo={terminados:5,total:5},falta={terminados:2,total:5};
@@ -117,14 +137,6 @@ test('portada: primero la apertura más próxima; las ya pasadas al final, la m�
  assert.deepEqual(orden,['proxima','lejana','reciente','vieja']);
 });
 
-import {porcentajeAvance} from './aperturas.ts';
-test('portada: porcentaje de avance entero, nunca 100 % si falta algo y sin dato si no hay actividades',()=>{
- assert.equal(porcentajeAvance({terminados:44,total:52}),85);
- assert.equal(porcentajeAvance({terminados:50,total:50}),100);
- assert.equal(porcentajeAvance({terminados:199,total:200}),99);
- assert.equal(porcentajeAvance({terminados:1,total:300}),0);
- assert.equal(porcentajeAvance({terminados:0,total:0}),null);
-});
 test('aperturas: atrasados usa el criterio de listo del Checklist y la fecha de inicio si no hay fin',()=>{
  const r=indicadoresApertura([
   item({id:'a',estado:'instalado',cantidad:1,recibido:1,fin:'2026-11-01'}),   // listo: no atrasado

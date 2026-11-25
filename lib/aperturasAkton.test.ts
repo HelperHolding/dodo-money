@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {diasVencido,fechaConcepto,notasConcepto,porEtapa,tonoConcepto,avanceComparado,diasParaApertura,esperadoItem,filasCronograma,indicadoresProyecto,lecturaApertura,textoDiasApertura,textoPts,type Concepto} from './aperturasAkton.ts';
 import type {ItemApertura} from './aperturas.ts';
 
-export const c=(d:Partial<Concepto>):Concepto=>({id:'i',nombre:'Tarea',tipo:'actividad',etapa:'P1',estado:'pendiente',inicio:null,fin:null,responsable:null,notas:null,...d});
+export const c=(d:Partial<Concepto>):Concepto=>({id:'i',nombre:'Tarea',tipo:'actividad',etapa:'P1',estado:'pendiente',inicio:null,fin:null,responsable:null,notas:null,categoria:null,...d});
 
 test('aperturas akton: esperado antes, durante y después del rango, contando hoy',()=>{
  const r={inicio:'2026-11-01',fin:'2026-11-10'};
@@ -27,6 +27,17 @@ test('aperturas akton: el avance comparado usa solo conceptos con fecha para la 
  assert.equal(a.conceptos,4);assert.equal(a.listos,2);assert.equal(a.real,50);
  assert.equal(a.conFecha,2);assert.equal(a.realConFecha,50);
  assert.equal(a.esperado,50);assert.equal(a.variacion,0);assert.equal(a.favorable,'si');
+});
+test('aperturas akton: real es el global ponderado y el real con fecha promedia puntos',()=>{
+ const a=avanceComparado([
+  c({id:'a',etapa:'P1',estado:'por_cerrar',inicio:'2026-11-01',fin:'2026-11-10'}),
+  c({id:'b',etapa:'P1',estado:'en_curso',inicio:'2026-11-01',fin:'2026-11-10'}),
+  c({id:'d',tipo:'equipo',etapa:'P4',estado:'recibido'}),
+ ],'2026-11-05');
+ // Real: Proyecto (2/3 + 1/3) / 2 = 0.5 y Compras 0.75 → (0.20·0.5 + 0.35·0.75) / 0.55 = 0.66 → 66.
+ assert.equal(a.real,66);assert.equal(a.listos,0);
+ // Con fecha: solo a y b → (2/3 + 1/3) / 2 = 50, contra 50 esperado.
+ assert.equal(a.realConFecha,50);assert.equal(a.esperado,50);assert.equal(a.variacion,0);
 });
 test('aperturas akton: tolerancia de 5 puntos',()=>{
  const items=(listos:number)=>Array.from({length:20},(_,n)=>c({id:`x${n}`,inicio:'2026-11-01',fin:'2026-11-10',estado:n<listos?'completado':'pendiente'}));

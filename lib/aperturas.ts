@@ -37,7 +37,7 @@ export function grupoApertura(i:Pick<ItemApertura,'estado'>) {
  return 'pendiente';
 }
 export const esObra = (i:ItemApertura) => i.categoria!==null&&CATEGORIAS[i.categoria]?.obra===true;
-// Avance por categoría: instalado o verificado sobre los conceptos aplicables (sin no aplica ni por validar).
+// Avance por categoría: promedio de puntos de etapa de los conceptos aplicables (sin no aplica ni por validar).
 export function avanceCategorias(items:ItemApertura[]) {
  const compras=items.filter(i=>(i.tipo==='equipo'||i.categoria!==null)&&i.estado!=='no_aplica'&&!(['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar'));
  const claves=[...Object.keys(CATEGORIAS) as CategoriaApertura[],null];
@@ -45,7 +45,7 @@ export function avanceCategorias(items:ItemApertura[]) {
   const de=compras.filter(i=>i.categoria===clave),listos=de.filter(i=>marcaItem(i)==='listo').length;
   return {clave,nombre:clave?CATEGORIAS[clave].nombre:'Sin categoría',hoja:clave?CATEGORIAS[clave].hoja:null,obra:clave?CATEGORIAS[clave].obra:false,conceptos:de.length,listos,
    pedidos:de.filter(i=>['aprobado','pedido','recibido_parcial','en_curso'].includes(i.estado)).length,recibidos:de.filter(i=>i.estado==='recibido').length,bloqueados:de.filter(i=>i.estado==='bloqueado').length,
-   porcentaje:de.length?Math.round(listos/de.length*100):null};
+   porcentaje:promedioPuntos(de)};
  }).filter(c=>c.conceptos>0);
 }
 export function indicadoresApertura(items:ItemApertura[],hoy:string) {
@@ -59,7 +59,7 @@ export function indicadoresApertura(items:ItemApertura[],hoy:string) {
  // Vencido: su última fecha (fin, o inicio si no hay fin) ya pasó y no está listo con el criterio del Checklist (equipo instalado es listo).
  const atrasados=aplicables.filter(i=>{const f=i.fin??i.inicio;return !!f&&f<hoy&&marcaItem(i)!=='listo';});
  const bloqueados=aplicables.filter(i=>i.estado==='bloqueado');
- return {actividades,equipo,terminadas,avance:actividades.length?Math.round(terminadas/actividades.length*100):null,unidades,recibidas,recepcion:unidades?Math.round(recibidas/unidades*100):null,sinCantidad:equipo.length-conCantidad.length,porValidar:aplicables.filter(i=>['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar').length,atrasados,bloqueados,alertas:aplicables.filter(i=>i.estado==='bloqueado'||atrasados.includes(i))};
+ return {actividades,equipo,terminadas,avance:avanceApertura(items).general,unidades,recibidas,recepcion:unidades?Math.round(recibidas/unidades*100):null,sinCantidad:equipo.length-conCantidad.length,porValidar:aplicables.filter(i=>['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar').length,atrasados,bloqueados,alertas:aplicables.filter(i=>i.estado==='bloqueado'||atrasados.includes(i))};
 }
 
 // Vista checklist: cuatro módulos por etapa. Primero los resúmenes por grupo (equipo por categoría, validaciones técnicas) y después cada actividad.
@@ -82,6 +82,9 @@ const PUNTOS_ACTIVIDAD: Record<string, number> = { en_curso: 1/3, por_cerrar: 2/
 /** Puntos de una partida (0 a 1) según su etapa: equipo por cotizado/comprado/entregado/instalado; actividades por pasos. */
 export const puntosItem = (i: Pick<ItemApertura,'tipo'|'estado'>) =>
   (i.tipo === 'equipo' || i.tipo === 'referencia' ? PUNTOS_EQUIPO : PUNTOS_ACTIVIDAD)[i.estado] ?? 0;
+/** Promedio de puntos en % entero (etapas del Gantt, categorías, filas del cronograma); null sin partidas. */
+export const promedioPuntos = (de: Pick<ItemApertura,'tipo'|'estado'>[]) =>
+  de.length ? Math.round(de.reduce((s, i) => s + puntosItem(i), 0) / de.length * 100) : null;
 /** Bloque del avance: lo de categoría de obra va a Obra aunque su etapa sea otra (igual que el checklist). */
 export function bloqueDe(i: Pick<ItemApertura,'tipo'|'etapa'|'categoria'>): BloqueApertura {
   if (i.categoria !== null && CATEGORIAS[i.categoria]?.obra === true) return 'obra';
@@ -125,6 +128,7 @@ const marcaGrupo = (de:Pick<ItemApertura,'tipo'|'estado'>[]):MarcaChecklist => {
 export function checklistApertura(items:Pick<ItemApertura,'id'|'nombre'|'tipo'|'etapa'|'estado'|'categoria'>[]) {
  // Misma base que los indicadores: sin no aplica, y el equipo y las referencias por validar quedan fuera.
  const aplicables=items.filter(i=>i.estado!=='no_aplica'&&!(['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar'));
+ const avance=avanceApertura(items);
  const modulos=MODULOS_CHECKLIST.map(m=>{
   const etapas:readonly string[]=m.etapas,lineas:LineaChecklist[]=[];
   // Lo que tiene categoría vive en el grupo de su categoría, no suelto en su etapa.
@@ -137,11 +141,11 @@ export function checklistApertura(items:Pick<ItemApertura,'id'|'nombre'|'tipo'|'
   }
   for(const i of aplicables.filter(i=>i.tipo==='actividad'&&i.categoria===null&&etapas.includes(i.etapa)))lineas.push({clave:i.id,nombre:i.nombre,marca:marcaItem(i),listos:marcaItem(i)==='listo'?1:0,total:1,destino:{item:i.id}});
   const listos=lineas.reduce((s,l)=>s+l.listos,0),total=lineas.reduce((s,l)=>s+l.total,0);
-  return {clave:m.clave,nombre:m.nombre,etapas:m.etapas,lineas,listos,total,porcentaje:total?Math.round(listos/total*100):null};
+  // El % del módulo es el de su bloque (promedio de puntos): el módulo y el bloque agrupan igual (bloqueDe).
+  return {clave:m.clave,nombre:m.nombre,etapas:m.etapas,lineas,listos,total,porcentaje:avance.bloques.find(b=>b.clave===m.clave)?.porcentaje??null};
  });
- // El general promedia los módulos para que las cientos de piezas de compras no tapen al resto.
- const conAvance=modulos.filter(m=>m.porcentaje!==null);
- return {modulos,general:conAvance.length?Math.round(conAvance.reduce((s,m)=>s+(m.porcentaje??0),0)/conAvance.length):null};
+ // El general es el global ponderado por bloque, para que las cientos de piezas de compras no tapen al resto.
+ return {modulos,general:avance.general};
 }
 
 // Cambio rápido de estado desde el checklist. Mismas reglas que actualizar_apertura_item, para pedir en la ventana lo que falte.
@@ -181,15 +185,15 @@ export function fusionarItems(actual:Record<string,ItemChecklist>,nuevos:ItemChe
  return cambio?r:actual;
 }
 
-/** Portada de Aperturas: actividades terminadas de las aplicables por proyecto (misma regla que resumenApertura). */
-export function avancePorProyecto(items:readonly {proyecto_id:string;estado:string}[]):Record<string,{terminados:number;total:number}>{
- const r:Record<string,{terminados:number;total:number}>={};
- for(const i of items){
-  if(i.estado==='no_aplica')continue;
-  const a=r[i.proyecto_id]??={terminados:0,total:0};
-  a.total++;if(i.estado==='completado'||i.estado==='verificado')a.terminados++;
- }
- return r;
+export type ItemAvancePortada = Pick<ItemApertura,'proyecto_id'|'tipo'|'etapa'|'estado'|'categoria'>;
+/** Portada de Aperturas: % global ponderado por proyecto (avanceApertura); listos = partidas con 1 punto de las que cuentan. */
+export function avancePorProyecto(items:readonly ItemAvancePortada[]):Record<string,{listos:number;total:number;porcentaje:number|null}>{
+ const por:Record<string,ItemAvancePortada[]>={};
+ for(const i of items)(por[i.proyecto_id]??=[]).push(i);
+ return Object.fromEntries(Object.entries(por).map(([id,de])=>{
+  const cuentan=de.filter(cuenta);
+  return [id,{listos:cuentan.filter(i=>puntosItem(i)===1).length,total:cuentan.length,porcentaje:avanceApertura(de).general}];
+ }));
 }
 
 const diasEntre=(desde:string,hasta:string)=>Math.round((Date.parse(`${hasta}T12:00:00Z`)-Date.parse(`${desde}T12:00:00Z`))/86_400_000);
@@ -208,11 +212,4 @@ export function ordenarProyectos<T extends {objetivo_desde:string;objetivo_hasta
  const vienen=lista.filter(p=>p.objetivo_hasta>=hoy).sort((a,b)=>a.objetivo_desde.localeCompare(b.objetivo_desde));
  const pasaron=lista.filter(p=>p.objetivo_hasta<hoy).sort((a,b)=>b.objetivo_hasta.localeCompare(a.objetivo_hasta));
  return [...vienen,...pasaron];
-}
-
-/** Porcentaje entero de actividades terminadas; 100 solo si de verdad está todo, y null si no hay actividades. */
-export function porcentajeAvance(a:{terminados:number;total:number}):number|null{
- if(!a.total)return null;
- const p=Math.round(a.terminados/a.total*100);
- return a.terminados<a.total?Math.min(99,p):100;
 }

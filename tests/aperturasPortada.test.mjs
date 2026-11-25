@@ -23,7 +23,11 @@ test('los estilos de la portada usan tokens y resaltan solo el borde', () => {
 
 test('cada tarjeta muestra el porcentaje de avance junto a la barra', () => {
   const p = leer('app/aperturas/page.tsx');
-  assert.match(p, /porcentajeAvance\(/);
+  // El % sale de avancePorProyecto (global ponderado por bloque), con lo que necesita para repartir por bloque.
+  assert.match(p, /a\.porcentaje/);
+  assert.match(p, /select\('proyecto_id,tipo,etapa,estado,categoria'\)/);
+  assert.match(p, /partidas listas/);
+  assert.doesNotMatch(p, /porcentajeAvance/);
   assert.match(p, /className="ap-tarjeta-porcentaje"/);
   assert.match(leer('app/marca.css'), /\.ap-tarjeta-porcentaje \{/);
 });
