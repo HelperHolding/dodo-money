@@ -2561,3 +2561,23 @@ html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas i
   .ap-plano-marca { cursor:default; box-shadow:none; }
   .ap-plano-leyenda button { border-color:var(--linea-fuerte); }
 }
+
+/* HD-16 · Fotos Dodo por partida: importador de matrices y foto real */
+.ap-dodo-barra { display:flex; justify-content:flex-end; margin:0 0 12px; }
+.ap-dodo-modal .formulario, .ap-dodo-resumen { display:grid; gap:14px; }
+.ap-dodo-cifras { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.ap-dodo-cifras > div { display:grid; gap:2px; padding:12px; border-radius:var(--r-md); background:var(--accion-tinte); border:1px solid var(--accion-suave-borde); text-align:center; }
+.ap-dodo-cifras > div:nth-child(2) { background:var(--cuadra-fondo); border-color:var(--cuadra-borde); }
+.ap-dodo-cifras > div:nth-child(3) { background:var(--neutro-fondo); border-color:var(--linea); }
+.ap-dodo-cifras strong { font-size:1.4rem; font-variant-numeric:tabular-nums; }
+.ap-dodo-cifras span { color:var(--tinta-2); font-size:.85rem; }
+.ap-dodo-sinfoto summary { cursor:pointer; font-weight:600; min-height:44px; display:flex; align-items:center; }
+.ap-dodo-sinfoto ul { list-style:none; margin:0; padding:0; display:grid; gap:6px; max-height:45dvh; overflow:auto; }
+.ap-dodo-sinfoto li { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:2px 10px; align-items:baseline; padding:8px 10px; border-radius:var(--r-md); background:var(--papel-2); }
+.ap-dodo-sinfoto li small { grid-column:1 / -1; color:var(--tinta-2); }
+.ap-dodo-clave { font-weight:700; font-variant-numeric:tabular-nums; }
+.ap-dodo-nombre { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ap-dodo-sinfoto code { font-size:.8rem; color:var(--info); }
+.ap-dodo-foto-real { display:grid; gap:10px; }
+.ap-dodo-foto-real img { display:block; max-width:100%; max-height:360px; object-fit:contain; border-radius:var(--r-md); border:1px solid var(--linea); background:var(--papel-2); }
+@media(max-width:600px) { .ap-dodo-sinfoto li { grid-template-columns:auto minmax(0,1fr); }.ap-dodo-sinfoto code { grid-column:1 / -1; } }
