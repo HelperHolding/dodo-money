@@ -27,14 +27,14 @@ Verificación: pruebas en `lib/aperturas.test.ts` cubren bases de los porcentaje
 
 `vista=calendario` muestra el mes (`mes=AAAA-MM`, por defecto el de hoy en México) con cada tarea como barra de su `inicio` a su `fin`. Con una sola fecha ocupa ese día; `no_aplica` no aparece. Las barras se acomodan en carriles por semana (`barrasSemana` en `lib/aperturasCalendario.ts`); a partir del quinto carril el día muestra «+n más». En celular se ve como tarjetas del mes.
 
-`color=etapa|categoria` elige cómo colorear. Los colores predeterminados viven en `COLORES_ETAPA` y `COLORES_CATEGORIA`; administración los cambia desde «Colores» y se guardan en `apertura_colores` (migración `20261109200000_aperturas_colores.sql`, función `guardar_color_apertura`). Vacío vuelve al predeterminado. Sin la migración, el calendario funciona con los predeterminados.
+Sin colores por etapa, categoría ni responsable (estilo Akton, `docs/diseno/estilo-akton.md`): las barras son grises, verdes si están listas y rojas si están vencidas o bloqueadas (`tonoConcepto` en `lib/aperturasAkton.ts`). Las personas se distinguen por iniciales en fichas grises. El parámetro viejo `color=` se ignora. La tabla `apertura_colores` y `guardar_color_apertura` quedan en la base sin uso.
 
 Con permiso de compras, el clic en un día programa una tarea (inicio ese día, fin elegido) y el clic en una barra cambia o quita sus fechas. Ambos usan `actualizar_apertura_item` con todos los demás campos del registro (`datosFechas`), así que queda en el historial.
 
-## Gantt (vista Roadmap)
+## Cronograma (vista `roadmap`)
 
 `vista=roadmap` muestra el cronograma de `app/aperturas/Gantt.tsx` en lugar de la lista anterior: una fila por etapa (P1–P7) con su barra de la primera a la última fecha de sus tareas, rellena según el avance. El avance de la etapa cuenta todos sus conceptos (actividades, equipo y validaciones) con el criterio del Checklist (`marcaItem`; sin no aplica ni equipo/referencias por validar). El general pondera por conceptos (`ganttEtapas` y `avanceGeneral` en `lib/aperturasGantt.ts`).
 
 La escala (`escalaGantt`) siempre cabe en el ancho, sin deslizar: semanas hasta ~4 meses y meses si dura más. Marca Hoy y la fecha objetivo de apertura (`objetivo_hasta`). Al dar clic en una etapa se despliega el Gantt de sus tareas, con barras por estado: listo, en curso, pendiente o bloqueado, y vencidas con contorno ámbar.
 
-Los colores son los de etapa del calendario (`apertura_colores` o, sin guardar, los pastel de `COLORES_ETAPA`). La letra del Gantt es DM Sans (`app/aperturas/fuenteGantt.ts`); el resto de la app sigue con Manrope y Archivo.
+El Cronograma muestra primero la tabla Akton por etapa (real, esperado a hoy y variación; ver `lib/aperturasAkton.ts`) y debajo el Gantt en grises: avance en gris oscuro, verde solo para tareas listas, rojo para vencidas o bloqueadas, Hoy en negro y la apertura objetivo en naranja. Usa la tipografía de la app.

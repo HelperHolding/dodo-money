@@ -95,7 +95,7 @@ test('aperturas akton: lectura con las tres conclusiones y en su orden',()=>{
  assert.equal(l[0].titulo,'Avance de 8 % contra 100 % esperado a hoy');
  // Empate en −100: desempata por clave de etapa (P3 antes que P5).
  assert.equal(l[0].texto,'Faltan 92 puntos. Las etapas más atrasadas: Permisos y contratación (−100 pts) y Obra e instalaciones (−100 pts).');
- assert.equal(l[1].titulo,'11 tareas vencidas y 1 bloqueada');
+ assert.equal(l[1].titulo,'11 tareas vencidas, 1 también bloqueada');
  // Primero las de más días de atraso; Licencia (6 días) queda dentro de «y 8 más».
  assert.equal(l[1].texto,'Las más urgentes: Obra 0 (vencida hace 14 días), Obra 1 (vencida hace 14 días), Obra 2 (vencida hace 14 días) y 8 más.');
  assert.equal(l[2].titulo,'Compras: $0.00 estimado de $5,000.00 de presupuesto');
@@ -165,4 +165,17 @@ test('aperturas akton: agrupar por etapa en orden y sin etapas vacías',()=>{
  const g=porEtapa([c({id:'a',etapa:'P5'}),c({id:'b',etapa:'P1'}),c({id:'d',etapa:'P5'})]);
  assert.deepEqual(g.map(x=>[x.clave,x.items.map(i=>i.id)]),[['P1',['b']],['P5',['a','d']]]);
  assert.equal(g[0].nombre,'Local y alcance');
+});
+test('aperturas akton: vencida y bloqueada a la vez cuenta una sola vez en el título',()=>{
+ const items=[it({id:'a',estado:'bloqueado',fin:'2026-11-20'})];
+ const l=lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},items,'2026-11-24'),filasCronograma(items,'2026-11-24'));
+ assert.equal(l.find(x=>/vencida|bloqueada/.test(x.titulo))!.titulo,'1 tarea vencida, también bloqueada');
+ const m=[it({id:'a',estado:'bloqueado',fin:'2026-11-20'}),it({id:'b',estado:'bloqueado',fin:'2026-12-20'})];
+ const l2=lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},m,'2026-11-24'),filasCronograma(m,'2026-11-24'));
+ assert.equal(l2.find(x=>/vencida|bloqueada/.test(x.titulo))!.titulo,'1 tarea vencida, también bloqueada, y 1 bloqueada más');
+});
+test('aperturas akton: títulos de vencidas y bloqueadas sin traslape',()=>{
+ const titulo=(m:ItemApertura[])=>lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},m,'2026-11-24'),filasCronograma(m,'2026-11-24')).find(x=>/vencida|bloqueada/.test(x.titulo))!.titulo;
+ assert.equal(titulo([it({id:'a',fin:'2026-11-20'}),it({id:'b',estado:'bloqueado'})]),'1 tarea vencida y 1 bloqueada');
+ assert.equal(titulo([it({id:'a',estado:'bloqueado'}),it({id:'b',estado:'bloqueado'})]),'2 bloqueadas');
 });

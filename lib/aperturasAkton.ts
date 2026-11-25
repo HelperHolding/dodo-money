@@ -125,14 +125,18 @@ export function lecturaApertura(k:IndicadoresProyecto,filas:FilaCronograma[]):Le
  }
  const vencidas=filas.flatMap(f=>f.vencidas),bloqueadas=filas.flatMap(f=>f.bloqueadas);
  if(vencidas.length||bloqueadas.length){
-  const partes=[vencidas.length?plural(vencidas.length,'tarea vencida','tareas vencidas'):'',bloqueadas.length?plural(bloqueadas.length,'bloqueada','bloqueadas'):''].filter(Boolean);
+  // Un concepto vencido y bloqueado cuenta una vez: va con las vencidas y se aclara que también está bloqueado.
+  const idsVencidas=new Set(vencidas.map(v=>v.item.id)),ambas=bloqueadas.filter(b=>idsVencidas.has(b.id)).length,soloBloq=bloqueadas.length-ambas;
+  let titulo=vencidas.length?plural(vencidas.length,'tarea vencida','tareas vencidas'):'';
+  if(ambas)titulo+=vencidas.length===1?', también bloqueada':`, ${ambas} también ${ambas===1?'bloqueada':'bloqueadas'}`;
+  if(soloBloq)titulo+=titulo?`${ambas?',':''} y ${plural(soloBloq,'bloqueada','bloqueadas')}${ambas?' más':''}`:plural(soloBloq,'bloqueada','bloqueadas');
   const urgentes=new Map<string,string>();
   for(const v of [...vencidas].sort((x,y)=>y.diasVencida!-x.diasVencida!)){
    const b=v.item.estado==='bloqueado'?'bloqueada, ':'';urgentes.set(v.item.id,`${v.item.nombre} (${b}vencida hace ${plural(v.diasVencida!,'día','días')})`);
   }
   for(const b of bloqueadas)if(!urgentes.has(b.id))urgentes.set(b.id,`${b.nombre} (bloqueada)`);
   const lista=[...urgentes.values()].slice(0,3);
-  l.push({titulo:partes.join(' y '),texto:`Las más urgentes: ${lista.join(', ')}${urgentes.size>3?` y ${urgentes.size-3} más`:''}.`});
+  l.push({titulo,texto:`Las más urgentes: ${lista.join(', ')}${urgentes.size>3?` y ${urgentes.size-3} más`:''}.`});
  }
  if(k.compras.presupuesto!==null){
   const c=k.compras;
