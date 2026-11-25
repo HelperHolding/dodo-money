@@ -43,9 +43,7 @@ export function Gantt({proyecto:p,items,hoy,pendientes={},personas=[],volverA=''
  const escala=escalaGantt([...etapas.flatMap(e=>[e.desde,e.hasta]),p.objetivo_desde,p.objetivo_hasta,hoy]);
  const conFechas=etapas.some(e=>e.desde);
  return <section className="akton-tabla-marco ap-gantt">
-  <div className="ap-gantt-cabecera">
-   <div><h2 className="akton-titulo">Gantt</h2><p className="ap-nota">Apertura objetivo: {fechaTexto(p.objetivo_hasta)} · da clic en una etapa para ver sus tareas.</p></div>
-    </div>
+  <div><h2 className="akton-titulo">Gantt</h2><p className="ap-nota">Apertura objetivo: {fechaTexto(p.objetivo_hasta)} · da clic en una etapa para ver sus tareas.</p></div>
   <ul className="ap-gantt-leyenda">
    <li><span className="ap-gantt-ley-hoy"/>Hoy</li><li><span className="ap-gantt-ley-objetivo"/>Apertura objetivo</li>
    <li><span className="ap-gantt-ley-tarea" data-marca="listo"/>{MARCAS.listo.texto}</li><li><span className="ap-gantt-ley-tarea" data-marca="curso"/>{MARCAS.curso.texto}</li>

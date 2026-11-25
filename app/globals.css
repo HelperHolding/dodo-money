@@ -1009,23 +1009,19 @@ input.fuera-rango { border-color: var(--alerta); background: var(--alerta-fondo)
 .ap-indicadores progress, .ap-roadmap progress { width:100%; height:8px; border:0; border-radius: var(--r-sm); overflow:hidden; accent-color:var(--dato-azul); background:var(--dato-pista); }
 .ap-indicadores progress::-webkit-progress-bar, .ap-roadmap progress::-webkit-progress-bar { background:var(--dato-pista); border-radius: var(--r-sm); }
 .ap-indicadores progress::-webkit-progress-value, .ap-roadmap progress::-webkit-progress-value { background:var(--ap-color,var(--dato-azul)); border-radius: var(--r-sm); }
-.ap-categorias { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; margin-top:12px; }
-.ap-categorias .ap-indicador { padding:16px; gap:8px; }.ap-categorias .ap-indicador[data-activa="true"] { border-color:var(--dato-azul); box-shadow:var(--sombra-1); }
-.ap-categorias progress { width:100%; height:8px; border:0; border-radius: var(--r-sm); overflow:hidden; accent-color:var(--dato-azul); background:var(--dato-pista); }
-.ap-categorias progress::-webkit-progress-bar { background:var(--dato-pista); border-radius: var(--r-sm); }.ap-categorias progress::-webkit-progress-value { background:var(--dato-azul); border-radius: var(--r-sm); }
 @media(max-width:520px) { .ap-categorias { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }.ap-categorias .ap-indicador { padding:12px; } }
 .ap-check-encabezado { display:flex; align-items:center; gap:20px; flex-wrap:wrap; margin-bottom:16px; }
 .ap-check-encabezado h2 { margin:0 0 4px; }
 .ap-check-leyenda { display:flex; flex-wrap:wrap; gap:14px; margin:8px 0 0; color:var(--tinta-2); font-size:.85rem; }
 .ap-check-conexion { margin:6px 0 0; font-size:.8rem; color:var(--tinta-2); display:flex; align-items:center; gap:6px; }
 .ap-check-conexion::before { content:''; width:8px; height:8px; border-radius:50%; background:var(--tinta-3); flex:0 0 8px; }
-.ap-check-conexion[data-conexion="en_vivo"]::before { background:var(--cuadra); }.ap-check-conexion[data-conexion="sin_conexion"]::before { background:var(--ambar); }
+.ap-check-conexion[data-conexion="en_vivo"]::before { background:var(--cuadra); }.ap-check-conexion[data-conexion="sin_conexion"]::before { background:var(--alerta); }
 .ap-check-leyenda > span { display:inline-flex; align-items:center; gap:6px; }
 .ap-check-modulos { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
 .ap-check-modulo { display:flex; flex-direction:column; gap:8px; border:1px solid var(--linea); border-radius: var(--r-md); padding:18px; background:var(--superficie); min-width:0; }
 .ap-check-modulo h3 { margin:0; font-size:1rem; }
-.ap-check-modulo progress { width:100%; height:8px; border:0; border-radius: var(--r-sm); overflow:hidden; accent-color:var(--cuadra); background:var(--dato-pista); }
-.ap-check-modulo progress::-webkit-progress-bar { background:var(--dato-pista); border-radius: var(--r-sm); }.ap-check-modulo progress::-webkit-progress-value { background:var(--cuadra); border-radius: var(--r-sm); }
+.ap-check-modulo progress { width:100%; height:8px; border:0; border-radius: var(--r-sm); overflow:hidden; accent-color:var(--tinta-2); background:var(--dato-pista); }
+.ap-check-modulo progress::-webkit-progress-bar { background:var(--dato-pista); border-radius: var(--r-sm); }.ap-check-modulo progress::-webkit-progress-value { background:var(--tinta-2); border-radius: var(--r-sm); }
 .ap-check-lista { list-style:none; padding:0; margin:4px 0 0; display:flex; flex-direction:column; }
 .ap-check-linea { display:flex; align-items:center; gap:10px; padding:7px 0; border-top:1px solid var(--linea); color:var(--tinta); text-decoration:none; font-size:.9rem; min-width:0; }
 .ap-check-linea > :nth-child(2) { flex:1; min-width:0; overflow-wrap:anywhere; }
@@ -1042,25 +1038,12 @@ button.ap-check-marca:hover { box-shadow:0 0 0 3px var(--dato-pista); }
 .ap-estados input { accent-color:var(--cuadra); margin:0; }
 .ap-check-marca { display:inline-flex; align-items:center; justify-content:center; flex:0 0 20px; width:20px; height:20px; border-radius:5px; border:2px solid var(--tinta-3); font-size:.75rem; font-weight:700; line-height:1; color:var(--superficie); }
 .ap-check-marca[data-marca="listo"] { background:var(--cuadra); border-color:var(--cuadra); }
-.ap-check-marca[data-marca="curso"] { border-color:var(--ambar); color:var(--ambar); }
+.ap-check-marca[data-marca="curso"] { border-color:var(--tinta-3); color:var(--tinta-3); }
 .ap-check-marca[data-marca="bloqueado"] { background:var(--alerta); border-color:var(--alerta); }
 
 @media(max-width:520px) { .ap-check-modulos { grid-template-columns:1fr; gap:12px; }.ap-check-modulo { padding:14px; } }
-.ap-panel { border:1px solid var(--linea); border-radius: var(--r-md); padding:24px; min-width:0; background:var(--superficie); }
-.ap-panel h2 { font-size:1.1rem; margin-bottom:20px; }
-.ap-dona { position:relative; width:150px; height:150px; flex:0 0 150px; }
-.ap-dona svg { width:100%; height:100%; }
-.ap-dona > div { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
-.ap-dona strong { font-size:1.8rem; }.ap-dona small { color:var(--tinta-2); font-size:.8rem; }
-.ap-punto { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 .ap-titulo { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
 .ap-titulo h2 { margin:0; }.ap-titulo > span { font-size:.85rem; color:var(--tinta-2); }
-.ap-roadmap { padding:0; margin:24px 0 0; list-style:none; display:flex; flex-direction:column; gap:0; }
-.ap-roadmap li { --ap-color:var(--tinta-3); display:grid; grid-template-columns:36px minmax(0,1fr); gap:16px; padding:0 0 24px; position:relative; }
-.ap-roadmap li:not(:last-child)::before { content:''; position:absolute; top:36px; bottom:0; left:17px; width:2px; background:var(--dato-pista); }
-.ap-roadmap li:last-child { padding-bottom:0; }.ap-roadmap li[data-tono="verde"] { --ap-color:var(--cuadra); }.ap-roadmap li[data-tono="azul"] { --ap-color:var(--dato-azul); }.ap-roadmap li[data-tono="rojo"] { --ap-color:var(--alerta); }.ap-roadmap li[data-tono="ambar"] { --ap-color:var(--ambar); }
-.ap-numero { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; color:var(--ap-color); border:2px solid var(--ap-color); font-weight:700; background:var(--campo); z-index:1; }
-.ap-roadmap a { color:var(--tinta); font-weight:600; text-decoration:none; }.ap-roadmap a:hover { text-decoration:underline; }.ap-roadmap progress { margin:12px 0 8px; accent-color:var(--ap-color); }
 .ap-estado { display:inline-block; padding:4px 9px; border-radius: var(--r-sm); font-size:.85rem; background:var(--dato-pista); color:var(--neutro-texto); }
 .ap-estado[data-tono="bloqueado"] { background:var(--alerta-fondo); color:var(--alerta-texto); }.ap-estado[data-tono="en_curso"] { background:var(--info-fondo); color:var(--info); }.ap-estado[data-tono="terminado"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); }.ap-estado[data-tono="recibido"] { background:var(--turquesa-fondo); color:var(--turquesa); }
 @media(max-width:1100px) { .ap-indicadores { grid-template-columns:repeat(2,minmax(0,1fr)); } .ap-graficas { grid-template-columns:1fr; } }
@@ -2068,7 +2051,7 @@ body { background: var(--papel-2); }
 .ap-cal-selector a[aria-current] { background:var(--tinta); color:var(--superficie); font-weight:600; }
 .ap-cal-leyenda { display:flex; flex-wrap:wrap; gap:6px 16px; list-style:none; padding:0; margin:14px 0 6px; font-size:.85rem; color:var(--tinta-2); }
 .ap-cal-leyenda li { display:inline-flex; align-items:center; gap:6px; }
-.ap-cal-leyenda span { width:12px; height:12px; border-radius:3px; flex:0 0 12px; }
+.ap-cal-leyenda .ap-cal-muestra { width:14px; height:10px; border-radius:2px; flex:0 0 14px; }
 .ap-cal-rejilla { margin-top:12px; border:1px solid var(--linea); border-radius:var(--r-md); overflow:hidden; }
 .ap-cal-dias, .ap-cal-semana { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
 .ap-cal-dias span { padding:8px; font-size:.8rem; font-weight:600; color:var(--tinta-2); border-bottom:1px solid var(--linea); }
@@ -2082,7 +2065,6 @@ body { background: var(--papel-2); }
 .ap-cal-tarea, .ap-cal-mas { position:relative; z-index:1; margin:0 4px; min-width:0; border:0; border-radius:5px; padding:0 8px; font:inherit; font-size:.78rem; font-weight:600; line-height:22px; height:22px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
 .ap-cal-tarea[data-antes] { margin-left:0; border-top-left-radius:0; border-bottom-left-radius:0; }
 .ap-cal-tarea[data-despues] { margin-right:0; border-top-right-radius:0; border-bottom-right-radius:0; }
-.ap-cal-tarea[data-listo] { opacity:.55; text-decoration:line-through; }
 .ap-cal-tarea:hover, .ap-cal-tarea:focus-visible { filter:brightness(1.08); outline:2px solid var(--tinta); outline-offset:1px; }
 .ap-cal-mas { background:transparent; color:var(--tinta-2); font-weight:500; }
 .ap-cal-mas:hover { color:var(--tinta); text-decoration:underline; }
@@ -2092,11 +2074,6 @@ body { background: var(--papel-2); }
 .ap-cal-agenda small, .ap-cal-lista small { color:var(--tinta-2); font-size:.82rem; }
 .ap-cal-sub { font-size:1rem; margin:18px 0 6px; }
 .ap-cal-modal select[size] { width:100%; }
-.ap-cal-colores { list-style:none; padding:0; margin:8px 0 0; display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px 16px; }
-.ap-cal-colores li { display:flex; align-items:center; gap:10px; min-width:0; }
-.ap-cal-colores input[type=color] { width:36px; height:30px; padding:0; border:1px solid var(--linea); border-radius:6px; background:none; cursor:pointer; flex:0 0 36px; }
-.ap-cal-colores label { flex:1; min-width:0; font-size:.9rem; }
-.ap-cal-colores button { border:0; background:none; color:var(--dato-azul); font:inherit; font-size:.8rem; cursor:pointer; padding:0; }
 @media (max-width:700px) { .ap-cal-rejilla { display:none; } .ap-cal-agenda { display:block; margin-top:12px; } }
 
 /* Calendario por responsable (HD-7/HD-8): filtros, iniciales con color, cuadros del mes y el día en grande. */
@@ -2126,15 +2103,11 @@ body { background: var(--papel-2); }
 .ap-dia-grupos { display:grid; gap:4px; }
 .ap-dia-tarjetas { list-style:none; padding:0; margin:6px 0 0; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:8px; }
 .ap-dia-tarjeta { display:flex; flex-direction:column; gap:6px; padding:10px 12px; border:1px solid var(--linea); border-left:6px solid; border-radius:var(--r-md); background:var(--superficie); min-width:0; }
-.ap-dia-tarjeta[data-listo] .ap-dia-nombre { text-decoration:line-through; opacity:.7; }
+.ap-dia-tarjeta[data-tono="listo"] .ap-dia-nombre { text-decoration:line-through; opacity:.7; }
 .ap-dia-nombre { font-weight:700; color:var(--tinta); overflow-wrap:anywhere; }
 .ap-dia-datos { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; }
 .ap-dia-datos small { color:var(--tinta-2); font-size:.82rem; }
 .ap-momento { display:inline-block; padding:3px 8px; border-radius:999px; font-size:.78rem; font-weight:600; background:var(--dato-pista); color:var(--tinta); }
-.ap-momento[data-momento=empieza] { background:#d7ebc4; color:#2f4a1c; }
-.ap-momento[data-momento=continua] { background:#c9ddf5; color:#1e3a5f; }
-.ap-momento[data-momento=termina] { background:#ffd2bd; color:#6b2e12; }
-.ap-momento[data-momento=solo] { background:#ddd0f5; color:#3d2a66; }
 .ap-dia-acciones { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:.88rem; }
 .ap-dia-acciones .boton-texto { border:0; background:none; color:var(--dato-azul); font:inherit; cursor:pointer; padding:0; }
 .ap-dia-programar { margin-top:18px; border-top:1px solid var(--linea); padding-top:10px; }
@@ -2180,7 +2153,7 @@ body { background: var(--papel-2); }
 .ap-gantt-avisos em { font-style:normal; font-size:.72rem; font-weight:700; color:var(--alerta-texto); }
 .ap-gantt-barra { position:absolute; top:6px; height:18px; min-width:6px; box-sizing:border-box; border-radius:3px; overflow:hidden; background:var(--dato-pista); z-index:1; }
 .ap-gantt-barra > i { position:absolute; inset:0 auto 0 0; background:var(--tinta-2); }
-.ap-gantt-barra > span { position:absolute; right:8px; top:0; line-height:18px; font-size:.75rem; font-weight:700; color:var(--blanco); mix-blend-mode:difference; }
+.ap-gantt-barra > span { position:absolute; right:8px; top:0; line-height:18px; font-size:.75rem; font-weight:700; color:var(--tinta); text-shadow:0 0 2px var(--superficie), 0 0 2px var(--superficie); }
 .ap-gantt-fuera { position:absolute; top:6px; line-height:18px; font-size:.75rem; font-weight:700; color:var(--tinta); z-index:1; white-space:nowrap; }
 .ap-gantt-sin { position:absolute; top:6px; left:0; line-height:18px; font-size:.8rem; color:var(--tinta-3); }
 .ap-gantt-tareas { padding:0 0 10px; }
@@ -2190,7 +2163,7 @@ body { background: var(--papel-2); }
 .ap-gantt-pendiente { font-size:.75rem; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--papel-2); color:var(--tinta-2); text-decoration:none; }
 .ap-gantt-pendiente[data-estado="en_curso"], .ap-gantt-pendiente[data-estado="en_revision"] { background:var(--papel-2); color:var(--tinta); }
 .ap-gantt-pendiente[data-estado="hecho"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); }
-.ap-gantt-asignar summary { font-size:.78rem; font-weight:600; color:var(--accion); cursor:pointer; list-style:none; }
+.ap-gantt-asignar summary { font-size:.78rem; font-weight:600; color:var(--tinta-2); cursor:pointer; list-style:none; }
 .ap-gantt-asignar summary::-webkit-details-marker { display:none; }
 .ap-gantt-asignar[open] { flex-basis:100%; padding:8px 10px; border:1px solid var(--linea); border-radius:var(--r-md); background:var(--superficie); }
 .ap-gantt-asignar-form { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px 12px; margin:8px 0 4px; }
@@ -2361,7 +2334,7 @@ body { background: var(--papel-2); }
  .ap-crono-tabla thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
  .ap-crono-tabla, .ap-crono-tabla tbody, .ap-crono-tabla tr, .ap-crono-tabla td { display:block; width:100%; }
  .ap-crono-tabla tr { border:1px solid var(--linea); border-radius:var(--r-md); padding:8px 12px; margin-bottom:10px; background:var(--superficie); }
- .ap-crono-tabla tr.akton-subtotal { background:var(--accion-tinte); }
+ .ap-crono-tabla tr.akton-subtotal { background:var(--akton-durazno); }
  .ap-crono-tabla td { border:0; padding:4px 0; display:flex; justify-content:space-between; align-items:baseline; gap:12px; text-align:right; min-width:0; }
  .ap-crono-tabla td::before { content:attr(data-label); font-weight:700; font-size:.82rem; color:var(--tinta-2); text-align:left; flex:none; }
  .ap-crono-tabla td:first-child { display:block; text-align:left; min-width:0; }
@@ -2411,3 +2384,28 @@ body { background: var(--papel-2); }
 .pagos-tabla td { padding-top: 6px; padding-bottom: 6px; line-height: 1.35; }
 .pagos-tabla .boton { padding: 3px 8px; min-height: 0; font-size: 0.75rem; }
 .pagos-tabla .pagos-grupo th { padding-top: 6px; padding-bottom: 6px; }
+
+/* Listas Akton de aperturas. */
+.ap-lista-sub { display:block; color:var(--tinta-2); font-size:.8rem; }
+.akton-tabla tr[aria-current] td { background:var(--papel-2); }
+.ap-check-general { display:flex; flex-direction:column; margin:0; }
+.ap-check-general strong { font-size:1.6rem; font-variant-numeric:tabular-nums; }
+.ap-check-general span { color:var(--tinta-2); font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+
+/* Calendario Akton: gris; verde = listo, rojo = vencido o bloqueado. Personas por iniciales, sin color. */
+.ap-cal-tarea { background:var(--papel-2); color:var(--tinta); box-shadow:inset 0 0 0 1px var(--linea-fuerte); }
+.ap-cal-tarea[data-tono="listo"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); box-shadow:inset 0 0 0 1px var(--cuadra); }
+.ap-cal-tarea[data-tono="alerta"] { background:var(--alerta-fondo); color:var(--alerta-texto); box-shadow:inset 0 0 0 1px var(--alerta); }
+.ap-cal-agenda li button, .ap-dia-tarjeta { border-left-color:var(--linea-fuerte); }
+.ap-cal-agenda li button[data-tono="listo"], .ap-dia-tarjeta[data-tono="listo"] { border-left-color:var(--cuadra); }
+.ap-cal-agenda li button[data-tono="alerta"], .ap-dia-tarjeta[data-tono="alerta"] { border-left-color:var(--alerta); }
+.ap-cal-chip { background:var(--papel-2); color:var(--tinta); box-shadow:inset 0 0 0 1px var(--linea-fuerte); }
+.ap-cal-muestra { display:inline-block; border:1px solid var(--linea-fuerte); background:var(--papel-2); box-sizing:border-box; }
+.ap-cal-muestra[data-tono="listo"] { background:var(--cuadra-fondo); border-color:var(--cuadra); }
+.ap-cal-muestra[data-tono="alerta"] { background:var(--alerta-fondo); border-color:var(--alerta); }
+.ap-estado[data-tono="normal"] { background:var(--dato-pista); color:var(--neutro-texto); }
+.ap-estado[data-tono="listo"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); }
+.ap-estado[data-tono="alerta"] { background:var(--alerta-fondo); color:var(--alerta-texto); }
+/* En las tablas de aperturas los enlaces van en negro: el naranja es solo para lo destacado. */
+.ap-tabla a { color:var(--tinta); text-decoration:underline; text-decoration-color:var(--linea-fuerte); text-underline-offset:2px; }
+.ap-tabla a:hover { text-decoration-color:var(--tinta); }

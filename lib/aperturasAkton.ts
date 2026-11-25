@@ -54,9 +54,30 @@ export function diasParaApertura(objetivo:string,hoy:string,todoListo:boolean):D
 export type TareaCronograma = {item:Concepto;desde:string;hasta:string;diasVencida:number|null};
 export type FilaCronograma = {clave:keyof typeof ETAPAS;nombre:string;avance:Avance;desde:string|null;hasta:string|null;tareas:TareaCronograma[];sinFecha:number;bloqueadas:Concepto[];vencidas:TareaCronograma[];notas:string[]};
 
-// Listo con el criterio del Checklist: equipo instalado también cuenta, así no sale como vencido.
-const terminada=(i:Concepto)=>marcaItem(i)==='listo';
 const plural=(n:number,uno:string,varios:string)=>`${n} ${n===1?uno:varios}`;
+
+// Fecha que se muestra de un concepto: la misma con la que se decide si está vencido (fin, o inicio si no hay fin).
+export const fechaConcepto=(i:Pick<Concepto,'inicio'|'fin'>)=>rangoItem(i)?.hasta??null;
+export type TonoConcepto = 'listo'|'alerta'|'normal';
+// Días que lleva vencido un concepto aplicable y no listo (criterio del Checklist: equipo instalado es listo); null si no está vencido.
+export function diasVencido(i:Pick<Concepto,'tipo'|'estado'|'inicio'|'fin'>,hoy:string):number|null {
+ if(i.estado==='no_aplica'||marcaItem(i)==='listo')return null;
+ const r=rangoItem(i);return r&&r.hasta<hoy?diasEntre(r.hasta,hoy):null;
+}
+export function tonoConcepto(i:Pick<Concepto,'tipo'|'estado'|'inicio'|'fin'>,hoy:string):TonoConcepto {
+ if(marcaItem(i)==='listo')return 'listo';
+ return i.estado==='bloqueado'||diasVencido(i,hoy)!==null?'alerta':'normal';
+}
+export function notasConcepto(i:Pick<Concepto,'tipo'|'estado'|'inicio'|'fin'|'notas'>,hoy:string):string[] {
+ const n:string[]=[],d=diasVencido(i,hoy);
+ if(i.estado==='bloqueado')n.push(i.notas?.trim()?`Bloqueada: ${i.notas.trim()}`:'Bloqueada');
+ if(d!==null)n.push(`Vencida hace ${plural(d,'día','días')}`);
+ if(i.tipo==='referencia')n.push('Referencia / lista de apoyo');
+ return n;
+}
+export function porEtapa<T extends Pick<Concepto,'etapa'>>(items:T[]) {
+ return (Object.keys(ETAPAS) as (keyof typeof ETAPAS)[]).map(clave=>({clave,nombre:ETAPAS[clave],items:items.filter(i=>i.etapa===clave)})).filter(g=>g.items.length>0);
+}
 function listaCorta(nombres:string[]) {
  if(nombres.length<=2)return nombres.join(' y ');
  return `${nombres.slice(0,2).join(', ')} y ${nombres.length-2} más`;
@@ -66,7 +87,7 @@ export function filasCronograma(items:Concepto[],hoy:string):FilaCronograma[] {
  return (Object.keys(ETAPAS) as (keyof typeof ETAPAS)[]).map(clave=>{
   const de=items.filter(i=>i.etapa===clave&&cuentaEnAvance(i));
   const tareas=de.flatMap(item=>{const r=rangoItem(item);if(!r)return [];
-   return [{item,desde:r.desde,hasta:r.hasta,diasVencida:r.hasta<hoy&&!terminada(item)?diasEntre(r.hasta,hoy):null}];})
+   return [{item,desde:r.desde,hasta:r.hasta,diasVencida:diasVencido(item,hoy)}];})
    .sort((a,b)=>a.desde.localeCompare(b.desde)||a.hasta.localeCompare(b.hasta)||a.item.nombre.localeCompare(b.item.nombre));
   const vencidas=tareas.filter(t=>t.diasVencida!==null).sort((a,b)=>b.diasVencida!-a.diasVencida!||a.item.nombre.localeCompare(b.item.nombre));
   const bloqueadas=de.filter(i=>i.estado==='bloqueado');
@@ -106,14 +127,18 @@ export function lecturaApertura(k:IndicadoresProyecto,filas:FilaCronograma[]):Le
  }
  const vencidas=filas.flatMap(f=>f.vencidas),bloqueadas=filas.flatMap(f=>f.bloqueadas);
  if(vencidas.length||bloqueadas.length){
-  const partes=[vencidas.length?plural(vencidas.length,'tarea vencida','tareas vencidas'):'',bloqueadas.length?plural(bloqueadas.length,'bloqueada','bloqueadas'):''].filter(Boolean);
+  // Un concepto vencido y bloqueado cuenta una vez: va con las vencidas y se aclara que también está bloqueado.
+  const idsVencidas=new Set(vencidas.map(v=>v.item.id)),ambas=bloqueadas.filter(b=>idsVencidas.has(b.id)).length,soloBloq=bloqueadas.length-ambas;
+  let titulo=vencidas.length?plural(vencidas.length,'tarea vencida','tareas vencidas'):'';
+  if(ambas)titulo+=vencidas.length===1?', también bloqueada':`, ${ambas} también ${ambas===1?'bloqueada':'bloqueadas'}`;
+  if(soloBloq)titulo+=titulo?`${ambas?',':''} y ${plural(soloBloq,'bloqueada','bloqueadas')}${ambas?' más':''}`:plural(soloBloq,'bloqueada','bloqueadas');
   const urgentes=new Map<string,string>();
   for(const v of [...vencidas].sort((x,y)=>y.diasVencida!-x.diasVencida!)){
    const b=v.item.estado==='bloqueado'?'bloqueada, ':'';urgentes.set(v.item.id,`${v.item.nombre} (${b}vencida hace ${plural(v.diasVencida!,'día','días')})`);
   }
   for(const b of bloqueadas)if(!urgentes.has(b.id))urgentes.set(b.id,`${b.nombre} (bloqueada)`);
   const lista=[...urgentes.values()].slice(0,3);
-  l.push({titulo:partes.join(' y '),texto:`Las más urgentes: ${lista.join(', ')}${urgentes.size>3?` y ${urgentes.size-3} más`:''}.`});
+  l.push({titulo,texto:`Las más urgentes: ${lista.join(', ')}${urgentes.size>3?` y ${urgentes.size-3} más`:''}.`});
  }
  if(k.compras.presupuesto!==null){
   const c=k.compras;

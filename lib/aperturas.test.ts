@@ -125,3 +125,12 @@ test('portada: porcentaje de avance entero, nunca 100 % si falta algo y sin dato
  assert.equal(porcentajeAvance({terminados:1,total:300}),0);
  assert.equal(porcentajeAvance({terminados:0,total:0}),null);
 });
+test('aperturas: atrasados usa el criterio de listo del Checklist y la fecha de inicio si no hay fin',()=>{
+ const r=indicadoresApertura([
+  item({id:'a',estado:'instalado',cantidad:1,recibido:1,fin:'2026-11-01'}),   // listo: no atrasado
+  item({id:'b',tipo:'actividad',estado:'pendiente',inicio:'2026-11-01'}),     // solo inicio pasado: atrasado
+  item({id:'c',tipo:'actividad',estado:'completado',fin:'2026-11-01'}),
+ ],'2026-11-24');
+ assert.deepEqual(r.atrasados.map(i=>i.id),['b']);
+ assert.deepEqual(r.alertas.map(i=>i.id),['b']);
+});

@@ -56,7 +56,8 @@ export function indicadoresApertura(items:ItemApertura[],hoy:string) {
  const conCantidad=equipo.filter(i=>i.cantidad!==null&&Number(i.cantidad)>0);
  const unidades=conCantidad.reduce((s,i)=>s+Number(i.cantidad),0);
  const recibidas=conCantidad.reduce((s,i)=>s+Math.min(Number(i.cantidad),Math.max(0,Number(i.recibido))),0);
- const atrasados=aplicables.filter(i=>i.fin&&i.fin<hoy&&!['completado','verificado'].includes(i.estado));
+ // Vencido: su última fecha (fin, o inicio si no hay fin) ya pasó y no está listo con el criterio del Checklist (equipo instalado es listo).
+ const atrasados=aplicables.filter(i=>{const f=i.fin??i.inicio;return !!f&&f<hoy&&marcaItem(i)!=='listo';});
  const bloqueados=aplicables.filter(i=>i.estado==='bloqueado');
  return {actividades,equipo,terminadas,avance:actividades.length?Math.round(terminadas/actividades.length*100):null,unidades,recibidas,recepcion:unidades?Math.round(recibidas/unidades*100):null,sinCantidad:equipo.length-conCantidad.length,porValidar:aplicables.filter(i=>['equipo','referencia'].includes(i.tipo)&&i.estado==='por_validar').length,atrasados,bloqueados,alertas:aplicables.filter(i=>i.estado==='bloqueado'||atrasados.includes(i))};
 }
