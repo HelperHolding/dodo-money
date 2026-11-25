@@ -45,7 +45,7 @@ test('categorías de apertura: avance por puntos de etapa, sin no aplica ni por 
  assert.deepEqual(c.map(x=>x.clave),['iluminacion',null]);
  assert.equal(esCategoria('pisos'),true);assert.equal(esCategoria('toString'),false);assert.equal(esCategoria(''),false);
 });
-import {checklistApertura} from './aperturas.ts';
+import {checklistApertura,marcaItem} from './aperturas.ts';
 test('checklist de apertura: módulos por etapa, equipo por categoría y general ponderado por bloque',()=>{
  const c=checklistApertura([
   item({id:'a1',tipo:'actividad',etapa:'P1',estado:'completado'}),item({id:'a2',tipo:'actividad',etapa:'P2',estado:'en_curso'}),item({id:'a3',tipo:'actividad',etapa:'P3',estado:'no_aplica'}),
@@ -57,7 +57,8 @@ test('checklist de apertura: módulos por etapa, equipo por categoría y general
  assert.deepEqual(proyecto.lineas.map(l=>[l.nombre,l.marca,l.listos,l.total]),[['Validaciones técnicas','bloqueado',1,2],['Horno','listo',1,1],['Horno','curso',0,1]]);
  // Proyecto: (1 + 1/3 + 1 + 0) / 4 = 0.58 → 58.
  assert.equal(proyecto.porcentaje,58);
- assert.deepEqual(compras.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['equipo_cocina','curso',1,2],['sin','pendiente',0,1]]);
+ assert.deepEqual(compras.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['equipo_cocina','curso',1,2],['sin','curso',0,2]]);
+ // 'sin' ahora incluye la referencia cotizada (como bloqueDe la cuenta en Compras): 2 partidas, una por cotizar y otra cotizada → en curso.
  // Compras: verificado 1 + pedido 0.5 + por cotizar 0 + referencia cotizada 0.25 = 1.75 / 4 → 44.
  assert.equal(compras.porcentaje,44);
  assert.deepEqual(obra.lineas.map(l=>[l.clave,l.marca,l.listos,l.total]),[['pisos','listo',2,2]]);
@@ -222,4 +223,18 @@ test('todo % (bloque, módulo, categoría, etapa) muestra 100 solo si todas sus 
  const todas=casi.map(i=>({...i,estado:'completado'}));
  assert.equal(avanceApertura(todas).bloques.find(b=>b.clave==='obra')!.porcentaje,100);assert.equal(checklistApertura(todas).modulos[2].porcentaje,100);
  assert.equal(avanceCategorias(todas)[0].porcentaje,100);assert.equal(checklistApertura(todas).general,100);
+});
+
+test('marcaItem: listo exactamente cuando la partida tiene 1 punto (referencia instalada incluida)',()=>{
+ assert.equal(marcaItem({tipo:'referencia',estado:'instalado'}),'listo');
+ assert.equal(marcaItem({tipo:'equipo',estado:'instalado'}),'listo');
+ assert.equal(marcaItem({tipo:'actividad',estado:'completado'}),'listo');
+ assert.equal(marcaItem({tipo:'equipo',estado:'recibido'}),'curso');
+ assert.equal(marcaItem({tipo:'actividad',estado:'bloqueado'}),'bloqueado');
+ assert.equal(marcaItem({tipo:'actividad',estado:'pendiente'}),'pendiente');
+});
+test('checklist: las referencias sin categoría van al grupo "Equipo sin categoría" de Compras',()=>{
+ const c=checklistApertura([item({id:'e',tipo:'equipo',estado:'instalado'}),item({id:'r',tipo:'referencia',estado:'instalado'}),item({id:'r2',tipo:'referencia',estado:'cotizado'})]);
+ const l=c.modulos[1].lineas.find(x=>x.clave==='sin')!;
+ assert.equal(l.nombre,'Equipo sin categoría');assert.equal(l.total,3);assert.equal(l.listos,2);assert.deepEqual(l.hijos,['e','r','r2']);
 });

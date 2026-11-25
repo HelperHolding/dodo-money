@@ -27,7 +27,7 @@ export function esperadoItem(i:Pick<ItemApertura,'inicio'|'fin'>,hoy:string):num
 
 export type Avance = {conceptos:number;listos:number;real:number|null;conFecha:number;realConFecha:number|null;esperado:number|null;variacion:number|null;favorable:'si'|'no'|null};
 // Real: el global ponderado por bloque (avanceApertura), igual que la portada y el checklist.
-// La variación compara, en la misma escala, el promedio de puntos y el esperado de los mismos conceptos con fecha.
+// La variación compara, en la misma escala, el promedio de puntos (realConFecha) y el esperado de los mismos conceptos con fecha; por eso en pantalla se rotula «con fecha».
 export function avanceComparado(items:Concepto[],hoy:string):Avance {
  return comparar(items.filter(cuentaEnAvance),hoy,de=>avanceApertura(de).general);
 }
@@ -124,7 +124,7 @@ export function lecturaApertura(k:IndicadoresProyecto,filas:FilaCronograma[]):Le
   const conVar=filas.filter(f=>f.avance.variacion!==null);
   const peores=conVar.filter(f=>f.avance.variacion!<0).sort((x,y)=>x.avance.variacion!-y.avance.variacion!||x.clave.localeCompare(y.clave)).slice(0,2);
   const mejor=[...conVar].sort((x,y)=>y.avance.variacion!-x.avance.variacion!||x.clave.localeCompare(y.clave))[0];
-  l.push({titulo:`Avance de ${a.realConFecha} % contra ${a.esperado} % esperado a hoy`,
+  l.push({titulo:`Con fecha: avance de ${a.realConFecha} % contra ${a.esperado} % esperado a hoy`,
    texto:a.favorable==='no'
     ?`Faltan ${-a.variacion} puntos. ${peores.length===1?'La etapa más atrasada':'Las etapas más atrasadas'}: ${peores.map(f=>`${f.nombre} (${textoPts(f.avance.variacion!)})`).join(' y ')}.`
     :`Va al día (${textoPts(a.variacion)}).${mejor?` ${mejor.avance.variacion!>=0?'La etapa más adelantada es':'La que menos se atrasa es'} ${mejor.nombre} (${textoPts(mejor.avance.variacion!)}).`:''}`});

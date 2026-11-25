@@ -14,9 +14,9 @@ export function Cronograma({filas,total,base}:{filas:FilaCronograma[];total:Avan
  const desde=filas.flatMap(f=>f.desde?[f.desde]:[]).sort()[0],hasta=filas.flatMap(f=>f.hasta?[f.hasta]:[]).sort().at(-1);
  return <section className="akton-tabla-marco" aria-labelledby="ap-cronograma">
   <h2 id="ap-cronograma" className="akton-titulo">Cronograma por etapa</h2>
-  <p className="akton-subtitulo">Avance real contra lo esperado a hoy según las fechas de cada tarea. Tolerancia: 5 pts.</p>
+  <p className="akton-subtitulo">Avance real contra lo esperado a hoy según las fechas de cada tarea. La variación compara el avance «con fecha» (solo las tareas con fecha) contra lo esperado, por eso puede diferir del Avance total. Tolerancia: 5 pts.</p>
   <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-crono-tabla ap-tabla">
-   <thead><tr><th>Etapa</th><th>Conceptos</th><th>Listos</th><th>Avance</th><th>Esperado</th><th>Var. vs esperado</th><th>Inicio</th><th>Fin</th><th>Notas</th></tr></thead>
+   <thead><tr><th>Etapa</th><th>Conceptos</th><th>Listos</th><th>Avance</th><th>Con fecha</th><th>Esperado</th><th>Var. vs esperado</th><th>Inicio</th><th>Fin</th><th>Notas</th></tr></thead>
    <tbody>{filas.map(f=><Fragment key={f.clave}>
     <tr>
      <td data-label="Etapa"><details className="ap-crono-etapa"><summary><strong>{f.clave} · {f.nombre}</strong></summary>
@@ -31,6 +31,7 @@ export function Cronograma({filas,total,base}:{filas:FilaCronograma[];total:Avan
      <td data-label="Conceptos">{f.avance.conceptos}</td>
      <td data-label="Listos">{f.avance.listos}</td>
      <td data-label="Avance">{pct(f.avance.real)}</td>
+     <td data-label="Con fecha">{pct(f.avance.realConFecha)}</td>
      <td data-label="Esperado" className="akton-pct">{pct(f.avance.esperado)}</td>
      <td data-label="Var. vs esperado"><Var a={f.avance}/></td>
      <td data-label="Inicio" className="ap-crono-fecha">{f.desde?corta(f.desde):'—'}</td>
@@ -40,7 +41,7 @@ export function Cronograma({filas,total,base}:{filas:FilaCronograma[];total:Avan
    </Fragment>)}
    <tr className="akton-subtotal">
     <td data-label="Etapa">Total del proyecto</td><td data-label="Conceptos">{total.conceptos}</td><td data-label="Listos">{total.listos}</td>
-    <td data-label="Avance">{pct(total.real)}</td><td data-label="Esperado">{pct(total.esperado)}</td><td data-label="Var. vs esperado"><Var a={total}/></td>
+    <td data-label="Avance">{pct(total.real)}</td><td data-label="Con fecha">{pct(total.realConFecha)}</td><td data-label="Esperado">{pct(total.esperado)}</td><td data-label="Var. vs esperado"><Var a={total}/></td>
     <td data-label="Inicio" className="ap-crono-fecha">{desde?corta(desde):'—'}</td><td data-label="Fin" className="ap-crono-fecha">{hasta?corta(hasta):'—'}</td><td data-label="Notas"/>
    </tr>
    </tbody>

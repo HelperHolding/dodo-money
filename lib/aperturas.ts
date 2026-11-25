@@ -72,7 +72,7 @@ export const MODULOS_CHECKLIST = [
 export type MarcaChecklist = 'listo'|'curso'|'bloqueado'|'pendiente';
 export const MARCAS:Record<MarcaChecklist,{texto:string;icono:string}>={listo:{texto:'Listo',icono:'✓'},curso:{texto:'En curso',icono:'◐'},bloqueado:{texto:'Bloqueado',icono:'!'},pendiente:{texto:'Pendiente',icono:''}};
 export type LineaChecklist = {clave:string;nombre:string;marca:MarcaChecklist;listos:number;total:number;destino:{item:string}|{vista:string;etapa?:string;cat?:string};hijos?:string[]};
-export const marcaItem = (i:Pick<ItemApertura,'tipo'|'estado'>):MarcaChecklist => i.estado==='completado'||i.estado==='verificado'||(i.tipo==='equipo'&&i.estado==='instalado')?'listo':i.estado==='bloqueado'?'bloqueado':['pendiente','por_validar','por_cotizar'].includes(i.estado)?'pendiente':'curso';
+export const marcaItem = (i:Pick<ItemApertura,'tipo'|'estado'>):MarcaChecklist => puntosItem(i)===1?'listo':i.estado==='bloqueado'?'bloqueado':['pendiente','por_validar','por_cotizar'].includes(i.estado)?'pendiente':'curso';
 
 export type BloqueApertura = 'proyecto'|'compras'|'obra'|'apertura';
 export const PESOS_BLOQUE: Record<BloqueApertura, number> = { proyecto: 0.20, compras: 0.35, obra: 0.30, apertura: 0.15 };
@@ -139,7 +139,7 @@ export function checklistApertura(items:Pick<ItemApertura,'id'|'nombre'|'tipo'|'
   if(tecnico.length)lineas.push({clave:'tecnico',nombre:'Validaciones técnicas',marca:marcaGrupo(tecnico),listos:tecnico.filter(i=>marcaItem(i)==='listo').length,total:tecnico.length,destino:{vista:'tecnico',etapa:etapas.length===1?etapas[0]:undefined},hijos:tecnico.map(i=>i.id)});
   if(m.equipo)for(const c of [...Object.keys(CATEGORIAS) as CategoriaApertura[],null]){
    if((c===null?false:CATEGORIAS[c].obra)!==(m.equipo==='obra'))continue;
-   const de=aplicables.filter(i=>c===null?i.tipo==='equipo'&&i.categoria===null:i.categoria===c);
+   const de=aplicables.filter(i=>c===null?(i.tipo==='equipo'||i.tipo==='referencia')&&i.categoria===null:i.categoria===c);
    if(de.length)lineas.push({clave:c??'sin',nombre:c?CATEGORIAS[c].nombre:'Equipo sin categoría',marca:marcaGrupo(de),listos:de.filter(i=>marcaItem(i)==='listo').length,total:de.length,destino:{vista:'compras',cat:c??'sin'},hijos:de.map(i=>i.id)});
   }
   for(const i of aplicables.filter(i=>i.tipo==='actividad'&&i.categoria===null&&etapas.includes(i.etapa)))lineas.push({clave:i.id,nombre:i.nombre,marca:marcaItem(i),listos:marcaItem(i)==='listo'?1:0,total:1,destino:{item:i.id}});
