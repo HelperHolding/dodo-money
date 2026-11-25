@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {avanceComparado,diasParaApertura,esperadoItem,textoPts,type Concepto} from './aperturasAkton.ts';
+import {avanceComparado,diasParaApertura,esperadoItem,filasCronograma,indicadoresProyecto,lecturaApertura,textoPts,type Concepto} from './aperturasAkton.ts';
+import type {ItemApertura} from './aperturas.ts';
 
 export const c=(d:Partial<Concepto>):Concepto=>({id:'i',nombre:'Tarea',tipo:'actividad',etapa:'P1',estado:'pendiente',inicio:null,fin:null,responsable:null,notas:null,...d});
 
@@ -44,4 +45,67 @@ test('aperturas akton: días para la apertura',()=>{
  assert.deepEqual(diasParaApertura('2026-11-20','2026-11-24',false),{tipo:'vencida',dias:4});
  assert.deepEqual(diasParaApertura('2026-11-20','2026-11-24',true),{tipo:'abierta',dias:4});
  assert.equal(textoPts(3),'+3 pts');assert.equal(textoPts(-8),'−8 pts');assert.equal(textoPts(0),'0 pts');
+});
+const it=(d:Partial<ItemApertura>):ItemApertura=>({id:'i',proyecto_id:'p',clave:'K',tipo:'actividad',etapa:'P1',nombre:'Tarea',fuente:'x',original:{},estado:'pendiente',responsable:null,inicio:null,fin:null,cantidad:null,recibido:0,precio:null,evidencia:null,notas:null,orden_id:null,factura_id:null,revision:1,categoria:null,...d});
+
+test('aperturas akton: filas del cronograma con vencidas, bloqueadas y notas',()=>{
+ const f=filasCronograma([
+  c({id:'a',etapa:'P3',nombre:'Licencia',estado:'bloqueado',inicio:'2026-11-01',fin:'2026-11-10'}),
+  c({id:'b',etapa:'P3',nombre:'Contrato',inicio:'2026-11-01',fin:'2026-11-20'}),
+  c({id:'d',etapa:'P3',nombre:'Planos',fin:'2026-11-15'}),
+  c({id:'e',etapa:'P3',nombre:'Sin fecha'}),
+ ],'2026-11-24');
+ assert.equal(f.length,7);
+ const p3=f.find(x=>x.clave==='P3')!;
+ assert.equal(p3.desde,'2026-11-01');assert.equal(p3.hasta,'2026-11-20');
+ assert.equal(p3.sinFecha,1);
+ assert.deepEqual(p3.vencidas.map(v=>[v.item.id,v.diasVencida]),[['a',14],['d',9],['b',4]]);
+ assert.deepEqual(p3.bloqueadas.map(b=>b.id),['a']);
+ assert.deepEqual(p3.notas,['1 bloqueada: Licencia','3 vencidas']);
+ const p1=f.find(x=>x.clave==='P1')!;
+ assert.equal(p1.avance.esperado,null);assert.deepEqual(p1.notas,[]);
+});
+test('aperturas akton: la nota de bloqueadas resume después de dos nombres',()=>{
+ const p=filasCronograma(['A','B','C','D'].map(n=>c({id:n,nombre:n,etapa:'P5',estado:'bloqueado'})),'2026-11-24').find(x=>x.clave==='P5')!;
+ assert.deepEqual(p.notas,['4 bloqueadas: A, B y 2 más']);
+});
+test('aperturas akton: indicadores del proyecto',()=>{
+ const items=[
+  it({id:'a',estado:'completado',inicio:'2026-11-01',fin:'2026-11-10'}),
+  it({id:'b',estado:'bloqueado',fin:'2026-11-20'}),
+  it({id:'d',tipo:'equipo',etapa:'P4',estado:'pedido',cantidad:4,recibido:1,precio:100}),
+  it({id:'e',estado:'no_aplica'}),
+ ];
+ const k=indicadoresProyecto({objetivo_hasta:'2026-12-04',presupuesto:300},items,'2026-11-24');
+ assert.deepEqual(k.dias,{tipo:'faltan',dias:10});
+ assert.equal(k.vencidas,1);assert.equal(k.bloqueadas,1);assert.equal(k.aplicables,3);
+ assert.equal(k.recepcion,25);assert.equal(k.recibidas,1);assert.equal(k.unidades,4);
+ assert.deepEqual(k.compras,{monto:400,presupuesto:300,excede:true,firme:false,sinPrecio:0});
+});
+test('aperturas akton: lectura con las tres conclusiones y en su orden',()=>{
+ const items=[
+  ...Array.from({length:10},(_,n)=>it({id:`o${n}`,etapa:'P5',nombre:`Obra ${n}`,inicio:'2026-11-01',fin:'2026-11-10'})),
+  it({id:'l',etapa:'P3',nombre:'Licencia',estado:'bloqueado',inicio:'2026-11-01',fin:'2026-11-18'}),
+  it({id:'q',etapa:'P1',nombre:'Contrato',estado:'completado',inicio:'2026-11-01',fin:'2026-11-05'}),
+  it({id:'eq',tipo:'equipo',etapa:'P4',nombre:'Horno',estado:'cotizado',cantidad:1,precio:null}),
+ ];
+ const filas=filasCronograma(items,'2026-11-24');
+ const l=lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:5000},items,'2026-11-24'),filas);
+ assert.equal(l.length,3);
+ assert.equal(l[0].titulo,'Avance de 8 % contra 100 % esperado a hoy');
+ // Empate en −100: desempata por clave de etapa (P3 antes que P5).
+ assert.equal(l[0].texto,'Faltan 92 puntos. Las etapas más atrasadas: Permisos y contratación (−100 pts) y Obra e instalaciones (−100 pts).');
+ assert.equal(l[1].titulo,'11 tareas vencidas y 1 bloqueada');
+ // Primero las de más días de atraso; Licencia (6 días) queda dentro de «y 8 más».
+ assert.equal(l[1].texto,'Las más urgentes: Obra 0 (vencida hace 14 días), Obra 1 (vencida hace 14 días), Obra 2 (vencida hace 14 días) y 8 más.');
+ assert.equal(l[2].titulo,'Compras: $0.00 estimado de $5,000.00 de presupuesto');
+ assert.equal(l[2].texto,'1 concepto sin precio o sin cantidad.');
+});
+test('aperturas akton: la lectura omite lo que no aplica',()=>{
+ const items=[it({id:'a',estado:'completado',inicio:'2026-11-01',fin:'2026-11-10'})];
+ const l=lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},items,'2026-11-24'),filasCronograma(items,'2026-11-24'));
+ assert.equal(l.length,1);
+ assert.equal(l[0].titulo,'Avance de 100 % contra 100 % esperado a hoy');
+ assert.equal(l[0].texto,'Va al día (0 pts). La etapa más adelantada es Local y alcance (0 pts).');
+ assert.deepEqual(lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},[],'2026-11-24'),filasCronograma([],'2026-11-24')),[]);
 });
