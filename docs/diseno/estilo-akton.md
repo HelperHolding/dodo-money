@@ -11,6 +11,8 @@ Cuando un reporte nuevo tenga métricas, contra meta o explicación, usa estas p
 2. **Poco color, con significado fijo.**
    - Naranja Dodo (`--accion`): solo EBITDA y alertas.
    - Verde (`--cuadra`) y rojo (`--alerta`): solo variaciones contra meta.
+     En Aperturas, donde la «meta» es el avance esperado y las fechas, el mismo verde y rojo marcan va bien / va mal:
+     listo (verde) contra vencido o bloqueado (rojo), y una apertura ya abierta (verde). Ver `tonoConcepto` en `lib/aperturasAkton.ts`.
    - Todo lo demás va en negro y grises.
 3. **Tarjetas blancas sobre fondo claro.** Usa bordes de 1 px (`--linea`), radio `--r-md` y sin sombras.
 4. **Cifras tabulares.** Usa `font-variant-numeric: tabular-nums`. Los montos usan `<Importe>`, con el $ a la
