@@ -10,6 +10,8 @@ const archivo = Archivo({ subsets: ["latin"], weight: ["600", "700", "800"], dis
 
 /** Antes de pintar: modo noche guardado en este navegador (sin parpadeo de tema). */
 const LUZ = `try{if(localStorage.getItem("luz")==="noche")document.documentElement.dataset.luz="noche"}catch(e){}`;
+/** Antes de pintar: menú lateral plegado en este navegador (computadora), sin que se vea un instante desplegado. */
+const MENU = `try{if(localStorage.getItem("menu")==="plegado")document.documentElement.dataset.menu="plegado"}catch(e){}`;
 
 export const metadata: Metadata = {
   title: "Dodo MX",
@@ -23,7 +25,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${manrope.variable} ${archivo.variable}`} suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: LUZ }} /></head>
+      <head><script dangerouslySetInnerHTML={{ __html: LUZ + MENU }} /></head>
       <body>{children}</body>
     </html>
   );
