@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error Node strip-types requiere extensión explícita.
-import { presupuestoVivo } from "./presupuestoVivo.ts";
+import { kpiVivo, presupuestoVivo } from "./presupuestoVivo.ts";
 
 const fila = (categoria: string, o: Partial<Record<"presupuesto"|"comprometido"|"facturado"|"pagado", number|null>> = {}) =>
   ({ proyecto_id: "p", categoria, presupuesto: o.presupuesto === undefined ? null : o.presupuesto, comprometido: o.comprometido ?? 0, facturado: o.facturado ?? 0,
@@ -44,4 +44,10 @@ test("omite categorías sin presupuesto ni movimiento; centavos exactos", () => 
   assert.deepEqual(r.categorias.map((c) => c.clave), ["equipo_cocina", "tecnologia"]);
   assert.equal(r.categorias[0].cotizado, 0.3);
   assert.equal(r.categorias[1].faltante, 128000);
+});
+
+test("kpiVivo: comprometido + facturado + cotizado sobre el presupuesto CAPEX; null sin presupuesto", () => {
+  const r = presupuestoVivo([fila("obra_civil", { presupuesto: 1000, comprometido: 200.1, facturado: 300.2, pagado: 100 })], [item({ precio: 116, cantidad: 2 })]);
+  assert.deepEqual(kpiVivo(r), { monto: 700.3, presupuesto: 1000 });
+  assert.equal(kpiVivo(presupuestoVivo([fila("obra_civil", { comprometido: 5 })], [])), null);
 });

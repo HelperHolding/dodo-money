@@ -4,6 +4,8 @@ import { TareasDelDocumento } from "@/components/TareasDelDocumento";
 import {IndicadoresProyectoAkton,LecturaProyecto,PestanasProyecto} from '../AktonProyecto';
 import {filasCronograma,indicadoresProyecto,lecturaApertura} from '@/lib/aperturasAkton';
 import {CortePresupuesto} from '../CortePresupuesto';
+import {PresupuestoVivo,cargarPresupuestoVivo} from '../PresupuestoVivo';
+import {kpiVivo} from '@/lib/aperturas/presupuestoVivo';
 import {Checklist} from '../Checklist';
 import {DeApertura} from '@/app/activos/DeApertura';
 import Link from 'next/link';
@@ -33,11 +35,13 @@ export default async function Proyecto({params,searchParams}:{params:Promise<{id
  const mes=esMes(f.mes)?f.mes:hoy.slice(0,7),modo=esModoCalendario(f.modo)?f.modo:'cuadros';
  // Semana: la pedida, o la de hoy si el mes es el actual, o la primera del mes.
  const semana=semanaDe(esDia(f.semana)?f.semana:hoy.startsWith(mes)?hoy:`${mes}-01`)[0].dia;
- const etapasEquipo=conteoEtapasEquipo(items),filas=filasCronograma(items,hoy),kpis=indicadoresProyecto(p,items,hoy);
+ // CAPEX solo con acceso a Finanzas (RLS ve_finanzas): una sola carga para el bloque y el KPI.
+ const capex=puedeVerFinanzas(perfil.rol)?await cargarPresupuestoVivo(supabase,p,items):null;
+ const etapasEquipo=conteoEtapasEquipo(items),filas=filasCronograma(items,hoy),kpis=indicadoresProyecto(p,items,hoy,capex&&!capex.error?kpiVivo(capex.vivo):null);
  const tipos=vista==='compras'?['equipo','referencia']:vista==='tecnico'?['tecnico']:['actividad'];
  const visibles=items.filter(i=>(vista==='alertas'?indicadores.alertas.some(a=>a.id===i.id):vista==='compras'&&f.cat&&f.cat!=='sin'?true:tipos.includes(i.tipo))&&(!f.tipo||i.tipo===f.tipo)&&(!f.etapa||i.etapa===f.etapa)&&(!f.grupo||(i.estado!=='no_aplica'&&!(f.tipo==='equipo'&&i.estado==='por_validar')&&grupoApertura(i)===f.grupo))&&(!f.cat||(f.cat==='sin'?i.categoria===null:i.categoria===f.cat))&&(f.ambito!=='equipo'||!esObra(i))&&(!f.estado||i.estado===f.estado)&&(!f.q||`${i.nombre} ${i.clave} ${i.responsable??''}`.toLocaleLowerCase().includes(f.q.toLocaleLowerCase())));
  return <><EncabezadoPagina titulo={<>{p.sucursales?.nombre} · Apertura</>} descripcion={<>{p.responsable} · objetivo {fechaTexto(p.objetivo_desde)} a {fechaTexto(p.objetivo_hasta)}</>} /><Aviso ok={f.ok} error={f.error}/><TareasDelDocumento supabase={supabase} tipo="apertura_proyecto" id={id} rol={perfil.rol} hoy={hoy} />
- <CortePresupuesto items={items}/>
+ {puedeVerFinanzas(perfil.rol)&&capex?<PresupuestoVivo {...capex} proyectoId={id} items={items}/>:<CortePresupuesto items={items}/>}
  {puedeVerFinanzas(perfil.rol)&&<ResumenCapexApertura db={supabase} proyectoId={id}/>}
  {puedeEditarCompras(perfil.rol)&&<details className="seccion"><summary>Responsable, fechas y presupuesto</summary><form action={guardarProyecto} className="formulario"><input type="hidden" name="proyecto_id" value={id}/><input type="hidden" name="revision" value={p.revision}/><div className="rejilla"><div className="campo"><label htmlFor="responsable_proyecto">Responsable de apertura</label><input id="responsable_proyecto" name="responsable" defaultValue={p.responsable} required maxLength={200}/></div><div className="campo"><label htmlFor="desde">Objetivo desde</label><input id="desde" name="desde" type="date" defaultValue={p.objetivo_desde} required/></div><div className="campo"><label htmlFor="hasta">Objetivo hasta</label><input id="hasta" name="hasta" type="date" defaultValue={p.objetivo_hasta} required/></div><div className="campo"><label htmlFor="presupuesto">Presupuesto estimado total MXN (con IVA)</label><input id="presupuesto" name="presupuesto" type="number" min="0" max="999999999999" step="0.01" defaultValue={p.presupuesto??''}/></div></div><BotonEnviar>Guardar proyecto</BotonEnviar></form></details>}
  <p>Presupuesto: {p.presupuesto===null?'Sin definir':pesos(p.presupuesto)} · fechas objetivo sujetas a confirmación de obra y entregas.</p>

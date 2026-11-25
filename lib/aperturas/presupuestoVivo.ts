@@ -37,3 +37,9 @@ export function presupuestoVivo(filas: FilaCapex[], items: ItemCotizado[]): Pres
     faltante: conPresupuesto ? categorias.reduce((a, f) => a + c(f.faltante ?? 0), 0) / 100 : null };
   return { categorias, total, conPresupuesto };
 }
+
+/** Para el KPI «Compras con precio firme»: comprometido + facturado + cotizado sin OC sobre el presupuesto CAPEX. Sin presupuesto: null (el KPI queda como hoy). */
+export function kpiVivo(v: PresupuestoVivo): { monto: number; presupuesto: number } | null {
+  if (!v.conPresupuesto || v.total.presupuesto === null) return null;
+  return { monto: (c(v.total.comprometido) + c(v.total.facturado) + c(v.total.cotizado)) / 100, presupuesto: v.total.presupuesto };
+}

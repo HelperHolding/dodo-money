@@ -91,7 +91,13 @@ test('aperturas akton: indicadores del proyecto',()=>{
  assert.deepEqual(k.dias,{tipo:'faltan',dias:10});
  assert.equal(k.vencidas,1);assert.equal(k.bloqueadas,1);assert.equal(k.aplicables,3);
  assert.equal(k.recepcion,25);assert.equal(k.recibidas,1);assert.equal(k.unidades,4);
- assert.deepEqual(k.compras,{monto:400,presupuesto:300,excede:true,firme:false,sinPrecio:0});
+ assert.deepEqual(k.compras,{monto:400,presupuesto:300,excede:true,firme:false,capex:false,sinPrecio:0});
+ // Con presupuesto vivo (CAPEX): monto firme = comprometido + facturado + cotizado sin OC, sobre el presupuesto CAPEX.
+ const v=indicadoresProyecto({objetivo_hasta:'2026-12-04',presupuesto:300},items,'2026-11-24',{monto:1500,presupuesto:2000});
+ assert.deepEqual(v.compras,{monto:1500,presupuesto:2000,excede:false,firme:true,capex:true,sinPrecio:0});
+ assert.deepEqual(indicadoresProyecto({objetivo_hasta:'2026-12-04',presupuesto:300},items,'2026-11-24',null).compras,k.compras,'sin vivo, como hoy');
+ const l=lecturaApertura(v,filasCronograma(items,'2026-11-24')).find(x=>x.titulo.startsWith('Compras'))!;
+ assert.equal(l.titulo,'Compras: $1,500.00 con precio firme de $2,000.00 de presupuesto CAPEX');
 });
 test('aperturas akton: lectura con las tres conclusiones y en su orden',()=>{
  const items=[

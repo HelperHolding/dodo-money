@@ -105,16 +105,18 @@ export function filasCronograma(items:Concepto[],hoy:string):FilaCronograma[] {
 }
 
 export type IndicadoresProyecto = {dias:DiasApertura;avance:Avance;vencidas:number;bloqueadas:number;aplicables:number;recepcion:number|null;recibidas:number;unidades:number;
- compras:{monto:number;presupuesto:number|null;excede:boolean;firme:boolean;sinPrecio:number}};
+ compras:{monto:number;presupuesto:number|null;excede:boolean;firme:boolean;capex:boolean;sinPrecio:number}};
+// Presupuesto vivo (HD-3): comprometido + facturado + cotizado sin OC y el presupuesto CAPEX. Solo llega con acceso a Finanzas y presupuesto aprobado.
+export type CompraVivo = {monto:number;presupuesto:number};
 
-export function indicadoresProyecto(p:Pick<ProyectoApertura,'objetivo_hasta'|'presupuesto'>,items:ItemApertura[],hoy:string):IndicadoresProyecto {
+export function indicadoresProyecto(p:Pick<ProyectoApertura,'objetivo_hasta'|'presupuesto'>,items:ItemApertura[],hoy:string,vivo?:CompraVivo|null):IndicadoresProyecto {
  const r=indicadoresApertura(items,hoy),avance=avanceComparado(items,hoy),filas=filasCronograma(items,hoy),corte=cortePresupuesto(items),estimado=resumenApertura(items);
- const monto=corte?Math.round((corte.adquirido+corte.cotizado)*100)/100:estimado.cotizado;
- const presupuesto=corte?corte.total_sin_iva:p.presupuesto!==null&&Number(p.presupuesto)>0?Number(p.presupuesto):null;
+ const monto=vivo?vivo.monto:corte?Math.round((corte.adquirido+corte.cotizado)*100)/100:estimado.cotizado;
+ const presupuesto=vivo?vivo.presupuesto:corte?corte.total_sin_iva:p.presupuesto!==null&&Number(p.presupuesto)>0?Number(p.presupuesto):null;
  return {dias:diasParaApertura(p.objetivo_hasta,hoy,avance.real===100),avance,
   vencidas:filas.reduce((s,f)=>s+f.vencidas.length,0),bloqueadas:r.bloqueados.length,aplicables:items.filter(i=>i.estado!=='no_aplica').length,
   recepcion:r.recepcion,recibidas:r.recibidas,unidades:r.unidades,
-  compras:{monto,presupuesto,excede:presupuesto!==null&&monto>presupuesto,firme:corte!==null,sinPrecio:estimado.sinPrecio}};
+  compras:{monto,presupuesto,excede:presupuesto!==null&&monto>presupuesto,firme:!!vivo||corte!==null,capex:!!vivo,sinPrecio:estimado.sinPrecio}};
 }
 
 export type Lectura = {titulo:string;texto:string};
@@ -146,7 +148,7 @@ export function lecturaApertura(k:IndicadoresProyecto,filas:FilaCronograma[]):Le
  }
  if(k.compras.presupuesto!==null){
   const c=k.compras;
-  l.push({titulo:`Compras: ${pesos(c.monto)} ${c.firme?'con precio firme':'estimado'} de ${pesos(c.presupuesto!)} de presupuesto`,
+  l.push({titulo:`Compras: ${pesos(c.monto)} ${c.firme?'con precio firme':'estimado'} de ${pesos(c.presupuesto!)} de presupuesto${c.capex?' CAPEX':''}`,
    texto:c.excede?`Se pasa por ${pesos(c.monto-c.presupuesto!)}.`:c.sinPrecio?`${plural(c.sinPrecio,'concepto','conceptos')} sin precio o sin cantidad.`:'Todos los conceptos tienen precio y cantidad.'});
  }
  return l;
