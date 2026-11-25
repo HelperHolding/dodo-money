@@ -2060,7 +2060,7 @@ body { background: var(--papel-2); }
 .ap-cal-selector a[aria-current] { background:var(--tinta); color:var(--superficie); font-weight:600; }
 .ap-cal-leyenda { display:flex; flex-wrap:wrap; gap:6px 16px; list-style:none; padding:0; margin:14px 0 6px; font-size:.85rem; color:var(--tinta-2); }
 .ap-cal-leyenda li { display:inline-flex; align-items:center; gap:6px; }
-.ap-cal-leyenda span { width:12px; height:12px; border-radius:3px; flex:0 0 12px; }
+.ap-cal-leyenda .ap-cal-muestra { width:14px; height:10px; border-radius:2px; flex:0 0 14px; }
 .ap-cal-rejilla { margin-top:12px; border:1px solid var(--linea); border-radius:var(--r-md); overflow:hidden; }
 .ap-cal-dias, .ap-cal-semana { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
 .ap-cal-dias span { padding:8px; font-size:.8rem; font-weight:600; color:var(--tinta-2); border-bottom:1px solid var(--linea); }
@@ -2074,7 +2074,6 @@ body { background: var(--papel-2); }
 .ap-cal-tarea, .ap-cal-mas { position:relative; z-index:1; margin:0 4px; min-width:0; border:0; border-radius:5px; padding:0 8px; font:inherit; font-size:.78rem; font-weight:600; line-height:22px; height:22px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
 .ap-cal-tarea[data-antes] { margin-left:0; border-top-left-radius:0; border-bottom-left-radius:0; }
 .ap-cal-tarea[data-despues] { margin-right:0; border-top-right-radius:0; border-bottom-right-radius:0; }
-.ap-cal-tarea[data-listo] { opacity:.55; text-decoration:line-through; }
 .ap-cal-tarea:hover, .ap-cal-tarea:focus-visible { filter:brightness(1.08); outline:2px solid var(--tinta); outline-offset:1px; }
 .ap-cal-mas { background:transparent; color:var(--tinta-2); font-weight:500; }
 .ap-cal-mas:hover { color:var(--tinta); text-decoration:underline; }
@@ -2084,11 +2083,6 @@ body { background: var(--papel-2); }
 .ap-cal-agenda small, .ap-cal-lista small { color:var(--tinta-2); font-size:.82rem; }
 .ap-cal-sub { font-size:1rem; margin:18px 0 6px; }
 .ap-cal-modal select[size] { width:100%; }
-.ap-cal-colores { list-style:none; padding:0; margin:8px 0 0; display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px 16px; }
-.ap-cal-colores li { display:flex; align-items:center; gap:10px; min-width:0; }
-.ap-cal-colores input[type=color] { width:36px; height:30px; padding:0; border:1px solid var(--linea); border-radius:6px; background:none; cursor:pointer; flex:0 0 36px; }
-.ap-cal-colores label { flex:1; min-width:0; font-size:.9rem; }
-.ap-cal-colores button { border:0; background:none; color:var(--dato-azul); font:inherit; font-size:.8rem; cursor:pointer; padding:0; }
 @media (max-width:700px) { .ap-cal-rejilla { display:none; } .ap-cal-agenda { display:block; margin-top:12px; } }
 
 /* Calendario por responsable (HD-7/HD-8): filtros, iniciales con color, cuadros del mes y el día en grande. */
@@ -2118,15 +2112,11 @@ body { background: var(--papel-2); }
 .ap-dia-grupos { display:grid; gap:4px; }
 .ap-dia-tarjetas { list-style:none; padding:0; margin:6px 0 0; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:8px; }
 .ap-dia-tarjeta { display:flex; flex-direction:column; gap:6px; padding:10px 12px; border:1px solid var(--linea); border-left:6px solid; border-radius:var(--r-md); background:var(--superficie); min-width:0; }
-.ap-dia-tarjeta[data-listo] .ap-dia-nombre { text-decoration:line-through; opacity:.7; }
+.ap-dia-tarjeta[data-tono="listo"] .ap-dia-nombre { text-decoration:line-through; opacity:.7; }
 .ap-dia-nombre { font-weight:700; color:var(--tinta); overflow-wrap:anywhere; }
 .ap-dia-datos { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; }
 .ap-dia-datos small { color:var(--tinta-2); font-size:.82rem; }
 .ap-momento { display:inline-block; padding:3px 8px; border-radius:999px; font-size:.78rem; font-weight:600; background:var(--dato-pista); color:var(--tinta); }
-.ap-momento[data-momento=empieza] { background:#d7ebc4; color:#2f4a1c; }
-.ap-momento[data-momento=continua] { background:#c9ddf5; color:#1e3a5f; }
-.ap-momento[data-momento=termina] { background:#ffd2bd; color:#6b2e12; }
-.ap-momento[data-momento=solo] { background:#ddd0f5; color:#3d2a66; }
 .ap-dia-acciones { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:.88rem; }
 .ap-dia-acciones .boton-texto { border:0; background:none; color:var(--dato-azul); font:inherit; cursor:pointer; padding:0; }
 .ap-dia-programar { margin-top:18px; border-top:1px solid var(--linea); padding-top:10px; }
@@ -2410,3 +2400,18 @@ body { background: var(--papel-2); }
 .ap-check-general { display:flex; flex-direction:column; margin:0; }
 .ap-check-general strong { font-size:1.6rem; font-variant-numeric:tabular-nums; }
 .ap-check-general span { color:var(--tinta-2); font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+
+/* Calendario Akton: gris; verde = listo, rojo = vencido o bloqueado. Personas por iniciales, sin color. */
+.ap-cal-tarea { background:var(--papel-2); color:var(--tinta); box-shadow:inset 0 0 0 1px var(--linea-fuerte); }
+.ap-cal-tarea[data-tono="listo"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); box-shadow:inset 0 0 0 1px var(--cuadra); }
+.ap-cal-tarea[data-tono="alerta"] { background:var(--alerta-fondo); color:var(--alerta-texto); box-shadow:inset 0 0 0 1px var(--alerta); }
+.ap-cal-agenda li button, .ap-dia-tarjeta { border-left-color:var(--linea-fuerte); }
+.ap-cal-agenda li button[data-tono="listo"], .ap-dia-tarjeta[data-tono="listo"] { border-left-color:var(--cuadra); }
+.ap-cal-agenda li button[data-tono="alerta"], .ap-dia-tarjeta[data-tono="alerta"] { border-left-color:var(--alerta); }
+.ap-cal-chip { background:var(--papel-2); color:var(--tinta); box-shadow:inset 0 0 0 1px var(--linea-fuerte); }
+.ap-cal-muestra { display:inline-block; border:1px solid var(--linea-fuerte); background:var(--papel-2); box-sizing:border-box; }
+.ap-cal-muestra[data-tono="listo"] { background:var(--cuadra-fondo); border-color:var(--cuadra); }
+.ap-cal-muestra[data-tono="alerta"] { background:var(--alerta-fondo); border-color:var(--alerta); }
+.ap-estado[data-tono="normal"] { background:var(--dato-pista); color:var(--neutro-texto); }
+.ap-estado[data-tono="listo"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); }
+.ap-estado[data-tono="alerta"] { background:var(--alerta-fondo); color:var(--alerta-texto); }

@@ -3,7 +3,7 @@ import {revalidatePath} from 'next/cache';
 import {obtenerPerfil} from '@/lib/contexto';
 import {puedeEditarCompras} from '@/lib/roles';
 import type {ItemApertura} from '@/lib/aperturas';
-import {datosFechas,esAgrupacionGuardable,esColor,validarFechas} from '@/lib/aperturasCalendario';
+import {datosFechas,validarFechas} from '@/lib/aperturasCalendario';
 
 type Respuesta = {error:string}|{ok:true};
 
@@ -21,14 +21,3 @@ export async function fijarFechasApertura(fd:FormData):Promise<Respuesta> {
  return {ok:true};
 }
 
-// Color de una etapa o categoría; vacío vuelve al predeterminado.
-export async function guardarColorApertura(fd:FormData):Promise<Respuesta> {
- const {supabase,perfil}=await obtenerPerfil();
- if(!puedeEditarCompras(perfil.rol))return {error:'Solo administración puede cambiar los colores.'};
- const agrupacion=String(fd.get('agrupacion')??''),clave=String(fd.get('clave')??''),color=String(fd.get('color')??'');
- if(!esAgrupacionGuardable(agrupacion)||(color&&!esColor(color)))return {error:'Color inválido.'};
- const {error}=await supabase.rpc('guardar_color_apertura',{p_agrupacion:agrupacion,p_clave:clave,p_color:color});
- if(error)return {error:/apertura_colores|guardar_color_apertura/.test(error.message)?'Falta correr la migración de colores en Supabase.':error.message};
- revalidatePath('/aperturas','layout');
- return {ok:true};
-}
