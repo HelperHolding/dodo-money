@@ -2352,7 +2352,7 @@ body { background: var(--papel-2); }
   .akton-kpi-valor { font-size: 1.25rem; }
   .akton-tabla tr.akton-seccion { border: 0; background: none; padding: 8px 0 0; margin: 0; }
   .akton-tabla tr.akton-seccion th { display: block; padding: 8px 0 4px; }
-  .akton-tabla td { border-bottom: 0; background: none !important; box-shadow: none !important; }
+  .akton-tabla td, .akton-tabla tr.akton-subtotal td, .akton-tabla tr.akton-destacado td { border: 0; background: none; box-shadow: none; }
   .akton-tabla tr.akton-subtotal { background: var(--akton-durazno); }
   .akton-tabla tr.akton-destacado { background: var(--accion-suave); border-color: var(--accion); border-left-width: 4px; }
   .akton-sub td:first-child { padding-left: 0; }

@@ -124,8 +124,9 @@ export function renglonesAkton(filas: readonly FilaPL[], ocultar: (f: FilaPL) =>
   const rappi = [...RAPPI_INGRESOS, ...RAPPI_GASTOS].map((c) => de.get(c)).filter((f): f is FilaPL => !!f);
   if (rappi.some((f) => f.monto || f.meta)) {
     seccion("s-rappi", "Rappi y agregadores");
-    for (const c of RAPPI_INGRESOS) if (de.get(c)?.monto) poner(c, "fila", { ingreso: true, nombre: de.get(c)!.nombre.replace(/^Rappi · /, "") });
-    for (const c of RAPPI_GASTOS) poner(c, "fila", { nombre: de.get(c)!.nombre.replace(/^Rappi · /, "") });
+    const sinPrefijo = (c: ClaveRenglon) => { const n = de.get(c)!.nombre.replace(/^Rappi · /, ""); return n.charAt(0).toUpperCase() + n.slice(1); };
+    for (const c of RAPPI_INGRESOS) if (de.get(c)?.monto) poner(c, "fila", { ingreso: true, nombre: sinPrefijo(c) });
+    for (const c of RAPPI_GASTOS) if (de.has(c)) poner(c, "fila", { nombre: sinPrefijo(c) });
     const signo = (f: FilaPL) => (RAPPI_INGRESOS.includes(f.clave) ? 1 : -1);
     const neto = centavos(rappi.reduce((t, f) => t + signo(f) * (f.monto ?? 0), 0));
     const conMeta = rappi.some((f) => f.meta !== null);

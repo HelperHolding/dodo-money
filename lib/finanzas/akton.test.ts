@@ -80,7 +80,7 @@ test("renglones: orden Akton, sub-renglones POS/Rappi, descuentos por canal y Ra
   assert.ok(claves.indexOf("rappi_neto") < claves.indexOf("s-operacion"));
   const excedente = r.find((x) => x.clave === "rappi_excedente")!;
   assert.equal(excedente.ingreso, true);
-  assert.equal(excedente.nombre, "excedente DAR sin IVA");
+  assert.equal(excedente.nombre, "Excedente DAR sin IVA");
   assert.equal(r.find((x) => x.clave === "rappi_fuera_base"), undefined, "ingreso en cero no se muestra");
   const neto = r.find((x) => x.clave === "rappi_neto")!;
   assert.equal(neto.monto, -45);
