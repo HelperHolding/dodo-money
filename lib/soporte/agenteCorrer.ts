@@ -8,6 +8,7 @@ import { BUCKET_SOPORTE } from "@/lib/soporte";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { leerTickets } from "@/app/soporte/datos";
 import { atenderTicket, textoPublico, type ConsultasAgente } from "./agente";
+import { describirError } from "./errorAgente";
 
 const IMAGEN: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
 
@@ -50,7 +51,7 @@ export async function atenderConAgente(o: { numero: number; token: string; rol: 
       p_modelo: modeloId, p_entrada: r.entrada, p_salida: r.salida });
     if (error) throw new Error(`cierre-${error.code ?? "rpc"}`);
   } catch (e) {
-    const tipo = e instanceof Error ? (e.name === "Error" ? e.message.slice(0, 60) : e.name) : "desconocido";
+    const tipo = describirError(e);
     console.error("agente soporte", o.numero, tipo);
     if (ticketId) {
       const { error } = await admin.rpc("agente_cerrar_ticket", { p_ticket: ticketId, p_desenlace: "fallido", p_publica: null,
