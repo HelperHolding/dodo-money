@@ -21,3 +21,15 @@ test('resumen: llave de n8n, ajustes, rango de 24 h y correos armados',()=>{
  assert.match(r,/soporte_resumen_agente/);assert.match(r,/resumen_diario/);assert.match(r,/armarResumen\(/);
  assert.match(leer('lib/rutasPublicas.ts'),/"\/api\/soporte\/resumen"/);
 });
+test('pantallas: hilo marca agente y nota interna; tarjeta con insignia; ajustes con interruptores',()=>{
+ const d=leer('app/soporte/[numero]/page.tsx');
+ assert.match(d,/data-interna=\{e\.interna \|\| undefined\}/);assert.match(d,/Nota interna \(solo soporte\)/);assert.match(d,/e\.es_agente/);
+ assert.match(leer('app/soporte/TarjetaTicket.tsx'),/soporte && t\.agente_estado/);
+ const a=leer('app/soporte/ajustes/page.tsx');
+ assert.match(a,/name="agente_activo"/);assert.match(a,/name="resumen_diario"/);
+ const acc=leer('app/soporte/acciones.ts');
+ assert.match(acc,/p_agente_activo: fd\.get\("agente_activo"\) === "1"/);assert.match(acc,/p_resumen_diario: fd\.get\("resumen_diario"\) === "1"/);
+ assert.match(leer('app/soporte/datos.ts'),/agente_activo, resumen_diario/);
+ const css=leer('app/globals.css');assert.match(css,/\.hilo-tarea li\[data-interna\]/);
+ const t=leer('lib/soporte.ts');assert.match(t,/agente_estado: string \| null/);assert.match(t,/es_agente: boolean \| null; interna: boolean \| null/);
+});

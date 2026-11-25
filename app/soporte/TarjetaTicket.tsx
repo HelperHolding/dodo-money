@@ -24,6 +24,7 @@ export function TarjetaTicket({ t, soporte, conEstado = true, arrastre, children
       <div className="ticket-arriba">
         <Link href={href} className="ticket-clave" draggable={false}>{clave(t.numero)}</Link>
         {t.sin_leer && <span className="insignia" data-tono="marca">{soporte ? "Novedad" : "Respuesta nueva"}</span>}
+        {soporte && t.agente_estado && <span className="insignia" data-tono="info" title={`Agente: ${t.agente_estado}`}>Agente</span>}
         <span className="ticket-relleno" />
         {conEstado && <span className="insignia" data-tono={TONO_ESTADO[t.estado]}>{ESTADOS[t.estado]}</span>}
         {soporte && <span className="insignia" data-tono={TONO_PRIORIDAD[t.prioridad]}>{PRIORIDADES[t.prioridad]}</span>}

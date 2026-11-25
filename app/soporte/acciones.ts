@@ -70,6 +70,8 @@ export async function guardarAjustes(fd: FormData) {
     p_correos: texto(fd, "correos").split(/[\s,;]+/).filter(Boolean),
     p_avisar_nuevos: fd.get("avisar_nuevos") === "1",
     p_avisar_comentarios: fd.get("avisar_comentarios") === "1",
+    p_agente_activo: fd.get("agente_activo") === "1",
+    p_resumen_diario: fd.get("resumen_diario") === "1",
   });
   if (error) return volver(ruta, "error", mensajeDe(error));
   listo(ruta, "Ajustes guardados.");

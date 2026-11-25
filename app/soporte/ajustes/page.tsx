@@ -27,6 +27,8 @@ export default async function AjustesSoporte({ searchParams }: { searchParams: P
           <textarea id="correos" name="correos" rows={3} defaultValue={ajustes.correos.join("\n")} /></div>
         <label className="campo"><input type="checkbox" name="avisar_nuevos" value="1" defaultChecked={ajustes.avisar_nuevos} /> Avisar cada ticket nuevo</label>
         <label className="campo"><input type="checkbox" name="avisar_comentarios" value="1" defaultChecked={ajustes.avisar_comentarios} /> Avisar cuando quien reporta comenta</label>
+        <label className="campo"><input type="checkbox" name="agente_activo" value="1" defaultChecked={ajustes.agente_activo} /> Agente activo: atiende cada ticket nuevo y te escala lo que necesita</label>
+        <label className="campo"><input type="checkbox" name="resumen_diario" value="1" defaultChecked={ajustes.resumen_diario} /> Resumen diario (8 am) de lo que resolvió el agente</label>
         <BotonEnviar>Guardar ajustes</BotonEnviar>
       </form>
     </section>

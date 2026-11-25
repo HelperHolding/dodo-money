@@ -82,7 +82,7 @@ export type Ticket = {
 /** Una fila de hilo_ticket. */
 export type EntradaHilo = {
   tipo: "comentario" | "cambio"; autor: string | null; es_soporte: boolean | null; texto: string | null;
-  campo: string | null; antes: string | null; despues: string | null; fecha: string;
+  campo: string | null; antes: string | null; despues: string | null; fecha: string; es_agente: boolean | null; interna: boolean | null;
 };
 export function textoCambio(e: EntradaHilo): string {
   const de = (v: string | null, mapa: Record<string, string>) => (v ? mapa[v] ?? v : "—");
