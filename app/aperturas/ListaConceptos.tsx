@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import {Fragment} from 'react';
-import {CATEGORIAS,ESTADOS,type ItemApertura} from '@/lib/aperturas';
+import {CATEGORIAS,nombreEstado,type ItemApertura} from '@/lib/aperturas';
 import {fechaConcepto,notasConcepto,porEtapa,tonoConcepto} from '@/lib/aperturasAkton';
 import {fechaTexto} from '@/lib/formato';
 
@@ -17,7 +17,7 @@ export function ListaConceptos({items,base,hoy,titulo,descripcion}:{items:ItemAp
     {g.items.map(i=>{const tono=tonoConcepto(i,hoy);return <tr key={i.id}>
      <td data-label="Concepto"><div style={{minWidth:0}}><Link href={`${base}/items/${i.id}`}>{i.nombre}</Link>
       <small className="ap-lista-sub">{i.clave}{i.categoria?` · ${CATEGORIAS[i.categoria]?.nombre??i.categoria}`:''}</small></div></td>
-     <td data-label="Estado"><span className={tono==='listo'?'akton-si':i.estado==='bloqueado'?'akton-no':undefined}>{ESTADOS[i.estado]}</span></td>
+     <td data-label="Estado"><span className={tono==='listo'?'akton-si':i.estado==='bloqueado'?'akton-no':undefined}>{nombreEstado(i)}</span></td>
      <td data-label="Responsable">{i.responsable??'Sin asignar'}</td>
      <td data-label="Cantidad / recibido">{i.cantidad??'Por confirmar'} / {i.recibido}{typeof i.original?.unidad==='string'?` ${i.original.unidad}`:''}</td>
      <td data-label="Fecha" className={`ap-crono-fecha${tono==='alerta'&&i.estado!=='bloqueado'?' akton-no':''}`}>{(f=>f?fechaTexto(f):'Sin fecha')(fechaConcepto(i))}</td>

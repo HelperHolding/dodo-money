@@ -6,7 +6,7 @@ export function AvanceCategorias({items,base,activa}:{items:ItemApertura[];base:
  const filas=avanceCategorias(items);
  return <section className="akton-tabla-marco" aria-labelledby="ap-categorias">
   <h2 id="ap-categorias" className="akton-titulo">Avance por categoría</h2>
-  <p className="akton-subtitulo">Equipo instalado o verificado y actividades completadas. No cuenta lo que no aplica ni el equipo por validar. Obra se instala en sitio.</p>
+  <p className="akton-subtitulo">El avance es el promedio de puntos por etapa: equipo 25 % cotizado, 50 % pedido, 75 % recibido y 100 % instalado; actividades 1/3 en curso, 2/3 por cerrar y 100 % completadas. Listos son los instalados, verificados o completados. No cuenta lo que no aplica ni el equipo por validar. Obra se instala en sitio.</p>
   <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-tabla">
    <thead><tr><th>Categoría</th><th>Conceptos</th><th>Listos</th><th>Avance</th><th>En curso</th><th>Recibidos</th><th>Notas</th></tr></thead>
    <tbody>{filas.map(c=>{const valor=c.clave??'sin',activo=activa===valor;return <tr key={valor} aria-current={activo||undefined}>

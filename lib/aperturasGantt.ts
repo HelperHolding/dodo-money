@@ -1,6 +1,6 @@
 // Gantt de aperturas: una barra por etapa (de la primera fecha a la última de sus tareas) con su avance, y las tareas de cada etapa.
 // @ts-expect-error Node strip-types requiere extensión explícita.
-import {ETAPAS,marcaItem,type ItemApertura,type MarcaChecklist} from './aperturas.ts';
+import {ETAPAS,marcaItem,promedioPuntos,type ItemApertura,type MarcaChecklist} from './aperturas.ts';
 // @ts-expect-error Node strip-types requiere extensión explícita.
 import {rangoItem} from './aperturasCalendario.ts';
 
@@ -19,18 +19,12 @@ export function ganttEtapas<T extends TareaGantt>(items:T[],hoy:string):EtapaGan
   const listos=de.filter(i=>marcaItem(i)==='listo').length;
   const tareas=de.flatMap(item=>{const r=rangoItem(item);return r?[{item,desde:r.desde,hasta:r.hasta,marca:marcaItem(item),vencida:r.hasta<hoy&&marcaItem(item)!=='listo'}]:[];})
    .sort((a,b)=>a.desde.localeCompare(b.desde)||a.hasta.localeCompare(b.hasta)||a.item.nombre.localeCompare(b.item.nombre));
-  return {clave,nombre:ETAPAS[clave],conceptos:de.length,listos,porcentaje:de.length?Math.round(listos/de.length*100):null,
+  // El % de la etapa es el promedio de puntos de sus partidas (misma escala que el avance general).
+  return {clave,nombre:ETAPAS[clave],conceptos:de.length,listos,porcentaje:promedioPuntos(de),
    desde:tareas.length?tareas[0].desde:null,hasta:tareas.length?tareas.map(t=>t.hasta).sort().at(-1)!:null,
    bloqueados:de.filter(i=>i.estado==='bloqueado').length,vencidos:tareas.filter(t=>t.vencida).length,tareas,sinFecha:de.length-tareas.length};
  });
 }
-
-// Avance general: promedio ponderado por conceptos (todas las etapas con conceptos).
-export function avanceGeneral(etapas:Pick<EtapaGantt<unknown>,'conceptos'|'listos'>[]) {
- const total=etapas.reduce((s,e)=>s+e.conceptos,0);
- return total?Math.round(etapas.reduce((s,e)=>s+e.listos,0)/total*100):null;
-}
-
 const DIA=86_400_000;
 const aMs=(d:string)=>Date.UTC(Number(d.slice(0,4)),Number(d.slice(5,7))-1,Number(d.slice(8,10)));
 const aFecha=(ms:number)=>new Date(ms).toISOString().slice(0,10);

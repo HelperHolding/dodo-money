@@ -22,8 +22,12 @@ test('los estilos de la portada usan tokens y resaltan solo el borde', () => {
 
 test('cada tarjeta muestra el avance contra lo esperado, con estilo Akton', () => {
   const p = leer('app/aperturas/page.tsx');
+  // El % es el global ponderado por bloque (resumenPortada → avanceComparado → avanceApertura): la consulta trae la categoría.
+  assert.match(p, /select\('id,proyecto_id,nombre,tipo,etapa,estado,categoria,inicio,fin,responsable,notas'\)/);
+  assert.doesNotMatch(p, /porcentajeAvance|avanceGeneral/);
   assert.match(p, /<div className="akton">/);
-  assert.match(p, /esperado \{a\.esperado===null/);
+  assert.match(p, /con fecha \$\{a\.realConFecha\} % vs \$\{a\.esperado\} % esperado/);
+  assert.match(p, /esperado sin fechas/);
   assert.match(p, /className="akton-var" data-favorable=/);
   assert.match(leer('app/globals.css'), /\.ap-tarjeta\.ap-tarjeta-akton \{/);
 });
@@ -49,6 +53,13 @@ test('el importe del detalle es solo para compras y dice que es con IVA; el hist
   assert.match(leer('app/aperturas/Historial.tsx'), /Sin cambios en campos visibles/);
 });
 
+// Revisión final HD-12: el avance que compara la variación se rotula «con fecha» junto al avance global.
+test('el cronograma muestra la columna «Con fecha» que usa la variación, en etapas y en el total', () => {
+  const c = leer('app/aperturas/Cronograma.tsx');
+  assert.match(c, /<th>Avance<\/th><th>Con fecha<\/th><th>Esperado<\/th>/);
+  assert.match(c, /data-label="Con fecha">\{pct\(f\.avance\.realConFecha\)\}/);
+  assert.match(c, /data-label="Con fecha">\{pct\(total\.realConFecha\)\}/);
+});
 // Limpieza de detalles menores.
 test('el detalle de tarea no repite avisos y nombra bien la fecha', () => {
   const d = leer('app/aperturas/[id]/items/[item]/page.tsx');

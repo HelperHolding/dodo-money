@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import {ESTADOS,MARCAS,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
+import {nombreEstado,MARCAS,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
 import {escalaGantt,ganttEtapas,type Escala} from '@/lib/aperturasGantt';
 import {fechaTexto} from '@/lib/formato';
 import {BotonEnviar} from '@/components/BotonEnviar';
@@ -75,7 +75,7 @@ export function Gantt({proyecto:p,items,hoy,pendientes={},personas=[],volverA=''
     <div className="ap-gantt-tareas">
      {e.tareas.map(t=><div key={t.item.id} className="ap-gantt-fila ap-gantt-tarea">
       <div className="ap-gantt-nombre"><span className="ap-gantt-marca" data-marca={t.marca}>{MARCAS[t.marca].icono}</span>
-       <div><Link href={`${base}/items/${t.item.id}`}>{t.item.nombre}</Link><small>{rango(t.desde,t.hasta)} · {ESTADOS[t.item.estado]}{t.item.responsable?` · ${t.item.responsable}`:''}{t.vencida?' · vencida':''}</small>
+       <div><Link href={`${base}/items/${t.item.id}`}>{t.item.nombre}</Link><small>{rango(t.desde,t.hasta)} · {nombreEstado(t.item)}{t.item.responsable?` · ${t.item.responsable}`:''}{t.vencida?' · vencida':''}</small>
        <Pendientes item={t.item} pendientes={pendientes[t.item.id]??[]} personas={personas} volverA={volverA}/></div></div>
       <div className="ap-gantt-linea">{escala&&<><Guias escala={escala} hoy={hoy} objetivo={p.objetivo_hasta}/>
        <Link className="ap-gantt-tbarra" data-marca={t.marca} data-vencida={t.vencida||undefined} href={`${base}/items/${t.item.id}`} aria-label={`${t.item.nombre}, ${rango(t.desde,t.hasta)}`}

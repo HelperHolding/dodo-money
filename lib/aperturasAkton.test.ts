@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {resumenPortada,diasVencido,fechaConcepto,notasConcepto,porEtapa,tonoConcepto,avanceComparado,diasParaApertura,esperadoItem,filasCronograma,indicadoresProyecto,lecturaApertura,textoDiasApertura,textoPts,type Concepto} from './aperturasAkton.ts';
 import type {ItemApertura} from './aperturas.ts';
 
-export const c=(d:Partial<Concepto>):Concepto=>({id:'i',nombre:'Tarea',tipo:'actividad',etapa:'P1',estado:'pendiente',inicio:null,fin:null,responsable:null,notas:null,...d});
+export const c=(d:Partial<Concepto>):Concepto=>({id:'i',nombre:'Tarea',tipo:'actividad',etapa:'P1',estado:'pendiente',inicio:null,fin:null,responsable:null,notas:null,categoria:null,...d});
 
 test('aperturas akton: esperado antes, durante y después del rango, contando hoy',()=>{
  const r={inicio:'2026-11-01',fin:'2026-11-10'};
@@ -27,6 +27,17 @@ test('aperturas akton: el avance comparado usa solo conceptos con fecha para la 
  assert.equal(a.conceptos,4);assert.equal(a.listos,2);assert.equal(a.real,50);
  assert.equal(a.conFecha,2);assert.equal(a.realConFecha,50);
  assert.equal(a.esperado,50);assert.equal(a.variacion,0);assert.equal(a.favorable,'si');
+});
+test('aperturas akton: real es el global ponderado y el real con fecha promedia puntos',()=>{
+ const a=avanceComparado([
+  c({id:'a',etapa:'P1',estado:'por_cerrar',inicio:'2026-11-01',fin:'2026-11-10'}),
+  c({id:'b',etapa:'P1',estado:'en_curso',inicio:'2026-11-01',fin:'2026-11-10'}),
+  c({id:'d',tipo:'equipo',etapa:'P4',estado:'recibido'}),
+ ],'2026-11-05');
+ // Real: Proyecto (2/3 + 1/3) / 2 = 0.5 y Compras 0.75 → (0.20·0.5 + 0.35·0.75) / 0.55 = 0.66 → 66.
+ assert.equal(a.real,66);assert.equal(a.listos,0);
+ // Con fecha: solo a y b → (2/3 + 1/3) / 2 = 50, contra 50 esperado.
+ assert.equal(a.realConFecha,50);assert.equal(a.esperado,50);assert.equal(a.variacion,0);
 });
 test('aperturas akton: tolerancia de 5 puntos',()=>{
  const items=(listos:number)=>Array.from({length:20},(_,n)=>c({id:`x${n}`,inicio:'2026-11-01',fin:'2026-11-10',estado:n<listos?'completado':'pendiente'}));
@@ -92,7 +103,7 @@ test('aperturas akton: lectura con las tres conclusiones y en su orden',()=>{
  const filas=filasCronograma(items,'2026-11-24');
  const l=lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:5000},items,'2026-11-24'),filas);
  assert.equal(l.length,3);
- assert.equal(l[0].titulo,'Avance de 8 % contra 100 % esperado a hoy');
+ assert.equal(l[0].titulo,'Con fecha: avance de 8 % contra 100 % esperado a hoy');
  // Empate en −100: desempata por clave de etapa (P3 antes que P5).
  assert.equal(l[0].texto,'Faltan 92 puntos. Las etapas más atrasadas: Permisos y contratación (−100 pts) y Obra e instalaciones (−100 pts).');
  assert.equal(l[1].titulo,'11 tareas vencidas, 1 también bloqueada');
@@ -105,7 +116,7 @@ test('aperturas akton: la lectura omite lo que no aplica',()=>{
  const items=[it({id:'a',estado:'completado',inicio:'2026-11-01',fin:'2026-11-10'})];
  const l=lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},items,'2026-11-24'),filasCronograma(items,'2026-11-24'));
  assert.equal(l.length,1);
- assert.equal(l[0].titulo,'Avance de 100 % contra 100 % esperado a hoy');
+ assert.equal(l[0].titulo,'Con fecha: avance de 100 % contra 100 % esperado a hoy');
  assert.equal(l[0].texto,'Va al día (0 pts). La etapa más adelantada es Local y alcance (0 pts).');
  assert.deepEqual(lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},[],'2026-11-24'),filasCronograma([],'2026-11-24')),[]);
 });
@@ -150,7 +161,8 @@ test('aperturas akton: tono y días de atraso de un concepto',()=>{
  assert.equal(tonoConcepto(c({fin:'2026-12-20'}),hoy),'normal');
  assert.equal(tonoConcepto(c({}),hoy),'normal');
  assert.equal(diasVencido(c({fin:'2026-11-20'}),hoy),4);
- assert.equal(diasVencido(c({estado:'verificado',fin:'2026-11-20'}),hoy),null);
+ // 'verificado' solo existe en equipo y referencia (1 punto = listo); en actividad no es un estado válido.
+ assert.equal(diasVencido(c({tipo:'equipo',estado:'verificado',fin:'2026-11-20'}),hoy),null);
  assert.equal(diasVencido(c({estado:'no_aplica',fin:'2026-11-20'}),hoy),null);
 });
 test('aperturas akton: notas al margen de un concepto',()=>{
@@ -198,6 +210,9 @@ test('aperturas akton: resumen de la portada',()=>{
  assert.equal(r.tarjetas.d.avance.real,null);assert.equal(r.tarjetas.d.avance.favorable,null);
  assert.equal(r.enCurso,3);assert.deepEqual(r.proxima,{id:'b',dias:6});assert.equal(r.atrasados,1);
  assert.equal(resumenPortada([{id:'c',objetivo_hasta:'2026-10-01'}],[],hoy).proxima,null);
+ // «Abierta» con la regla de puntos (avance general 100 %), igual que el detalle: referencia instalada vale 1 punto.
+ const ab=resumenPortada([{id:'e',objetivo_hasta:'2026-10-01'}],[{...c({id:'4',tipo:'referencia',etapa:'P4',estado:'instalado'}),proyecto_id:'e'},{...c({id:'5',estado:'completado'}),proyecto_id:'e'}],hoy);
+ assert.equal(ab.tarjetas.e.avance.real,100);assert.equal(ab.tarjetas.e.dias.tipo,'abierta');
 });
 test('aperturas akton: solo bloqueadas lleva sustantivo',()=>{
  const items=[it({id:'a',estado:'bloqueado'}),it({id:'b',estado:'bloqueado'})];
