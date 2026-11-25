@@ -8,13 +8,13 @@ import { leerTodo } from "@/lib/ventas/paginar";
 import { CortePresupuesto } from "./CortePresupuesto";
 
 // Presupuesto del proyecto desde CAPEX (HD-3). Solo para quien ve Finanzas: la página carga los datos una vez y los usa también en el KPI.
-export type CargaVivo = { vivo: Vivo; sinCategoria: number; error: boolean };
+export type CargaVivo = { vivo: Vivo; sinCategoria: number | null; error: boolean };
 
 const DIA = 86_400_000;
 const masDias = (fecha: string, dias: number) => new Date(Date.UTC(+fecha.slice(0, 4), +fecha.slice(5, 7) - 1, +fecha.slice(8, 10)) + dias * DIA).toISOString().slice(0, 10);
 
-/** Órdenes confirmadas y facturas no canceladas de la sucursal, hasta objetivo + 60 días, sin asignación CAPEX. Si algo falla vale 0 (no se avisa). */
-async function contarSinCategoria(db: SupabaseClient, p: Pick<ProyectoApertura, "sucursal_id" | "objetivo_hasta">): Promise<number> {
+/** Órdenes confirmadas y facturas no canceladas de la sucursal, hasta objetivo + 60 días, sin asignación CAPEX. Si algo falla devuelve null (la vista lo avisa). */
+async function contarSinCategoria(db: SupabaseClient, p: Pick<ProyectoApertura, "sucursal_id" | "objetivo_hasta">): Promise<number | null> {
   try {
     const tope = masDias(p.objetivo_hasta, 60);
     // confirmada_en es timestamptz: corte al inicio del día siguiente al tope, hora del centro de México.
@@ -28,7 +28,7 @@ async function contarSinCategoria(db: SupabaseClient, p: Pick<ProyectoApertura, 
     const conOrden = new Set(asignadas.map((a) => a.orden_id).filter(Boolean)), conFactura = new Set(asignadas.map((a) => a.factura_id).filter(Boolean));
     return ordenes.filter((o) => !conOrden.has(o.id)).length + facturas.filter((f) => !conFactura.has(f.id)).length;
   } catch {
-    return 0;
+    return null;
   }
 }
 
@@ -57,16 +57,18 @@ function Tabla({ filas, total }: { filas: FilaVivo[]; total: FilaVivo }) {
   </table></div>;
 }
 
-export function PresupuestoVivo({ vivo, sinCategoria, proyectoId, items, error }: CargaVivo & { proyectoId: string; items: ItemApertura[] }) {
+export function PresupuestoVivo({ vivo, sinCategoria, proyectoId, items, error, puedeEditar }: CargaVivo & { proyectoId: string; items: ItemApertura[]; puedeEditar: boolean }) {
   const href = `/finanzas/capex/${proyectoId}`;
   if (error) return <>
     <p className="aviso aviso-error">No se pudo cargar el presupuesto vivo. <Link href={href}>Abrir en Finanzas</Link></p>
     <CortePresupuesto items={items} plegado={false} />
   </>;
-  const aviso = sinCategoria > 0 && <p className="akton-nota">{sinCategoria} {sinCategoria === 1 ? "documento" : "documentos"} de esta sucursal sin categoría CAPEX: no suman al presupuesto. <Link href={href}>Asignar categoría</Link></p>;
+  const aviso = sinCategoria === null
+    ? <p className="akton-nota">No se pudo revisar si hay documentos sin categoría CAPEX.</p>
+    : sinCategoria > 0 && <p className="akton-nota">{sinCategoria} {sinCategoria === 1 ? "documento" : "documentos"} de esta sucursal sin categoría CAPEX: no suman al presupuesto y «Falta cotizar» puede estar sobrestimado. <Link href={href}>{puedeEditar ? "Asignar categoría" : "Ver en Finanzas"}</Link></p>;
   const { categorias, total } = vivo;
   if (!vivo.conPresupuesto) return <>
-    <p className="aviso">Sin presupuesto CAPEX aprobado para esta apertura. <Link href={href}>Capturarlo en Finanzas</Link></p>
+    <p className="aviso">Sin presupuesto CAPEX aprobado para esta apertura. <Link href={href}>{puedeEditar ? "Capturarlo en Finanzas" : "Ver en Finanzas"}</Link></p>
     {(categorias.length > 0 || aviso) && <div className="akton"><section className="akton-tabla-marco" aria-labelledby="ap-vivo-mov">
       <h2 id="ap-vivo-mov" className="akton-titulo">Movimientos CAPEX de la apertura</h2>
       <p className="akton-subtitulo">Desde CAPEX · sin IVA · sin presupuesto aprobado</p>
@@ -81,6 +83,7 @@ export function PresupuestoVivo({ vivo, sinCategoria, proyectoId, items, error }
       <h2 id="ap-vivo" className="akton-titulo">Presupuesto del proyecto</h2>
       <p className="akton-subtitulo">Desde CAPEX · sin IVA · {pesos(total.presupuesto)} presupuestado · {porcentaje(total.presupuesto ? ejercido / total.presupuesto : null)} ejercido</p>
       <Tabla filas={categorias} total={total} />
+      <p className="akton-nota">La falta por categoría supone que las compras se asignan a la misma categoría del presupuesto; el total compensa entre categorías.</p>
       {aviso}
     </section></div>
     <CortePresupuesto items={items} plegado />

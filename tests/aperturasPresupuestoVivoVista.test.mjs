@@ -8,6 +8,7 @@ test('página: presupuesto vivo solo con acceso a Finanzas; sin él, el corte',(
  assert.match(p,/puedeVerFinanzas\(perfil\.rol\)\s*&&\s*capex\s*\?\s*<PresupuestoVivo[^>]*\/>\s*:\s*<CortePresupuesto items=\{items\}\/>/);
  assert.match(p,/puedeVerFinanzas\(perfil\.rol\)\s*\?\s*await cargarPresupuestoVivo\(/,'no consulta CAPEX sin permiso');
  assert.match(p,/indicadoresProyecto\(p,items,hoy,/,'el KPI recibe el presupuesto vivo');
+ assert.match(p,/puedeEditar=\{puedeEditarFinanzas\(perfil\.rol\)\}/,'corporativo solo ve');
  assert.match(p,/<ResumenCapexApertura/,'la tarjeta CAPEX se queda');
 });
 test('componente: cálculo vivo, aviso sin categoría con liga a Finanzas y corte plegado',()=>{
@@ -19,6 +20,12 @@ test('componente: cálculo vivo, aviso sin categoría con liga a Finanzas y cort
  assert.match(c,/from\(["']capex_resumen["']\)[^;]*\.eq\(["']proyecto_id["']/);
  assert.match(c,/data-label="Cotizado sin OC"/);
  assert.match(c,/akton-subtotal/);
+ assert.match(c,/sobrestimado/);
+ assert.match(c,/catch\s*\{\s*return null;/,'error al contar = null, no 0');
+ assert.match(c,/No se pudo revisar si hay documentos sin categoría CAPEX/);
+ assert.match(c,/el total compensa entre categorías/);
+ assert.match(c,/puedeEditar \? "Asignar categoría" : "Ver en Finanzas"/);
+ assert.match(c,/puedeEditar \? "Capturarlo en Finanzas" : "Ver en Finanzas"/);
 });
 test('corte: prop plegado con <details> y título del corte original',()=>{
  const c=leer('app/aperturas/CortePresupuesto.tsx');

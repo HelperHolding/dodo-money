@@ -37,6 +37,8 @@ const BASE=`create role anon;create role authenticated;create schema auth;
  insert into apertura_proyectos values('${P1}','${S1}','Julio','2026-11-01','2026-12-15',null,1);
  create table apertura_items(id uuid primary key default gen_random_uuid(),proyecto_id uuid not null references apertura_proyectos(id),tipo text not null,categoria text,nombre text not null default 'Item',orden_id uuid references ordenes_compra(id),factura_id uuid references facturas(id));
  create table inversion_apertura_fuentes(id uuid primary key default gen_random_uuid(),sucursal_id uuid not null references sucursales(id),nombre text not null,fecha date not null,total numeric(16,2) not null,datos jsonb not null);
+ create table auth.users(id uuid primary key,email text);
+ insert into auth.users values('${ADMIN}','otro@dodopizza.mx');
  grant usage on schema auth to authenticated;grant select on perfiles to authenticated;`;
 
 async function preparar(){const db=new PGlite();await db.exec(BASE);await db.exec(migracion);return db;}
@@ -99,5 +101,20 @@ test('carga: ignora al admin con cambio de contraseña pendiente aunque sea el p
   await db.query(`update perfiles set debe_cambiar_contrasena=true where id=$1`,[ADMIN]);
   await db.query('delete from capex_presupuestos');
   await assert.rejects(db.exec(carga),/sin cambio de contraseña pendiente/);
+ }finally{await db.close();}
+});
+
+test('carga: prefiere como aprobador a scervera@dodopizza.mx (sin importar mayúsculas) y si no está usa otro admin',async()=>{
+ const db=await preparar();
+ try{
+  const SC='00000000-0000-0000-0000-0000000000d1';
+  await db.query(`insert into perfiles(id,activo,rol,nombre) values('${SC}',true,'admin','Zzz Sebastián')`);
+  await db.query(`insert into auth.users values('${SC}','SCervera@DodoPizza.mx')`);
+  await db.exec(carga);
+  assert.equal((await db.query('select distinct aprobado_por::text a from capex_presupuestos where proyecto_id=$1',[P1])).rows[0].a,SC);
+  await db.query('delete from capex_presupuestos');
+  await db.query('update perfiles set debe_cambiar_contrasena=true where id=$1',[SC]);
+  await db.exec(carga);
+  assert.equal((await db.query('select distinct aprobado_por::text a from capex_presupuestos where proyecto_id=$1',[P1])).rows[0].a,ADMIN);
  }finally{await db.close();}
 });
