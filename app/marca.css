@@ -790,7 +790,7 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .lateral .buscador-boton:hover { color: var(--menu-texto); border-color: var(--linea-fuerte); }
 .lateral .buscador-boton kbd { border-color: var(--menu-linea); color: var(--menu-texto-2); }
 .interruptor-luz { background: var(--superficie); border-color: var(--menu-linea); color: var(--menu-texto-2); }
-.interruptor-luz-riel { background: var(--linea-fuerte); }
+.interruptor-luz-riel { background: var(--tinta-3); }
 @media (max-width: 900px) {
   .franja-movil { color: var(--menu-texto); border-bottom: 1px solid var(--menu-linea); }
   .franja-movil-boton, .lateral-cerrar { color: var(--menu-texto); }
@@ -810,4 +810,6 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   html[data-menu="plegado"] .marco-mostrar-menu { display: inline-flex; position: fixed; top: 12px; left: 12px; z-index: 25; background: var(--superficie); box-shadow: 0 0 0 1px var(--menu-linea); }
   html[data-menu="plegado"] .marco-contenido { padding-top: 60px; }
 }
-@media print { .marco-mostrar-menu, .lateral-plegar { display: none !important; } }
+@media print { .marco-mostrar-menu, .lateral-plegar { display: none !important; } html[data-menu="plegado"] .marco-contenido { padding-top: 0; } }
+/* El buscador (Ctrl K) vive dentro del menú: con el menú plegado u oculto tiene que verse igual. */
+.lateral .buscador { visibility: visible; }

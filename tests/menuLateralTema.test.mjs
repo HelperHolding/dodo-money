@@ -31,3 +31,16 @@ test('el menú se pliega con ☰ y se recuerda sin parpadear', () => {
   const bloque = css.slice(css.lastIndexOf('@media (min-width: 901px) {'));
   assert.match(bloque, /html\[data-menu="plegado"\] \.marco \{/);
 });
+test('con el menú plegado, Ctrl K abre un buscador visible y el foco no se pierde', () => {
+  const css = leer('app/marca.css');
+  assert.match(css, /\.lateral \.buscador \{ visibility: visible; \}/);
+  const menu = leer('components/MenuLateral.tsx');
+  assert.match(menu, /plegarRef/);
+  assert.match(menu, /mostrarRef/);
+  assert.match(menu, /requestAnimationFrame\(\(\) => \(nuevo \? mostrarRef : plegarRef\)\.current\?\.focus\(\)\)/);
+});
+test('el interruptor se distingue de día y la impresión no deja franja en blanco', () => {
+  const css = leer('app/marca.css');
+  assert.match(css, /\.interruptor-luz-riel \{ background: var\(--tinta-3\); \}/);
+  assert.match(css, /@media print \{[^}]*html\[data-menu="plegado"\] \.marco-contenido \{ padding-top: 0; \}/);
+});
