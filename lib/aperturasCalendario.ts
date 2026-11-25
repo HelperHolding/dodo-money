@@ -4,8 +4,10 @@ import {CATEGORIAS,ETAPAS,type CategoriaApertura,type ItemApertura} from './aper
 
 export type Agrupacion = 'etapa'|'categoria'|'responsable';
 export const esAgrupacion = (v:unknown):v is Agrupacion => v==='etapa'||v==='categoria'||v==='responsable';
-export type ModoCalendario = 'cuadros'|'semana'|'barras';
-export const esModoCalendario = (v:unknown):v is ModoCalendario => v==='cuadros'||v==='semana'||v==='barras';
+export type ModoCalendario = 'mes'|'semana';
+export const esModoCalendario = (v:unknown):v is ModoCalendario => v==='mes'||v==='semana';
+// Enlaces viejos (cuadros, barras) y vacío caen a Mes, como Google.
+export const modoCalendario = (v:unknown):ModoCalendario => v==='semana'?'semana':'mes';
 // Los colores que se guardan en apertura_colores (por persona son automáticos).
 export const esAgrupacionGuardable = (v:unknown):v is 'etapa'|'categoria' => v==='etapa'||v==='categoria';
 export type ItemCalendario = Pick<ItemApertura,'id'|'clave'|'nombre'|'tipo'|'etapa'|'categoria'|'estado'|'responsable'|'inicio'|'fin'|'revision'>;
@@ -101,9 +103,10 @@ export function datosFechas(i:ItemApertura,inicio:string,fin:string) {
 // El responsable es texto libre: se junta por persona sin acentos ni mayúsculas, sin lo que va entre paréntesis.
 // Con "A → B desde 28-nov" cuenta para quien recibe la actividad (B).
 export type Persona = {clave:string;nombre:string;iniciales:string;color:string};
-export const SIN_ASIGNAR = {clave:'sin',nombre:'Sin asignar',color:'#e2e8f0'} as const;
-// Pastel de la paleta Dodo, un tono por persona (en orden alfabético, así no cambia al filtrar).
-export const COLORES_PERSONA = ['#ffd2bd','#c9ddf5','#bfe8d6','#f7cddc','#ddd0f5','#ffe3a8','#c3e6e6','#d7ebc4','#f2cdf0','#e8d5c4','#d0d4f7','#fff0a8'];
+export const SIN_ASIGNAR = {clave:'sin',nombre:'Sin asignar',color:'#a0a0a0'} as const;
+// Paleta tipo Google Calendar, un color por persona (en orden alfabético, así no cambia al filtrar).
+// Sin el tomate (#d50000), para no confundirse con el rojo de alerta.
+export const COLORES_PERSONA = ['#e67c73','#f4511e','#f6bf26','#33b679','#0b8043','#039be5','#3f51b5','#7986cb','#8e24aa','#616161'];
 const sinAcentos=(t:string)=>t.normalize('NFD').replace(/[̀-ͯ]/g,'').toLocaleLowerCase('es-MX');
 export function nombrePersona(texto:string|null|undefined):string {
  let t=(texto??'').split('→').at(-1)!;
@@ -175,4 +178,28 @@ export function sugerenciasResponsable(usuarios:(string|null)[],usados:(string|n
  const vistos=new Map<string,string>();
  for(const n of [...usuarios.map(u=>(u??'').replace(/\s+/g,' ').trim()),...usados.map(nombrePersona)]){if(!n)continue;const c=clavePersona(n);if(!vistos.has(c))vistos.set(c,n);}
  return [...vistos.values()].sort((a,b)=>a.localeCompare(b,'es-MX'));
+}
+
+// ── Estilo Google Calendar ──
+// Mini mes del panel: siempre 6 semanas, para que no salte de alto.
+export function miniMes(mes:string):Celda[][] {
+ const s=semanasCalendario(mes);
+ while(s.length<6){const ult=s.at(-1)!.at(-1)!.dia;s.push(Array.from({length:7},(_,i)=>({dia:moverDias(ult,i+1),delMes:false})));}
+ return s;
+}
+export const esDeUnDia = (i:Pick<ItemCalendario,'inicio'|'fin'>) => {const r=rangoItem(i);return r!==null&&r.desde===r.hasta;};
+export const filtrarOcultos = <T extends Pick<ItemCalendario,'responsable'>>(items:T[],ocultos:ReadonlySet<string>) => items.filter(i=>!ocultos.has(clavePersona(i.responsable)));
+// Tareas de cada persona en el periodo (el número junto a su casilla).
+export function conteoPorPersona(items:Pick<ItemCalendario,'responsable'|'inicio'|'fin'|'estado'>[],desde:string,hasta:string):Record<string,number> {
+ const r:Record<string,number>={};
+ for(const i of items){if(!enCalendario(i))continue;const g=rangoItem(i)!;if(g.desde>hasta||g.hasta<desde)continue;const c=clavePersona(i.responsable);r[c]=(r[c]??0)+1;}
+ return r;
+}
+// Cuántas barras no caben en cada día de la semana (para «N más»).
+export const ocultasPorDia = (barras:Barra<unknown>[],semana:Celda[],limite:number) =>
+ semana.map((_,col)=>barras.filter(b=>b.carril>=limite&&b.col<=col&&col<b.col+b.span).length);
+export const tituloPeriodo = (modo:ModoCalendario,mes:string,semana:string) => modo==='mes'?nombreMes(mes):tituloSemana(semanaDe(semana));
+// Personas ocultas guardadas en el navegador: JSON de claves; se ignora lo roto y a quien ya no está.
+export function leerOcultos(texto:string|null,claves:readonly string[]):Set<string> {
+ try{const v=JSON.parse(texto??'[]');return new Set(Array.isArray(v)?v.filter((c):c is string=>typeof c==='string'&&claves.includes(c)):[]);}catch{return new Set();}
 }
