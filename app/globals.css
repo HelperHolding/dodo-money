@@ -2623,3 +2623,7 @@ html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas i
   .ap-cot-tabla tr { break-inside:avoid; }
   .ap-cot-tabla td, .ap-cot-tabla th { border:1px solid #999; }
 }
+
+/* Nota de Dodo MX bajo el campo del cierre */
+.dodo-nota { color: var(--tinta-2); }
+.dodo-nota[data-alerta="difiere"] { color: var(--alerta-texto); font-weight: 700; }

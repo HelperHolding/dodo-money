@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { obtenerContextoParaEscribir, puedeCerrarDia } from "@/lib/contexto";
 import { hoyMX, numero } from "@/lib/formato";
+import { ivaDeVenta } from "@/lib/cierre/ventasDodo";
 import { BUCKET_FOTOS } from "@/lib/fotos";
 import { leerCorteRappi, problemaArchivoCorte, rutaCorteRappi } from "@/lib/rappi";
 import { datosDelDia } from "./datos";
@@ -25,15 +26,19 @@ export async function cerrarDia(formData: FormData) {
   if ("error" in corte) volver("error", corte.error);
   const rutaCorte = await subirCorte(supabase, sucursal.id, fecha, formData.get("rappi_corte_archivo"));
 
+  const efectivo = numero(formData.get("efectivo"));
+  const tarjeta = numero(formData.get("tarjeta"));
+  const app = numero(formData.get("app"));
+  const rappi = numero(formData.get("rappi"));
   const { error } = await supabase.from("cierres_dia").insert({
     sucursal_id: sucursal.id,
     fecha,
-    efectivo: numero(formData.get("efectivo")),
-    tarjeta: numero(formData.get("tarjeta")),
-    app: numero(formData.get("app")),
-    rappi: numero(formData.get("rappi")),
+    efectivo,
+    tarjeta,
+    app,
+    rappi,
     descuentos: numero(formData.get("descuentos")),
-    iva: numero(formData.get("iva")),
+    iva: ivaDeVenta(efectivo + tarjeta + app + rappi),
     transacciones: Math.round(numero(formData.get("transacciones"))),
     boveda_inicial: d.bovedaInicial,
     retiros_dia: d.retiros,

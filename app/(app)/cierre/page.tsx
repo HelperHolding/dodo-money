@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { CampoContado } from "./CampoContado";
+import { VentasCierre } from "./VentasCierre";
+import type { VentasDodo } from "@/lib/cierre/ventasDodo";
 import { BotonEnviar } from "@/components/BotonEnviar";
 import { obtenerContexto, puedeCerrarDia } from "@/lib/contexto";
 import { hoyMX, pesos } from "@/lib/formato";
@@ -109,37 +111,28 @@ export default async function PaginaCierre({ searchParams }: { searchParams: Pro
   const esperado = d.bovedaInicial + d.retiros - d.aperturas - d.depositos - d.gastosBoveda;
   const bloqueado = !!turno || d.pendientes > 0;
 
-  const campo = (id: string, texto: string, ayuda?: string) => (
-    <div className="campo">
-      <label htmlFor={id}>{texto}</label>
-      <input id={id} name={id} type="number" inputMode="decimal" min="0" step="0.01" required />
-      {ayuda && <small>{ayuda}</small>}
-    </div>
-  );
+  let dodo: VentasDodo | null = null;
+  let errorDodo = false;
+  try {
+    const { data, error: errRpc } = await supabase.rpc("ventas_para_cierre", { p_fecha: fecha });
+    if (errRpc) errorDodo = true;
+    else {
+      const f = Array.isArray(data) ? data[0] : data;
+      if (f) dodo = { efectivo: Number(f.efectivo), tarjeta: Number(f.tarjeta), pedidos: Number(f.pedidos), actualizado_en: f.actualizado_en ?? null };
+    }
+  } catch {
+    errorDodo = true;
+  }
 
   return (
     <>
-      <EncabezadoPagina titulo={`Cierre del día ${fecha}`} info="Las ventas se copian del reporte de Dodo IS. La bóveda incluye los movimientos confirmados desde el último cierre, aunque haya días sin corte." />
+      <EncabezadoPagina titulo={`Cierre del día ${fecha}`} info="Captura las ventas del reporte de Dodo IS; abajo ves lo que Dodo MX ya sincronizó. El IVA se calcula solo. La bóveda incluye los movimientos confirmados desde el último cierre, aunque haya días sin corte." />
       <Aviso ok={ok} error={error} />
       {turno && <p className="aviso aviso-error">Hay un turno abierto. Ciérralo con su <Link href="/arqueo">arqueo de cierre</Link> primero.</p>}
       {d.pendientes > 0 && <p className="aviso aviso-error">Hay {d.pendientes} movimientos sin confirmar en <Link href="/movimientos">Movimientos</Link>.</p>}
 
       <form action={cerrarDia} className="formulario-pagina">
-        <section className="seccion" aria-labelledby="t-ventas">
-          <h2 id="t-ventas"><span className="paso">1</span>Ventas según Dodo IS</h2>
-          <div className="rejilla rejilla-corta">
-            {campo("efectivo", "Efectivo")}
-            {campo("tarjeta", "Tarjeta")}
-            {campo("app", "App o pago en línea")}
-            {campo("rappi", "Rappi")}
-            {campo("descuentos", "Descuentos otorgados")}
-            {campo("iva", "IVA incluido", "Venta neta = venta total − IVA")}
-            <div className="campo">
-              <label htmlFor="transacciones">Transacciones</label>
-              <input id="transacciones" name="transacciones" type="number" inputMode="numeric" min="0" step="1" required />
-            </div>
-          </div>
-        </section>
+        <VentasCierre dodo={dodo} error={errorDodo} />
 
         <section className="seccion" aria-labelledby="t-corte-rappi">
           <h2 id="t-corte-rappi"><span className="paso">2</span>Corte de Rappi</h2>
