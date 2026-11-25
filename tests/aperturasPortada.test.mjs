@@ -2,18 +2,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 
-// Guardia de la portada de Aperturas: tarjetas compactas que son el enlace, con cuenta regresiva y avance.
+// Guardia de la portada de Aperturas: tarjetas que son el enlace, con días para abrir y avance contra lo esperado (estilo Akton).
 const leer = (r) => readFileSync(new URL(`../${r}`, import.meta.url), 'utf8');
 
 test('la portada muestra una tarjeta enlace por sucursal, sin el botón repetido', () => {
   const p = leer('app/aperturas/page.tsx');
   assert.match(p, /className="ap-portada"/);
-  assert.match(p, /<Link key=\{p\.id\} href=\{`\/aperturas\/\$\{p\.id\}`\} className="ap-tarjeta"/);
+  assert.match(p, /<Link key=\{p\.id\} href=\{`\/aperturas\/\$\{p\.id\}`\} className="ap-tarjeta ap-tarjeta-akton"/);
   assert.doesNotMatch(p, /Abrir proyecto/);
-  assert.match(p, /cuentaRegresiva\(/);
-  assert.match(p, /avancePorProyecto\(/);
+  assert.match(p, /resumenPortada\(/);
+  assert.match(p, /textoDiasApertura\(/);
   assert.match(p, /ordenarProyectos\(/);
-  assert.match(p, /<progress /);
 });
 test('los estilos de la portada usan tokens y resaltan solo el borde', () => {
   const css = leer('app/marca.css');
@@ -21,9 +20,10 @@ test('los estilos de la portada usan tokens y resaltan solo el borde', () => {
   assert.match(css, /\.ap-tarjeta:hover[^{]*\{ border-color: var\(--accion\); \}/);
 });
 
-test('cada tarjeta muestra el porcentaje de avance junto a la barra', () => {
+test('cada tarjeta muestra el avance contra lo esperado, con estilo Akton', () => {
   const p = leer('app/aperturas/page.tsx');
-  assert.match(p, /porcentajeAvance\(/);
-  assert.match(p, /className="ap-tarjeta-porcentaje"/);
-  assert.match(leer('app/marca.css'), /\.ap-tarjeta-porcentaje \{/);
+  assert.match(p, /<div className="akton">/);
+  assert.match(p, /esperado \{a\.esperado===null/);
+  assert.match(p, /className="akton-var" data-favorable=/);
+  assert.match(leer('app/globals.css'), /\.ap-tarjeta\.ap-tarjeta-akton \{/);
 });

@@ -2409,3 +2409,12 @@ body { background: var(--papel-2); }
 /* En las tablas de aperturas los enlaces van en negro: el naranja es solo para lo destacado. */
 .ap-tabla a { color:var(--tinta); text-decoration:underline; text-decoration-color:var(--linea-fuerte); text-underline-offset:2px; }
 .ap-tabla a:hover { text-decoration-color:var(--tinta); }
+
+/* Portada de Aperturas en estilo Akton: tarjeta blanca sin sombra; naranja solo para los días y rojo si ya venció. */
+.ap-tarjeta.ap-tarjeta-akton { gap:6px; background:var(--superficie); border:1px solid var(--linea); border-radius:var(--r-md); box-shadow:none; padding:16px 18px; color:var(--tinta); text-decoration:none; }
+.ap-tarjeta.ap-tarjeta-akton:hover, .ap-tarjeta.ap-tarjeta-akton:focus-visible { border-color:var(--tinta-3); }
+.ap-tarjeta-dias { font-size:1.6rem; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; color:var(--tinta); }
+.ap-tarjeta-dias small { font-size:.9rem; font-weight:600; }
+.ap-tarjeta-dias[data-tono="destacado"] { color:var(--accion-oscuro); }
+.ap-tarjeta-dias[data-tono="no"] { color:var(--alerta); }
+.ap-tarjeta-linea { font-size:.88rem; color:var(--tinta-2); font-variant-numeric:tabular-nums; }
