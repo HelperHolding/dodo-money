@@ -17,7 +17,7 @@ export function IndicadoresProyectoAkton({k,objetivo}:{k:IndicadoresProyecto;obj
   <Kpi etiqueta="Bloqueadas" tono={k.bloqueadas?'no':undefined} valor={k.bloqueadas} pie={k.bloqueadas?'Ver en Atención':'Sin bloqueos'}/>
   <Kpi etiqueta="Equipo recibido" valor={k.recepcion===null?'—':`${k.recepcion} %`} pie={`${k.recibidas} de ${k.unidades} unidades`}/>
   <Kpi etiqueta={k.compras.firme?'Compras con precio firme':'Compras estimadas'} tono={k.compras.excede?'no':undefined} valor={pesos(k.compras.monto)}
-   pie={k.compras.presupuesto===null?'Presupuesto sin definir':`Presupuesto: ${pesos(k.compras.presupuesto)}`}/>
+   pie={k.compras.presupuesto===null?'Presupuesto sin definir':`Presupuesto${k.compras.capex?' CAPEX':''}: ${pesos(k.compras.presupuesto)}`}/>
  </section>;
 }
 
