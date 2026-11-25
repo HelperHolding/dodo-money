@@ -6,7 +6,7 @@ import {puedeEditarCompras} from '@/lib/roles';
 import {CATEGORIAS,ETAPAS,estadosPara,nombreEstado,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
 import {pesos,fechaTexto,hoyCalendarioMX} from '@/lib/formato';
 import {Kpi} from '@/app/finanzas/PLAkton';
-import {diasVencido,fechaConcepto,notasConcepto,tonoConcepto} from '@/lib/aperturasAkton';
+import {diasVencido,fechaConcepto,tonoConcepto} from '@/lib/aperturasAkton';
 import {Aviso} from '@/components/Aviso';
 import {TareasDelDocumento} from '@/components/TareasDelDocumento';
 import {BotonEnviar} from '@/components/BotonEnviar';
@@ -29,7 +29,7 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
  return <><EncabezadoPagina titulo={<>{i.nombre}</>} descripcion={<>{p.sucursales?.nombre} · {i.clave} · {ETAPAS[i.etapa]}</>} /><Link href={`/aperturas/${id}?vista=${compra?'compras':i.tipo==='tecnico'?'tecnico':'actividades'}`}>Volver a la lista</Link><Aviso {...avisos}/><TareasDelDocumento supabase={supabase} tipo="apertura_item" id={item} rol={perfil.rol} hoy={hoy} />
  <div className="akton"><section className="akton-kpis" aria-label="Resumen de la tarea">
   <Kpi etiqueta="Estado" tono={tono==='listo'?'si':tono==='alerta'?'no':undefined} valor={nombreEstado(i)} pie={`Responsable: ${i.responsable??'Sin asignar'}`}/>
-  <Kpi etiqueta="Fecha" tono={vencida!==null?'no':undefined} valor={fecha?fechaTexto(fecha):'Sin fecha'} pie={vencida!==null?`Vencida hace ${vencida} ${vencida===1?'día':'días'}`:i.inicio&&i.fin&&i.inicio!==i.fin?`${fechaTexto(i.inicio)} – ${fechaTexto(i.fin)}`:fecha?'Fecha prevista':'Sin programar'}/>
+  <Kpi etiqueta="Fecha" tono={vencida!==null?'no':undefined} valor={fecha?fechaTexto(fecha):'Sin fecha'} pie={vencida!==null?`Vencida hace ${vencida} ${vencida===1?'día':'días'}`:i.inicio&&i.fin&&i.inicio!==i.fin?`${fechaTexto(i.inicio)} – ${fechaTexto(i.fin)}`:fecha?(i.fin?'Fin previsto':'Inicio previsto'):'Sin programar'}/>
   {compra?<Kpi etiqueta="Cantidad / recibido" valor={`${i.cantidad??'—'} / ${i.recibido}`} pie={typeof i.original.unidad==='string'?i.original.unidad:i.cantidad===null?'Cantidad por confirmar':'Unidades'}/>
    :<Kpi etiqueta="Categoría" valor={i.categoria?CATEGORIAS[i.categoria]?.nombre??i.categoria:'Sin categoría'} pie={i.categoria?`Hoja ${CATEGORIAS[i.categoria]?.hoja??'—'}`:ETAPAS[i.etapa]}/>}
   {compra&&<Kpi etiqueta="Importe con IVA" valor={i.cantidad!==null&&i.precio!==null?pesos(Number(i.cantidad)*Number(i.precio)):'—'} pie={i.precio===null?'Sin precio':`Precio unitario con IVA: ${pesos(i.precio)}`}/>}
@@ -43,7 +43,6 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
    <tr><th scope="row">Evidencia</th><td data-label="Evidencia" className="texto-libre">{i.evidencia??'—'}</td></tr>
    <tr><th scope="row">Notas</th><td data-label="Notas" className="texto-saltos">{i.notas??'—'}</td></tr>
   </tbody></table></div>
-  {notasConcepto(i,hoy).map(n=><p key={n} className="akton-nota">{n}</p>)}
  </section>
  <section className="akton-tabla-marco" aria-labelledby="ap-origen"><h2 id="ap-origen" className="akton-titulo">Origen y especificaciones</h2><p className="akton-subtitulo">{i.fuente}</p>
   <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-tabla ap-tabla-datos"><tbody>{Object.entries(i.original).filter(([k,v])=>v!==null&&v!==''&&!['id','fuente','nombre','grupo','hoja'].includes(k)).map(([k,v])=>{const etiqueta=({descripcion:'Especificación original',cantidad:'Cantidad de referencia',medidas:'Medidas explícitas',potencia:'Potencia kW',codigo:'Código',unidad:'Unidad',apertura:'Apertura de puerta',altura:'Altura de salida',area:'Área',muros:'Muros',plafon:'Plafón',detalle:'Detalle',historico:'Antecedente de apertura anterior',explicacion:'Explicación original'} as Record<string,string>)[k]??k;return <tr key={k}><th scope="row">{etiqueta}</th><td data-label={etiqueta} className="texto-libre">{typeof v==='object'?JSON.stringify(v):String(v)}</td></tr>;})}</tbody></table></div>

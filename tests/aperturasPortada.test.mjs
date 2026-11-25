@@ -60,3 +60,15 @@ test('el cronograma muestra la columna «Con fecha» que usa la variación, en e
   assert.match(c, /data-label="Con fecha">\{pct\(f\.avance\.realConFecha\)\}/);
   assert.match(c, /data-label="Con fecha">\{pct\(total\.realConFecha\)\}/);
 });
+// Limpieza de detalles menores.
+test('el detalle de tarea no repite avisos y nombra bien la fecha', () => {
+  const d = leer('app/aperturas/[id]/items/[item]/page.tsx');
+  assert.doesNotMatch(d, /notasConcepto\(/);
+  assert.match(d, /i\.fin\?'Fin previsto':'Inicio previsto'/);
+});
+test('Inversión no repite el número de clasificaciones en dos indicadores', () => {
+  assert.doesNotMatch(leer('app/aperturas/inversion/page.tsx'), /pie=\{`En \$\{a\.grupos\.length\}/);
+});
+test('sin CSS de la tarjeta vieja de la portada', () => {
+  assert.doesNotMatch(leer('app/marca.css'), /\.ap-tarjeta-(avance|barra|porcentaje|nombre)|\.ap-tarjeta progress/);
+});

@@ -19,7 +19,7 @@ export default async function Inversion({searchParams}:{searchParams:Promise<{q?
  <div className="akton">
   <section className="akton-kpis" aria-label="Indicadores de la inversión">
    <Kpi etiqueta="Inversión registrada" tono="destacado" valor={pesos(a.total)} pie="Detalle clasificado, sumado una vez"/>
-   <Kpi etiqueta="Movimientos" valor={a.movimientos} pie={`En ${a.grupos.length} ${a.grupos.length===1?'clasificación':'clasificaciones'}`}/>
+   <Kpi etiqueta="Movimientos" valor={a.movimientos} pie="Del detalle de la fuente"/>
    <Kpi etiqueta="Clasificaciones" valor={a.grupos.length} pie={a.grupos[0]?`Mayor: ${a.grupos[0].tipo}`:'—'}/>
    <Kpi etiqueta="Cuadre con la fuente" tono={a.cuadra?'si':'no'} valor={a.cuadra?'Cuadra':`Diferencia de ${pesos(Math.abs(a.diferencia))}`} pie={`Total de la fuente: ${pesos(Number(f.total))}`}/>
   </section>
