@@ -122,9 +122,8 @@ export function TablaAkton({ r, ajustado, ajustes, avisos, conSucursal = false, 
               {x.ingreso && <span className="akton-chip">ingreso</span>}
               {n && <a className="akton-info" href={`#akton-pie-${n}`} aria-label={`Nota ${n}`}>ⓘ<sup>{n}</sup></a>}
             </span>
-            {f && x.nivel !== "sub" && referenciaHelper(f.clave) && <small>Referencia contable: {referenciaHelper(f.clave)}</small>}
-            {f && desplegable(r.detalleDe(f.clave), "De dónde sale")}
-            {f && captura?.(f)}
+            {f && x.nivel !== "sub" && referenciaHelper(f.clave) && <small className="akton-ref" title={`Referencia contable: ${referenciaHelper(f.clave)}`}>{referenciaHelper(f.clave)}</small>}
+            {f && <span className="akton-acciones">{desplegable(r.detalleDe(f.clave), "De dónde sale")}{captura?.(f)}</span>}
           </span>
         </td>
         <td data-label="Real" className="monto"><Importe n={x.monto} /></td>
@@ -138,7 +137,13 @@ export function TablaAkton({ r, ajustado, ajustes, avisos, conSucursal = false, 
           {f?.sinCapturar ? "Sin capturar" : x.diferencia === null ? "—" : <Importe n={x.diferencia} />}
         </td>
         <td data-label="Notas" className="akton-nota-celda">
-          {notas.length > 0 && <div className="akton-nota">{notas.map((t, i) => <p key={i}>{t}</p>)}</div>}
+          {notas.length > 0 && (notas.length === 1 && notas[0].length <= 70
+            ? <div className="akton-nota"><p>{notas[0]}</p></div>
+            // Notas largas o varias: una línea a la vista y el resto al tocarla, para que el renglón no crezca.
+            : <details className="akton-nota akton-nota-plegable">
+              <summary>{notas[0]}{notas.length > 1 && <span className="akton-nota-mas"> +{notas.length - 1}</span>}</summary>
+              {notas.slice(1).map((t, i) => <p key={i}>{t}</p>)}
+            </details>)}
         </td>
       </tr>
     );

@@ -2319,12 +2319,12 @@ body { background: var(--papel-2); }
 .akton-subtitulo { margin: 2px 0 12px; font-size: 0.85rem; color: var(--tinta-3); }
 .akton-tabla { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .akton-tabla thead th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tinta-2); border-bottom: 2px solid var(--tinta); padding: 8px 10px; background: none; }
-.akton-tabla td { padding: 7px 8px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+.akton-tabla td { padding: 4px 8px; border-bottom: 1px solid var(--linea); vertical-align: top; line-height: 1.35; }
 .akton-tabla td.monto .importe { display: flex; min-width: 0; gap: 6px; }
 .akton-tabla .akton-pct { color: var(--tinta-2); }
-.akton-seccion th { text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--tinta-2); padding: 16px 10px 6px; border-bottom: 1px solid var(--linea-fuerte); background: none; }
-.akton-sub td:first-child { padding-left: 28px; color: var(--tinta-2); font-size: 0.9rem; }
-.akton-sub td { font-size: 0.9rem; color: var(--tinta-2); }
+.akton-seccion th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--tinta-2); padding: 10px 8px 4px; border-bottom: 1px solid var(--linea-fuerte); background: none; }
+.akton-sub td:first-child { padding-left: 24px; color: var(--tinta-2); font-size: 0.85rem; }
+.akton-sub td { font-size: 0.85rem; color: var(--tinta-2); padding-top: 2px; padding-bottom: 2px; }
 .akton-subtotal td { background: var(--akton-durazno); font-weight: 700; border-bottom-color: var(--accion-suave-borde); }
 .akton-destacado td { background: var(--accion-suave); font-weight: 800; border-top: 2px solid var(--accion); border-bottom: 2px solid var(--accion); }
 .akton-destacado td:first-child { box-shadow: inset 4px 0 0 var(--accion); }
@@ -2360,3 +2360,45 @@ body { background: var(--papel-2); }
   .akton-tabla td.akton-nota-celda { display: block; text-align: left; }
   .akton-tabla td.akton-nota-celda::before { content: none; }
 }
+
+/* Renglones compactos del P&L: referencia en una línea y acciones lado a lado. */
+.akton-tabla .celda-pila { gap: 0; }
+.akton-ref { display: block; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.72rem; color: var(--tinta-3); }
+.akton-acciones { display: flex; flex-wrap: wrap; gap: 0 12px; font-size: 0.78rem; }
+.akton-acciones:empty { display: none; }
+.akton-acciones .pl-origen { margin-top: 0; }
+.akton-acciones details[open] { flex-basis: 100%; }
+.akton-acciones summary { font-size: 0.78rem; }
+.akton-nota-plegable summary { cursor: pointer; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; list-style: none; }
+.akton-nota-plegable summary::-webkit-details-marker { display: none; }
+.akton-nota-plegable[open] summary { display: block; margin-bottom: 4px; }
+.akton-nota-mas { font-weight: 700; color: var(--accion-oscuro); }
+.akton-nota { font-size: 0.75rem; }
+
+/* Pagos: facturas en renglones de una línea dentro de cada proveedor. */
+.pagos-proveedor { margin: 0 0 12px; }
+.pagos-proveedor-encabezado { padding: 4px 0; margin-bottom: 0; }
+.pagos-renglones { list-style: none; margin: 0; padding: 0; }
+.pagos-renglon { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(0, 2.4fr) auto 120px 130px; align-items: center; gap: 4px 12px; padding: 5px 8px; border-bottom: 1px solid var(--linea); font-size: 0.88rem; }
+.pagos-renglon:last-child { border-bottom: 0; }
+.pagos-renglon[data-alerta] { box-shadow: inset 3px 0 0 var(--alerta); }
+.pagos-renglon-folio { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pagos-renglon-fechas { color: var(--tinta-2); min-width: 0; }
+.pagos-renglon-estados { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.pagos-renglon-estados .insignia { font-size: 0.72rem; padding: 1px 7px; }
+.pagos-renglon-monto { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pagos-renglon[data-alerta] .pagos-renglon-monto { color: var(--alerta-texto); }
+.pagos-renglon-accion { display: flex; justify-content: flex-end; }
+.pagos-renglon-accion .boton { padding: 3px 10px; min-height: 0; font-size: 0.78rem; }
+@media (max-width: 760px) {
+  .pagos-renglon { grid-template-columns: minmax(0, 1fr) auto; padding: 8px 4px; }
+  .pagos-renglon-fechas, .pagos-renglon-estados { grid-column: 1 / -1; justify-content: flex-start; }
+  .pagos-renglon-fechas { order: 3; font-size: 0.8rem; }
+  .pagos-renglon-estados { order: 4; }
+  .pagos-renglon-accion { order: 5; grid-column: 1 / -1; justify-content: flex-start; }
+  .pagos-renglon-accion:empty { display: none; }
+}
+/* «Por pagar hoy»: celdas y botones más bajos. */
+.pagos-tabla td { padding-top: 6px; padding-bottom: 6px; line-height: 1.35; }
+.pagos-tabla .boton { padding: 3px 8px; min-height: 0; font-size: 0.75rem; }
+.pagos-tabla .pagos-grupo th { padding-top: 6px; padding-bottom: 6px; }

@@ -148,30 +148,26 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
         <strong>{pesos(g.total)}</strong>
         {edita && g.facturas.length > 1 && <Link className="boton boton-secundario boton-compacto" href={`/compras/pagos/nuevo?proveedor=${g.clave}`}>Pagar las {g.facturas.length}</Link>}
       </header>
-    <div className="tarjetas">
+    {/* Un renglón por factura: el proveedor ya está en el encabezado del grupo. */}
+    <ul className="pagos-renglones">
       {g.facturas.map((f) => (
-        <article key={f.id} className="tarjeta factura-tarjeta" data-alerta={vencida(f, hoy) ? "si" : undefined}>
-          <div className="tarjeta-encabezado">
-            <div>
-              <h3>{proveedorDe(f)}</h3>
-              <p className="factura-tarjeta-folio"><Link href={`/compras/facturas/${f.id}`}>{nombre(f)}</Link></p>
-            </div>
-            <strong className="factura-tarjeta-monto">{pesos(f.saldo)}</strong>
-          </div>
-          <p className="factura-tarjeta-estados">
+        <li key={f.id} className="pagos-renglon" data-alerta={vencida(f, hoy) ? "si" : undefined}>
+          <Link className="pagos-renglon-folio" href={`/compras/facturas/${f.id}`}>{nombre(f)}</Link>
+          <span className="pagos-renglon-fechas">
+            Vence {fechaTexto(f.vence_el)}
+            {f.pago_programado_el && <> · programada {fechaTexto(f.pago_programado_el)} · {f.pago_programado_forma ? NOMBRE_FORMA_PAGO[f.pago_programado_forma] : "forma por definir"}</>}
+          </span>
+          <span className="pagos-renglon-estados">
             {vencida(f, hoy) && <span className="insignia" data-tono="peligro">Vencida</span>}
             {f.estado === "parcial" && <span className="insignia" data-tono="info">Abonada</span>}
             {f.pago_programado_el && <span className="insignia" data-tono="exito">Programada</span>}
             {f.falta_complemento && <span className="insignia" data-tono="aviso">Falta complemento</span>}
-          </p>
-          <dl className="tarjeta-datos">
-            <dt>Vence</dt><dd>{fechaTexto(f.vence_el)}{vencida(f, hoy) ? " · vencida" : ""}</dd>
-            {f.pago_programado_el && <><dt>Programada</dt><dd>{fechaTexto(f.pago_programado_el)} · {f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:"Forma por definir"}</dd></>}
-          </dl>
-          {edita && Number(f.saldo) > 0 && <Link className="boton boton-secundario" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}
-        </article>
+          </span>
+          <strong className="pagos-renglon-monto">{pesos(f.saldo)}</strong>
+          <span className="pagos-renglon-accion">{edita && Number(f.saldo) > 0 && <Link className="boton boton-secundario boton-compacto" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}</span>
+        </li>
       ))}
-    </div>
+    </ul>
     </section>
     ))}
     </>
@@ -262,17 +258,17 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
       <Plegable id="t-pagos" titulo="Pagos de este mes" resumen={pesos(pagado.monto)}>
         {!pagosVisibles.length && <p className="vacio">Aún no hay pagos este mes.</p>}
         <SubtotalesRazon grupos={pagadoPorRazon} unidad={["factura pagada", "facturas pagadas"]} filtro={filtroRazon} />
-        <div className="tarjetas">
+        <ul className="pagos-renglones">
           {pagosVisibles.map((p) => (
-            <article key={p.id} className="tarjeta" data-alerta={p.anulado_en ? "si" : undefined}>
-              <div className="tarjeta-encabezado"><div>
-                <h3><Link href={`/compras/pagos/${p.id}`}>{pesos(p.monto)}</Link> · {proveedorDe(p)}</h3>
-                <p className="tarjeta-estado">{fechaTexto(p.fecha)} <span className="insignia">{NOMBRE_FORMA_PAGO[p.forma]}</span>{p.anulado_en && <span className="insignia" data-tono="peligro">Anulado</span>}</p>
-              </div></div>
-              {p.referencia && <dl className="tarjeta-datos"><dt>Referencia</dt><dd>{p.referencia}</dd></dl>}
-            </article>
+            <li key={p.id} className="pagos-renglon pagos-renglon-pago" data-alerta={p.anulado_en ? "si" : undefined}>
+              <span className="pagos-renglon-folio">{proveedorDe(p)}</span>
+              <span className="pagos-renglon-fechas">{fechaTexto(p.fecha)}{p.referencia && <> · ref. {p.referencia}</>}</span>
+              <span className="pagos-renglon-estados"><span className="insignia">{NOMBRE_FORMA_PAGO[p.forma]}</span>{p.anulado_en && <span className="insignia" data-tono="peligro">Anulado</span>}</span>
+              <strong className="pagos-renglon-monto"><Link href={`/compras/pagos/${p.id}`}>{pesos(p.monto)}</Link></strong>
+              <span className="pagos-renglon-accion" />
+            </li>
           ))}
-        </div>
+        </ul>
       </Plegable>
 
       {edita && (
