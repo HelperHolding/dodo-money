@@ -160,7 +160,7 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
             <IndicadoresAkton entrada={meta.entrada} filas={meta.filas} dias={dias} />
             <LecturaAkton filas={meta.filas} />
             <AdvertenciasPL avisos={avisos.generales} />
-            <TablaAkton r={meta} columnas={meta.columnas} ajustado={meta.ajustado?.filas ?? null} ajustes={meta.ajustado?.lista ?? []}
+            <TablaAkton r={meta} ajustado={meta.ajustado?.filas ?? null} ajustes={meta.ajustado?.lista ?? []}
               avisos={avisos} conSucursal={!meta.suc} captura={captura} />
             {meta.ajustado && <ListaAjustes lista={meta.ajustado.lista} conSucursal={!meta.suc} anular={anular} />}
           </div>

@@ -26,6 +26,7 @@ test("indicadores: venta, descuento, pedidos por día, ticket por canal, prime c
   assert.equal(k.descuentoPct, 0.1228);
   assert.equal(k.pedidos, 50);
   assert.equal(k.pedidosDia, 10);
+  assert.equal(k.ticket, 20);
   assert.equal(k.ticketPos, 20);
   assert.equal(k.ticketRappi, 20);
   assert.equal(k.alimentoMermaPct, 0.29);

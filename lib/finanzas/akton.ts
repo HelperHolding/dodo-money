@@ -14,7 +14,8 @@ export const PRIME_COST_MERCADO = { min: 0.55, max: 0.65 } as const;
 export type Indicadores = {
   ventaNeta: number; ventaBruta: number | null; descuentoPct: number | null;
   pedidos: number | null; pedidosDia: number | null;
-  ticketPos: number | null; ticketRappi: number | null;
+  /** Ticket de ambos canales: venta neta POS + Rappi entre todos los pedidos. */
+  ticket: number | null; ticketPos: number | null; ticketRappi: number | null;
   alimentoMermaPct: number | null; alimentoMermaMetaPct: number | null;
   primeCostPct: number | null;
   ebitdaTienda: number | null; ebitdaTiendaPct: number | null; ebitdaTiendaMeta: number | null;
@@ -37,6 +38,7 @@ export function indicadoresAkton(entrada: EntradaPL, filas: readonly FilaPL[], d
   return {
     ventaNeta: venta, ventaBruta: bruta, descuentoPct: bruta === null || bruta <= 0 ? null : fraccion(bruta - venta, bruta),
     pedidos, pedidosDia: pedidos === null || dias <= 0 ? null : Math.round((pedidos / dias) * 10) / 10,
+    ticket: pedidos ? ticket(entrada.canales.dodo.neta + entrada.canales.rappi.neta, pedidos) : null,
     ticketPos: ticket(entrada.canales.dodo.neta, pDodo), ticketRappi: ticket(entrada.canales.rappi.neta, pRappi),
     alimentoMermaPct: fraccion(alimento + merma, venta), alimentoMermaMetaPct: metaAM === null ? null : fraccion(metaAM, venta),
     primeCostPct: fraccion(alimento + merma + nomina, venta),

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { pesos, porcentaje } from "@/lib/formato";
-import type { Columnas } from "@/lib/finanzas/periodo";
 import { esDetalleNomina, type EntradaPL, type FilaPL } from "@/lib/finanzas/pl";
 import type { AjustePL } from "@/lib/finanzas/ajustes";
 import { PRIME_COST_MERCADO, indicadoresAkton, lecturaEbitda, notasPorRenglon, renglonesAkton, type RenglonAkton } from "@/lib/finanzas/akton";
@@ -39,12 +38,12 @@ export function IndicadoresAkton({ entrada, filas, dias }: { entrada: EntradaPL;
         pie={k.ventaBruta === null ? "Bruta sin dato completo" : <>Bruta {pesos(k.ventaBruta)} · {porcentaje(k.descuentoPct)} de descuento</>} />
       <Kpi etiqueta="Pedidos" valor={k.pedidos === null ? "Sin dato" : entero.format(k.pedidos)}
         pie={k.pedidosDia === null ? "—" : <>{decimal.format(k.pedidosDia)} al día en promedio</>} />
-      <Kpi etiqueta="Ticket neto" valor={k.ticketPos === null ? "Sin dato" : pesos(k.ticketPos)}
+      <Kpi etiqueta="Ticket neto" valor={k.ticket === null ? "Sin dato" : pesos(k.ticket)}
         pie={<>POS {k.ticketPos === null ? "—" : pesos(k.ticketPos)} | Rappi {k.ticketRappi === null ? "—" : pesos(k.ticketRappi)}</>} />
       <Kpi etiqueta="Alimento y merma" valor={porcentaje(k.alimentoMermaPct)} tono={am === null || am === 0 ? undefined : am < 0 ? "si" : "no"}
         pie={k.alimentoMermaMetaPct === null ? "Sin meta" : <>Meta {porcentaje(k.alimentoMermaMetaPct)}{am !== null && <> · {textoPts(am)}</>}</>} />
       <Kpi etiqueta="Prime cost" valor={porcentaje(prime)} tono={enRango}
-        pie={<>Alimento + merma + nómina · mercado {PRIME_COST_MERCADO.min * 100}–{PRIME_COST_MERCADO.max * 100} %</>} />
+        pie={<>Alimento + merma + nómina · mercado {Math.round(PRIME_COST_MERCADO.min * 100)}–{Math.round(PRIME_COST_MERCADO.max * 100)} %</>} />
       <Kpi etiqueta="EBITDA de tienda" tono="destacado" valor={k.ebitdaTienda === null ? "Sin dato" : pesos(k.ebitdaTienda)}
         pie={<>{porcentaje(k.ebitdaTiendaPct)} de la venta{k.ebitdaTiendaMeta !== null && <> · meta {pesos(k.ebitdaTiendaMeta)}</>}</>} />
     </section>
@@ -82,12 +81,10 @@ const PIE: { clave: string; texto: string }[] = [
   { clave: "oficina", texto: "Oficina central: gasto corporativo prorrateado a la sucursal; en el consolidado va completo." },
 ];
 
-export function TablaAkton({ r, columnas, ajustado, ajustes, avisos, conSucursal = false, captura }: {
+export function TablaAkton({ r, ajustado, ajustes, avisos, conSucursal = false, captura }: {
   r: {
-    filas: FilaPL[]; anterior: ReadonlyMap<string, number | null> | null; acumulado: ReadonlyMap<string, number | null>;
-    detalleDe: (renglon: string) => Detalle;
+    filas: FilaPL[]; detalleDe: (renglon: string) => Detalle;
   };
-  columnas: Columnas;
   ajustado: readonly FilaPL[] | null;
   ajustes: readonly AjustePL[];
   /** Avisos del P&L: los que tienen renglón van al margen; el resto se devuelve con `generales`. */
@@ -104,8 +101,8 @@ export function TablaAkton({ r, columnas, ajustado, ajustes, avisos, conSucursal
     ...(avisos.porRenglon.get(clave) ?? []),
     ...ajustes.filter((a) => a.renglon === clave).map((a) => `Ajuste${conSucursal ? ` ${a.sucursal}` : ""}: ${a.sinEfecto ? "sin efecto" : pesos(a.ajuste)} · ${a.nota}`),
   ];
-  const historia = !!r.anterior || r.acumulado.size > 0;
-  const columnasTotal = 7 + (aj ? 2 : 0) + (historia ? 2 : 0);
+  // Las comparaciones contra el periodo anterior viven en la vista Comparativo; aquí solo real contra meta.
+  const columnasTotal = 7 + (aj ? 1 : 0);
 
   const fila = (x: RenglonAkton) => {
     if (x.nivel === "seccion") return (
@@ -133,18 +130,13 @@ export function TablaAkton({ r, columnas, ajustado, ajustes, avisos, conSucursal
         <td data-label="Real" className="monto"><Importe n={x.monto} /></td>
         <td data-label="% venta" className="monto akton-pct">{porcentaje(x.pct)}</td>
         {aj && <>
-          <td data-label="Ajuste" className="monto">{ajuste ? <Importe n={ajuste} /> : "—"}</td>
-          <td data-label="Ajustado" className="monto">{f ? <Importe n={a?.monto ?? f.monto} /> : "—"}</td>
+          <td data-label="Ajustado" className="monto">{ajuste ? <Importe n={a!.monto} /> : "—"}</td>
         </>}
         <td data-label="Meta" className="monto">{x.meta === null ? "—" : <Importe n={x.meta} />}</td>
         <td data-label="% meta" className="monto akton-pct">{porcentaje(x.metaPct)}</td>
         <td data-label="Var. vs meta" className="monto akton-var" data-favorable={x.favorable === null ? undefined : x.favorable ? "si" : "no"}>
           {f?.sinCapturar ? "Sin capturar" : x.diferencia === null ? "—" : <Importe n={x.diferencia} />}
         </td>
-        {historia && <>
-          <td data-label={columnas.anterior} className="monto akton-pct">{r.anterior ? porcentaje(r.anterior.get(x.clave) ?? null) : "—"}</td>
-          <td data-label={columnas.acumulado} className="monto akton-pct">{porcentaje(r.acumulado.get(x.clave) ?? null)}</td>
-        </>}
         <td data-label="Notas" className="akton-nota-celda">
           {notas.length > 0 && <div className="akton-nota">{notas.map((t, i) => <p key={i}>{t}</p>)}</div>}
         </td>
@@ -161,9 +153,8 @@ export function TablaAkton({ r, columnas, ajustado, ajustes, avisos, conSucursal
           <thead>
             <tr>
               <th>Renglón</th><th className="monto">Real</th><th className="monto">% venta</th>
-              {aj && <><th className="monto">Ajuste</th><th className="monto">Ajustado</th></>}
+              {aj && <th className="monto" title="Solo en los renglones con ajuste; el monto y la nota van en Notas">Ajustado</th>}
               <th className="monto">Meta</th><th className="monto">% meta</th><th className="monto">Var. vs meta</th>
-              {historia && <><th className="monto" title={columnas.anterior}>{columnas.anteriorCorto}</th><th className="monto" title={columnas.acumulado}>{columnas.acumuladoCorto}</th></>}
               <th className="akton-nota-celda">Notas</th>
             </tr>
           </thead>
