@@ -21,7 +21,7 @@ export function VistaMes({mes,hoy,items,colorDe,tono,abrirDia,abrirItem,abrirMas
      const i=b.item,color=colorDe(i),t=tono(i),uno=esDeUnDia(i)&&b.span===1;
      const estilo:CSSProperties=uno?{gridColumn:`${b.col+1} / span 1`,gridRow:b.carril+2,['--ap-c' as string]:color}
       :{gridColumn:`${b.col+1} / span ${b.span}`,gridRow:b.carril+2,background:color,color:textoSobre(color)};
-     return <button key={i.id} type="button" className={uno?'ap-gcal-punto':'ap-gcal-barra'} data-tono={t}
+     return <button key={i.id} type="button" className={uno?'ap-gcal-punto':'ap-gcal-evento'} data-tono={t}
       data-antes={b.empiezaAntes||undefined} data-despues={b.sigueDespues||undefined} style={estilo}
       title={`${i.nombre} · ${nombreEstado(i)}${i.responsable?` · ${i.responsable}`:''}`} onClick={()=>abrirItem(i)}>
       {uno&&<span className="ap-gcal-bolita" aria-hidden="true"/>}{t==='alerta'&&<b aria-label="Atención">!</b>}<span>{i.nombre}</span>

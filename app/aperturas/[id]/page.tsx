@@ -24,13 +24,13 @@ import {Cronograma} from '../Cronograma';
 import {ListaConceptos} from '../ListaConceptos';
 import {AvanceCategorias} from '../AvanceCategorias';
 import {pendientesGantt} from '../pendientesGantt';
-import {esDia,esMes,esModoCalendario,semanaDe} from '@/lib/aperturasCalendario';
+import {esDia,esMes,modoCalendario,semanaDe} from '@/lib/aperturasCalendario';
 export default async function Proyecto({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{vista?:string;q?:string;estado?:string;grupo?:string;etapa?:string;tipo?:string;cat?:string;ambito?:string;mes?:string;color?:string;modo?:string;semana?:string;resp?:string;tipos?:string;ok?:string;error?:string}>}) {
  const [{id},f]=await Promise.all([params,searchParams]);const {supabase,perfil}=await obtenerPerfil();
  const [{data:p,error:ep},{data,error},{data:historial}]=await Promise.all([supabase.from('apertura_proyectos').select('*,sucursales(nombre)').eq('id',id).maybeSingle<ProyectoApertura>(),leerTodo<ItemApertura>((desde,hasta)=>supabase.from('apertura_items').select('*').eq('proyecto_id',id).order('clave').range(desde,hasta).returns<ItemApertura[]>()).then(data=>({data,error:null})).catch(()=>({data:null,error:true})),supabase.from('apertura_proyecto_historial').select('fecha,anterior,nuevo,perfiles(nombre)').eq('proyecto_id',id).order('fecha',{ascending:false}).limit(50).returns<CambioApertura[]>()]);
  if(ep||error)return <p className="aviso aviso-error">No se pudo cargar el proyecto. Revisa la migración y vuelve a intentar.</p>;if(!p)notFound();
  const items=data??[],hoy=hoyCalendarioMX(),indicadores=indicadoresApertura(items,hoy),vista=['calendario','roadmap','actividades','compras','tecnico','activos','alertas'].includes(f.vista??'')?f.vista!:'checklist';
- const mes=esMes(f.mes)?f.mes:hoy.slice(0,7),modo=esModoCalendario(f.modo)?f.modo:'cuadros';
+ const mes=esMes(f.mes)?f.mes:hoy.slice(0,7),modo=modoCalendario(f.modo);
  // Semana: la pedida, o la de hoy si el mes es el actual, o la primera del mes.
  const semana=semanaDe(esDia(f.semana)?f.semana:hoy.startsWith(mes)?hoy:`${mes}-01`)[0].dia;
  const etapasEquipo=conteoEtapasEquipo(items),filas=filasCronograma(items,hoy),kpis=indicadoresProyecto(p,items,hoy);
