@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import {Fragment} from 'react';
-import {ESTADOS} from '@/lib/aperturas';
+import {nombreEstado} from '@/lib/aperturas';
 import {textoPts,type Avance,type FilaCronograma} from '@/lib/aperturasAkton';
 
 const corta=(d:string)=>new Intl.DateTimeFormat('es-MX',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(`${d}T00:00:00Z`)).replace('.','');
@@ -22,7 +22,7 @@ export function Cronograma({filas,total,base}:{filas:FilaCronograma[];total:Avan
      <td data-label="Etapa"><details className="ap-crono-etapa"><summary><strong>{f.clave} · {f.nombre}</strong></summary>
       {f.tareas.length===0?<p className="akton-subtitulo">Sin tareas con fecha.</p>:<ul className="ap-crono-tareas">{f.tareas.map(t=><li key={t.item.id}>
        <Link href={`${base}/items/${t.item.id}`}>{t.item.nombre}</Link>
-       <small>{corta(t.desde)}{t.desde!==t.hasta?` – ${corta(t.hasta)}`:''} · {ESTADOS[t.item.estado]}{t.item.responsable?` · ${t.item.responsable}`:''}</small>
+       <small>{corta(t.desde)}{t.desde!==t.hasta?` – ${corta(t.hasta)}`:''} · {nombreEstado(t.item)}{t.item.responsable?` · ${t.item.responsable}`:''}</small>
        {t.item.estado==='bloqueado'&&<span className="akton-no">Bloqueada</span>}
        {t.diasVencida!==null&&<span className="akton-no">Vencida hace {t.diasVencida} {t.diasVencida===1?'día':'días'}</span>}
       </li>)}</ul>}
