@@ -30,7 +30,9 @@ const como=(db,id)=>db.exec(`select set_config('request.jwt.claims','{"sub":"${i
 const rechaza=(p,re)=>assert.rejects(p,e=>{assert.match(e.message,re);return true;});
 const proyecto=async db=>(await db.query(`select id from apertura_proyectos limit 1`)).rows[0].id;
 const item=async(db,n=0)=>(await db.query(`select id from apertura_items order by clave limit 1 offset $1`,[n])).rows[0].id;
-const guardar=(db,p,hoja,rev=null,extra={})=>db.query(`select public.guardar_apertura_plano($1,$2,$3,'2026-11-25',$4,$5,1000,800,$6) id`,[p,hoja,extra.nombre??'Planta baja',extra.archivo??`${p}/o.pdf`,extra.imagen??`${p}/i.png`,rev]).then(r=>r.rows[0].id);
+const F=n=>`00000000-0000-0000-0000-00000000010${n}`;
+const subir=(db,...rutas)=>Promise.all(rutas.map(n=>db.query(`insert into storage.objects(bucket_id,name) select 'aperturas-planos',$1::text where not exists(select 1 from storage.objects where name=$1::text)`,[n])));
+const guardar=async(db,p,hoja,rev=null,extra={})=>{const archivo=extra.archivo??`${p}/${F(1)}.pdf`,imagen=extra.imagen??`${p}/${F(2)}.png`;if(!extra.sinSubir)await subir(db,archivo,imagen);return (await db.query(`select public.guardar_apertura_plano($1,$2,$3,'2026-11-25',$4,$5,1000,800,$6) id`,[p,hoja,extra.nombre??'Planta baja',archivo,imagen,rev])).rows[0].id;};
 const marca=(db,h,i,x,y)=>db.query(`select public.colocar_apertura_marca($1,$2,$3,$4)`,[h,i,x,y]);
 const conRol=async(db,fn)=>{await db.exec('grant select,insert,delete on storage.objects to authenticated');await db.exec('set role authenticated');try{await fn();}finally{await db.exec('reset role');}};
 
@@ -71,9 +73,9 @@ test('planos: reemplazar con la revisión vigente conserva marcas y sube la revi
   await preparar(db);const p=await proyecto(db);const i=await item(db);
   await como(db,ADMIN);const h=await guardar(db,p,'E01');
   await marca(db,h,i,0.3,0.4);
-  assert.equal(await guardar(db,p,'E01',1,{nombre:'Nueva',imagen:`${p}/i2.png`}),h);
+  assert.equal(await guardar(db,p,'E01',1,{nombre:'Nueva',imagen:`${p}/${F(3)}.png`}),h);
   const [r]=(await db.query(`select revision,nombre,imagen from apertura_planos where id=$1`,[h])).rows;
-  assert.deepEqual(r,{revision:2,nombre:'Nueva',imagen:`${p}/i2.png`});
+  assert.deepEqual(r,{revision:2,nombre:'Nueva',imagen:`${p}/${F(3)}.png`});
   assert.equal((await db.query(`select 1 from apertura_plano_marcas where plano_id=$1 and item_id=$2`,[h,i])).rows.length,1);
   await rechaza(guardar(db,p,'E01',1),/cambió/);
   assert.equal((await db.query(`select revision from apertura_planos where id=$1`,[h])).rows[0].revision,2);
@@ -90,7 +92,7 @@ test('planos: quitar marca y borrar hoja (cascada) devolviendo las rutas',async(
   assert.equal((await db.query(`select count(*)::int n from apertura_plano_marcas`)).rows[0].n,1);
   await como(db,OPER);await rechaza(db.query(`select * from public.borrar_apertura_plano($1)`,[h]),/Solo administración/);
   await como(db,ADMIN);
-  assert.deepEqual((await db.query(`select * from public.borrar_apertura_plano($1)`,[h])).rows,[{archivo:`${p}/o.pdf`,imagen:`${p}/i.png`}]);
+  assert.deepEqual((await db.query(`select * from public.borrar_apertura_plano($1)`,[h])).rows,[{archivo:`${p}/${F(1)}.pdf`,imagen:`${p}/${F(2)}.png`}]);
   assert.equal((await db.query(`select count(*)::int n from apertura_plano_marcas`)).rows[0].n,0);
   assert.equal((await db.query(`select count(*)::int n from apertura_planos`)).rows[0].n,0);
   await rechaza(db.query(`select * from public.borrar_apertura_plano($1)`,[h]),/no existe/);
@@ -125,29 +127,42 @@ test('planos: RLS — sin escritura directa y el select respeta ve_compras()',as
  }finally{await db.close();}
 });
 
-test('planos: bucket privado con límite y tipos; políticas de subida y rutas fuera de la carpeta',async()=>{
+test('planos: bucket privado con límite y tipos; políticas de ruta; guardar valida ruta y existencia',async()=>{
  const db=new PGlite();
  try{
   await preparar(db);const p=await proyecto(db);
   const [b]=(await db.query(`select public,file_size_limit,allowed_mime_types from storage.buckets where id='aperturas-planos'`)).rows;
   assert.deepEqual({...b,file_size_limit:Number(b.file_size_limit)},{public:false,file_size_limit:26214400,allowed_mime_types:['application/pdf','image/png','image/jpeg']});
   const ins=(id,ruta)=>como(db,id).then(()=>db.query(`insert into storage.objects(bucket_id,name) values('aperturas-planos',$1)`,[ruta]));
+  const otro='00000000-0000-0000-0000-00000000ffff';
+  await db.exec(`insert into storage.objects(bucket_id,name) values('aperturas-planos','${p}/x.png'),('aperturas-planos','${otro}/${F(9)}.png')`);
   await conRol(db,async()=>{
-   await ins(ADMIN,`${p}/x.png`);
-   await rechaza(ins(OPER,`${p}/y.png`),/row-level security/);
-   await rechaza(ins(CORP,`${p}/y.png`),/row-level security/);
-   await rechaza(ins(ADMIN,`00000000-0000-0000-0000-00000000ffff/y.png`),/row-level security/);
+   await ins(ADMIN,`${p}/${F(1)}.png`);
+   await ins(ADMIN,`${p}/${F(2)}.pdf`);
+   await rechaza(ins(ADMIN,`${p}/x.png`),/row-level security/);
+   await rechaza(ins(ADMIN,`${p}/sub/${F(3)}.png`),/row-level security/);
+   await rechaza(ins(ADMIN,`${p}/${F(3)}.gif`),/row-level security/);
+   await rechaza(ins(OPER,`${p}/${F(3)}.png`),/row-level security/);
+   await rechaza(ins(CORP,`${p}/${F(3)}.png`),/row-level security/);
+   await rechaza(ins(ADMIN,`${otro}/${F(3)}.png`),/row-level security/);
    await rechaza(ins(ADMIN,`suelto.png`),/row-level security/);
-   for(const [id,n] of [[ADMIN,1],[CORP,1],[OPER,0]]){await como(db,id);assert.equal((await db.query(`select count(*)::int n from storage.objects`)).rows[0].n,n,id);}
+   const cuenta=async id=>{await como(db,id);return (await db.query(`select count(*)::int n from storage.objects`)).rows[0].n;};
+   assert.equal(await cuenta(ADMIN),4);assert.equal(await cuenta(CORP),4);assert.equal(await cuenta(OPER),0);
    await como(db,CORP);await db.query(`delete from storage.objects where bucket_id='aperturas-planos'`);
-   assert.equal((await db.query(`select count(*)::int n from storage.objects`)).rows[0].n,1);
+   assert.equal(await cuenta(ADMIN),4);
    await como(db,ADMIN);await db.query(`delete from storage.objects where bucket_id='aperturas-planos'`);
-   assert.equal((await db.query(`select count(*)::int n from storage.objects`)).rows[0].n,0);
+   assert.deepEqual((await db.query(`select name from storage.objects`)).rows.map(r=>r.name).sort(),[`${p}/x.png`,`${otro}/${F(9)}.png`].sort());
   });
   await como(db,ADMIN);
-  await rechaza(guardar(db,p,'E01',null,{archivo:'otra/o.pdf'}),/empezar con la carpeta/);
-  await rechaza(guardar(db,p,'E01',null,{imagen:`00000000-0000-0000-0000-00000000ffff/i.png`}),/empezar con la carpeta/);
-  await rechaza(guardar(db,p,'E01',null,{archivo:`${p}o.pdf`}),/empezar con la carpeta/);
+  await rechaza(guardar(db,p,'E01',null,{sinSubir:true,archivo:'otra/o.pdf'}),/deben ser/);
+  await rechaza(guardar(db,p,'E01',null,{sinSubir:true,imagen:`${otro}/${F(1)}.png`}),/deben ser/);
+  await rechaza(guardar(db,p,'E01',null,{sinSubir:true,archivo:`${p}o.pdf`}),/deben ser/);
+  await rechaza(guardar(db,p,'E01',null,{sinSubir:true,archivo:`${p}/x.png`}),/deben ser/);
+  await rechaza(guardar(db,p,'E01',null,{sinSubir:true}),/no se subieron/);
+  await subir(db,`${p}/${F(1)}.pdf`);
+  await rechaza(guardar(db,p,'E01',null,{sinSubir:true}),/no se subieron/);
+  await subir(db,`${p}/${F(2)}.png`);
+  await guardar(db,p,'E01',null,{sinSubir:true});
  }finally{await db.close();}
 });
 

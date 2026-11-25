@@ -46,13 +46,18 @@ begin
  if v_nombre is null or length(v_nombre) not between 1 and 120 then raise exception 'El nombre debe tener de 1 a 120 caracteres.';end if;
  if p_version is null then raise exception 'Falta la fecha de versión.';end if;
  if p_ancho is null or p_alto is null or p_ancho<=0 or p_alto<=0 then raise exception 'Las medidas de la imagen no son válidas.';end if;
- if p_archivo is null or p_imagen is null or left(p_archivo,length(p_proyecto::text)+1)<>p_proyecto::text||'/' or left(p_imagen,length(p_proyecto::text)+1)<>p_proyecto::text||'/' then
-  raise exception 'Las rutas de los archivos deben empezar con la carpeta de la apertura.';end if;
+ if p_archivo is null or p_imagen is null or p_archivo !~ ('^'||p_proyecto::text||'/[0-9a-f-]{36}\.(pdf|png|jpg)$') or p_imagen !~ ('^'||p_proyecto::text||'/[0-9a-f-]{36}\.(pdf|png|jpg)$') then
+  raise exception 'Las rutas de los archivos deben ser <apertura>/<uuid>.pdf, .png o .jpg.';end if;
+ if (select count(*) from storage.objects o where o.bucket_id='aperturas-planos' and o.name in (p_archivo,p_imagen))<>(select count(distinct n) from (values(p_archivo),(p_imagen)) v(n)) then
+  raise exception 'Los archivos del plano no se subieron.';end if;
  select id,revision into v_id,v_rev from public.apertura_planos where proyecto_id=p_proyecto and hoja=v_hoja for update;
  if v_id is null then
   if p_revision is not null then raise exception 'La hoja ya no existe; vuelve a cargar.';end if;
-  insert into public.apertura_planos(proyecto_id,hoja,nombre,version_fecha,archivo,imagen,ancho,alto,creado_por)
-   values(p_proyecto,v_hoja,v_nombre,p_version,p_archivo,p_imagen,p_ancho,p_alto,auth.uid()) returning id into v_id;
+  begin
+   insert into public.apertura_planos(proyecto_id,hoja,nombre,version_fecha,archivo,imagen,ancho,alto,creado_por)
+    values(p_proyecto,v_hoja,v_nombre,p_version,p_archivo,p_imagen,p_ancho,p_alto,auth.uid()) returning id into v_id;
+  exception when unique_violation then raise exception 'La hoja cambió; vuelve a cargar.';
+  end;
   return v_id;
  end if;
  if p_revision is null or p_revision<>v_rev then raise exception 'La hoja cambió; vuelve a cargar.';end if;
@@ -105,8 +110,9 @@ insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 create policy planos_leer on storage.objects for select to authenticated
  using(bucket_id='aperturas-planos' and public.ve_compras());
 create policy planos_subir on storage.objects for insert to authenticated
- with check(bucket_id='aperturas-planos' and public.edita_compras()
+ with check(bucket_id='aperturas-planos' and public.edita_compras() and name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\.(pdf|png|jpg)$'
   and exists(select 1 from public.apertura_proyectos p where p.id::text=(storage.foldername(name))[1]));
 create policy planos_borrar on storage.objects for delete to authenticated
- using(bucket_id='aperturas-planos' and public.edita_compras());
+ using(bucket_id='aperturas-planos' and public.edita_compras() and name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\.(pdf|png|jpg)$'
+  and exists(select 1 from public.apertura_proyectos p where p.id::text=(storage.foldername(name))[1]));
 commit;
