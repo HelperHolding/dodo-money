@@ -38,7 +38,7 @@ export async function cerrarDia(formData: FormData) {
     app,
     rappi,
     descuentos: numero(formData.get("descuentos")),
-    iva: ivaDeVenta(efectivo + tarjeta + app + rappi),
+    iva: ivaDeVenta(Math.round((efectivo + tarjeta + app + rappi) * 100) / 100),
     transacciones: Math.round(numero(formData.get("transacciones"))),
     boveda_inicial: d.bovedaInicial,
     retiros_dia: d.retiros,
