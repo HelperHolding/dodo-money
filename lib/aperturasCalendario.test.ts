@@ -60,3 +60,51 @@ test('calendario de aperturas: fechas válidas y cambio que conserva el resto de
  const i={id:'i',proyecto_id:'p',clave:'e',tipo:'equipo',etapa:'P4',nombre:'Horno',fuente:'plano',original:{},estado:'pedido',responsable:'Julio',inicio:null,fin:null,cantidad:2,recibido:1,precio:100,evidencia:'cotización',notas:null,orden_id:'o',factura_id:null,revision:3,categoria:'equipo_cocina'} as ItemApertura;
  assert.deepEqual(datosFechas(i,'2026-11-05','2026-11-07'),{estado:'pedido',responsable:'Julio',inicio:'2026-11-05',fin:'2026-11-07',cantidad:'2',recibido:'1',precio:'100',evidencia:'cotización',notas:'',orden_id:'o',factura_id:''});
 });
+
+// ── Responsables (HD-7/HD-8) ──
+import {clavePersona,conteoDia,diaPorPersona,esActividad,esDia,momentoEnDia,moverDias,nombrePersona,personasDe,semanaDe,SIN_ASIGNAR,tituloSemana} from './aperturasCalendario.ts';
+const tarea=(id:string,responsable:string|null,inicio:string|null,fin:string|null,tipo:'actividad'|'equipo'='actividad',estado='pendiente')=>({id,clave:id,nombre:id,tipo,etapa:'P5' as const,categoria:null,estado,responsable,inicio,fin,revision:1});
+
+test('responsables: se juntan sin acentos, sin paréntesis y con el traspaso a quien recibe',()=>{
+ assert.equal(nombrePersona('Diego Barreto (Julio revisa al regresar)'),'Diego Barreto');
+ assert.equal(nombrePersona('Julio Verdeja → Diego Barreto desde 28-nov'),'Diego Barreto');
+ assert.equal(nombrePersona('César (360°)'),'César');
+ assert.equal(clavePersona('  JOSÉ  villa '),clavePersona('José Villa'));
+ assert.equal(clavePersona(null),SIN_ASIGNAR.clave);assert.equal(clavePersona('  '),SIN_ASIGNAR.clave);
+});
+test('responsables: iniciales únicas, color estable y sin asignar al final',()=>{
+ const p=personasDe([tarea('a','José Villa',null,null),tarea('b','Julio Verdeja',null,null),tarea('c','Diego Barreto (revisa)',null,null),tarea('d',null,null,null),tarea('e','Renata y equipo de marketing',null,null),tarea('f','Celeste',null,null),tarea('g','jose villa',null,null)]);
+ assert.deepEqual(p.map(x=>x.nombre),['Celeste','Diego Barreto','José Villa','Julio Verdeja','Renata y equipo de marketing','Sin asignar']);
+ assert.deepEqual(p.map(x=>x.iniciales),['CE','DB','JoV','JuV','RE','—']);
+ // Celeste y César darían CE y CÉ: se distinguen con tres letras.
+ assert.deepEqual(personasDe([tarea('a','Celeste',null,null),tarea('b','César (360°)',null,null)]).map(x=>x.iniciales),['Cel','Cés']);
+ assert.equal(new Set(p.map(x=>x.color)).size,p.length);
+ // Filtrar no cambia el color: depende del orden alfabético de todo el proyecto.
+ const solo=personasDe([tarea('b','Julio Verdeja',null,null)]);assert.equal(solo[0].iniciales,'JV');
+});
+test('responsables: empieza, continúa, termina o solo ese día',()=>{
+ const t=tarea('x','Ana','2026-12-01','2026-12-03');
+ assert.equal(momentoEnDia(t,'2026-12-01'),'empieza');assert.equal(momentoEnDia(t,'2026-12-02'),'continua');assert.equal(momentoEnDia(t,'2026-12-03'),'termina');
+ assert.equal(momentoEnDia(t,'2026-12-04'),null);assert.equal(momentoEnDia(tarea('y','Ana',null,'2026-12-05'),'2026-12-05'),'solo');
+});
+test('responsables: el día se agrupa por persona y las de varios días salen todos los días',()=>{
+ const items=[tarea('Pintar','José Villa','2026-12-01','2026-12-04'),tarea('Gas','Diego Barreto','2026-12-02','2026-12-02'),tarea('Campana','José Villa','2026-12-02','2026-12-02'),tarea('No va','José Villa','2026-12-02','2026-12-02','actividad','no_aplica'),tarea('Sin','',  '2026-12-02','2026-12-02')];
+ const p=personasDe(items);
+ const g=diaPorPersona(items,'2026-12-02',p);
+ assert.deepEqual(g.map(x=>[x.persona.nombre,x.tareas.map(t=>`${t.item.nombre}:${t.momento}`)]),[['Diego Barreto',['Gas:solo']],['José Villa',['Campana:solo','Pintar:continua']],['Sin asignar',['Sin:solo']]]);
+ assert.deepEqual(conteoDia(items,'2026-12-04',p).map(x=>[x.persona.iniciales,x.n]),[['JV',1]]);
+ assert.ok(esActividad(tarea('a',null,null,null)));assert.ok(!esActividad(tarea('b',null,null,null,'equipo')));
+});
+test('semana: de lunes a domingo, moverse y título',()=>{
+ const s=semanaDe('2026-12-03');
+ assert.deepEqual([s[0].dia,s[6].dia],['2026-11-30','2026-12-06']);
+ assert.equal(semanaDe('2026-12-06')[0].dia,'2026-11-30');assert.equal(semanaDe('2026-11-30')[0].dia,'2026-11-30');
+ assert.equal(moverDias('2026-11-30',7),'2026-12-07');
+ assert.ok(esDia('2026-12-14'));assert.ok(!esDia('2026-02-30'));assert.ok(!esDia('dic'));
+ assert.match(tituloSemana(s),/30 nov.* – 6 dic.* 2026/);
+});
+import {sugerenciasResponsable} from './aperturasCalendario.ts';
+test('responsables: sugerencias de usuarios y nombres ya usados, sin repetir',()=>{
+ assert.deepEqual(sugerenciasResponsable(['Sebastián Cervera','Julio Verdeja',null,' '],['José Villa','jose villa (obra)','Julio Verdeja → Diego Barreto desde 28-nov',null,'Sebastian Cervera']),
+  ['Diego Barreto','José Villa','Julio Verdeja','Sebastián Cervera']);
+});

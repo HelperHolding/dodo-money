@@ -2,8 +2,12 @@
 // @ts-expect-error Node strip-types requiere extensión explícita.
 import {CATEGORIAS,ETAPAS,type CategoriaApertura,type ItemApertura} from './aperturas.ts';
 
-export type Agrupacion = 'etapa'|'categoria';
-export const esAgrupacion = (v:unknown):v is Agrupacion => v==='etapa'||v==='categoria';
+export type Agrupacion = 'etapa'|'categoria'|'responsable';
+export const esAgrupacion = (v:unknown):v is Agrupacion => v==='etapa'||v==='categoria'||v==='responsable';
+export type ModoCalendario = 'cuadros'|'semana'|'barras';
+export const esModoCalendario = (v:unknown):v is ModoCalendario => v==='cuadros'||v==='semana'||v==='barras';
+// Los colores que se guardan en apertura_colores (por persona son automáticos).
+export const esAgrupacionGuardable = (v:unknown):v is 'etapa'|'categoria' => v==='etapa'||v==='categoria';
 export type ItemCalendario = Pick<ItemApertura,'id'|'clave'|'nombre'|'tipo'|'etapa'|'categoria'|'estado'|'responsable'|'inicio'|'fin'|'revision'>;
 export type ColorGuardado = {agrupacion:string;clave:string;color:string};
 export type Grupo = {clave:string;nombre:string;color:string;predeterminado:string};
@@ -18,9 +22,10 @@ export const COLORES_CATEGORIA:Record<CategoriaApertura|"sin",string> = {
 };
 
 export const esColor = (v:string) => /^#[0-9a-f]{6}$/i.test(v);
-export const claveGrupo = (a:Agrupacion,i:Pick<ItemCalendario,'etapa'|'categoria'>) => a==='etapa'?i.etapa:(i.categoria??'sin');
+export const claveGrupo = (a:Agrupacion,i:Pick<ItemCalendario,'etapa'|'categoria'|'responsable'>) => a==='etapa'?i.etapa:a==='responsable'?clavePersona(i.responsable):(i.categoria??'sin');
 
 export function gruposCalendario(a:Agrupacion,guardados:ColorGuardado[]):Grupo[] {
+ if(a==='responsable')return []; // por persona los arma personasDe() en el calendario
  const propio=new Map(guardados.filter(g=>g.agrupacion===a&&esColor(g.color)).map(g=>[g.clave,g.color.toLowerCase()]));
  const base:[string,string,string][]=a==='etapa'
   ?Object.entries(ETAPAS).map(([k,n])=>[k,`${k} · ${n}`,COLORES_ETAPA[k as keyof typeof ETAPAS]])
@@ -90,4 +95,84 @@ export function datosFechas(i:ItemApertura,inicio:string,fin:string) {
  const v=(x:unknown)=>x===null||x===undefined?'':String(x);
  return {estado:i.estado,responsable:v(i.responsable),inicio,fin,cantidad:v(i.cantidad),recibido:v(i.recibido),precio:v(i.precio),
   evidencia:v(i.evidencia),notas:v(i.notas),orden_id:v(i.orden_id),factura_id:v(i.factura_id)};
+}
+
+// ── Responsables (HD-7/HD-8) ──
+// El responsable es texto libre: se junta por persona sin acentos ni mayúsculas, sin lo que va entre paréntesis.
+// Con "A → B desde 28-nov" cuenta para quien recibe la actividad (B).
+export type Persona = {clave:string;nombre:string;iniciales:string;color:string};
+export const SIN_ASIGNAR = {clave:'sin',nombre:'Sin asignar',color:'#e2e8f0'} as const;
+// Pastel de la paleta Dodo, un tono por persona (en orden alfabético, así no cambia al filtrar).
+export const COLORES_PERSONA = ['#ffd2bd','#c9ddf5','#bfe8d6','#f7cddc','#ddd0f5','#ffe3a8','#c3e6e6','#d7ebc4','#f2cdf0','#e8d5c4','#d0d4f7','#fff0a8'];
+const sinAcentos=(t:string)=>t.normalize('NFD').replace(/[̀-ͯ]/g,'').toLocaleLowerCase('es-MX');
+export function nombrePersona(texto:string|null|undefined):string {
+ let t=(texto??'').split('→').at(-1)!;
+ t=t.replace(/\([^)]*\)?/g,' ').replace(/\s+desde\b.*$/i,'').replace(/\s+/g,' ').trim();
+ return t;
+}
+export const clavePersona = (texto:string|null|undefined) => {const n=nombrePersona(texto);return n?sinAcentos(n):SIN_ASIGNAR.clave;};
+
+const CONECTORES=new Set(['y','de','del','la','las','los','e']);
+const palabras=(n:string)=>n.split(/\s+/).filter(p=>p&&!CONECTORES.has(sinAcentos(p))&&/\p{L}/u.test(p));
+function inicialesBase(n:string) {const p=palabras(n);return (p.length>1?p[0][0]+p[1][0]:(p[0]??'?').slice(0,2)).toLocaleUpperCase('es-MX');}
+function inicialesLargas(n:string) {
+ const p=palabras(n),may=(t:string)=>t.toLocaleUpperCase('es-MX');
+ return p.length>1?may(p[0][0])+p[0].slice(1,2)+may(p[1][0]):may((p[0]??'?')[0])+(p[0]??'').slice(1,3);
+}
+
+// Personas de una lista de tareas, con iniciales únicas (José Villa = JoV y Julio Verdeja = JuV) y color estable.
+export function personasDe(items:Pick<ItemCalendario,'responsable'>[]):Persona[] {
+ const nombres=new Map<string,string>();
+ for(const i of items){const c=clavePersona(i.responsable);if(c!==SIN_ASIGNAR.clave&&!nombres.has(c))nombres.set(c,nombrePersona(i.responsable));}
+ const claves=[...nombres.keys()].sort((a,b)=>a.localeCompare(b,'es-MX'));
+ const base=new Map(claves.map(c=>[c,inicialesBase(nombres.get(c)!)]));
+ // Se comparan sin acentos: "CE" y "CÉ" se confunden en pantalla.
+ const vistas=[...base.values()].map(sinAcentos);
+ const repetidas=new Set([...base.values()].filter(v=>vistas.indexOf(sinAcentos(v))!==vistas.lastIndexOf(sinAcentos(v))));
+ const usadas=new Set<string>();
+ const personas=claves.map((clave,k)=>{
+  const nombre=nombres.get(clave)!;let ini=repetidas.has(base.get(clave)!)?inicialesLargas(nombre):base.get(clave)!;
+  for(let n=2;usadas.has(sinAcentos(ini));n++)ini=`${ini.replace(/\d+$/,'')}${n}`;usadas.add(sinAcentos(ini));
+  return {clave,nombre,iniciales:ini,color:COLORES_PERSONA[k%COLORES_PERSONA.length]};
+ });
+ if(items.some(i=>clavePersona(i.responsable)===SIN_ASIGNAR.clave))personas.push({...SIN_ASIGNAR,iniciales:'—'});
+ return personas;
+}
+
+// "Solo actividades": oculta equipo, referencias y validaciones técnicas.
+export const esActividad = (i:Pick<ItemCalendario,'tipo'>) => i.tipo==='actividad';
+export type Momento = 'solo'|'empieza'|'continua'|'termina';
+export const MOMENTOS:Record<Momento,string> = {solo:'Solo este día',empieza:'Empieza',continua:'Continúa',termina:'Termina'};
+export function momentoEnDia(i:Pick<ItemCalendario,'inicio'|'fin'>,dia:string):Momento|null {
+ const r=rangoItem(i);if(!r||dia<r.desde||dia>r.hasta)return null;
+ return r.desde===r.hasta?'solo':dia===r.desde?'empieza':dia===r.hasta?'termina':'continua';
+}
+
+// Lo de un día agrupado por responsable, en el orden de la lista de personas; dentro, por nombre.
+export function diaPorPersona<T extends ItemCalendario>(items:T[],dia:string,personas:Persona[]) {
+ const del=items.filter(i=>enCalendario(i)&&cubreDia(i,dia));
+ return personas.map(persona=>({persona,tareas:del.filter(i=>clavePersona(i.responsable)===persona.clave)
+  .sort((a,b)=>a.nombre.localeCompare(b.nombre,'es-MX')).map(item=>({item,momento:momentoEnDia(item,dia)!}))})).filter(g=>g.tareas.length>0);
+}
+// Cuántas tareas tiene cada persona un día (para el cuadro del mes).
+export const conteoDia = (items:ItemCalendario[],dia:string,personas:Persona[]) => diaPorPersona(items,dia,personas).map(g=>({persona:g.persona,n:g.tareas.length}));
+
+// Semana de lunes a domingo que contiene un día.
+export const esDia = (v:unknown):v is string => typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(aMs(v))&&aFecha(aMs(v))===v;
+export function semanaDe(dia:string):Celda[] {
+ const ms=aMs(dia),lunes=ms-((new Date(ms).getUTCDay()+6)%7)*DIA;
+ return Array.from({length:7},(_,i)=>{const d=aFecha(lunes+i*DIA);return {dia:d,delMes:d.slice(0,7)===dia.slice(0,7)};});
+}
+export const moverDias = (dia:string,dias:number) => aFecha(aMs(dia)+dias*DIA);
+export const tituloSemana = (semana:Celda[]) => {
+ const f=(d:string,mes:boolean)=>new Intl.DateTimeFormat('es-MX',{day:'numeric',...(mes?{month:'short'}:{}),timeZone:'UTC'}).format(new Date(aMs(d)));
+ const a=semana[0].dia,b=semana[6].dia;return `${f(a,a.slice(5,7)!==b.slice(5,7))} – ${f(b,true)} ${b.slice(0,4)}`;
+};
+
+// Sugerencias para el campo Responsable: usuarios activos y los nombres que ya se usan en el proyecto, sin repetir.
+// Sigue siendo texto libre: se puede asignar a alguien sin usuario (proveedor, agencia).
+export function sugerenciasResponsable(usuarios:(string|null)[],usados:(string|null)[]) {
+ const vistos=new Map<string,string>();
+ for(const n of [...usuarios.map(u=>(u??'').replace(/\s+/g,' ').trim()),...usados.map(nombrePersona)]){if(!n)continue;const c=clavePersona(n);if(!vistos.has(c))vistos.set(c,n);}
+ return [...vistos.values()].sort((a,b)=>a.localeCompare(b,'es-MX'));
 }
