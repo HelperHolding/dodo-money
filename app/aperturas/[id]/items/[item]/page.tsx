@@ -15,7 +15,7 @@ import {Historial,type CambioApertura} from '../../../Historial';
 import {sugerenciasResponsable} from '@/lib/aperturasCalendario';
 import {FotoReal} from '@/app/aperturas/fotos/FotoReal';
 import {urlsFotos} from '@/app/aperturas/fotos/urls';
-import {codigoDeItem} from '@/lib/aperturas/matrizDodo';
+import {codigoDeItem,estatusDodo} from '@/lib/aperturas/matrizDodo';
 export default async function Item({params,searchParams}:{params:Promise<{id:string;item:string}>;searchParams:Promise<{ok?:string;error?:string}>}) {
  const [{id,item},avisos]=await Promise.all([params,searchParams]);const {supabase,perfil}=await obtenerPerfil();
  const [{data:p,error:ep},{data:i,error}]=await Promise.all([supabase.from('apertura_proyectos').select('*,sucursales(nombre)').eq('id',id).maybeSingle<ProyectoApertura>(),supabase.from('apertura_items').select('*').eq('id',item).eq('proyecto_id',id).maybeSingle<ItemApertura>()]);
@@ -42,7 +42,7 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
  {dodo&&<section className="akton-tabla-marco ap-foto-seccion" aria-labelledby="ap-foto"><h2 id="ap-foto" className="akton-titulo">Foto</h2>
   <div className="ap-foto-par">{([['Foto del proyecto',dodo.fila?.foto_proyecto],['Foto real',dodo.fila?.foto_real]] as const).map(([t,ruta])=><figure key={t}><figcaption>{t}</figcaption>{ruta&&dodo.urls[ruta]?<img src={dodo.urls[ruta]} alt={`${t}: ${i.nombre}`} loading="lazy"/>:<div className="ap-foto-vacia">Sin foto</div>}</figure>)}</div>
   {dodo.fila?.foto_proyecto&&dodo.fila.codigo&&dodo.fila.codigo!==codigoDeItem(i.original)&&<p className="akton-subtitulo">Foto de referencia de {dodo.fila.codigo} (otra medida)</p>}
-  {dodo.fila?.sustituto&&<p className="akton-subtitulo">Sustituto verificado por Dodo: {dodo.fila.sustituto}</p>}
+  {dodo.fila?.sustituto&&<p className="akton-subtitulo">En la matriz de Dodo: {estatusDodo(dodo.fila.sustituto)}</p>}
   {dodo.fila?.matriz_url&&<p><a href={dodo.fila.matriz_url} target="_blank" rel="noreferrer">Abrir matriz de Dodo</a></p>}
   {edita&&<FotoReal proyecto={id} item={item} ruta={dodo.fila?.foto_real??null} url={dodo.fila?.foto_real?dodo.urls[dodo.fila.foto_real]??null:null} edita={edita}/>}
  </section>}

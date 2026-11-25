@@ -44,6 +44,15 @@ export function familiaDeCodigo(c: string): string {
   return g >= 0 ? n.slice(0, g) : n.replace(/-\d+$/, "");
 }
 
+// La columna «Наличие согласованной замены» es un estatus, no un modelo: lo traduce para mostrarlo.
+export function estatusDodo(valor: string): string {
+  const v = valor.toLowerCase();
+  if (v.includes("approved replacement")) return "Hay sustituto aprobado por Dodo";
+  if (v.includes("partner's discretion") || v.includes("partner’s discretion")) return "Lo elige el socio (sin modelo fijo)";
+  if (v.includes("project model") || v.includes("согласно проекту")) return "Modelo del proyecto";
+  return valor.trim();
+}
+
 // Foto de un código: la exacta; si no, la primera de su familia con foto (otra medida); si no, la exacta sin foto (sirve para el sustituto).
 export function buscarFoto(
   entradas: Map<string, EntradaMatriz>,
