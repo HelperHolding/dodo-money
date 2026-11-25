@@ -3,6 +3,6 @@
  * (header x-api-key o la clave compartida del cron); el login y la invitación son para quien aún no tiene sesión, y el portal de facturación de tickets es público y solo usa funciones de servidor.
  */
 const CON_PREFIJO = ["/login", "/api/reporte-semanal", "/api/reporte-diario", "/api/reporte-mensual", "/api/cumplimiento/avisos", "/api/correos/", "/baja/", "/facturar"];
-const EXACTAS = new Set(["/auth/confirm", "/invitacion", "/api/dodois/sincronizar", "/api/rappi/importar", "/api/tareas/generar", "/api/mcp", "/api/soporte/avisos", "/api/soporte/avisos/resultado"]);
+const EXACTAS = new Set(["/auth/confirm", "/invitacion", "/api/dodois/sincronizar", "/api/rappi/importar", "/api/tareas/generar", "/api/mcp", "/api/soporte/avisos", "/api/soporte/avisos/resultado", "/api/soporte/resumen"]);
 
 export const rutaSinSesion = (ruta: string) => EXACTAS.has(ruta) || CON_PREFIJO.some((r) => ruta.startsWith(r));

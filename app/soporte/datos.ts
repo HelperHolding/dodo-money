@@ -29,11 +29,11 @@ export async function leerResponsables(supabase: SupabaseClient): Promise<{ id: 
   return (data ?? []) as { id: string; nombre: string }[];
 }
 
-export type Ajustes = { responsable_default: string | null; correos: string[]; avisar_nuevos: boolean; avisar_comentarios: boolean };
+export type Ajustes = { responsable_default: string | null; correos: string[]; avisar_nuevos: boolean; avisar_comentarios: boolean; agente_activo: boolean; resumen_diario: boolean };
 export type AvisoFallido = { id: string; para: string; evento: string; ultimo_error: string | null; creado_en: string; soporte_tickets: { numero: number } | null };
 export async function leerAjustes(supabase: SupabaseClient): Promise<{ ajustes: Ajustes; fallidos: AvisoFallido[]; pendientes: number }> {
   const [a, f, p] = await Promise.all([
-    supabase.from("soporte_ajustes").select("responsable_default, correos, avisar_nuevos, avisar_comentarios").single<Ajustes>(),
+    supabase.from("soporte_ajustes").select("responsable_default, correos, avisar_nuevos, avisar_comentarios, agente_activo, resumen_diario").single<Ajustes>(),
     supabase.from("soporte_avisos").select("id, para, evento, ultimo_error, creado_en, soporte_tickets(numero)").eq("estado", "fallido").order("creado_en", { ascending: false }).limit(20),
     supabase.from("soporte_avisos").select("id", { count: "exact", head: true }).in("estado", ["pendiente", "enviando"]),
   ]);

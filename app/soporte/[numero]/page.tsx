@@ -67,8 +67,11 @@ export default async function DetalleTicket({ params, searchParams }: { params: 
     </section>}
     <section className="seccion"><h2>Seguimiento</h2>
       <ol className="hilo-tarea">
-        {hilo.map((e, i) => <li key={i} data-tipo={e.tipo} data-soporte={e.es_soporte || undefined}>
-          <strong>{e.autor ?? "Sistema"}</strong>{e.es_soporte && <> <span className="insignia" data-tono="info">Soporte</span></>}{" "}
+        {hilo.map((e, i) => <li key={i} data-tipo={e.tipo} data-soporte={e.es_soporte || undefined} data-interna={e.interna || undefined}>
+          <strong>{e.autor ?? "Sistema"}</strong>{e.es_agente
+            ? <> <span className="insignia" data-tono="marca">Agente</span></>
+            : e.es_soporte && <> <span className="insignia" data-tono="info">Soporte</span></>}
+          {e.interna && <> <span className="insignia" data-tono="aviso">Nota interna (solo soporte)</span></>}{" "}
           {e.tipo === "comentario" ? <span className="texto-saltos">{e.texto}</span> : textoCambio(e)}
           <small> · {fechaTexto(fechaMX(e.fecha))} {hora(e.fecha)}</small>
         </li>)}

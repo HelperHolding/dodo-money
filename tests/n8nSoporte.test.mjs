@@ -22,3 +22,14 @@ test('n8n soporte: cada minuto pide avisos, manda por SMTP sin reintento y repor
  assert.doesNotMatch(txt,/SOPORTE_API_KEY|headerParameters|"value"\s*:/i);
  assert.equal(wf.settings.timezone,'America/Mexico_City');
 });
+test('n8n soporte: rama del resumen diario a las 8 am',()=>{
+ const t=N['Resumen 8 am'];
+ assert.equal(t.type,'n8n-nodes-base.scheduleTrigger');
+ assert.deepEqual(t.parameters.rule.interval[0],{field:'cronExpression',expression:'0 8 * * *'});
+ assert.match(JSON.stringify(N['Pedir resumen'].parameters),/\/api\/soporte\/resumen"/);
+ assert.equal(N['Pedir resumen'].parameters.genericAuthType,'httpHeaderAuth');
+ const e=N['Enviar resumen'];
+ assert.equal(e.type,'n8n-nodes-base.emailSend');assert.equal(e.parameters.toEmail,'={{ $json.para }}');assert.equal(e.onError,'continueRegularOutput');
+ assert.deepEqual(Object.keys(e.credentials),['smtp']);
+ assert.deepEqual(conexion('Resumen 8 am',0),['Pedir resumen']);assert.deepEqual(conexion('Pedir resumen',0),['Enviar resumen']);
+});

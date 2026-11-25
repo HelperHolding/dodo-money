@@ -77,11 +77,12 @@ export type Ticket = {
   creado_por: string; creador: string; rol_creador: string; sucursal_id: string | null; sucursal: string | null;
   responsable: string | null; responsable_nombre: string | null; revision: number;
   creado_en: string; actualizado_en: string; cerrado_en: string | null; sin_leer: boolean;
+  agente_estado: string | null;
 };
 /** Una fila de hilo_ticket. */
 export type EntradaHilo = {
   tipo: "comentario" | "cambio"; autor: string | null; es_soporte: boolean | null; texto: string | null;
-  campo: string | null; antes: string | null; despues: string | null; fecha: string;
+  campo: string | null; antes: string | null; despues: string | null; fecha: string; es_agente: boolean | null; interna: boolean | null;
 };
 export function textoCambio(e: EntradaHilo): string {
   const de = (v: string | null, mapa: Record<string, string>) => (v ? mapa[v] ?? v : "—");
