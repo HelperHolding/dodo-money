@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {diasVencido,fechaConcepto,notasConcepto,porEtapa,tonoConcepto,avanceComparado,diasParaApertura,esperadoItem,filasCronograma,indicadoresProyecto,lecturaApertura,textoDiasApertura,textoPts,type Concepto} from './aperturasAkton.ts';
+import {resumenPortada,diasVencido,fechaConcepto,notasConcepto,porEtapa,tonoConcepto,avanceComparado,diasParaApertura,esperadoItem,filasCronograma,indicadoresProyecto,lecturaApertura,textoDiasApertura,textoPts,type Concepto} from './aperturasAkton.ts';
 import type {ItemApertura} from './aperturas.ts';
 
 export const c=(d:Partial<Concepto>):Concepto=>({id:'i',nombre:'Tarea',tipo:'actividad',etapa:'P1',estado:'pendiente',inicio:null,fin:null,responsable:null,notas:null,categoria:null,...d});
@@ -127,7 +127,7 @@ test('aperturas akton: el valor de días nunca es negativo',()=>{
  assert.deepEqual(textoDiasApertura({tipo:'vencida',dias:1}),{valor:'Vencida hace 1 día',tono:'no'});
  assert.deepEqual(textoDiasApertura({tipo:'faltan',dias:7}),{valor:'7',tono:'destacado'});
  assert.deepEqual(textoDiasApertura({tipo:'hoy',dias:0}),{valor:'Hoy',tono:'destacado'});
- assert.deepEqual(textoDiasApertura({tipo:'abierta',dias:3}),{valor:'Abierta',tono:'destacado'});
+ assert.deepEqual(textoDiasApertura({tipo:'abierta',dias:3}),{valor:'Abierta',tono:'si'});
 });
 test('aperturas akton: el KPI de vencidas cuenta lo mismo que la lectura y el cronograma',()=>{
  const items=[
@@ -188,10 +188,33 @@ test('aperturas akton: vencida y bloqueada a la vez cuenta una sola vez en el t�
 test('aperturas akton: títulos de vencidas y bloqueadas sin traslape',()=>{
  const titulo=(m:ItemApertura[])=>lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},m,'2026-11-24'),filasCronograma(m,'2026-11-24')).find(x=>/vencida|bloqueada/.test(x.titulo))!.titulo;
  assert.equal(titulo([it({id:'a',fin:'2026-11-20'}),it({id:'b',estado:'bloqueado'})]),'1 tarea vencida y 1 bloqueada');
- assert.equal(titulo([it({id:'a',estado:'bloqueado'}),it({id:'b',estado:'bloqueado'})]),'2 bloqueadas');
+ assert.equal(titulo([it({id:'a',estado:'bloqueado'}),it({id:'b',estado:'bloqueado'})]),'2 tareas bloqueadas');
 });
 test('aperturas akton: la fecha que se muestra es la misma con la que se decide si está vencida',()=>{
  assert.equal(fechaConcepto(c({inicio:'2026-11-01'})),'2026-11-01');
  assert.equal(fechaConcepto(c({inicio:'2026-11-01',fin:'2026-11-09'})),'2026-11-09');
  assert.equal(fechaConcepto(c({})),null);
+});
+
+// PR 3.
+test('aperturas akton: resumen de la portada',()=>{
+ const hoy='2026-11-24';
+ const r=resumenPortada([{id:'a',objetivo_hasta:'2026-12-04'},{id:'b',objetivo_hasta:'2026-11-30'},{id:'c',objetivo_hasta:'2026-10-01'},{id:'d',objetivo_hasta:'2027-01-10'}],[
+  {...c({id:'1',inicio:'2026-11-01',fin:'2026-11-10'}),proyecto_id:'a'},
+  {...c({id:'2',estado:'completado',inicio:'2026-11-01',fin:'2026-11-10'}),proyecto_id:'b'},
+  {...c({id:'3',estado:'completado'}),proyecto_id:'c'},
+ ],hoy);
+ assert.equal(r.tarjetas.a.vencidas,1);assert.equal(r.tarjetas.a.avance.favorable,'no');
+ assert.deepEqual(r.tarjetas.c.dias,{tipo:'abierta',dias:54});
+ assert.equal(r.tarjetas.d.avance.real,null);assert.equal(r.tarjetas.d.avance.favorable,null);
+ assert.equal(r.enCurso,3);assert.deepEqual(r.proxima,{id:'b',dias:6});assert.equal(r.atrasados,1);
+ assert.equal(resumenPortada([{id:'c',objetivo_hasta:'2026-10-01'}],[],hoy).proxima,null);
+ // «Abierta» con la regla de puntos (avance general 100 %), igual que el detalle: referencia instalada vale 1 punto.
+ const ab=resumenPortada([{id:'e',objetivo_hasta:'2026-10-01'}],[{...c({id:'4',tipo:'referencia',etapa:'P4',estado:'instalado'}),proyecto_id:'e'},{...c({id:'5',estado:'completado'}),proyecto_id:'e'}],hoy);
+ assert.equal(ab.tarjetas.e.avance.real,100);assert.equal(ab.tarjetas.e.dias.tipo,'abierta');
+});
+test('aperturas akton: solo bloqueadas lleva sustantivo',()=>{
+ const items=[it({id:'a',estado:'bloqueado'}),it({id:'b',estado:'bloqueado'})];
+ const l=lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},items,'2026-11-24'),filasCronograma(items,'2026-11-24'));
+ assert.equal(l.find(x=>/bloquead/.test(x.titulo))!.titulo,'2 tareas bloqueadas');
 });

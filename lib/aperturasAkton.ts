@@ -42,9 +42,10 @@ function comparar(de:Concepto[],hoy:string,real:(de:Concepto[])=>number|null):Av
 
 export type DiasApertura = {tipo:'faltan'|'hoy'|'vencida'|'abierta';dias:number};
 // Valor grande del KPI: nunca días negativos.
-export function textoDiasApertura(d:DiasApertura):{valor:string;tono:'destacado'|'no'} {
+export function textoDiasApertura(d:DiasApertura):{valor:string;tono:'destacado'|'no'|'si'} {
  if(d.tipo==='vencida')return {valor:`Vencida hace ${d.dias} ${d.dias===1?'día':'días'}`,tono:'no'};
- return {valor:d.tipo==='faltan'?String(d.dias):d.tipo==='hoy'?'Hoy':'Abierta',tono:'destacado'};
+ if(d.tipo==='abierta')return {valor:'Abierta',tono:'si'};
+ return {valor:d.tipo==='faltan'?String(d.dias):'Hoy',tono:'destacado'};
 }
 export function diasParaApertura(objetivo:string,hoy:string,todoListo:boolean):DiasApertura {
  const d=diasEntre(hoy,objetivo);
@@ -134,7 +135,7 @@ export function lecturaApertura(k:IndicadoresProyecto,filas:FilaCronograma[]):Le
   const idsVencidas=new Set(vencidas.map(v=>v.item.id)),ambas=bloqueadas.filter(b=>idsVencidas.has(b.id)).length,soloBloq=bloqueadas.length-ambas;
   let titulo=vencidas.length?plural(vencidas.length,'tarea vencida','tareas vencidas'):'';
   if(ambas)titulo+=vencidas.length===1?', también bloqueada':`, ${ambas} también ${ambas===1?'bloqueada':'bloqueadas'}`;
-  if(soloBloq)titulo+=titulo?`${ambas?',':''} y ${plural(soloBloq,'bloqueada','bloqueadas')}${ambas?' más':''}`:plural(soloBloq,'bloqueada','bloqueadas');
+  if(soloBloq)titulo+=titulo?`${ambas?',':''} y ${plural(soloBloq,'bloqueada','bloqueadas')}${ambas?' más':''}`:plural(soloBloq,'tarea bloqueada','tareas bloqueadas');
   const urgentes=new Map<string,string>();
   for(const v of [...vencidas].sort((x,y)=>y.diasVencida!-x.diasVencida!)){
    const b=v.item.estado==='bloqueado'?'bloqueada, ':'';urgentes.set(v.item.id,`${v.item.nombre} (${b}vencida hace ${plural(v.diasVencida!,'día','días')})`);
@@ -149,4 +150,18 @@ export function lecturaApertura(k:IndicadoresProyecto,filas:FilaCronograma[]):Le
    texto:c.excede?`Se pasa por ${pesos(c.monto-c.presupuesto!)}.`:c.sinPrecio?`${plural(c.sinPrecio,'concepto','conceptos')} sin precio o sin cantidad.`:'Todos los conceptos tienen precio y cantidad.'});
  }
  return l;
+}
+
+export type TarjetaPortada = {id:string;dias:DiasApertura;avance:Avance;vencidas:number;bloqueadas:number};
+// Portada: por proyecto, días para abrir, avance contra esperado, vencidas y bloqueadas; y los totales de la franja.
+export function resumenPortada(proyectos:Pick<ProyectoApertura,'id'|'objetivo_hasta'>[],items:(Concepto&{proyecto_id:string})[],hoy:string) {
+ const tarjetas:Record<string,TarjetaPortada>={};
+ for(const p of proyectos){
+  const de=items.filter(i=>i.proyecto_id===p.id),avance=avanceComparado(de,hoy),aplicables=de.filter(cuentaEnAvance);
+  // «Abierta» con la misma regla que el detalle: avance general al 100 % (todas las partidas con 1 punto).
+  tarjetas[p.id]={id:p.id,dias:diasParaApertura(p.objetivo_hasta,hoy,avance.real===100),avance,
+   vencidas:aplicables.filter(i=>diasVencido(i,hoy)!==null).length,bloqueadas:aplicables.filter(i=>i.estado==='bloqueado').length};
+ }
+ const lista=Object.values(tarjetas),porVenir=lista.filter(t=>t.dias.tipo==='faltan'||t.dias.tipo==='hoy').sort((a,b)=>a.dias.dias-b.dias.dias);
+ return {tarjetas,enCurso:lista.filter(t=>t.dias.tipo!=='abierta').length,proxima:porVenir[0]?{id:porVenir[0].id,dias:porVenir[0].dias.dias}:null,atrasados:lista.filter(t=>t.avance.favorable==='no').length};
 }

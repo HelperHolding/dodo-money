@@ -10,7 +10,7 @@ import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {obtenerPerfil} from '@/lib/contexto';
 import {pesos,fechaTexto,hoyCalendarioMX} from '@/lib/formato';
-import {CATEGORIAS,ETAPAS,ESTADOS,avanceCategorias,esObra,grupoApertura,indicadoresApertura,conteoEtapasEquipo,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
+import {CATEGORIAS,ETAPAS,ESTADOS,esObra,grupoApertura,indicadoresApertura,conteoEtapasEquipo,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
 import {puedeEditarCompras,puedeVerFinanzas} from '@/lib/roles';
 import {ResumenCapexApertura} from '@/app/finanzas/capex/ResumenCapexApertura';
 import {Aviso} from '@/components/Aviso';

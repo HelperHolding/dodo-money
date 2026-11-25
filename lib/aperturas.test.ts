@@ -101,6 +101,7 @@ test('checklist en vivo: gana la revisión más nueva y los números de Realtime
 });
 
 import {avancePorProyecto,cuentaRegresiva,ordenarProyectos} from './aperturas.ts';
+import {resumenPortada} from './aperturasAkton.ts';
 test('portada: avance por proyecto con el global ponderado (no aplica fuera; listas = partidas con 1 punto)',()=>{
  const x=(proyecto_id:string,tipo:ItemApertura['tipo'],etapa:ItemApertura['etapa'],estado:string)=>({proyecto_id,tipo,etapa,estado,categoria:null});
  const a=avancePorProyecto([x('a','actividad','P1','completado'),x('a','equipo','P4','verificado'),x('a','actividad','P1','en_curso'),x('a','actividad','P1','no_aplica'),x('b','actividad','P1','pendiente')]);
@@ -118,6 +119,8 @@ test('portada, checklist y avance general dan el mismo % para los mismos items',
  assert.ok(g!==null&&g>0&&g<100);
  assert.equal(checklistApertura(items).general,g);
  assert.equal(avancePorProyecto(items).p.porcentaje,g);
+ // La portada Akton (resumenPortada) muestra el mismo % en cada tarjeta.
+ assert.equal(resumenPortada([{id:'p',objetivo_hasta:'2026-12-20'}],items,'2026-11-24').tarjetas.p.avance.real,g);
  const bloques=Object.fromEntries(avanceApertura(items).bloques.map(b=>[b.clave,b.porcentaje]));
  for(const m of checklistApertura(items).modulos)assert.equal(m.porcentaje,bloques[m.clave],m.clave);
 });
