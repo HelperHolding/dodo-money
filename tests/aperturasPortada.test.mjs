@@ -27,3 +27,24 @@ test('cada tarjeta muestra el avance contra lo esperado, con estilo Akton', () =
   assert.match(p, /className="akton-var" data-favorable=/);
   assert.match(leer('app/globals.css'), /\.ap-tarjeta\.ap-tarjeta-akton \{/);
 });
+
+// Revisión final del PR 3.
+test('si falla la consulta de avance, la portada no inventa vencidas ni atrasadas', () => {
+  const p = leer('app/aperturas/page.tsx');
+  assert.match(p, /const sinAvance=items===null/);
+  assert.match(p, /sinAvance\?'—':r\.atrasados/);
+  assert.match(p, /Sin dato de avance/);
+});
+test('la inversión de la portada dice de cuántas fuentes sale y no muestra $0 sin fuentes', () => {
+  const p = leer('app/aperturas/page.tsx');
+  assert.match(p, /Total de \{inversion\.fuentes===1/);
+  assert.match(p, /inversion===null\|\|inversion\.fuentes===0\?'—'/);
+});
+test('en celular los valores largos de la franja se acomodan sin salirse', () => {
+  assert.match(leer('app/globals.css'), /@media \(max-width:640px\) \{ \.akton-kpi-valor \{ font-size:clamp\(\.9rem,4\.2vw,1\.15rem\); overflow-wrap:anywhere; \} \}/);
+});
+test('el importe del detalle es solo para compras y dice que es con IVA; el historial no llama alta a otros cambios', () => {
+  const d = leer('app/aperturas/[id]/items/[item]/page.tsx');
+  assert.match(d, /\{compra&&<Kpi etiqueta="Importe con IVA"/);
+  assert.match(leer('app/aperturas/Historial.tsx'), /Sin cambios en campos visibles/);
+});

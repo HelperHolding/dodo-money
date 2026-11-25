@@ -32,7 +32,7 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
   <Kpi etiqueta="Fecha" tono={vencida!==null?'no':undefined} valor={fecha?fechaTexto(fecha):'Sin fecha'} pie={vencida!==null?`Vencida hace ${vencida} ${vencida===1?'día':'días'}`:i.inicio&&i.fin&&i.inicio!==i.fin?`${fechaTexto(i.inicio)} – ${fechaTexto(i.fin)}`:fecha?'Fecha prevista':'Sin programar'}/>
   {compra?<Kpi etiqueta="Cantidad / recibido" valor={`${i.cantidad??'—'} / ${i.recibido}`} pie={typeof i.original.unidad==='string'?i.original.unidad:i.cantidad===null?'Cantidad por confirmar':'Unidades'}/>
    :<Kpi etiqueta="Categoría" valor={i.categoria?CATEGORIAS[i.categoria]?.nombre??i.categoria:'Sin categoría'} pie={i.categoria?`Hoja ${CATEGORIAS[i.categoria]?.hoja??'—'}`:ETAPAS[i.etapa]}/>}
-  <Kpi etiqueta="Importe" valor={i.cantidad!==null&&i.precio!==null?pesos(Number(i.cantidad)*Number(i.precio)):'—'} pie={i.precio===null?'Sin precio':`Precio unitario: ${pesos(i.precio)}`}/>
+  {compra&&<Kpi etiqueta="Importe con IVA" valor={i.cantidad!==null&&i.precio!==null?pesos(Number(i.cantidad)*Number(i.precio)):'—'} pie={i.precio===null?'Sin precio':`Precio unitario con IVA: ${pesos(i.precio)}`}/>}
  </section>
  <section className="akton-tabla-marco" aria-labelledby="ap-seguimiento"><h2 id="ap-seguimiento" className="akton-titulo">Seguimiento</h2>
   <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-tabla ap-tabla-datos"><tbody>

@@ -2427,4 +2427,4 @@ body { background: var(--papel-2); }
 /* Franja de 4 indicadores: 4 columnas en vez de las 6 del P&L, para no dejar huecos. */
 @media (min-width:1281px) { .akton-kpis:has(> :nth-child(4):last-child) { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 /* En celular los montos largos de la franja no se salen de su tarjeta. */
-@media (max-width:640px) { .akton-kpi-valor { font-size:clamp(.9rem,4.2vw,1.15rem); } }
+@media (max-width:640px) { .akton-kpi-valor { font-size:clamp(.9rem,4.2vw,1.15rem); overflow-wrap:anywhere; } }

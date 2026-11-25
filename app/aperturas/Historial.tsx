@@ -24,7 +24,7 @@ export function Historial({cambios}:{cambios:CambioApertura[]}){
    <tbody>{cambios.map((h,n)=>{const campos=Object.entries(CAMPOS).filter(([k])=>String(h.anterior?.[k]??'')!==String(h.nuevo?.[k]??''));return <tr key={`${h.fecha}-${n}`}>
     <td data-label="Fecha" className="ap-crono-fecha">{new Date(h.fecha).toLocaleString('es-MX',{timeZone:'America/Mexico_City',dateStyle:'medium',timeStyle:'short'})}</td>
     <td data-label="Quién">{h.perfiles?.nombre??'Administración'}</td>
-    <td data-label="Qué cambió">{campos.length?<ul className="ap-cambios">{campos.map(([k,label])=><li key={k}><b>{label}:</b> <span className="texto-libre">{valor(k,h.anterior?.[k])}</span> → <span className="texto-libre">{valor(k,h.nuevo?.[k])}</span></li>)}</ul>:'Alta del registro u otros datos'}</td>
+    <td data-label="Qué cambió">{campos.length?<ul className="ap-cambios">{campos.map(([k,label])=><li key={k}><b>{label}:</b> <span className="texto-libre">{valor(k,h.anterior?.[k])}</span> → <span className="texto-libre">{valor(k,h.nuevo?.[k])}</span></li>)}</ul>:'Sin cambios en campos visibles'}</td>
    </tr>;})}</tbody>
   </table></div>}
  </section></div>;
