@@ -29,7 +29,7 @@ export function ventanaEtapa(items:ItemApertura[]) {
  return {desde:items.flatMap(i=>i.inicio?[i.inicio]:[]).sort()[0],hasta:items.flatMap(i=>i.fin?[i.fin]:[]).sort().at(-1)};
 }
 
-export function grupoApertura(i:ItemApertura) {
+export function grupoApertura(i:Pick<ItemApertura,'estado'>) {
  if(i.estado==='bloqueado')return 'bloqueado';
  if(i.estado==='completado'||i.estado==='verificado')return 'terminado';
  if(['recibido','instalado'].includes(i.estado))return 'recibido';

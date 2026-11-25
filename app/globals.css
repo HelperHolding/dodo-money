@@ -2104,6 +2104,55 @@ body { background: var(--papel-2); }
 .ap-cal-colores button { border:0; background:none; color:var(--dato-azul); font:inherit; font-size:.8rem; cursor:pointer; padding:0; }
 @media (max-width:700px) { .ap-cal-rejilla { display:none; } .ap-cal-agenda { display:block; margin-top:12px; } }
 
+/* Calendario por responsable (HD-7/HD-8): filtros, iniciales con color, cuadros del mes y el día en grande. */
+.ap-cal-filtros { margin-top:12px; }
+.ap-cal-campo { display:inline-flex; align-items:center; gap:8px; font-size:.9rem; color:var(--tinta-2); }
+.ap-cal-campo select { min-width:200px; max-width:100%; }
+.ap-cal-casilla { display:inline-flex; align-items:center; gap:6px; font-size:.9rem; cursor:pointer; }
+.ap-cal-casilla input { accent-color:var(--accion); margin:0; }
+.ap-cal-chip { display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:999px; font-size:.72rem; font-weight:700; line-height:1.4; white-space:nowrap; box-shadow:inset 0 0 0 1px color-mix(in srgb,#3a2a20 14%,transparent); }
+.ap-cal-chip b { font-weight:800; }
+.ap-cal-leyenda .ap-cal-chip { width:auto; height:auto; flex:0 0 auto; border-radius:999px; }
+.ap-cal-semana[data-larga] { min-height:260px; }
+.ap-cuadros { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; margin-top:12px; }
+.ap-cuadros-dia-semana { text-align:center; font-size:.75rem; font-weight:700; color:var(--tinta-2); padding-bottom:2px; }
+.ap-cuadro { display:flex; flex-direction:column; align-items:flex-start; gap:4px; min-height:96px; min-width:0; padding:6px; border:1px solid var(--linea); border-radius:var(--r-md); background:var(--superficie); color:var(--tinta); font:inherit; text-align:left; cursor:pointer; }
+.ap-cuadro:hover, .ap-cuadro:focus-visible { border-color:var(--accion); outline:none; box-shadow:0 0 0 2px var(--accion-tinte); }
+.ap-cuadro[data-vacio] { background:transparent; }
+.ap-cuadro[data-fuera] { opacity:.45; }
+.ap-cuadro[data-hoy] { box-shadow:inset 0 0 0 2px var(--accion); }
+.ap-cuadro-numero { font-size:.8rem; font-weight:700; color:var(--tinta-2); }
+.ap-cuadro[data-hoy] .ap-cuadro-numero { color:var(--accion-oscuro); }
+.ap-cuadro-chips { display:flex; flex-wrap:wrap; gap:3px; min-width:0; }
+.ap-cuadro-mas { font-size:.72rem; color:var(--tinta-2); align-self:center; }
+.ap-cuadro-total { margin-top:auto; font-size:.72rem; color:var(--tinta-2); }
+.ap-cal-modal[data-grande] { width:min(980px,calc(100vw - 32px)); }
+.ap-cal-sub .ap-cal-chip { margin-right:8px; vertical-align:2px; }
+.ap-dia-grupos { display:grid; gap:4px; }
+.ap-dia-tarjetas { list-style:none; padding:0; margin:6px 0 0; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:8px; }
+.ap-dia-tarjeta { display:flex; flex-direction:column; gap:6px; padding:10px 12px; border:1px solid var(--linea); border-left:6px solid; border-radius:var(--r-md); background:var(--superficie); min-width:0; }
+.ap-dia-tarjeta[data-listo] .ap-dia-nombre { text-decoration:line-through; opacity:.7; }
+.ap-dia-nombre { font-weight:700; color:var(--tinta); overflow-wrap:anywhere; }
+.ap-dia-datos { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; }
+.ap-dia-datos small { color:var(--tinta-2); font-size:.82rem; }
+.ap-momento { display:inline-block; padding:3px 8px; border-radius:999px; font-size:.78rem; font-weight:600; background:var(--dato-pista); color:var(--tinta); }
+.ap-momento[data-momento=empieza] { background:#d7ebc4; color:#2f4a1c; }
+.ap-momento[data-momento=continua] { background:#c9ddf5; color:#1e3a5f; }
+.ap-momento[data-momento=termina] { background:#ffd2bd; color:#6b2e12; }
+.ap-momento[data-momento=solo] { background:#ddd0f5; color:#3d2a66; }
+.ap-dia-acciones { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:.88rem; }
+.ap-dia-acciones .boton-texto { border:0; background:none; color:var(--dato-azul); font:inherit; cursor:pointer; padding:0; }
+.ap-dia-programar { margin-top:18px; border-top:1px solid var(--linea); padding-top:10px; }
+.ap-dia-programar summary { cursor:pointer; font-weight:600; }
+@media (max-width:700px) {
+ .ap-cuadros { gap:2px; }
+ .ap-cuadro { min-height:72px; padding:3px; gap:2px; }
+ .ap-cuadro-total { display:none; }
+ .ap-cuadro .ap-cal-chip { padding:0 3px; font-size:.62rem; }
+ .ap-cal-campo { width:100%; }
+ .ap-cal-campo select { flex:1; min-width:0; }
+}
+
 
 /* Gantt de aperturas: nombre a la izquierda y línea de tiempo que cabe en el ancho (posiciones en %).
    Colores pastel de la paleta Dodo; --ap-b es el borde (el mismo tono, más oscuro) para que las barras se distingan. Hoy y apertura en naranja de marca. */
