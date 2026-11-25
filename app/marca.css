@@ -795,3 +795,19 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   .franja-movil { color: var(--menu-texto); border-bottom: 1px solid var(--menu-linea); }
   .franja-movil-boton, .lateral-cerrar { color: var(--menu-texto); }
 }
+
+/* ─── Menú plegable (computadora): ☰ lo oculta y el contenido usa todo el ancho ─── */
+.lateral-plegar, .marco-mostrar-menu {
+  display: none; align-items: center; justify-content: center; width: 40px; height: 40px; flex: none;
+  border: 0; border-radius: 50%; background: transparent; color: var(--menu-texto-2); cursor: pointer;
+}
+.lateral-plegar:hover, .marco-mostrar-menu:hover { background: var(--menu-hover); color: var(--menu-texto); }
+@media (min-width: 901px) {
+  .lateral-plegar { display: inline-flex; margin: -2px 0 0 -6px; }
+  .marco { transition: grid-template-columns 200ms ease; }
+  html[data-menu="plegado"] .marco { grid-template-columns: 0 minmax(0, 1fr); background: none; }
+  html[data-menu="plegado"] .lateral { visibility: hidden; overflow: hidden; }
+  html[data-menu="plegado"] .marco-mostrar-menu { display: inline-flex; position: fixed; top: 12px; left: 12px; z-index: 25; background: var(--superficie); box-shadow: 0 0 0 1px var(--menu-linea); }
+  html[data-menu="plegado"] .marco-contenido { padding-top: 8px; }
+}
+@media print { .marco-mostrar-menu, .lateral-plegar { display: none !important; } }

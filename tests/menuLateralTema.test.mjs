@@ -16,3 +16,18 @@ test('el área activa es una píldora tenue, sin borde naranja', () => {
   const marca = leer('app/marca.css');
   assert.match(marca, /\.lateral \.lateral-area\[aria-current="page"\] \{[^}]*background: var\(--menu-activo-fondo\)[^}]*box-shadow: none/);
 });
+test('el menú se pliega con ☰ y se recuerda sin parpadear', () => {
+  const layout = leer('app/layout.tsx');
+  assert.match(layout, /localStorage\.getItem\("menu"\)==="plegado"/);
+  assert.match(layout, /dataset\.menu="plegado"/);
+  const menu = leer('components/MenuLateral.tsx');
+  assert.match(menu, /className="lateral-plegar"/);
+  assert.match(menu, /className="marco-mostrar-menu"/);
+  assert.match(menu, /aria-expanded=\{!plegado\}/);
+  assert.match(menu, /localStorage\.setItem\("menu"/);
+  const css = leer('app/marca.css');
+  assert.match(css, /html\[data-menu="plegado"\] \.marco \{ grid-template-columns: 0 minmax\(0, 1fr\); background: none; \}/);
+  // Solo en computadora: la regla vive dentro del bloque de ≥ 901 px, después de su apertura.
+  const bloque = css.slice(css.lastIndexOf('@media (min-width: 901px) {'));
+  assert.match(bloque, /html\[data-menu="plegado"\] \.marco \{/);
+});

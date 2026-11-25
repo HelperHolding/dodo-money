@@ -30,6 +30,16 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
   const ruta = usePathname();
   const areaActual = areaActiva(menu, ruta)?.titulo;
   const [cajon, setCajon] = useState(false);
+  const [plegado, setPlegado] = useState(false);
+  useEffect(() => { setPlegado(document.documentElement.dataset.menu === "plegado"); }, []);
+  // Computadora: ☰ pliega o muestra el menú (como Google Calendar). Se recuerda en este navegador;
+  // app/layout.tsx lo aplica antes de pintar.
+  const alternarMenu = () => {
+    const nuevo = !plegado;
+    if (nuevo) document.documentElement.dataset.menu = "plegado"; else delete document.documentElement.dataset.menu;
+    try { localStorage.setItem("menu", nuevo ? "plegado" : "abierto"); } catch { /* sin almacenamiento: solo esta visita */ }
+    setPlegado(nuevo);
+  };
 
   // Al cambiar de página se cierra el cajón.
   useEffect(() => { setCajon(false); }, [ruta]);
@@ -53,9 +63,11 @@ export function MenuLateral({ menu, titulo, cabecera, pie, accesos }: {
         <span className="franja-movil-titulo">{titulo}</span>
         <InterruptorLuz />
       </div>
+      <button type="button" className="marco-mostrar-menu" aria-expanded={!plegado} aria-controls="menu-lateral" aria-label="Mostrar menú" onClick={alternarMenu}><Icono nombre="menu" tamano={22} /></button>
       {cajon && <button type="button" className="lateral-velo" aria-label="Cerrar menú" onClick={() => setCajon(false)} />}
       <aside id="menu-lateral" className="lateral" data-abierto={cajon ? "si" : undefined}>
         <div className="lateral-cabecera">
+          <button type="button" className="lateral-plegar" aria-expanded={!plegado} aria-controls="menu-lateral" aria-label="Plegar menú" onClick={alternarMenu}><Icono nombre="menu" tamano={22} /></button>
           {cabecera}
           <button type="button" className="lateral-cerrar" aria-label="Cerrar menú" onClick={() => setCajon(false)}><Icono nombre="cerrar" tamano={24} /></button>
         </div>
