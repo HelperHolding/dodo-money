@@ -11,12 +11,17 @@
   --display: var(--fuente-archivo, "Archivo"), var(--fuente);
   --dodo-naranja: #ff4e00;
   --fondo-pagina: var(--papel-2);   /* contenido sobre beige; las tarjetas van blancas encima */
+  /* Menú lateral con tema (estilo Google Calendar): claro de día */
+  --menu-fondo: var(--papel-2); --menu-texto: var(--tinta); --menu-texto-2: var(--tinta-2); --menu-linea: var(--linea);
+  --menu-hover: rgb(0 0 0 / .05); --menu-activo-fondo: var(--accion-tinte); --menu-activo-texto: var(--accion-oscuro);
 }
 
 /* ─── Noche: fondos sólidos casi negros, texto beige, naranja en acciones. Solo con el marco o el acceso:
    las vistas de impresión siguen en blanco. --blanco no se toca: es el texto del menú negro y de los totales del P&L. ─── */
 html[data-luz="noche"]:has(.marco, .login) {
   color-scheme: dark;
+  --menu-fondo: #121212; --menu-texto: var(--tinta); --menu-texto-2: var(--tinta-2); --menu-linea: var(--linea);
+  --menu-hover: rgb(255 255 255 / .06); --menu-activo-fondo: var(--accion-tinte); --menu-activo-texto: var(--accion-oscuro);
   --papel: #121212;
   --tinta: #f9f1e6; --tinta-2: #d4cdc6; --tinta-3: #b8b0a8;
   --linea: #2e2e2e; --linea-fuerte: #4a4a4a;
@@ -58,9 +63,9 @@ html[data-luz="noche"]:has(.marco) .tabla-pl { --pl-barra: #5a4636; }
 /* ─── Marco ─── */
 /* El panel del menú se estira con la página (el menú en sí sigue fijo a la vista); filete naranja de marca */
 @media (min-width: 901px) {
-  .marco { background: linear-gradient(90deg, #000 0 260px, var(--accion) 260px 264px, transparent 264px); }
+  .marco { background: linear-gradient(90deg, var(--menu-fondo) 0 263px, var(--menu-linea) 263px 264px, transparent 264px); }
 }
-.lateral, .franja-movil { background: #000; }
+.lateral, .franja-movil { background: var(--menu-fondo); color: var(--menu-texto); }
 .marco-contenido { min-height: 100vh; background: var(--fondo-pagina); overflow-x: clip; }
 
 /* Interruptor sol / luna */
@@ -765,4 +770,28 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   .encabezado-marca { display: none; }
   .pestanas-area { display: none; }
   :is(.seccion, .tarjeta, .indicador, .saldo) { box-shadow: none; background: #fff; }
+}
+
+/* ─── Menú lateral con tema (estilo Google Calendar): claro de día, oscuro de noche; activo como píldora tenue ─── */
+.lateral { border-right: 1px solid var(--menu-linea); }
+.lateral-cabecera, .lateral-luz { border-color: var(--menu-linea); }
+.lateral-pie { border-top-color: var(--menu-linea); }
+.lateral-detalle, .lateral-usuario span { color: var(--menu-texto-2); opacity: 1; }
+.lateral .lateral-seccion-titulo { color: var(--menu-texto-2); }
+.lateral .lateral-enlace { color: var(--menu-texto); border-left: 0; }
+.lateral .lateral-enlace .icono { color: var(--menu-texto-2); }
+.lateral .lateral-enlace:hover { background: var(--menu-hover); color: var(--menu-texto); }
+.lateral .lateral-area[aria-current="page"] { background: var(--menu-activo-fondo); color: var(--menu-activo-texto); font-weight: 700; box-shadow: none; border-radius: 0 999px 999px 0; margin-left: -8px; padding-left: 20px; }
+.lateral .lateral-area[aria-current="page"] .icono { color: var(--menu-activo-texto); }
+.lateral-acciones a { color: var(--menu-texto); }
+.lateral-acciones button { color: var(--menu-texto); border-color: var(--menu-linea); }
+.lateral-acciones button:hover { background: var(--menu-hover); }
+.lateral .buscador-boton { background: var(--superficie); color: var(--menu-texto-2); border-color: var(--menu-linea); }
+.lateral .buscador-boton:hover { color: var(--menu-texto); border-color: var(--linea-fuerte); }
+.lateral .buscador-boton kbd { border-color: var(--menu-linea); color: var(--menu-texto-2); }
+.interruptor-luz { background: var(--superficie); border-color: var(--menu-linea); color: var(--menu-texto-2); }
+.interruptor-luz-riel { background: var(--linea-fuerte); }
+@media (max-width: 900px) {
+  .franja-movil { color: var(--menu-texto); border-bottom: 1px solid var(--menu-linea); }
+  .franja-movil-boton, .lateral-cerrar { color: var(--menu-texto); }
 }
