@@ -58,7 +58,7 @@ test('escalado y mejora: en revisión, responsable, prioridad sugerida y aviso �
  }finally{await db.close();}
 });
 
-test('problema que el modelo llama mejora se escala; fallido avisa «nuevo»; segunda llamada se ignora',async()=>{
+test('problema que el modelo llama mejora se escala; fallido avisa «escalado»; segunda llamada se ignora',async()=>{
  const db=await nueva();
  try{
   const a=await crear(db,U.ana,PROB),b=await crear(db,U.ana,PROB);
@@ -66,9 +66,20 @@ test('problema que el modelo llama mejora se escala; fallido avisa «nuevo»; se
   assert.equal(await cerrar(db,await idDe(db,b),'fallido',null,'timeout'),'fallido');
   assert.equal(await cerrar(db,await idDe(db,b),'resuelto','otra','n'),'ignorado');
   const tb=await ticket(db)(b);assert.deepEqual([tb.estado,tb.agente_estado],['nuevo','fallido']);
-  assert.deepEqual((await avisos(db)).map(x=>x.evento).sort(),['escalado','nuevo']);
+  assert.deepEqual((await avisos(db)).map(x=>x.evento).sort(),['escalado','escalado']);
   assert.equal((await db.query(`select count(*)::int n from public.soporte_comentarios c join public.soporte_tickets t on t.id=c.ticket_id where t.numero=$1`,[b])).rows[0].n,1);
   assert.equal(await cerrar(db,await idDe(db,a),'otro','x','n'),'ignorado','ya no está pendiente: se ignora antes de validar');
+ }finally{await db.close();}
+});
+
+test('fallido con avisar_nuevos apagado: el aviso «escalado» sí se encola, con la nota',async()=>{
+ const db=await nueva();
+ try{
+  await db.query(`update public.soporte_ajustes set avisar_nuevos=false,correos=array['scervera@dodopizza.mx'] where id`);
+  const n=await crear(db,U.ana,PROB);
+  assert.equal(await cerrar(db,await idDe(db,n),'fallido',null,'timeout'),'fallido');
+  const r=await servicio(db,`select evento,comentario from public.soporte_tomar_avisos(10)`);
+  assert.equal(r.length,1);assert.equal(r[0].evento,'escalado');assert.match(r[0].comentario,/no pudo atender/);
  }finally{await db.close();}
 });
 
@@ -83,13 +94,13 @@ test('validaciones de agente_cerrar_ticket',async()=>{
  }finally{await db.close();}
 });
 
-test('red de seguridad: pendiente de más de 5 minutos → fallido, nota interna y aviso «nuevo»',async()=>{
+test('red de seguridad: pendiente de más de 5 minutos → fallido, nota interna y aviso «escalado»',async()=>{
  const db=await nueva();
  try{
   const n=await crear(db,U.ana,PROB),reciente=await crear(db,U.ana,PROB);
   await db.query(`update public.soporte_tickets set creado_en=now()-interval '6 minutes' where numero=$1`,[n]);
-  const tomados=await servicio(db,`select evento,numero from public.soporte_tomar_avisos(10)`);
-  assert.deepEqual(tomados.map(x=>[x.evento,Number(x.numero)]),[['nuevo',n]]);
+  const tomados=await servicio(db,`select evento,numero,comentario from public.soporte_tomar_avisos(10)`);
+  assert.deepEqual(tomados.map(x=>[x.evento,Number(x.numero),x.comentario]),[['escalado',n,'El agente no terminó a tiempo; el ticket se atiende como siempre.']]);
   assert.equal((await ticket(db)(n)).agente_estado,'fallido');assert.equal((await ticket(db)(reciente)).agente_estado,'pendiente');
   assert.equal((await q(db,U.seba,`select count(*)::int n from public.hilo_ticket($1) where interna and es_agente`,[n]))[0].n,1);
  }finally{await db.close();}
@@ -162,6 +173,8 @@ test('ajustes: agente y resumen; con agente activo hace falta un correo',async()
   await q(db,U.seba,`select public.guardar_ajustes_soporte(p_responsable=>$1,p_correos=>$2,p_avisar_nuevos=>true,p_avisar_comentarios=>true)`,[U.seba,['scervera@dodopizza.mx']]);
   assert.equal((await db.query(`select agente_activo from public.soporte_ajustes`)).rows[0].agente_activo,false,'llamada de 4 parámetros sigue funcionando');
   await rechaza(g(null,[],false,false,true,false),/al menos un correo/);
+  await q(db,U.seba,`select public.guardar_ajustes_soporte(p_responsable=>null,p_correos=>'{}',p_avisar_nuevos=>false,p_avisar_comentarios=>false)`);
+  assert.equal((await db.query(`select resumen_diario from public.soporte_ajustes`)).rows[0].resumen_diario,true,'sin correos y solo resumen por defecto: guarda');
   await g(U.seba,['scervera@dodopizza.mx'],true,true,true,false);
   assert.deepEqual((await db.query(`select agente_activo,resumen_diario from public.soporte_ajustes`)).rows[0],{agente_activo:true,resumen_diario:false});
   await rechaza(q(db,U.ana,`select public.guardar_ajustes_soporte(null,'{}',false,false,false,false)`),/Solo soporte/);

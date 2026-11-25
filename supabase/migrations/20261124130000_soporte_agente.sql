@@ -175,11 +175,11 @@ Nota del agente: '||nota else '' end end,4000));
  end if;
  if d='fallido' then
   insert into public.soporte_comentarios(ticket_id,autor_id,es_soporte,es_agente,interna,texto)
-   values(t.id,null,true,true,true,left('El agente no pudo atender este ticket; se atiende como siempre.'||case when nota<>'' then ' Detalle: '||nota else '' end,4000));
+   values(t.id,null,true,true,true,left('El agente no pudo atender este ticket; se atiende como siempre.'||case when nota<>'' then ' Detalle: '||nota else '' end,4000)) returning id into cid;
   update public.soporte_tickets set agente_estado='fallido',agente_en=now(),agente_modelo=left(p_modelo,100),
    agente_tokens_entrada=greatest(p_entrada,0),agente_tokens_salida=greatest(p_salida,0)
   where id=t.id;
-  perform public.encolar_aviso_soporte(t.id,'nuevo',null);
+  perform public.encolar_aviso_soporte(t.id,'escalado',cid);
   return d;
  end if;
  insert into public.soporte_comentarios(ticket_id,autor_id,es_soporte,es_agente,interna,texto) values(t.id,null,true,true,false,pub);
@@ -229,13 +229,13 @@ returns table(aviso_id uuid,para text,evento text,numero bigint,tipo text,titulo
  sucursal text,creador text,rol_creador text,con_captura boolean,comentario text,autor_comentario text)
 language plpgsql security definer set search_path='' as $$
 #variable_conflict use_column
-declare v uuid;
+declare v uuid;cid bigint;
 begin
  for v in update public.soporte_tickets set agente_estado='fallido',agente_en=now()
    where agente_estado='pendiente' and creado_en<now()-interval '5 minutes' returning id loop
   insert into public.soporte_comentarios(ticket_id,autor_id,es_soporte,es_agente,interna,texto)
-   values(v,null,true,true,true,'El agente no terminó a tiempo; el ticket se atiende como siempre.');
-  perform public.encolar_aviso_soporte(v,'nuevo',null);
+   values(v,null,true,true,true,'El agente no terminó a tiempo; el ticket se atiende como siempre.') returning id into cid;
+  perform public.encolar_aviso_soporte(v,'escalado',cid);
  end loop;
  update public.soporte_avisos set estado=case when intentos>=5 then 'fallido' else 'pendiente' end,
   ultimo_error=coalesce(ultimo_error,'n8n no reportó el resultado.')
@@ -270,7 +270,7 @@ begin
   into limpios from unnest(coalesce(p_correos,array[]::text[])) c;
  if cardinality(limpios)>10 then raise exception 'Máximo 10 correos.';end if;
  if exists(select 1 from unnest(limpios) c where c !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$') then raise exception 'Revisa los correos: hay uno que no es válido.';end if;
- if (coalesce(p_avisar_nuevos,false) or coalesce(p_avisar_comentarios,false) or coalesce(p_agente_activo,false) or coalesce(p_resumen_diario,false))
+ if (coalesce(p_avisar_nuevos,false) or coalesce(p_avisar_comentarios,false) or coalesce(p_agente_activo,false))
    and cardinality(limpios)=0 then
   raise exception 'Escribe al menos un correo para recibir avisos.';
  end if;

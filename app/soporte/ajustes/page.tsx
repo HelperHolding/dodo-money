@@ -35,7 +35,7 @@ export default async function AjustesSoporte({ searchParams }: { searchParams: P
     <section className="seccion"><h2>Envíos</h2>
       <p>{pendientes ? `${pendientes} aviso(s) esperando a n8n.` : "No hay avisos en espera."}</p>
       {fallidos.length > 0 && <ol className="hilo-tarea">
-        {fallidos.map((f) => <li key={f.id}><strong>{f.soporte_tickets ? clave(f.soporte_tickets.numero) : "Ticket"}</strong> · {f.evento === "nuevo" ? "ticket nuevo" : "comentario"} a {f.para}: {f.ultimo_error ?? "sin detalle"}
+        {fallidos.map((f) => <li key={f.id}><strong>{f.soporte_tickets ? clave(f.soporte_tickets.numero) : "Ticket"}</strong> · {f.evento === "nuevo" ? "ticket nuevo" : f.evento === "escalado" ? "escalado del agente" : "comentario"} a {f.para}: {f.ultimo_error ?? "sin detalle"}
           <small> · {fechaTexto(fechaMX(f.creado_en))} {hora(f.creado_en)}</small></li>)}
       </ol>}
     </section>

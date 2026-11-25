@@ -26,7 +26,7 @@ test('pantallas: hilo marca agente y nota interna; tarjeta con insignia; ajustes
  assert.match(d,/data-interna=\{e\.interna \|\| undefined\}/);assert.match(d,/Nota interna \(solo soporte\)/);assert.match(d,/e\.es_agente/);
  assert.match(leer('app/soporte/TarjetaTicket.tsx'),/soporte && t\.agente_estado/);
  const a=leer('app/soporte/ajustes/page.tsx');
- assert.match(a,/name="agente_activo"/);assert.match(a,/name="resumen_diario"/);
+ assert.match(a,/name="agente_activo"/);assert.match(a,/name="resumen_diario"/);assert.match(a,/evento === "escalado" [?] "escalado del agente"/);
  const acc=leer('app/soporte/acciones.ts');
  assert.match(acc,/p_agente_activo: fd\.get\("agente_activo"\) === "1"/);assert.match(acc,/p_resumen_diario: fd\.get\("resumen_diario"\) === "1"/);
  assert.match(leer('app/soporte/datos.ts'),/agente_activo, resumen_diario/);
