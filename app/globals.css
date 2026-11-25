@@ -2363,7 +2363,7 @@ body { background: var(--papel-2); }
 
 /* Renglones compactos del P&L: referencia en una línea y acciones lado a lado. */
 .akton-tabla .celda-pila { gap: 0; }
-.akton-ref { display: block; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.72rem; color: var(--tinta-3); }
+.akton-ref { display: block; max-width: 210px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.72rem; color: var(--tinta-3); }
 .akton-acciones { display: flex; flex-wrap: wrap; gap: 0 12px; font-size: 0.78rem; }
 .akton-acciones:empty { display: none; }
 .akton-acciones .pl-origen { margin-top: 0; }
@@ -2379,7 +2379,7 @@ body { background: var(--papel-2); }
 .pagos-proveedor { margin: 0 0 12px; }
 .pagos-proveedor-encabezado { padding: 4px 0; margin-bottom: 0; }
 .pagos-renglones { list-style: none; margin: 0; padding: 0; }
-.pagos-renglon { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(0, 2.4fr) auto 120px 130px; align-items: center; gap: 4px 12px; padding: 5px 8px; border-bottom: 1px solid var(--linea); font-size: 0.88rem; }
+.pagos-renglon { display: grid; grid-template-columns: minmax(80px, 140px) minmax(0, 1fr) auto 120px 130px; align-items: center; gap: 4px 12px; padding: 5px 8px; border-bottom: 1px solid var(--linea); font-size: 0.88rem; }
 .pagos-renglon:last-child { border-bottom: 0; }
 .pagos-renglon[data-alerta] { box-shadow: inset 3px 0 0 var(--alerta); }
 .pagos-renglon-folio { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

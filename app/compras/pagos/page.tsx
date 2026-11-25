@@ -160,7 +160,6 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
           <span className="pagos-renglon-estados">
             {vencida(f, hoy) && <span className="insignia" data-tono="peligro">Vencida</span>}
             {f.estado === "parcial" && <span className="insignia" data-tono="info">Abonada</span>}
-            {f.pago_programado_el && <span className="insignia" data-tono="exito">Programada</span>}
             {f.falta_complemento && <span className="insignia" data-tono="aviso">Falta complemento</span>}
           </span>
           <strong className="pagos-renglon-monto">{pesos(f.saldo)}</strong>
