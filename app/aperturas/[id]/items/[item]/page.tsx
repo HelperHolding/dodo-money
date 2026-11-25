@@ -13,6 +13,8 @@ import {BotonEnviar} from '@/components/BotonEnviar';
 import {guardarItem} from '../../../acciones';
 import {Historial,type CambioApertura} from '../../../Historial';
 import {sugerenciasResponsable} from '@/lib/aperturasCalendario';
+import {FotoReal} from '@/app/aperturas/fotos/FotoReal';
+import {urlsFotos} from '@/app/aperturas/fotos/urls';
 export default async function Item({params,searchParams}:{params:Promise<{id:string;item:string}>;searchParams:Promise<{ok?:string;error?:string}>}) {
  const [{id,item},avisos]=await Promise.all([params,searchParams]);const {supabase,perfil}=await obtenerPerfil();
  const [{data:p,error:ep},{data:i,error}]=await Promise.all([supabase.from('apertura_proyectos').select('*,sucursales(nombre)').eq('id',id).maybeSingle<ProyectoApertura>(),supabase.from('apertura_items').select('*').eq('id',item).eq('proyecto_id',id).maybeSingle<ItemApertura>()]);
@@ -25,6 +27,8 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
  const [{data:usuarios},{data:usados}]=edita?await Promise.all([supabase.from('perfiles').select('nombre').eq('activo',true).returns<{nombre:string|null}[]>(),supabase.from('apertura_items').select('responsable').eq('proyecto_id',id).not('responsable','is',null).returns<{responsable:string|null}[]>()]):[{data:null},{data:null}];
  const sugeridos=sugerenciasResponsable((usuarios??[]).map(u=>u.nombre),(usados??[]).map(u=>u.responsable));
  const hoy=hoyCalendarioMX(),tono=tonoConcepto(i,hoy),vencida=diasVencido(i,hoy),fecha=fechaConcepto(i);
+ // Fotos de Dodo (HD-16): solo equipo y referencia. Si la consulta falla, la sección no aparece.
+ const dodo=!compra?null:await (async()=>{try{const {data,error}=await supabase.from('apertura_item_dodo').select('item_id,codigo,matriz_url,sustituto,foto_proyecto,foto_real').eq('item_id',item).maybeSingle<{item_id:string;codigo:string|null;matriz_url:string|null;sustituto:string|null;foto_proyecto:string|null;foto_real:string|null}>();if(error)return null;const rutas=[data?.foto_proyecto,data?.foto_real].filter((x):x is string=>!!x);return {fila:data,urls:await urlsFotos(rutas)};}catch{return null;}})();
  if(eo||ef||eh)return <p className="aviso aviso-error">No se pudo consultar el seguimiento completo. Vuelve a intentar antes de editar.</p>;
  return <><EncabezadoPagina titulo={<>{i.nombre}</>} descripcion={<>{p.sucursales?.nombre} · {i.clave} · {ETAPAS[i.etapa]}</>} /><Link href={`/aperturas/${id}?vista=${compra?'compras':i.tipo==='tecnico'?'tecnico':'actividades'}`}>Volver a la lista</Link><Aviso {...avisos}/><TareasDelDocumento supabase={supabase} tipo="apertura_item" id={item} rol={perfil.rol} hoy={hoy} />
  <div className="akton"><section className="akton-kpis" aria-label="Resumen de la tarea">
@@ -34,6 +38,12 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
    :<Kpi etiqueta="Categoría" valor={i.categoria?CATEGORIAS[i.categoria]?.nombre??i.categoria:'Sin categoría'} pie={i.categoria?`Hoja ${CATEGORIAS[i.categoria]?.hoja??'—'}`:ETAPAS[i.etapa]}/>}
   {compra&&<Kpi etiqueta="Importe con IVA" valor={i.cantidad!==null&&i.precio!==null?pesos(Number(i.cantidad)*Number(i.precio)):'—'} pie={i.precio===null?'Sin precio':`Precio unitario con IVA: ${pesos(i.precio)}`}/>}
  </section>
+ {dodo&&<section className="akton-tabla-marco ap-foto-seccion" aria-labelledby="ap-foto"><h2 id="ap-foto" className="akton-titulo">Foto</h2>
+  <div className="ap-foto-par">{([['Foto del proyecto',dodo.fila?.foto_proyecto],['Foto real',dodo.fila?.foto_real]] as const).map(([t,ruta])=><figure key={t}><figcaption>{t}</figcaption>{ruta&&dodo.urls[ruta]?<img src={dodo.urls[ruta]} alt={`${t}: ${i.nombre}`} loading="lazy"/>:<div className="ap-foto-vacia">Sin foto</div>}</figure>)}</div>
+  {dodo.fila?.sustituto&&<p className="akton-subtitulo">Sustituto verificado por Dodo: {dodo.fila.sustituto}</p>}
+  {dodo.fila?.matriz_url&&<p><a href={dodo.fila.matriz_url} target="_blank" rel="noreferrer">Abrir matriz de Dodo</a></p>}
+  {edita&&<FotoReal proyecto={id} item={item} ruta={dodo.fila?.foto_real??null} url={dodo.fila?.foto_real?dodo.urls[dodo.fila.foto_real]??null:null} edita={edita}/>}
+ </section>}
  <section className="akton-tabla-marco" aria-labelledby="ap-seguimiento"><h2 id="ap-seguimiento" className="akton-titulo">Seguimiento</h2>
   <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-tabla ap-tabla-datos"><tbody>
    <tr><th scope="row">Categoría</th><td data-label="Categoría">{i.categoria?`${CATEGORIAS[i.categoria]?.hoja} · ${CATEGORIAS[i.categoria]?.nombre}`:'Sin categoría'}</td></tr>

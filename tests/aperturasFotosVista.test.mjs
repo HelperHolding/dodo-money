@@ -74,3 +74,42 @@ test('CSS del importador y la prueba en el script test',()=>{
  assert.match(leer('app/globals.css'),/\.ap-dodo-/);
  assert.match(JSON.parse(leer('package.json')).scripts.test,/tests\/aperturasFotosVista\.test\.mjs/);
 });
+
+test('ListaConceptos: miniatura solo si llega fotos',()=>{
+ const s=leer('app/aperturas/ListaConceptos.tsx');
+ assert.match(s,/fotos\?:\s*Record<string,string>/);
+ assert.match(s,/<img[^>]*fotos\[/);
+ assert.match(s,/loading="lazy"/);
+ assert.match(s,/ap-miniatura/);
+});
+
+test('ficha de la partida: foto del proyecto y real, FotoReal y matriz de Dodo',()=>{
+ const s=leer('app/aperturas/[id]/items/[item]/page.tsx');
+ assert.match(s,/<FotoReal /);
+ assert.match(s,/urlsFotos\(/);
+ assert.match(s,/apertura_item_dodo/);
+ assert.match(s,/Abrir matriz de Dodo/);
+ assert.match(s,/target="_blank" rel="noreferrer"/);
+ assert.match(s,/Sustituto verificado por Dodo/);
+ assert.match(s,/Sin foto/);
+});
+
+test('PlanoApertura recibe fotos y la ficha de la marca muestra la miniatura',()=>{
+ const s=leer('app/aperturas/plano/PlanoApertura.tsx');
+ assert.match(s,/fotos\?:\s*Record<string,string>/);
+ assert.match(s,/fotos\?\.\[actual\.id\]/);
+ assert.match(s,/ap-miniatura-ficha/);
+});
+
+test('page.tsx pide URLs firmadas solo de lo visible y pasa fotos',()=>{
+ const p=leer('app/aperturas/[id]/page.tsx');
+ assert.match(p,/apertura_item_dodo/);
+ assert.match(p,/urlsFotos\(/);
+ assert.match(p,/<ListaConceptos [^>]*fotos=\{/);
+ assert.match(p,/<PlanoApertura [^>]*fotos=\{/);
+});
+
+test('CSS de miniatura y sección de foto',()=>{
+ const c=leer('app/globals.css');
+ for(const k of ['.ap-miniatura','.ap-miniatura-ficha','.ap-foto-seccion'])assert.ok(c.includes(k),k);
+});

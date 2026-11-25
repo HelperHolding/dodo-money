@@ -19,7 +19,7 @@ const ddmmaaaa=(f:string)=>{const [a,m,d]=f.slice(0,10).split('-');return `${d}/
 type Arrastre={id:string;pointer:number;movio:boolean;x:number;y:number};
 
 /** Pestaña «Plano» de una apertura (HD-14): hojas, marcas por etapa, leyenda, filtros, zoom, ficha, modo Ubicar e impresión. */
-export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasIniciales,url,items,edita}:{proyecto:string;base:string;hoy:string;hojas:HojaPlano[];activa:HojaPlano|null;marcas:MarcaPlano[];url:string|null;items:ItemPlano[];edita:boolean}) {
+export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasIniciales,url,items,edita,fotos}:{proyecto:string;base:string;hoy:string;hojas:HojaPlano[];activa:HojaPlano|null;marcas:MarcaPlano[];url:string|null;items:ItemPlano[];edita:boolean;fotos?:Record<string,string>}) {
  const router=useRouter();
  const [porId,setPorId]=useState<Record<string,ItemPlano>>(()=>Object.fromEntries(items.map(i=>[i.id,i])));
  const [marcas,setMarcas]=useState<Record<string,{x:number;y:number}>>(()=>Object.fromEntries(marcasIniciales.map(m=>[m.item_id,{x:Number(m.x),y:Number(m.y)}])));
@@ -142,6 +142,7 @@ export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasInici
      <li className="ap-plano-ley-extra"><span className="ap-plano-punto" data-alerta/>Bloqueado o vencido</li><li className="ap-plano-ley-extra"><span className="ap-plano-punto">?</span>Por validar</li></ul>
    </div>
    {actual&&<aside className="ap-plano-ficha" aria-labelledby="ap-plano-ficha-titulo">
+    {fotos?.[actual.id]&&<img className="ap-miniatura-ficha" src={fotos[actual.id]} alt={actual.nombre} loading="lazy"/>}
     <header><div><h3 id="ap-plano-ficha-titulo">{actual.nombre}</h3><p className="ap-nota">{actual.clave} · <span className="ap-plano-punto" data-color={colorMarca(actual,hoy).color}/> {nombreEstado(actual)}</p></div>
      <button type="button" className="boton boton-secundario" onClick={()=>setFicha(null)} aria-label="Cerrar ficha">×</button></header>
     <dl>

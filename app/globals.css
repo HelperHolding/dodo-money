@@ -2581,3 +2581,17 @@ html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas i
 .ap-dodo-foto-real { display:grid; gap:10px; }
 .ap-dodo-foto-real img { display:block; max-width:100%; max-height:360px; object-fit:contain; border-radius:var(--r-md); border:1px solid var(--linea); background:var(--papel-2); }
 @media(max-width:600px) { .ap-dodo-sinfoto li { grid-template-columns:auto minmax(0,1fr); }.ap-dodo-sinfoto code { grid-column:1 / -1; } }
+.ap-concepto-foto { display:flex; align-items:center; gap:10px; }
+.ap-miniatura { flex:none; display:block; width:40px; height:40px; object-fit:contain; border-radius:var(--r-sm); border:1px solid var(--linea); background:var(--papel-2); }
+.ap-miniatura-ficha { display:block; width:96px; height:96px; object-fit:contain; margin:0 0 10px; border-radius:var(--r-md); border:1px solid var(--linea); background:var(--papel-2); }
+.ap-foto-seccion { display:grid; gap:12px; }
+.ap-foto-par { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.ap-foto-par figure { margin:0; display:grid; gap:6px; align-content:start; }
+.ap-foto-par figcaption { font-size:.85rem; font-weight:700; color:var(--tinta-2); }
+.ap-foto-par img { display:block; max-width:100%; max-height:320px; object-fit:contain; border-radius:var(--r-md); border:1px solid var(--linea); background:var(--papel-2); }
+.ap-foto-vacia { display:grid; place-items:center; min-height:120px; border-radius:var(--r-md); border:1px dashed var(--linea-fuerte); background:var(--papel-2); color:var(--tinta-3); font-size:.9rem; }
+@media(max-width:600px) {
+  .ap-foto-par { grid-template-columns:1fr; }
+  .tabla-tarjetas td[data-label="Concepto"] { justify-content:flex-start; text-align:left; }
+  .tabla-tarjetas td[data-label="Concepto"]::before { content:none; }
+}
