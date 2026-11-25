@@ -27,13 +27,15 @@ export default async function AjustesSoporte({ searchParams }: { searchParams: P
           <textarea id="correos" name="correos" rows={3} defaultValue={ajustes.correos.join("\n")} /></div>
         <label className="campo"><input type="checkbox" name="avisar_nuevos" value="1" defaultChecked={ajustes.avisar_nuevos} /> Avisar cada ticket nuevo</label>
         <label className="campo"><input type="checkbox" name="avisar_comentarios" value="1" defaultChecked={ajustes.avisar_comentarios} /> Avisar cuando quien reporta comenta</label>
+        <label className="campo"><input type="checkbox" name="agente_activo" value="1" defaultChecked={ajustes.agente_activo} /> Agente activo: atiende cada ticket nuevo y te escala lo que necesita</label>
+        <label className="campo"><input type="checkbox" name="resumen_diario" value="1" defaultChecked={ajustes.resumen_diario} /> Resumen diario (8 am) de lo que resolvió el agente</label>
         <BotonEnviar>Guardar ajustes</BotonEnviar>
       </form>
     </section>
     <section className="seccion"><h2>Envíos</h2>
       <p>{pendientes ? `${pendientes} aviso(s) esperando a n8n.` : "No hay avisos en espera."}</p>
       {fallidos.length > 0 && <ol className="hilo-tarea">
-        {fallidos.map((f) => <li key={f.id}><strong>{f.soporte_tickets ? clave(f.soporte_tickets.numero) : "Ticket"}</strong> · {f.evento === "nuevo" ? "ticket nuevo" : "comentario"} a {f.para}: {f.ultimo_error ?? "sin detalle"}
+        {fallidos.map((f) => <li key={f.id}><strong>{f.soporte_tickets ? clave(f.soporte_tickets.numero) : "Ticket"}</strong> · {f.evento === "nuevo" ? "ticket nuevo" : f.evento === "escalado" ? "escalado del agente" : "comentario"} a {f.para}: {f.ultimo_error ?? "sin detalle"}
           <small> · {fechaTexto(fechaMX(f.creado_en))} {hora(f.creado_en)}</small></li>)}
       </ol>}
     </section>

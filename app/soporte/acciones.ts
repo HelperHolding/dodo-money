@@ -1,9 +1,11 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { obtenerPerfil } from "@/lib/contexto";
 import { rutaFoto, validarFoto } from "@/lib/fotos";
 import { BUCKET_SOPORTE, clave, leerNuevoTicket, numeroDeClave, rutaInterna } from "@/lib/soporte";
 import { volver } from "../compras/servidor";
+import { atenderConAgente } from "@/lib/soporte/agenteCorrer";
 import { mensajeDe } from "./datos";
 
 const texto = (fd: FormData, c: string) => String(fd.get(c) ?? "").trim();
@@ -31,6 +33,9 @@ export async function crearTicket(fd: FormData) {
     if (captura) await supabase.storage.from(BUCKET_SOPORTE).remove([captura]);
     return volver(ruta, "error", mensajeDe(error));
   }
+  // El agente corre después de responder, con la sesión de quien reporta. Si el ticket no quedó pendiente, no hace nada.
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
+  if (token) after(() => atenderConAgente({ numero: Number(data), token, rol: perfil.rol, sucursalId: perfil.sucursal_id ?? null }));
   listo(`/soporte/${data}`, `${clave(Number(data))} recibido. Aquí verás la respuesta.`);
 }
 
@@ -65,6 +70,8 @@ export async function guardarAjustes(fd: FormData) {
     p_correos: texto(fd, "correos").split(/[\s,;]+/).filter(Boolean),
     p_avisar_nuevos: fd.get("avisar_nuevos") === "1",
     p_avisar_comentarios: fd.get("avisar_comentarios") === "1",
+    p_agente_activo: fd.get("agente_activo") === "1",
+    p_resumen_diario: fd.get("resumen_diario") === "1",
   });
   if (error) return volver(ruta, "error", mensajeDe(error));
   listo(ruta, "Ajustes guardados.");

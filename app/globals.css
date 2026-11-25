@@ -2267,6 +2267,7 @@ body { background: var(--papel-2); }
 .soporte-captura { display: block; max-width: 100%; max-height: 420px; margin-top: 0.75rem; border-radius: 8px; border: 1px solid var(--neutro-borde, #e5e5e5); }
 .filtros-soporte { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; align-items: end; }
 .hilo-tarea li[data-soporte] { background: var(--info-fondo, #eef6ff); }
+.hilo-tarea li[data-interna] { background: var(--aviso-fondo); border: 1px dashed var(--aviso-texto); }
 
 /* Dinero en tránsito: una tarjeta por cuenta puente, con su saldo y lo que sigue pendiente. */
 .transito-cuenta[data-alerta="si"] { border-left:4px solid var(--alerta); }
