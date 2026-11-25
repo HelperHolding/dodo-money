@@ -210,3 +210,13 @@ test('conteoEtapasEquipo', () => {
   assert.deepEqual(conteoEtapasEquipo(['por_cotizar','bloqueado','cotizado','aprobado','pedido','recibido_parcial','recibido','instalado','verificado','no_aplica','por_validar'].map(eq)),
     { sinCotizar: 2, cotizados: 2, pedidos: 2, entregados: 1, instalados: 2 });
 });
+test('todo % (bloque, módulo, categoría, etapa) muestra 100 solo si todas sus partidas tienen 1 punto; si no, tope 99',()=>{
+ // 199 completadas + 1 por cerrar: (199 + 2/3) / 200 = 0.998 → redondea a 100, pero falta algo → 99.
+ const casi=[...Array.from({length:199},(_,n)=>item({id:`a${n}`,tipo:'actividad',etapa:'P1',estado:'completado',categoria:'pisos'})),item({id:'z',tipo:'actividad',etapa:'P1',estado:'por_cerrar',categoria:'pisos'})];
+ const obra=avanceApertura(casi).bloques.find(b=>b.clave==='obra')!;
+ assert.equal(obra.porcentaje,99);assert.equal(checklistApertura(casi).modulos[2].porcentaje,99);assert.equal(checklistApertura(casi).general,99);
+ assert.equal(avanceCategorias(casi)[0].porcentaje,99);assert.equal(avancePorProyecto(casi).p.porcentaje,99);
+ const todas=casi.map(i=>({...i,estado:'completado'}));
+ assert.equal(avanceApertura(todas).bloques.find(b=>b.clave==='obra')!.porcentaje,100);assert.equal(checklistApertura(todas).modulos[2].porcentaje,100);
+ assert.equal(avanceCategorias(todas)[0].porcentaje,100);assert.equal(checklistApertura(todas).general,100);
+});

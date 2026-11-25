@@ -59,3 +59,8 @@ test('gantt de aperturas: equipo instalado con fecha pasada no sale vencido',()=
  const e=ganttEtapas([t({id:'x',tipo:'equipo',etapa:'P4',estado:'instalado',fin:'2026-11-10'})],'2026-11-19').find(x=>x.clave==='P4')!;
  assert.equal(e.vencidos,0);assert.equal(e.tareas[0].vencida,false);
 });
+test('gantt de aperturas: la etapa muestra 100 solo si todo tiene 1 punto; si no, tope 99',()=>{
+ const casi=[...Array.from({length:199},(_,n)=>t({id:`a${n}`,estado:'completado'})),t({id:'z',estado:'por_cerrar'})];
+ assert.equal(ganttEtapas(casi,'2026-11-19').find(x=>x.clave==='P1')!.porcentaje,99); // 0.998 → 99
+ assert.equal(ganttEtapas(casi.map(i=>({...i,estado:'completado'})),'2026-11-19').find(x=>x.clave==='P1')!.porcentaje,100);
+});

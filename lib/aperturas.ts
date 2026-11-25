@@ -82,9 +82,12 @@ const PUNTOS_ACTIVIDAD: Record<string, number> = { en_curso: 1/3, por_cerrar: 2/
 /** Puntos de una partida (0 a 1) según su etapa: equipo por cotizado/comprado/entregado/instalado; actividades por pasos. */
 export const puntosItem = (i: Pick<ItemApertura,'tipo'|'estado'>) =>
   (i.tipo === 'equipo' || i.tipo === 'referencia' ? PUNTOS_EQUIPO : PUNTOS_ACTIVIDAD)[i.estado] ?? 0;
-/** Promedio de puntos en % entero (etapas del Gantt, categorías, filas del cronograma); null sin partidas. */
-export const promedioPuntos = (de: Pick<ItemApertura,'tipo'|'estado'>[]) =>
-  de.length ? Math.round(de.reduce((s, i) => s + puntosItem(i), 0) / de.length * 100) : null;
+/** Promedio de puntos en % entero (bloques, etapas del Gantt, categorías, filas del cronograma); 100 solo si todas tienen 1 punto, si no tope 99; null sin partidas. */
+export function promedioPuntos(de: Pick<ItemApertura,'tipo'|'estado'>[]): number | null {
+  if (!de.length) return null;
+  if (de.every(i => puntosItem(i) === 1)) return 100;
+  return Math.min(99, Math.round(de.reduce((s, i) => s + puntosItem(i), 0) / de.length * 100));
+}
 /** Bloque del avance: lo de categoría de obra va a Obra aunque su etapa sea otra (igual que el checklist). */
 export function bloqueDe(i: Pick<ItemApertura,'tipo'|'etapa'|'categoria'>): BloqueApertura {
   if (i.categoria !== null && CATEGORIAS[i.categoria]?.obra === true) return 'obra';
@@ -99,7 +102,7 @@ export function avanceApertura(items: Pick<ItemApertura,'tipo'|'etapa'|'estado'|
   const bloques = BLOQUES.map(clave => {
     const p = de.filter(i => bloqueDe(i) === clave);
     const fr = p.length ? p.reduce((s, i) => s + puntosItem(i), 0) / p.length : null;
-    return { clave, peso: PESOS_BLOQUE[clave], partidas: p.length, fraccion: fr, porcentaje: fr === null ? null : Math.round(fr * 100) };
+    return { clave, peso: PESOS_BLOQUE[clave], partidas: p.length, fraccion: fr, porcentaje: promedioPuntos(p) };
   });
   const con = bloques.filter(b => b.fraccion !== null), pesos = con.reduce((s, b) => s + b.peso, 0);
   const completo = de.length > 0 && de.every(i => puntosItem(i) === 1);
