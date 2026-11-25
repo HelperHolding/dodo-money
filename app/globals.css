@@ -2592,6 +2592,8 @@ html[data-luz="noche"] :is(.ap-gcal-evento, .ap-gcal-bloque, .ap-gcal-personas i
 .ap-foto-vacia { display:grid; place-items:center; min-height:120px; border-radius:var(--r-md); border:1px dashed var(--linea-fuerte); background:var(--papel-2); color:var(--tinta-3); font-size:.9rem; }
 @media(max-width:600px) {
   .ap-foto-par { grid-template-columns:1fr; }
-  .tabla-tarjetas td[data-label="Concepto"] { justify-content:flex-start; text-align:left; }
-  .tabla-tarjetas td[data-label="Concepto"]::before { content:none; }
+}
+@media(max-width:640px) {
+  .tabla-tarjetas td.ap-celda-concepto { justify-content:flex-start; text-align:left; }
+  .tabla-tarjetas td.ap-celda-concepto::before { content:none; }
 }

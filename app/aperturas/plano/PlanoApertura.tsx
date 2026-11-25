@@ -142,7 +142,7 @@ export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasInici
      <li className="ap-plano-ley-extra"><span className="ap-plano-punto" data-alerta/>Bloqueado o vencido</li><li className="ap-plano-ley-extra"><span className="ap-plano-punto">?</span>Por validar</li></ul>
    </div>
    {actual&&<aside className="ap-plano-ficha" aria-labelledby="ap-plano-ficha-titulo">
-    {fotos?.[actual.id]&&<img className="ap-miniatura-ficha" src={fotos[actual.id]} alt={actual.nombre} loading="lazy"/>}
+    {fotos&&(fotos[actual.id]?<img className="ap-miniatura-ficha" src={fotos[actual.id]} alt={actual.nombre} loading="lazy"/>:<span className="ap-miniatura-ficha" aria-hidden="true"/>)}
     <header><div><h3 id="ap-plano-ficha-titulo">{actual.nombre}</h3><p className="ap-nota">{actual.clave} · <span className="ap-plano-punto" data-color={colorMarca(actual,hoy).color}/> {nombreEstado(actual)}</p></div>
      <button type="button" className="boton boton-secundario" onClick={()=>setFicha(null)} aria-label="Cerrar ficha">×</button></header>
     <dl>

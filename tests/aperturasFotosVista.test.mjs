@@ -97,7 +97,8 @@ test('ficha de la partida: foto del proyecto y real, FotoReal y matriz de Dodo',
 test('PlanoApertura recibe fotos y la ficha de la marca muestra la miniatura',()=>{
  const s=leer('app/aperturas/plano/PlanoApertura.tsx');
  assert.match(s,/fotos\?:\s*Record<string,string>/);
- assert.match(s,/fotos\?\.\[actual\.id\]/);
+ assert.match(s,/fotos\[actual\.id\]\?<img/);
+ assert.match(s,/:<span className="ap-miniatura-ficha"/,"cuadro gris si falta la foto");
  assert.match(s,/ap-miniatura-ficha/);
 });
 
@@ -112,4 +113,11 @@ test('page.tsx pide URLs firmadas solo de lo visible y pasa fotos',()=>{
 test('CSS de miniatura y sección de foto',()=>{
  const c=leer('app/globals.css');
  for(const k of ['.ap-miniatura','.ap-miniatura-ficha','.ap-foto-seccion'])assert.ok(c.includes(k),k);
+});
+
+test('CSS de la celda Concepto no es global y usa el corte de tarjetas',()=>{
+ const c=leer('app/globals.css');
+ assert.ok(!c.includes('.tabla-tarjetas td[data-label="Concepto"]'));
+ assert.match(c,/@media\(max-width:640px\) \{\s*\.tabla-tarjetas td\.ap-celda-concepto/);
+ assert.match(leer('app/aperturas/ListaConceptos.tsx'),/ap-celda-concepto/);
 });
