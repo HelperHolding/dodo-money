@@ -10,7 +10,7 @@ export function ListaConceptos({items,base,hoy,titulo,descripcion}:{items:ItemAp
   <h2 id="ap-lista" className="akton-titulo">{titulo} · {items.length}</h2>
   {descripcion&&<p className="akton-subtitulo">{descripcion}</p>}
   {items.length===0?<p className="akton-subtitulo">Sin conceptos con estos filtros.</p>:
-  <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas">
+  <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-tabla">
    <thead><tr><th>Concepto</th><th>Estado</th><th>Responsable</th><th>Cantidad / recibido</th><th>Fecha fin</th><th>Notas</th></tr></thead>
    <tbody>{porEtapa(items).map(g=><Fragment key={g.clave}>
     <tr className="akton-seccion"><th colSpan={6}>{g.clave} · {g.nombre} · {g.items.length}</th></tr>

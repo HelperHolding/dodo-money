@@ -2406,3 +2406,6 @@ body { background: var(--papel-2); }
 .ap-estado[data-tono="normal"] { background:var(--dato-pista); color:var(--neutro-texto); }
 .ap-estado[data-tono="listo"] { background:var(--cuadra-fondo); color:var(--cuadra-texto); }
 .ap-estado[data-tono="alerta"] { background:var(--alerta-fondo); color:var(--alerta-texto); }
+/* En las tablas de aperturas los enlaces van en negro: el naranja es solo para lo destacado. */
+.ap-tabla a { color:var(--tinta); text-decoration:underline; text-decoration-color:var(--linea-fuerte); text-underline-offset:2px; }
+.ap-tabla a:hover { text-decoration-color:var(--tinta); }

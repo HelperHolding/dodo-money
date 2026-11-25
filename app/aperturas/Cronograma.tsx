@@ -15,7 +15,7 @@ export function Cronograma({filas,total,base}:{filas:FilaCronograma[];total:Avan
  return <section className="akton-tabla-marco" aria-labelledby="ap-cronograma">
   <h2 id="ap-cronograma" className="akton-titulo">Cronograma por etapa</h2>
   <p className="akton-subtitulo">Avance real contra lo esperado a hoy según las fechas de cada tarea. Tolerancia: 5 pts.</p>
-  <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-crono-tabla">
+  <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-crono-tabla ap-tabla">
    <thead><tr><th>Etapa</th><th>Conceptos</th><th>Listos</th><th>Avance</th><th>Esperado</th><th>Var. vs esperado</th><th>Inicio</th><th>Fin</th><th>Notas</th></tr></thead>
    <tbody>{filas.map(f=><Fragment key={f.clave}>
     <tr>
