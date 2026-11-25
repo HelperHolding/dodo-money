@@ -6,10 +6,10 @@ begin
  if v.id is null then raise exception 'FALTAN DATOS: alguna fila en ventas_dia.';end if;
  select id into p from public.perfiles where activo and not debe_cambiar_contrasena and sucursal_id=v.sucursal_id and rol::text in ('encargado','gerente','admin') order by rol::text limit 1;
  if p is null then
-  select id into p from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' limit 1;
-  if p is null then raise exception 'FALTAN DATOS: un perfil activo encargado, gerente o admin.';end if;
+  select id into p from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' and sucursal_id is not null order by id limit 1;
+  if p is null then raise exception 'FALTAN DATOS: ningún encargado/gerente/admin activo tiene asignada una sucursal con ventas';end if;
   select * into v from public.ventas_dia where sucursal_id=(select sucursal_id from public.perfiles where id=p) order by fecha desc limit 1;
-  if v.id is null then raise exception 'FALTAN DATOS: ventas_dia en la sucursal del admin.';end if;
+  if v.id is null then raise exception 'FALTAN DATOS: ningún encargado/gerente/admin activo tiene asignada una sucursal con ventas';end if;
  end if;
  perform set_config('request.jwt.claims',json_build_object('sub',p,'role','authenticated')::text,true);
  select * into r from public.ventas_para_cierre(v.fecha);

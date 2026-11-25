@@ -16,8 +16,8 @@ async function base(){
  create type rol_usuario as enum ('operacion','encargado','gerente','admin','corporativo','marketing');
  create table sucursales(id uuid primary key);insert into sucursales values('${A}'),('${B}');
  create table perfiles(id uuid primary key,rol rol_usuario not null default 'operacion',sucursal_id uuid references sucursales(id),activo boolean not null default true,debe_cambiar_contrasena boolean not null default false);
- create function mi_sucursal() returns uuid language sql stable security definer set search_path=public as $$select sucursal_id from perfiles where id=auth.uid() and activo$$;
- create function mi_rol() returns rol_usuario language sql stable security definer set search_path=public as $$select rol from perfiles where id=auth.uid() and activo$$;
+ create function mi_sucursal() returns uuid language sql stable security definer set search_path=public as $$select sucursal_id from perfiles where id=auth.uid() and activo and not debe_cambiar_contrasena $$;
+ create function mi_rol() returns rol_usuario language sql stable security definer set search_path=public as $$select rol from perfiles where id=auth.uid() and activo and not debe_cambiar_contrasena $$;
  create table importaciones_ventas(id uuid primary key default gen_random_uuid(),sucursal_id uuid not null references sucursales(id),fecha date not null,importado_en timestamptz not null default now());
  create table ventas_dia(id uuid primary key default gen_random_uuid(),sucursal_id uuid not null references sucursales(id),fecha date not null,pedidos integer not null default 0 check(pedidos>=0),total numeric(12,2) not null default 0,efectivo numeric(12,2) not null default 0,tarjeta numeric(12,2) not null default 0,en_linea numeric(12,2) not null default 0,iva numeric(12,2) not null default 0,importacion_id uuid not null references importaciones_ventas(id),unique(sucursal_id,fecha));`);
  for(const [rol,suc,n] of Object.values(ROLES))await db.query('insert into perfiles(id,rol,sucursal_id) values($1,$2,$3)',[U(n),rol,suc]);
@@ -40,6 +40,11 @@ test('encargado, gerente y admin reciben la fila del día con actualizado_en',as
 test('operación, corporativo y marketing reciben el error',async()=>{
  const db=await base();
  try{for(const k of ['ope','cor','mkt']){await como(db,k);await assert.rejects(ver(db),/Solo quien cierra el día/,k);}
+ }finally{await db.close();}
+});
+test('encargado con debe_cambiar_contrasena (mi_rol nulo) recibe el error',async()=>{
+ const db=await base();
+ try{await db.exec(`update perfiles set debe_cambiar_contrasena=true where id='${U('e1')}'`);await como(db,'enc');await assert.rejects(ver(db),/Solo quien cierra el día/);
  }finally{await db.close();}
 });
 test('un encargado de B recibe la de B, no la de A; sin fila no hay filas',async()=>{
