@@ -115,7 +115,10 @@ export const clavePersona = (texto:string|null|undefined) => {const n=nombrePers
 const CONECTORES=new Set(['y','de','del','la','las','los','e']);
 const palabras=(n:string)=>n.split(/\s+/).filter(p=>p&&!CONECTORES.has(sinAcentos(p))&&/\p{L}/u.test(p));
 function inicialesBase(n:string) {const p=palabras(n);return (p.length>1?p[0][0]+p[1][0]:(p[0]??'?').slice(0,2)).toLocaleUpperCase('es-MX');}
-function inicialesLargas(n:string) {const p=palabras(n);return p.length>1?p[0].slice(0,2)[0].toLocaleUpperCase('es-MX')+p[0].slice(1,2)+p[1][0].toLocaleUpperCase('es-MX'):inicialesBase(n);}
+function inicialesLargas(n:string) {
+ const p=palabras(n),may=(t:string)=>t.toLocaleUpperCase('es-MX');
+ return p.length>1?may(p[0][0])+p[0].slice(1,2)+may(p[1][0]):may((p[0]??'?')[0])+(p[0]??'').slice(1,3);
+}
 
 // Personas de una lista de tareas, con iniciales únicas (José Villa = JoV y Julio Verdeja = JuV) y color estable.
 export function personasDe(items:Pick<ItemCalendario,'responsable'>[]):Persona[] {
@@ -123,11 +126,13 @@ export function personasDe(items:Pick<ItemCalendario,'responsable'>[]):Persona[]
  for(const i of items){const c=clavePersona(i.responsable);if(c!==SIN_ASIGNAR.clave&&!nombres.has(c))nombres.set(c,nombrePersona(i.responsable));}
  const claves=[...nombres.keys()].sort((a,b)=>a.localeCompare(b,'es-MX'));
  const base=new Map(claves.map(c=>[c,inicialesBase(nombres.get(c)!)]));
- const repetidas=new Set([...base.values()].filter((v,_,t)=>t.indexOf(v)!==t.lastIndexOf(v)));
+ // Se comparan sin acentos: "CE" y "CÉ" se confunden en pantalla.
+ const vistas=[...base.values()].map(sinAcentos);
+ const repetidas=new Set([...base.values()].filter(v=>vistas.indexOf(sinAcentos(v))!==vistas.lastIndexOf(sinAcentos(v))));
  const usadas=new Set<string>();
  const personas=claves.map((clave,k)=>{
   const nombre=nombres.get(clave)!;let ini=repetidas.has(base.get(clave)!)?inicialesLargas(nombre):base.get(clave)!;
-  for(let n=2;usadas.has(ini);n++)ini=`${ini.replace(/\d+$/,'')}${n}`;usadas.add(ini);
+  for(let n=2;usadas.has(sinAcentos(ini));n++)ini=`${ini.replace(/\d+$/,'')}${n}`;usadas.add(sinAcentos(ini));
   return {clave,nombre,iniciales:ini,color:COLORES_PERSONA[k%COLORES_PERSONA.length]};
  });
  if(items.some(i=>clavePersona(i.responsable)===SIN_ASIGNAR.clave))personas.push({...SIN_ASIGNAR,iniciales:'—'});

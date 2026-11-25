@@ -76,6 +76,8 @@ test('responsables: iniciales únicas, color estable y sin asignar al final',()=
  const p=personasDe([tarea('a','José Villa',null,null),tarea('b','Julio Verdeja',null,null),tarea('c','Diego Barreto (revisa)',null,null),tarea('d',null,null,null),tarea('e','Renata y equipo de marketing',null,null),tarea('f','Celeste',null,null),tarea('g','jose villa',null,null)]);
  assert.deepEqual(p.map(x=>x.nombre),['Celeste','Diego Barreto','José Villa','Julio Verdeja','Renata y equipo de marketing','Sin asignar']);
  assert.deepEqual(p.map(x=>x.iniciales),['CE','DB','JoV','JuV','RE','—']);
+ // Celeste y César darían CE y CÉ: se distinguen con tres letras.
+ assert.deepEqual(personasDe([tarea('a','Celeste',null,null),tarea('b','César (360°)',null,null)]).map(x=>x.iniciales),['Cel','Cés']);
  assert.equal(new Set(p.map(x=>x.color)).size,p.length);
  // Filtrar no cambia el color: depende del orden alfabético de todo el proyecto.
  const solo=personasDe([tarea('b','Julio Verdeja',null,null)]);assert.equal(solo[0].iniciales,'JV');

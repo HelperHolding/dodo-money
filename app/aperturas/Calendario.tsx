@@ -120,7 +120,8 @@ function Cuadros({semanas,hoy,items,personas,abrirDia}:{semanas:Celda[][];hoy:st
  return <div className="ap-cuadros" role="grid" aria-label="Tareas por día y responsable">
   {DIAS.map(d=><span key={d} className="ap-cuadros-dia-semana" role="columnheader">{d}</span>)}
   {semanas.flat().map(c=>{
-   const conteo=conteoDia(items,c.dia,personas),total=conteo.reduce((s,x)=>s+x.n,0);
+   // Primero quien tiene más tareas ese día, para que se vea aunque no quepan todas.
+   const conteo=conteoDia(items,c.dia,personas).sort((a,b)=>b.n-a.n),total=conteo.reduce((s,x)=>s+x.n,0);
    const texto=total?conteo.map(x=>`${x.persona.nombre} ${x.n}`).join(', '):'sin tareas';
    return <button key={c.dia} type="button" role="gridcell" className="ap-cuadro" data-fuera={!c.delMes||undefined} data-hoy={c.dia===hoy||undefined} data-vacio={!total||undefined}
     aria-label={`${fechaLarga(c.dia)}: ${texto}`} onClick={()=>abrirDia(c.dia)}>
