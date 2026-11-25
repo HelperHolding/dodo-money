@@ -35,7 +35,6 @@ const ancla = (col: number, row: number, rid: string, tipo = "oneCellAnchor") =>
 const drawing = `<xdr:wsDr>${ancla(1, 0, "rId1")}${ancla(1, 2, "rId2")}${ancla(1, 3, "rId3", "twoCellAnchor")}${ancla(3, 4, "rId4")}${ancla(1, 7, "rId5")}</xdr:wsDr>`;
 
 const rel = (id: string, destino: string) => `<Relationship Id="${id}" Type="x" Target="${destino}"/>`;
-const unzip = unzipSync;
 const xlsx = zipSync({
   "xl/workbook.xml": strToU8(`<workbook><sheets><sheet name="Equipo" sheetId="1" r:id="rId1"/><sheet name="Info" sheetId="2" r:id="rId2"/></sheets></workbook>`),
   "xl/_rels/workbook.xml.rels": strToU8(`<Relationships>${rel("rId1", "worksheets/sheet1.xml")}${rel("rId2", "worksheets/sheet2.xml")}</Relationships>`),
@@ -52,6 +51,8 @@ const xlsx = zipSync({
 test("normalizarCodigo: cirílica y espacios", () => {
   assert.equal(normalizarCodigo("С .50.0-01"), "C.50.0-01");
   assert.equal(normalizarCodigo(" D.15.2-01 "), "D.15.2-01");
+  assert.equal(normalizarCodigo("d.15.2-01"), "D.15.2-01");
+  assert.equal(normalizarCodigo("Inv.5"), "INV.5");
 });
 
 test("matrizDeCodigo por prefijo", () => {
@@ -68,6 +69,7 @@ test("matrizDeCodigo por prefijo", () => {
 
 test("codigoDeItem: normaliza; null si no es texto, vacío o -", () => {
   assert.equal(codigoDeItem({ codigo: "С .50.0-01" }), "C.50.0-01");
+  assert.equal(codigoDeItem({ codigo: "d.15.2-01" }), "D.15.2-01");
   assert.equal(codigoDeItem({ codigo: "-" }), null);
   assert.equal(codigoDeItem({ codigo: "  " }), null);
   assert.equal(codigoDeItem({ codigo: 12 }), null);
@@ -75,7 +77,7 @@ test("codigoDeItem: normaliza; null si no es texto, vacío o -", () => {
 });
 
 test("leerMatriz: liga fotos por renglón y columna, sustituto y hojas sin código", () => {
-  const { entradas, hojasSinCodigo } = leerMatriz(unzip(xlsx));
+  const { entradas, hojasSinCodigo } = leerMatriz(unzipSync(xlsx));
   assert.deepEqual(hojasSinCodigo, ["Info"]);
   // la imagen del renglón del encabezado (rId1) no se liga a nada
   assert.deepEqual(entradas.get("D.15.2-01"), { foto: "xl/media/image2.png", sustituto: "Samsung QM32C", hoja: "Equipo" });
@@ -88,9 +90,27 @@ test("leerMatriz: liga fotos por renglón y columna, sustituto y hojas sin códi
 });
 
 test("leerMatriz: duplicado, gana la primera entrada con foto", () => {
-  const { entradas } = leerMatriz(unzip(xlsx));
+  const { entradas } = leerMatriz(unzipSync(xlsx));
   // D.15.2-01: renglón 3 con foto y renglón 6 sin foto
   assert.equal(entradas.get("D.15.2-01")?.foto, "xl/media/image2.png");
   // X.1: renglón 7 sin foto, renglón 8 con foto
   assert.equal(entradas.get("X.1")?.foto, "xl/media/image5.png");
+});
+
+test("leerMatriz: la búsqueda no distingue mayúsculas entre partida y matriz", () => {
+  const { entradas } = leerMatriz(unzipSync(xlsx));
+  const clave = codigoDeItem({ codigo: "d.15.2-01" })!;
+  assert.equal(entradas.get(clave)?.foto, "xl/media/image2.png");
+});
+
+test("leerMatriz: una celda larga de instrucciones no cuenta como encabezado", () => {
+  const largo = "Сопоставьте артикул из проекта con el Article No de esta tabla y busque la descripción detallada en la hoja correspondiente";
+  const archivos = zipSync({
+    "xl/workbook.xml": strToU8('<workbook><sheets><sheet name="Info" sheetId="1" r:id="rId1"/></sheets></workbook>'),
+    "xl/_rels/workbook.xml.rels": strToU8(`<Relationships>${rel("rId1", "worksheets/sheet1.xml")}</Relationships>`),
+    "xl/worksheets/sheet1.xml": strToU8(`<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>${largo}</t></is></c></row></sheetData></worksheet>`),
+  });
+  const r = leerMatriz(unzipSync(archivos));
+  assert.deepEqual(r.hojasSinCodigo, ["Info"]);
+  assert.equal(r.entradas.size, 0);
 });

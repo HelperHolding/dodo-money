@@ -22,7 +22,7 @@ const CIRILICAS: Record<string, string> = {
 };
 
 export function normalizarCodigo(c: string): string {
-  return c.replace(/[Ѐ-ӿ]/g, (ch) => CIRILICAS[ch] ?? ch).replace(/\s+/g, "");
+  return c.replace(/[Ѐ-ӿ]/g, (ch) => CIRILICAS[ch] ?? ch).toUpperCase().replace(/\s+/g, "");
 }
 
 export function matrizDeCodigo(c: string): Matriz | null {
