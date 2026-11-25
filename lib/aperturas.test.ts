@@ -134,3 +134,63 @@ test('aperturas: atrasados usa el criterio de listo del Checklist y la fecha de 
  assert.deepEqual(r.atrasados.map(i=>i.id),['b']);
  assert.deepEqual(r.alertas.map(i=>i.id),['b']);
 });
+
+import {puntosItem,bloqueDe,avanceApertura,nombreEstado,conteoEtapasEquipo} from './aperturas.ts';
+test('puntosItem: etapas de equipo y pasos de actividad', () => {
+  const e = (estado: string) => puntosItem({ tipo: 'equipo', estado });
+  assert.deepEqual(['por_validar','por_cotizar','bloqueado','cotizado','aprobado','pedido','recibido_parcial','recibido','instalado','verificado'].map(e), [0,0,0,0.25,0.25,0.5,0.5,0.75,1,1]);
+  const a = (estado: string) => puntosItem({ tipo: 'actividad', estado });
+  assert.deepEqual(['pendiente','por_validar','bloqueado','en_curso','por_cerrar','completado'].map(a), [0,0,0,1/3,2/3,1]);
+  assert.equal(puntosItem({ tipo: 'tecnico', estado: 'por_cerrar' }), 2/3);
+});
+
+test('bloqueDe: etapa y categoría de obra', () => {
+  assert.equal(bloqueDe({ tipo: 'actividad', etapa: 'P2', categoria: null }), 'proyecto');
+  assert.equal(bloqueDe({ tipo: 'equipo', etapa: 'P4', categoria: 'equipo_cocina' }), 'compras');
+  assert.equal(bloqueDe({ tipo: 'equipo', etapa: 'P4', categoria: 'contactos' }), 'obra');
+  assert.equal(bloqueDe({ tipo: 'actividad', etapa: 'P5', categoria: null }), 'obra');
+  assert.equal(bloqueDe({ tipo: 'actividad', etapa: 'P7', categoria: null }), 'apertura');
+});
+
+test('avanceApertura: pondera 20/35/30/15, reparte bloques vacíos y topa en 99', () => {
+  const it = (tipo: string, etapa: string, estado: string, categoria: string | null = null) => ({ tipo, etapa, estado, categoria }) as never;
+  const r = avanceApertura([it('actividad','P1','completado'), it('equipo','P4','pedido'), it('actividad','P5','en_curso'), it('actividad','P7','pendiente')]);
+  assert.deepEqual(r.bloques.map(b => [b.clave, b.porcentaje]), [['proyecto',100],['compras',50],['obra',33],['apertura',0]]);
+  assert.equal(r.general, Math.round(20*1 + 35*0.5 + 30*(1/3) + 15*0)); // 48
+  const sinObra = avanceApertura([it('actividad','P1','completado'), it('equipo','P4','cotizado')]);
+  assert.equal(sinObra.general, Math.round((0.20*1 + 0.35*0.25) / 0.55 * 100)); // 52
+  assert.equal(avanceApertura([]).general, null);
+  assert.equal(avanceApertura([it('actividad','P1','no_aplica'), it('equipo','P4','por_validar')]).general, null);
+  const casi = avanceApertura([...Array(199)].map(() => it('actividad','P1','completado')).concat([it('actividad','P1','por_cerrar')]));
+  assert.equal(casi.general, 99); assert.equal(casi.completo, false);
+  const todo = avanceApertura([it('actividad','P1','completado'), it('equipo','P4','verificado')]);
+  assert.equal(todo.general, 100); assert.equal(todo.completo, true);
+});
+
+test('avanceApertura: ejemplo del ticket — 72 pedidos y 9 recibidos de 112 equipos ≈ 38 %', () => {
+  const eq = (estado: string) => ({ tipo: 'equipo', etapa: 'P4', estado, categoria: 'equipo_cocina' }) as never;
+  const items = [...Array(72)].map(() => eq('pedido')).concat([...Array(9)].map(() => eq('recibido')), [...Array(31)].map(() => eq('por_cotizar')));
+  assert.equal(avanceApertura(items).bloques.find(b => b.clave === 'compras')!.porcentaje, Math.round((72*0.5 + 9*0.75) / 112 * 100)); // 38
+});
+
+test('nombreEstado: etiquetas por bloque solo en actividades', () => {
+  assert.equal(nombreEstado({ tipo: 'actividad', etapa: 'P3', categoria: null, estado: 'por_cerrar' }), 'Ingresado / en revisión');
+  assert.equal(nombreEstado({ tipo: 'actividad', etapa: 'P5', categoria: null, estado: 'en_curso' }), 'Cotizado / aprobado');
+  assert.equal(nombreEstado({ tipo: 'actividad', etapa: 'P7', categoria: null, estado: 'completado' }), 'Listo');
+  assert.equal(nombreEstado({ tipo: 'actividad', etapa: 'P4', categoria: null, estado: 'por_cerrar' }), 'Por cerrar');
+  assert.equal(nombreEstado({ tipo: 'equipo', etapa: 'P4', categoria: null, estado: 'pedido' }), 'Pedido');
+  assert.equal(nombreEstado({ tipo: 'actividad', etapa: 'P1', categoria: null, estado: 'bloqueado' }), 'Bloqueado');
+});
+
+test('estadosPara y validarCambioEstado: por_cerrar solo en actividades', () => {
+  assert.ok(estadosPara('actividad').includes('por_cerrar')); assert.ok(estadosPara('tecnico').includes('por_cerrar'));
+  assert.ok(!estadosPara('equipo').includes('por_cerrar'));
+  assert.equal(validarCambioEstado('actividad', { estado: 'por_cerrar', evidencia: '', cantidad: '', recibido: '' }), null);
+  assert.equal(validarCambioEstado('equipo', { estado: 'por_cerrar', evidencia: '', cantidad: '', recibido: '' }), 'Estado inválido para este registro.');
+});
+
+test('conteoEtapasEquipo', () => {
+  const eq = (estado: string) => ({ tipo: 'equipo', estado }) as never;
+  assert.deepEqual(conteoEtapasEquipo(['por_cotizar','bloqueado','cotizado','aprobado','pedido','recibido_parcial','recibido','instalado','verificado','no_aplica','por_validar'].map(eq)),
+    { sinCotizar: 2, cotizados: 2, pedidos: 2, entregados: 1, instalados: 2 });
+});
