@@ -56,6 +56,8 @@ export type FilaCronograma = {clave:keyof typeof ETAPAS;nombre:string;avance:Ava
 
 const plural=(n:number,uno:string,varios:string)=>`${n} ${n===1?uno:varios}`;
 
+// Fecha que se muestra de un concepto: la misma con la que se decide si está vencido (fin, o inicio si no hay fin).
+export const fechaConcepto=(i:Pick<Concepto,'inicio'|'fin'>)=>rangoItem(i)?.hasta??null;
 export type TonoConcepto = 'listo'|'alerta'|'normal';
 // Días que lleva vencido un concepto aplicable y no listo (criterio del Checklist: equipo instalado es listo); null si no está vencido.
 export function diasVencido(i:Pick<Concepto,'tipo'|'estado'|'inicio'|'fin'>,hoy:string):number|null {

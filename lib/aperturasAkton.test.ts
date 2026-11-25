@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {diasVencido,notasConcepto,porEtapa,tonoConcepto,avanceComparado,diasParaApertura,esperadoItem,filasCronograma,indicadoresProyecto,lecturaApertura,textoDiasApertura,textoPts,type Concepto} from './aperturasAkton.ts';
+import {diasVencido,fechaConcepto,notasConcepto,porEtapa,tonoConcepto,avanceComparado,diasParaApertura,esperadoItem,filasCronograma,indicadoresProyecto,lecturaApertura,textoDiasApertura,textoPts,type Concepto} from './aperturasAkton.ts';
 import type {ItemApertura} from './aperturas.ts';
 
 export const c=(d:Partial<Concepto>):Concepto=>({id:'i',nombre:'Tarea',tipo:'actividad',etapa:'P1',estado:'pendiente',inicio:null,fin:null,responsable:null,notas:null,...d});
@@ -178,4 +178,9 @@ test('aperturas akton: títulos de vencidas y bloqueadas sin traslape',()=>{
  const titulo=(m:ItemApertura[])=>lecturaApertura(indicadoresProyecto({objetivo_hasta:'2026-12-20',presupuesto:null},m,'2026-11-24'),filasCronograma(m,'2026-11-24')).find(x=>/vencida|bloqueada/.test(x.titulo))!.titulo;
  assert.equal(titulo([it({id:'a',fin:'2026-11-20'}),it({id:'b',estado:'bloqueado'})]),'1 tarea vencida y 1 bloqueada');
  assert.equal(titulo([it({id:'a',estado:'bloqueado'}),it({id:'b',estado:'bloqueado'})]),'2 bloqueadas');
+});
+test('aperturas akton: la fecha que se muestra es la misma con la que se decide si está vencida',()=>{
+ assert.equal(fechaConcepto(c({inicio:'2026-11-01'})),'2026-11-01');
+ assert.equal(fechaConcepto(c({inicio:'2026-11-01',fin:'2026-11-09'})),'2026-11-09');
+ assert.equal(fechaConcepto(c({})),null);
 });
