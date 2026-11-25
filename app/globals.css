@@ -2354,3 +2354,19 @@ body { background: var(--papel-2); }
 .ap-crono-tareas li { display:flex; flex-direction:column; gap:1px; padding-left:12px; border-left:2px solid var(--linea); font-size:.88rem; }
 .ap-crono-tareas a { color:var(--tinta); }
 .ap-crono-tareas small { color:var(--tinta-2); }
+.ap-crono-fecha { white-space:nowrap; }
+/* La tabla del Cronograma tiene 9 columnas: pasa a tarjetas antes que las demás para no deslizar de lado. */
+@media (max-width:1100px) {
+ .tabla-contenedor:has(.ap-crono-tabla) { overflow:visible; }
+ .ap-crono-tabla thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+ .ap-crono-tabla, .ap-crono-tabla tbody, .ap-crono-tabla tr, .ap-crono-tabla td { display:block; width:100%; }
+ .ap-crono-tabla tr { border:1px solid var(--linea); border-radius:var(--r-md); padding:8px 12px; margin-bottom:10px; background:var(--superficie); }
+ .ap-crono-tabla tr.akton-subtotal { background:var(--accion-tinte); }
+ .ap-crono-tabla td { border:0; padding:4px 0; display:flex; justify-content:space-between; align-items:baseline; gap:12px; text-align:right; min-width:0; }
+ .ap-crono-tabla td::before { content:attr(data-label); font-weight:700; font-size:.82rem; color:var(--tinta-2); text-align:left; flex:none; }
+ .ap-crono-tabla td:first-child { display:block; text-align:left; min-width:0; }
+ .ap-crono-tabla td:first-child::before { content:none; }
+ .ap-crono-tabla td.akton-nota-celda { display:block; width:100%; min-width:0; text-align:left; }
+ .ap-crono-tabla td.akton-nota-celda::before { content:none; }
+ .ap-crono-tabla td:empty { display:none; }
+}

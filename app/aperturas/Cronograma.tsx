@@ -14,7 +14,7 @@ export function Cronograma({filas,total,base}:{filas:FilaCronograma[];total:Avan
  return <section className="akton-tabla-marco" aria-labelledby="ap-cronograma">
   <h2 id="ap-cronograma" className="akton-titulo">Cronograma por etapa</h2>
   <p className="akton-subtitulo">Avance real contra lo esperado a hoy según las fechas de cada tarea. Tolerancia: 5 pts.</p>
-  <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas">
+  <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-crono-tabla">
    <thead><tr><th>Etapa</th><th>Conceptos</th><th>Listos</th><th>Avance</th><th>Esperado</th><th>Var. vs esperado</th><th>Inicio</th><th>Fin</th><th>Notas</th></tr></thead>
    <tbody>{filas.map(f=><Fragment key={f.clave}>
     <tr>
@@ -32,8 +32,8 @@ export function Cronograma({filas,total,base}:{filas:FilaCronograma[];total:Avan
      <td data-label="Avance">{pct(f.avance.real)}</td>
      <td data-label="Esperado" className="akton-pct">{pct(f.avance.esperado)}</td>
      <td data-label="Var. vs esperado"><Var a={f.avance}/></td>
-     <td data-label="Inicio">{f.desde?corta(f.desde):'—'}</td>
-     <td data-label="Fin">{f.hasta?corta(f.hasta):'—'}</td>
+     <td data-label="Inicio" className="ap-crono-fecha">{f.desde?corta(f.desde):'—'}</td>
+     <td data-label="Fin" className="ap-crono-fecha">{f.hasta?corta(f.hasta):'—'}</td>
      <td data-label="Notas" className="akton-nota-celda">{f.notas.map(n=><p key={n} className="akton-nota">{n}</p>)}</td>
     </tr>
    </Fragment>)}
