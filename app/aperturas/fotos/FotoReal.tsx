@@ -59,7 +59,7 @@ export function FotoReal({proyecto,item,ruta,url,edita}:{proyecto:string;item:st
  };
 
  return <div className="ap-dodo-foto-real">
-  {url?<img src={url} alt="Foto real de la partida" loading="lazy"/>:<p className="ap-nota">{ruta?'No se pudo cargar la foto real.':'Sin foto real.'}</p>}
+  {!url&&<p className="ap-nota">{ruta?'No se pudo cargar la foto real.':'Sin foto real.'}</p>}
   {edita&&<>
    <input ref={entrada} type="file" accept="image/*" hidden onChange={e=>{const f=e.currentTarget.files?.[0];if(f)void subir(f);}}/>
    <div className="acciones">

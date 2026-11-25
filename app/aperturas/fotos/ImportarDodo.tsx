@@ -121,8 +121,8 @@ export function ImportarDodo({proyecto,partidas}:{proyecto:string;partidas:Parti
   setError('');
   // Si la foto de referencia no se pudo leer, la fila queda con el código propio de la partida.
   const codigoFila=(l:Ligada)=>l.ruta?l.codigo:(l.partida.codigo??l.codigo);
-  const filas:FilaImportar[]=resumen.ligadas.map(l=>({item_id:l.partida.id,codigo:codigoFila(l),matriz:matrizDeCodigo(codigoFila(l)),
-   matriz_url:ligas[l.hallazgo.archivo]?.trim()||null,sustituto:l.hallazgo.sustituto,foto:l.ruta}));
+  const filas:FilaImportar[]=resumen.ligadas.map(l=>({item_id:l.partida.id,codigo:codigoFila(l).length<=60?codigoFila(l):null,matriz:matrizDeCodigo(codigoFila(l)),
+   matriz_url:ligas[l.hallazgo.archivo]?.trim()||null,sustituto:l.hallazgo.sustituto?.slice(0,2000)??null,foto:l.ruta}));
   const tandas:FilaImportar[][]=[];
   for(let i=0;i<filas.length;i+=TANDA)tandas.push(filas.slice(i,i+TANDA));
   const fotosDe=(ts:FilaImportar[][])=>ts.flat().flatMap(f=>f.foto?[f.foto]:[]);

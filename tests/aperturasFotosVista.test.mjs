@@ -153,6 +153,19 @@ test('Respaldo por familia: importador usa buscarFoto y la ficha avisa «otra me
  assert.match(s,/otra medida/);
  assert.match(s,/No está en la matriz/);
  assert.match(leer('app/aperturas/[id]/items/[item]/page.tsx'),/dodo\.fila\?\.foto_proyecto&&dodo\.fila\.codigo&&.*otra medida/);
- assert.match(s,/sustituto:l\.hallazgo\.sustituto/);
+ assert.match(s,/sustituto:l\.hallazgo\.sustituto\?\.slice\(0,2000\)/,'sustituto topado a 2000');
+ assert.match(s,/codigoFila\(l\)\.length<=60\?codigoFila\(l\):null/,'codigo solo si cabe en 60');
  assert.match(s,/l\.ruta\?l\.codigo:\(l\.partida\.codigo/);
+});
+
+test('CSS: @page con nombre para la cotización, sin @page global; resumen 2/4 columnas',()=>{
+ const c=leer('app/globals.css');
+ assert.doesNotMatch(c,/@page\s*\{[^}]*landscape/,'sin @page global horizontal');
+ assert.match(c,/@page cotizacion\s*\{[^}]*letter landscape/);
+ assert.match(c,/\.ap-cotizacion-imprimible\s*\{\s*page:\s*cotizacion/);
+ assert.match(c,/\.ap-dodo-cifras\s*\{[^}]*repeat\(2,/);
+ assert.match(c,/min-width:640px\)\s*\{\s*\.ap-dodo-cifras\s*\{[^}]*repeat\(4,/);
+});
+test('FotoReal no pinta <img> (la figura de la ficha es la única vista)',()=>{
+ assert.doesNotMatch(leer('app/aperturas/fotos/FotoReal.tsx'),/<img\b/);
 });
