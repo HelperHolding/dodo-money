@@ -4,7 +4,7 @@ import {fechaTexto,pesos} from '@/lib/formato';
 import {textoDiasApertura,type IndicadoresProyecto,type Lectura} from '@/lib/aperturasAkton';
 
 // Franja y lectura del proyecto en el estilo Akton (docs/diseno/estilo-akton.md). Solo dibuja.
-const VISTAS=[['checklist','Checklist'],['calendario','Calendario'],['roadmap','Cronograma'],['actividades','Actividades'],['compras','Equipo y compras'],['tecnico','Validaciones técnicas'],['activos','Activos'],['alertas','Atención']] as const;
+const VISTAS=[['checklist','Checklist'],['calendario','Calendario'],['roadmap','Cronograma'],['actividades','Actividades'],['compras','Equipo y compras'],['tecnico','Validaciones técnicas'],['activos','Activos'],['plano','Plano'],['alertas','Atención']] as const;
 
 export function IndicadoresProyectoAkton({k,objetivo}:{k:IndicadoresProyecto;objetivo:string}) {
  const d=k.dias,a=k.avance;

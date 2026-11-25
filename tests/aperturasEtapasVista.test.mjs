@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const leer=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('checklist: nombres de paso por bloque y peso de cada módulo',()=>{
- const f=leer('app/aperturas/ChecklistEditable.tsx');
+ // La ventana de cambio de estado vive en VentanaEstado.tsx (compartida con el plano).
+ const f=leer('app/aperturas/ChecklistEditable.tsx')+leer('app/aperturas/VentanaEstado.tsx');
  assert.match(f,/nombreEstado\(/);assert.match(f,/PESOS_BLOQUE\[/);assert.match(f,/% del total/);
 });
 test('ficha del item usa el nombre de paso por bloque',()=>{
