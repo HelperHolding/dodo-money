@@ -90,7 +90,7 @@ test('ficha de la partida: foto del proyecto y real, FotoReal y matriz de Dodo',
  assert.match(s,/apertura_item_dodo/);
  assert.match(s,/Abrir matriz de Dodo/);
  assert.match(s,/target="_blank" rel="noreferrer"/);
- assert.match(s,/Sustituto verificado por Dodo/);
+ assert.match(s,/En la matriz de Dodo: \{estatusDodo\(/);
  assert.match(s,/Sin foto/);
 });
 

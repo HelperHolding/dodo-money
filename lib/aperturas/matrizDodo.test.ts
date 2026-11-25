@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { strToU8, unzipSync, zipSync } from "fflate";
 // @ts-expect-error Node strip-types requiere extensión explícita.
-import { buscarFoto, codigoDeItem, familiaDeCodigo, leerMatriz, matrizDeCodigo, normalizarCodigo } from "./matrizDodo.ts";
+import { buscarFoto, codigoDeItem, estatusDodo, familiaDeCodigo, leerMatriz, matrizDeCodigo, normalizarCodigo } from "./matrizDodo.ts";
 
 const textos = [
   "Артикул\nArticle No.", // 0
@@ -138,4 +138,12 @@ test("buscarFoto: exacto con foto, respaldo por familia, exacto sin foto y ausen
   assert.equal(sin?.codigo, "X.1_010-01");
   assert.equal(sin?.entrada.foto, null);
   assert.equal(buscarFoto(m, "Z.9-01"), null);
+});
+
+test("estatusDodo: traduce el estatus de la matriz", () => {
+  assert.equal(estatusDodo("Project model"), "Modelo del proyecto");
+  assert.equal(estatusDodo("Модель согласно проекту\nProject model"), "Modelo del proyecto");
+  assert.equal(estatusDodo("Approved replacement"), "Hay sustituto aprobado por Dodo");
+  assert.equal(estatusDodo("Purchased at the partner's discretion"), "Lo elige el socio (sin modelo fijo)");
+  assert.equal(estatusDodo(" Otro texto "), "Otro texto");
 });
