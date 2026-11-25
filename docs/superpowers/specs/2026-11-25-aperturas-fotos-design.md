@@ -13,6 +13,7 @@ Ver de un vistazo cómo es cada equipo sin abrir el PDF del proyecto ni la matri
   - el número N del E02 es la partida `PL-0NN` (equipo 1–88), igual que en HD-14;
   - la tabla de mobiliario (1–11) es `PL-089`…`PL-099`;
   - en López Mateos hay 110 renglones y 88 traen código. Los demás traen `-`.
+- **Los datos del E02 ya están en cada partida.** La carga de la apertura guardó en `apertura_items.original` el `codigo`, la `descripcion` o modelo, la `potencia` (kW), la `cantidad` y las `medidas` de cada PL (por ejemplo PL-066: `E.40.0-01`, `Cas PB-30`, 0.01 kW, 1). El importador **no** lee el PDF: toma el código de `original.codigo`.
 - **El prefijo del código dice en qué matriz está:**
 
   | Prefijo | Matriz |
@@ -32,7 +33,7 @@ Ver de un vistazo cómo es cada equipo sin abrir el PDF del proyecto ni la matri
 ## Decisiones tomadas
 
 - **Importador en el navegador** («Importar de Dodo», en cada apertura), para que sirva igual en Serviplaza, Belisario y Tec.
-  - El navegador lee el PDF del set y los .xlsx de las matrices.
+  - El navegador lee solo los .xlsx de las matrices y los cruza con `original.codigo` de las partidas.
   - Solo se suben las fotos de los códigos que se usan, cada una de menos de 1 MB.
   - Los datos se guardan con una acción de servidor.
 - **Dos fotos por partida:**
@@ -47,17 +48,13 @@ Ver de un vistazo cómo es cada equipo sin abrir el PDF del proyecto ni la matri
 
 ## Datos (migración `supabase/migrations/20261125140000_aperturas_fotos.sql`)
 
-**Tabla `apertura_item_dodo`** (una fila por partida, con los datos Dodo del proyecto)
+**Tabla `apertura_item_dodo`** (una fila por partida: lo que viene de la matriz y las fotos; el modelo, kW y cantidad se siguen leyendo de `apertura_items.original`)
 
 | Columna | Tipo y reglas |
 |---|---|
 | item_id | uuid pk, fk `apertura_items` on delete cascade |
 | proyecto_id | uuid fk `apertura_proyectos` (para RLS y consultas) |
-| numero | integer null, > 0: el número de plano del E02 (null si la fila nació de una foto real) |
-| codigo | text null, hasta 60 caracteres; null si el E02 trae «-» |
-| descripcion | text null, hasta 2000 |
-| potencia_kw | numeric null, ≥ 0 |
-| cantidad_proyecto | numeric null, ≥ 0 |
+| codigo | text null, hasta 60 caracteres: el código con el que se encontró en la matriz |
 | matriz | text null, uno de `digital`, `mobiliario`, `neutral`, `proceso`, `herramientas` |
 | matriz_url | text null, `^https://docs\.google\.com/` y hasta 500 caracteres |
 | sustituto | text null, hasta 2000: el sustituto verificado de la columna «Наличие согласованной замены» u homóloga |
@@ -72,8 +69,8 @@ Ver de un vistazo cómo es cada equipo sin abrir el PDF del proyecto ni la matri
 
 **Funciones `security definer set search_path=''`**, todas con `edita_compras()`:
 - `importar_apertura_dodo(p_proyecto uuid, p_filas jsonb)`: devuelve `(ligadas int, con_foto int, fotos_anteriores text[])`.
-  - `p_filas` es un arreglo de objetos `{clave, numero, codigo, descripcion, potencia_kw, cantidad, matriz, matriz_url, sustituto, foto}`.
-  - Cada `clave` debe ser una partida del proyecto.
+  - `p_filas` es un arreglo de objetos `{item_id, codigo, matriz, matriz_url, sustituto, foto}`.
+  - Cada `item_id` debe ser una partida del proyecto.
   - Hace upsert por `item_id`.
   - Conserva `foto_real`.
   - Si viene `foto`, debe existir en el bucket y su ruta debe empezar con `{proyecto}/`.
@@ -103,13 +100,6 @@ Ver de un vistazo cómo es cada equipo sin abrir el PDF del proyecto ni la matri
 
 ## Código
 
-**`lib/aperturas/dodoE02.ts`** (puro): `leerE02(paginas: TextoPagina[])` devuelve `FilaE02[]`.
-- Recibe los textos con posición de las páginas.
-- Busca las tablas con encabezado `№ … Code`, como en la extracción ya probada.
-- Arma las filas con `numero`, `nombre`, `descripcion`, `potencia_kw`, `cantidad` y `codigo`, uniendo el texto de cada columna por renglón.
-- Distingue la tabla de equipo de la de mobiliario: esta última es la que sigue al título «Furniture».
-- `claveDe(fila)` devuelve `PL-0NN` para equipo, `PL-(88+N)` para mobiliario y `PL-100` para la cámara fría si aparece.
-
 **`lib/aperturas/matrizDodo.ts`** (puro, sin dependencias de navegador):
 - `matrizDeCodigo(codigo)`: el prefijo → matriz.
 - `leerMatriz(archivos: Map<ruta, Uint8Array>)` devuelve un `Map<codigoNormalizado, {foto: ruta media | null, sustituto: string | null, hoja: string}>`.
@@ -119,12 +109,12 @@ Ver de un vistazo cómo es cada equipo sin abrir el PDF del proyecto ni la matri
 - `normalizarCodigo`: quita espacios, convierte la «С» cirílica en C y pasa a mayúsculas.
 
 **`app/aperturas/fotos/ImportarDodo.tsx`** (cliente): ventana en tres pasos.
-1. Elegir el PDF del set y uno o más .xlsx, y pegar las ligas opcionales de cada matriz.
+1. Elegir uno o más .xlsx de matrices y pegar las ligas opcionales de cada una.
 2. Procesar en el navegador:
-   - el PDF con `pdfjs-dist`, que ya es dependencia;
+   - toma las partidas `equipo`/`referencia` del proyecto con `original.codigo` distinto de «-» y busca cada código normalizado en las matrices;
    - los .xlsx con `fflate`, una dependencia nueva de unos 30 KB que solo se carga en esta ventana;
    - las fotos se reducen a 800 px de lado mayor en un canvas y se suben como JPEG con el cliente de navegador (`lib/supabase/navegador.ts`).
-3. Resumen: partidas ligadas, partidas con foto, códigos que no se encontraron en ninguna matriz y matrices que faltaron. Después se confirma y se llama a `importar_apertura_dodo`.
+3. Resumen: partidas ligadas, partidas con foto, códigos que no se encontraron y qué matriz falta para ellos (por su prefijo). Después se confirma y se llama a `importar_apertura_dodo`.
 
 **`app/aperturas/fotos/acciones.ts`**:
 - `importarDodo`: borra las fotos reemplazadas;
@@ -134,31 +124,31 @@ Ver de un vistazo cómo es cada equipo sin abrir el PDF del proyecto ni la matri
 **URLs firmadas.** Se piden en lote al servidor (1 h), solo para las partidas visibles.
 
 **Dónde se ve:**
-- **Equipo y compras** (`ListaConceptos`, vista `compras`): miniatura de 40 px a la izquierda del renglón. Muestra la foto real si existe; si no, la del proyecto; si no hay ninguna, un cuadro gris con el número del plano.
+- **Equipo y compras** (`ListaConceptos`, vista `compras`): miniatura de 40 px a la izquierda del renglón. Muestra la foto real si existe; si no, la del proyecto; si no hay ninguna, un cuadro gris vacío.
 - **Ficha de la partida** (`app/aperturas/[id]/items/[item]/page.tsx`):
   - foto grande del proyecto y foto real lado a lado;
-  - debajo, el código, la descripción o modelo, los kW, la cantidad del proyecto, el sustituto verificado y la liga «Abrir matriz de Dodo»;
+  - debajo, el sustituto verificado y la liga «Abrir matriz de Dodo». El código, modelo, kW y cantidad ya salen en «Origen y especificaciones» desde `original`;
   - con permiso, «Subir foto real», «Cambiar» y «Quitar».
 - **Ficha del plano** (`PlanoApertura`): la misma miniatura y el código. `page.tsx` pasa los datos Dodo junto con los items.
 - **Solicitud de cotización** (`app/aperturas/[id]/cotizacion/page.tsx`):
   - desde Equipo y compras, casillas por renglón y el botón «Solicitud de cotización»;
-  - la página muestra el encabezado de la apertura, la fecha y una tabla con #, foto, clave, nombre, código, descripción o modelo, kW, cantidad y columnas vacías «Precio unitario» y «Tiempo de entrega»;
+  - la página muestra el encabezado de la apertura, la fecha y una tabla con #, foto, clave, nombre y, desde `original`, código, descripción o modelo, medidas, kW y cantidad y columnas vacías «Precio unitario» y «Tiempo de entrega»;
   - CSS de impresión carta horizontal y el botón «Imprimir / PDF»;
   - los ids van por query (`?items=…`, hasta 150).
 - **Permisos:** ver es para quien ve aperturas (`ve_compras()`). Importar y subir fotos, para quien edita compras.
 
 ## Errores y casos borde
 
-- **Archivo que no es set de planos o matriz.** El resumen dice «No encontré la tabla E02» o «Este .xlsx no tiene columna de código».
+- **Archivo que no es matriz.** El resumen dice «Este .xlsx no tiene columna de código».
+- **Partida sin `original.codigo`** (o con «-»). No se liga; solo admite foto real.
 - **Código repetido en varias hojas de una matriz.** Gana la primera hoja que tenga foto.
-- **Código del E02 sin foto en las matrices cargadas.** Se guardan los datos sin foto del proyecto y aparece en el resumen.
-- **Reimportar con un set o matriz nuevos.** Actualiza los datos y la foto del proyecto, y nunca toca la foto real.
+- **Código sin foto en las matrices cargadas.** Se guardan los datos sin foto del proyecto y aparece en el resumen.
+- **Reimportar con una matriz nueva.** Actualiza los datos y la foto del proyecto, y nunca toca la foto real.
 - **Falla la subida a medias.** No se llama a la función. Las fotos ya subidas quedan huérfanas y se borran en el mismo intento.
 
 ## Pruebas
 
 **Unitarias:**
-- `leerE02` con el texto real de la página 6 del set de López Mateos, guardado como fixture JSON con posiciones. Debe dar 88 equipos y 11 muebles; por ejemplo, 66 → E.40.0-01 y kW 0.01.
 - `leerMatriz` con un .xlsx mínimo armado en la prueba: una hoja con encabezado, dos códigos, una imagen anclada y un sustituto.
 - `normalizarCodigo` y `matrizDeCodigo`.
 
