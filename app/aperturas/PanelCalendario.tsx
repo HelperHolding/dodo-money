@@ -18,7 +18,7 @@ export function PanelCalendario({hoy,modo,mes,semana,personas,ocultos,conteo,tod
     {INI.map((d,k)=><span key={k} className="ap-gcal-mini-ini" aria-hidden="true">{d}</span>)}
     {miniMes(mini).flat().map(c=><button key={c.dia} type="button" onClick={()=>irA(c.dia)} aria-label={c.dia}
      data-fuera={!c.delMes||undefined} data-hoy={c.dia===hoy||undefined}
-     data-visible={(modo==='semana'?deSemana.has(c.dia):c.delMes&&c.dia.startsWith(mes))||undefined}>{Number(c.dia.slice(8))}</button>)}
+     data-visible={deSemana.has(c.dia)||undefined}>{Number(c.dia.slice(8))}</button>)}
    </div>
   </div>
   <h3 className="ap-gcal-panel-titulo">Responsables</h3>

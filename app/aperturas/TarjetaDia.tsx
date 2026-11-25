@@ -10,8 +10,10 @@ export function TarjetaDia({dia,ancla,items,colorDe,tono,abrirItem,cerrar}:{dia:
  const caja=useRef<HTMLDivElement>(null);
  useEffect(()=>{
   const tecla=(e:KeyboardEvent)=>{if(e.key==='Escape')cerrar();};
-  window.addEventListener('keydown',tecla);caja.current?.focus();
-  return ()=>window.removeEventListener('keydown',tecla);
+  // Como Google: un clic fuera de la tarjeta la cierra.
+  const fuera=(e:MouseEvent)=>{if(caja.current&&!caja.current.contains(e.target as Node))cerrar();};
+  window.addEventListener('keydown',tecla);document.addEventListener('mousedown',fuera);caja.current?.focus();
+  return ()=>{window.removeEventListener('keydown',tecla);document.removeEventListener('mousedown',fuera);};
  },[cerrar]);
  const del=items.filter(i=>cubreDia(i,dia)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es-MX'));
  const ancho=260,izq=Math.max(8,Math.min(ancla.left+ancla.width/2-ancho/2,window.innerWidth-ancho-8)),arriba=Math.max(8,Math.min(ancla.top-120,window.innerHeight-420));
