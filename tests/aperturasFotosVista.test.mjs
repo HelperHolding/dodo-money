@@ -152,5 +152,7 @@ test('Respaldo por familia: importador usa buscarFoto y la ficha avisa «otra me
  assert.match(s,/buscarFoto\(/);
  assert.match(s,/otra medida/);
  assert.match(s,/No está en la matriz/);
- assert.match(leer('app/aperturas/[id]/items/[item]/page.tsx'),/otra medida/);
+ assert.match(leer('app/aperturas/[id]/items/[item]/page.tsx'),/dodo\.fila\?\.foto_proyecto&&dodo\.fila\.codigo&&.*otra medida/);
+ assert.match(s,/sustituto:l\.hallazgo\.sustituto/);
+ assert.match(s,/l\.ruta\?l\.codigo:\(l\.partida\.codigo/);
 });

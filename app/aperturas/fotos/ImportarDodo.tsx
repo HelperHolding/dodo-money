@@ -15,7 +15,7 @@ const MIME:Record<string,string>={png:'image/png',jpg:'image/jpeg',jpeg:'image/j
 
 export type PartidaDodo={id:string;clave:string;nombre:string;codigo:string|null};
 // codigo: el de la matriz de donde salió la foto (el de la familia si fue de referencia).
-type Hallazgo={codigo:string;entrada:EntradaMatriz;archivo:number;bytes:Uint8Array|null};
+type Hallazgo={codigo:string;sustituto:string|null;entrada:EntradaMatriz;archivo:number;bytes:Uint8Array|null};
 type Ligada={partida:PartidaDodo;codigo:string;hallazgo:Hallazgo;ruta:string|null};
 type Resumen={ligadas:Ligada[];sinFoto:{partida:PartidaDodo;codigo:string;motivo:string}[];sinCodigo:number;hojasSinCodigo:string[]};
 
@@ -68,7 +68,7 @@ export function ImportarDodo({proyecto,partidas}:{proyecto:string;partidas:Parti
      if(previo?.entrada.foto)continue;
      const r=buscarFoto(entradas,buscado);
      if(!r||(previo&&!r.entrada.foto))continue;
-     hallazgos.set(buscado,{codigo:r.codigo,entrada:r.entrada,archivo:i,bytes:r.entrada.foto?zip[r.entrada.foto]?.slice()??null:null}); // copia: no retener el zip entero
+     hallazgos.set(buscado,{codigo:r.codigo,sustituto:r.codigo===buscado?r.entrada.sustituto:(entradas.get(buscado)?.sustituto??null),entrada:r.entrada,archivo:i,bytes:r.entrada.foto?zip[r.entrada.foto]?.slice()??null:null}); // copia: no retener el zip entero
     }
    }
    const ligadas:Ligada[]=[],sinFoto:Resumen['sinFoto']=[];
@@ -119,8 +119,10 @@ export function ImportarDodo({proyecto,partidas}:{proyecto:string;partidas:Parti
   if(ocupado||!resumen)return;
   if(!resumen.ligadas.length){setError('Ninguna partida se encontró en las matrices.');return;}
   setError('');
-  const filas:FilaImportar[]=resumen.ligadas.map(l=>({item_id:l.partida.id,codigo:l.codigo,matriz:matrizDeCodigo(l.codigo),
-   matriz_url:ligas[l.hallazgo.archivo]?.trim()||null,sustituto:l.hallazgo.entrada.sustituto,foto:l.ruta}));
+  // Si la foto de referencia no se pudo leer, la fila queda con el código propio de la partida.
+  const codigoFila=(l:Ligada)=>l.ruta?l.codigo:(l.partida.codigo??l.codigo);
+  const filas:FilaImportar[]=resumen.ligadas.map(l=>({item_id:l.partida.id,codigo:codigoFila(l),matriz:matrizDeCodigo(codigoFila(l)),
+   matriz_url:ligas[l.hallazgo.archivo]?.trim()||null,sustituto:l.hallazgo.sustituto,foto:l.ruta}));
   const tandas:FilaImportar[][]=[];
   for(let i=0;i<filas.length;i+=TANDA)tandas.push(filas.slice(i,i+TANDA));
   const fotosDe=(ts:FilaImportar[][])=>ts.flat().flatMap(f=>f.foto?[f.foto]:[]);

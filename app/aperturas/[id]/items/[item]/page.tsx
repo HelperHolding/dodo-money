@@ -41,7 +41,7 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
  </section>
  {dodo&&<section className="akton-tabla-marco ap-foto-seccion" aria-labelledby="ap-foto"><h2 id="ap-foto" className="akton-titulo">Foto</h2>
   <div className="ap-foto-par">{([['Foto del proyecto',dodo.fila?.foto_proyecto],['Foto real',dodo.fila?.foto_real]] as const).map(([t,ruta])=><figure key={t}><figcaption>{t}</figcaption>{ruta&&dodo.urls[ruta]?<img src={dodo.urls[ruta]} alt={`${t}: ${i.nombre}`} loading="lazy"/>:<div className="ap-foto-vacia">Sin foto</div>}</figure>)}</div>
-  {dodo.fila?.codigo&&dodo.fila.codigo!==codigoDeItem(i.original)&&<p className="akton-subtitulo">Foto de referencia de {dodo.fila.codigo} (otra medida)</p>}
+  {dodo.fila?.foto_proyecto&&dodo.fila.codigo&&dodo.fila.codigo!==codigoDeItem(i.original)&&<p className="akton-subtitulo">Foto de referencia de {dodo.fila.codigo} (otra medida)</p>}
   {dodo.fila?.sustituto&&<p className="akton-subtitulo">Sustituto verificado por Dodo: {dodo.fila.sustituto}</p>}
   {dodo.fila?.matriz_url&&<p><a href={dodo.fila.matriz_url} target="_blank" rel="noreferrer">Abrir matriz de Dodo</a></p>}
   {edita&&<FotoReal proyecto={id} item={item} ruta={dodo.fila?.foto_real??null} url={dodo.fila?.foto_real?dodo.urls[dodo.fila.foto_real]??null:null} edita={edita}/>}
