@@ -16,7 +16,7 @@ const falso = (respuestas: (Response | Error)[]) => {
 };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 const DATOS = { rfc: "XYZ010101AB1", nombre: "CLIENTE PRUEBA", regimen_fiscal: "601", codigo_postal: "45160", uso_cfdi: "G03" as const, correo: "juan@gmail.com", forma_pago: "04" as const };
-const FACT = { id: "fa_1", uuid: "abc", series: "F", folio_number: 7, subtotal: 330.17, total: 383, status: "valid" };
+const FACT = { id: "fa_1", uuid: "abc", series: "F", folio_number: 7, total: 383, status: "valid" };
 const CONCEPTOS = [{ quantity: 1, product: { description: "Pizza", product_key: "90101501", unit_key: "E48", price: 383, tax_included: true as const, taxes: [{ type: "IVA" as const, rate: 0.16 as const }] } }];
 const LLAVES = { externo: "a", idempotencia: "b" };
 const SIN_DATOS = { ok: false, tipo: "incierto", mensaje: "Facturapi respondió sin datos legibles." };

@@ -2,6 +2,7 @@
 /** Unión del portal de facturación con la base y con Facturapi. Solo servidor: no se prueba con node --test. */
 import "server-only";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
+import { paraConfirmar } from "./conceptos";
 import { crearClienteFacturapi } from "./facturapi";
 import type { Base } from "./timbrar";
 
@@ -24,7 +25,7 @@ export function baseFacturacion(): Base {
       return { id: data as string };
     },
     async confirmar(id, f) {
-      const { error } = await db.rpc("facturacion_confirmar", { p_id: id, p_facturapi_id: f.id, p_uuid: f.uuid, p_serie: f.series, p_folio: f.folio_number, p_subtotal: f.subtotal, p_iva: Math.round((f.total - f.subtotal) * 100) / 100 });
+      const { error } = await db.rpc("facturacion_confirmar", paraConfirmar(id, f));
       if (!error) return;
       // Dos recuperaciones simultáneas pueden encontrar la misma factura timbrada: la segunda confirma lo ya confirmado.
       if (error.message.includes("no está en proceso")) {

@@ -1,4 +1,5 @@
 /** Productos del pedido de Dodo IS → conceptos de Facturapi. Precio con descuento e IVA 16 % incluido. */
+import type { FacturaTimbrada } from "./facturapi";
 
 // Claves SAT por confirmar con el contador (spec, Entregas de Sebastián).
 export const CLAVE_PRODUCTO = "90101501";
@@ -31,4 +32,15 @@ export function armarConceptos(productos: readonly { nombre: string; precio: num
 export function desglose(total: number) {
   const subtotal = Math.round((total / 1.16) * 100) / 100;
   return { subtotal, iva: Math.round((total - subtotal) * 100) / 100 };
+}
+
+/**
+ * Parámetros de facturacion_confirmar. Facturapi no regresa `subtotal` en la factura: subtotal e IVA salen del total.
+ * Un parámetro undefined desaparece del JSON y PostgREST ya no encuentra la función (falla del 25 nov 2026).
+ */
+export function paraConfirmar(id: string, f: FacturaTimbrada) {
+  const total = Number(f.total);
+  if (!(total > 0)) throw new Error(`Facturapi regresó la factura ${f.id} sin total.`);
+  const d = desglose(total);
+  return { p_id: id, p_facturapi_id: f.id, p_uuid: f.uuid, p_serie: f.series, p_folio: f.folio_number, p_subtotal: d.subtotal, p_iva: d.iva };
 }

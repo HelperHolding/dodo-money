@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { timbrarTicket, type Base, type Pac } from "./timbrar.ts";
 
 const DATOS = { rfc: "XYZ010101AB1", nombre: "C", regimen_fiscal: "601", codigo_postal: "45160", uso_cfdi: "G03" as const, correo: "a@b.mx", forma_pago: "04" as const };
-const FACT = { id: "fa_1", uuid: "U1", series: "F", folio_number: 1, subtotal: 330.17, total: 383, status: "valid" };
+const FACT = { id: "fa_1", uuid: "U1", series: "F", folio_number: 1, total: 383, status: "valid" };
 function dobles(reservas: ({ id: string } | { error: string })[], crear: Awaited<ReturnType<Pac["crear"]>>[] = [], buscar: Awaited<ReturnType<Pac["buscarPorExterno"]>>[] = []) {
   const log: string[] = [];
   const base: Base = {

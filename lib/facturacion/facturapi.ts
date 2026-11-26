@@ -3,7 +3,8 @@ import type { ConceptoFacturapi } from "./conceptos";
 import type { DatosFiscales } from "./reglas";
 
 const BASE = "https://www.facturapi.io/v2";
-export type FacturaTimbrada = { id: string; uuid: string; series: string; folio_number: number; subtotal: number; total: number; status: string; external_id?: string };
+// Facturapi no incluye `subtotal` en la factura: se calcula del total (paraConfirmar en ./conceptos).
+export type FacturaTimbrada = { id: string; uuid: string; series: string; folio_number: number; total: number; status: string; external_id?: string };
 export type Respuesta<T> = { ok: true; valor: T } | { ok: false; tipo: "rechazo" | "incierto"; mensaje: string };
 
 type Objeto = Record<string, unknown>;

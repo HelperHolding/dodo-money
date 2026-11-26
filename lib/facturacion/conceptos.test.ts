@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { armarConceptos, desglose } from "./conceptos.ts";
+import { armarConceptos, desglose, paraConfirmar } from "./conceptos.ts";
 
 const TICKET = [{ nombre: "Dodo Supreme Grande Tradicional", precio: 269 }, { nombre: "Coca Light 2 L", precio: 59 }, { nombre: "Rolls de manzana 8", precio: 55 }];
 
@@ -35,4 +35,14 @@ test("centavos: 0.1 + 0.2 cuadra con 0.30", () => {
 
 test("desglose como el ticket: 383 → 330.17 + 52.83", () => {
   assert.deepEqual(desglose(383), { subtotal: 330.17, iva: 52.83 });
+});
+
+test("paraConfirmar: Facturapi no regresa subtotal; subtotal e IVA salen del total", () => {
+  // Forma real de la respuesta de Facturapi (25 nov 2026): sin `subtotal`.
+  const real = { id: "fa_9", uuid: "abc-def", series: "A", folio_number: 12, total: 199, status: "valid" };
+  const p = paraConfirmar("fila-1", real);
+  assert.deepEqual(p, { p_id: "fila-1", p_facturapi_id: "fa_9", p_uuid: "abc-def", p_serie: "A", p_folio: 12, p_subtotal: 171.55, p_iva: 27.45 });
+  // Ningún parámetro puede ir indefinido o NaN: PostgREST omite los undefined y ya no encuentra la función.
+  assert.ok(Object.values(p).every((v) => v !== undefined && !Number.isNaN(v)));
+  assert.throws(() => paraConfirmar("fila-1", { ...real, total: undefined as unknown as number }), /total/);
 });
