@@ -1,5 +1,25 @@
 # Registro de cambios
 
+## 2026-11-23 · Ventas Rappi: reporte PDF y Excel · sin migración
+
+Ventas → Rappi tiene los botones «Reporte PDF» y «Descargar Excel», con el periodo y la sucursal de la página (como en Ventas). `lib/ventas/reporteRappi.ts` convierte las órdenes en vivo del portal y los pedidos de agregador de Dodo IS en renglones con tienda (Rappi, Rappi Turbo o Dodo IS), fuente y si cuentan en la venta (finalizadas con fuente Rappi; las «Incluidas en Dodo IS» no se repiten). `resumenReporteRappi` saca totales, días, día de la semana, horas, productos y formas de pago. `/reporte/rappi` es la página para imprimir con indicadores, hallazgos y gráficas (por día con Turbo, de la venta bruta a lo facturado, estados, día de la semana, hora y más vendidos). `/reporte/rappi/excel` descarga las hojas Resumen, Por día, Órdenes, Productos y Más vendidos; los totales son fórmulas sobre «Órdenes». Con las órdenes reales de octubre da 376 órdenes y $82,793.15, igual que la página. Pruebas en `lib/ventas/reporteRappi.test.ts`.
+
+## 2026-11-23 · Mermas de masa: peso mayoritario del BOM · sin migración
+
+En UC Mexico, 44 recetas usan «Dough 30» de 345 g y Hawaii lo trae con 460 g (el peso de la 35), así que la Masa 30 quedaba sin costo por ambigüedad. `precioMasaBOM` ahora toma el peso de al menos el 90 % de las recetas; si no hay esa mayoría, sigue pendiente. Pruebas en `lib/dodois/mermas.test.ts`.
+
+## 2026-11-23 · Mermas de la API: masas por pieza con el peso y precio del BOM · sin migración
+
+Las masas (Masa 25/30/35) se dan de baja por pieza y no tienen recepción en Dodo IS porque no se compran, así que quedaban pendientes. Ahora, sin precio de recepción, una masa dada de baja por pieza toma el peso de la bola en las recetas del BOM (en gramos, el mismo en todas) por el precio por kg del insumo, con la versión del BOM vigente a la fecha (`precioMasaBOM` en `lib/dodois/mermas.ts`). Solo masas: en otros insumos la cantidad de la receta es una porción, no el peso de una pieza. Si el peso es ambiguo o falta el BOM, sigue pendiente. Pruebas en `lib/dodois/mermas.test.ts`.
+
+## 2026-11-23 · Mermas de la API: productos con costo del catálogo cuando falta un precio de recepción · sin migración
+
+Muchos insumos de receta no tienen recepción en Dodo IS (la masa no se compra), así que casi todas las bajas de productos quedaban pendientes. Ahora, si a la receta de un producto le falta algún precio, la baja toma el costo teórico del catálogo (`costos_producto`, receta + periférico sin IVA, vigente a la fecha) por las piezas, ligado con `productos_codigos` (id de producto de Dodo IS → `dodo_id`). Con todos los precios de recepción se costea como antes; sin precio ni catálogo sigue pendiente. Aplica también a las bajas de Marketing. `costoDesdeCatalogo` en `lib/dodois/mermas.ts`; pruebas en `lib/dodois/mermas.test.ts`.
+
+## 2026-11-17 · Mermas desde la API de Dodo IS · migración 20261117200000_mermas_api_dodois.sql
+
+Las bajas ya no dependen del Excel. `lib/dodois/mermas.ts` lee `/accounting/write-offs/products` (productos con su receta, cantidades totales) y `/accounting/write-offs/stock-items` (insumos sueltos; no repiten los de los productos) y los convierte a los mismos renglones del Excel. Costo sin IVA: insumos al último precio de recepción de Dodo IS en la sucursal hasta esa fecha (si no hay, de cualquier sucursal); productos, la suma de su receta con esos precios. Sin precio, el renglón queda pendiente, no en cero. Las bajas con razón Marketing (producto regalado) llevan clave `marketing:` y el P&L las suma a Marketing, no a merma. La sincronización nocturna (y «Actualizar ahora») reemplaza los últimos 3 días con `importar_mermas_dodo_api` (solo service_role, registra «API Dodo IS» sin usuario); en Finanzas → Mermas, «Traer de Dodo IS» reemplaza un rango de hasta 31 días a nombre del admin. El Excel sigue como respaldo. La migración separa la importación en `importar_mermas_dodo_interno`, permite `registrado_por` nulo solo para la API y agrega el tipo `mermas` a la bitácora. Pruebas: `lib/dodois/mermas.test.ts`, `lib/finanzas/mermasPL.test.ts`, `tests/mermasApiDodois.test.mjs` (PGlite) y `supabase/pruebas/20261117200000_mermas_api_dodois.sql`.
+
 ## 2026-11-17 · Dodo IS: se ignoran los pedidos de call center · sin migración
 
 Los pedidos de Rappi que operación captura a mano en Dodo IS (caja «Delivery» #122, origen `Aggregator`, agregador «Rappi») no cuadraban con el portal: se capturan con el precio que paga el cliente, los combos van por piezas y hay cupones de por medio. Mientras se define cómo conciliarlos, la sincronización de ventas los ignora (`esCallCenter` en `lib/dodois/ventas.ts`: caja Delivery, origen de agregador o con nombre de agregador). `traducirVentas` los cuenta aparte en `callCenter`, y el mensaje de la sincronización dice cuántos se ignoraron y por cuánto. Al volver a sincronizar un día, el RPC borra los pedidos que ya no llegan y rehace el desglose; sin agregador en Dodo IS, la regla automática vuelve a tomar Rappi del portal en Ventas, Rappi y P&L. Pruebas en `lib/dodois/ventas.test.ts`.

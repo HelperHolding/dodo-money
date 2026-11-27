@@ -4,6 +4,8 @@ import { MigasDePan } from "@/components/MigasDePan";
 import { PestanasArea } from "@/components/PestanasArea";
 import { cerrarSesion } from "@/app/login/actions";
 import { accesosRapidos, menuLateral, NOMBRE_ROL } from "@/lib/roles";
+import { BotonReportar } from "@/components/BotonReportar";
+import { contarSoporte } from "@/app/soporte/datos";
 import { contarMisTareas } from "@/app/tareas/datos";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import type { Rol } from "@/lib/tipos";
@@ -20,9 +22,15 @@ export async function Marco({ perfil, titulo, detalle, aviso, children }: {
   children: React.ReactNode;
 }) {
   const base = menuLateral(perfil.rol);
-  const { abiertas, vencidas } = await (async () => contarMisTareas(await crearClienteServidor()))().catch(() => ({ abiertas: 0, vencidas: 0 }));
-  const menu = !abiertas ? base : { ...base, grupos: base.grupos.map((g) => ({ ...g, enlaces: g.enlaces.map((e) =>
-    e.href === "/tareas" ? { ...e, contador: { n: abiertas, urgente: vencidas > 0 } } : e) })) };
+  const supabase = await crearClienteServidor();
+  const [{ abiertas, vencidas }, soporte] = await Promise.all([
+    contarMisTareas(supabase).catch(() => ({ abiertas: 0, vencidas: 0 })),
+    contarSoporte(supabase),
+  ]);
+  const contadores: Record<string, { n: number; urgente: boolean }> = {};
+  if (abiertas) contadores["/tareas"] = { n: abiertas, urgente: vencidas > 0 };
+  if (soporte.pendientes) contadores["/soporte"] = { n: soporte.pendientes, urgente: soporte.urgente };
+  const menu = { ...base, grupos: base.grupos.map((g) => ({ ...g, enlaces: g.enlaces.map((e) => (contadores[e.href] ? { ...e, contador: contadores[e.href] } : e)) })) };
   return (
     <div className="marco">
       <MenuLateral
@@ -42,6 +50,7 @@ export async function Marco({ perfil, titulo, detalle, aviso, children }: {
           <>
             <p className="lateral-usuario">{perfil.nombre}<span>{NOMBRE_ROL[perfil.rol]}</span></p>
             <div className="lateral-acciones">
+              <BotonReportar />
               <Link href="/cuenta">Mi contraseña</Link>
               <form action={cerrarSesion}><button type="submit">Salir</button></form>
             </div>

@@ -2,19 +2,23 @@
 
 Endpoint MCP de solo lectura: `https://dodo-money-j31t.vercel.app/api/mcp`. Herramientas: sucursales, ventas,
 productos (piezas y venta por producto), bi (venta por hora, día, canal y pago, ticket promedio, comparada con
-el periodo anterior o el año pasado), tiempos (tiempos de cocina y entrega), cortes, costos, manuales y P&L. Cada llamada queda en `mcp_llamadas` (solo
-admin la lee). Límites: 10 por minuto, 300 por día.
+el periodo anterior o el año pasado), tiempos (tiempos de cocina y entrega), por_pagar (deuda con proveedores y
+vencimientos), pagos (pagos hechos), compras (lo facturado por proveedor), ordenes (órdenes por llegar), cortes, costos,
+manuales y P&L. Cada llamada queda en `mcp_llamadas` (solo admin la lee). Límites: 10 por minuto, 300 por día.
+Compras y pagos nunca mandan RFC, cuentas bancarias, contactos, referencias, notas, UUID ni archivos.
 
 ## 1. Supabase (proyecto de producción)
 
-Cada migración se corre **una sola vez**. En producción ya corrieron `20261119120000_grok_mcp.sql` y
-`20261119190000_grok_mcp_productos.sql`: no las vuelvas a correr, en especial la de productos después de la de bi y
-tiempos, porque regresaría el registro a siete herramientas. En un proyecto nuevo:
+Cada migración se corre **una sola vez** y en orden; cada una reescribe la lista de herramientas del registro, así que
+volver a correr una anterior quitaría las herramientas nuevas. En producción ya corrieron las tres primeras. En un
+proyecto nuevo:
 
 1. SQL Editor → corre, en orden, `supabase/migrations/20261119120000_grok_mcp.sql`,
-   `supabase/migrations/20261119190000_grok_mcp_productos.sql` y `supabase/migrations/20261120120000_grok_mcp_bi_tiempos.sql`.
+   `supabase/migrations/20261119190000_grok_mcp_productos.sql`, `supabase/migrations/20261120120000_grok_mcp_bi_tiempos.sql`
+   y `supabase/migrations/20261120180000_grok_mcp_compras.sql`.
 2. Corre la prueba de cada una: `supabase/pruebas/20261119120000_grok_mcp.sql`,
-   `supabase/pruebas/20261119190000_grok_mcp_productos.sql` y `supabase/pruebas/20261120120000_grok_mcp_bi_tiempos.sql`.
+   `supabase/pruebas/20261119190000_grok_mcp_productos.sql`, `supabase/pruebas/20261120120000_grok_mcp_bi_tiempos.sql`
+   y `supabase/pruebas/20261120180000_grok_mcp_compras.sql`.
    Cada una debe terminar con el error **PRUEBAS OK** (deshace todo). No las corras entre 00:00 y 00:02.
 3. Authentication → Users → Add user → Create new user: correo propio para el bot, contraseña larga generada por tu
    gestor de contraseñas, y marca **Auto Confirm User**.

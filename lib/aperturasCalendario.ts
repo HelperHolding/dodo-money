@@ -2,24 +2,32 @@
 // @ts-expect-error Node strip-types requiere extensión explícita.
 import {CATEGORIAS,ETAPAS,type CategoriaApertura,type ItemApertura} from './aperturas.ts';
 
-export type Agrupacion = 'etapa'|'categoria';
-export const esAgrupacion = (v:unknown):v is Agrupacion => v==='etapa'||v==='categoria';
+export type Agrupacion = 'etapa'|'categoria'|'responsable';
+export const esAgrupacion = (v:unknown):v is Agrupacion => v==='etapa'||v==='categoria'||v==='responsable';
+export type ModoCalendario = 'mes'|'semana';
+export const esModoCalendario = (v:unknown):v is ModoCalendario => v==='mes'||v==='semana';
+// Enlaces viejos (cuadros, barras) y vacío caen a Mes, como Google.
+export const modoCalendario = (v:unknown):ModoCalendario => v==='semana'?'semana':'mes';
+// Los colores que se guardan en apertura_colores (por persona son automáticos).
+export const esAgrupacionGuardable = (v:unknown):v is 'etapa'|'categoria' => v==='etapa'||v==='categoria';
 export type ItemCalendario = Pick<ItemApertura,'id'|'clave'|'nombre'|'tipo'|'etapa'|'categoria'|'estado'|'responsable'|'inicio'|'fin'|'revision'>;
 export type ColorGuardado = {agrupacion:string;clave:string;color:string};
 export type Grupo = {clave:string;nombre:string;color:string;predeterminado:string};
 
 // Predeterminados; administración los cambia en la tabla apertura_colores.
-export const COLORES_ETAPA:Record<keyof typeof ETAPAS,string> = {P1:'#2563eb',P2:'#7c3aed',P3:'#db2777',P4:'#ea580c',P5:'#ca8a04',P6:'#16a34a',P7:'#0891b2'};
-export const COLORES_CATEGORIA:Record<CategoriaApertura|'sin',string> = {
- equipo_cocina:'#dc2626',mobiliario:'#9333ea',camara_fria:'#0284c7',puertas:'#92400e',zoclos:'#78716c',pisos:'#57534e',acabados:'#d97706',
- paneles:'#65a30d',contactos:'#e11d48',salidas_cable:'#0d9488',baja_tension:'#4f46e5',iluminacion:'#eab308',plafones:'#a3a3a3',
- sanitarios:'#06b6d4',senaletica_interior:'#c026d3',senaletica_fachada:'#f97316',sin:'#94a3b8',
+// Pastel de la paleta Dodo (naranja de marca, azul, rosa, aqua, violeta, turquesa); el texto encima siempre es oscuro.
+export const COLORES_ETAPA:Record<keyof typeof ETAPAS,string> = {P1:"#ffd2bd",P2:"#c9ddf5",P3:"#f7cddc",P4:"#ffe3a8",P5:"#bfe8d6",P6:"#ddd0f5",P7:"#c3e6e6"};
+export const COLORES_CATEGORIA:Record<CategoriaApertura|"sin",string> = {
+ equipo_cocina:"#ffcfb8",mobiliario:"#e3d4f7",camara_fria:"#c7e0f7",puertas:"#e8d5c4",zoclos:"#e0dcd7",pisos:"#d6d3d1",acabados:"#ffe2b0",
+ paneles:"#d7ebc4",contactos:"#f8cbd6",salidas_cable:"#c3e8e1",baja_tension:"#d0d4f7",iluminacion:"#fff0a8",plafones:"#e6e6e6",
+ sanitarios:"#c4ecf3",senaletica_interior:"#f2cdf0",senaletica_fachada:"#ffd9bd",sin:"#e2e8f0",
 };
 
 export const esColor = (v:string) => /^#[0-9a-f]{6}$/i.test(v);
-export const claveGrupo = (a:Agrupacion,i:Pick<ItemCalendario,'etapa'|'categoria'>) => a==='etapa'?i.etapa:(i.categoria??'sin');
+export const claveGrupo = (a:Agrupacion,i:Pick<ItemCalendario,'etapa'|'categoria'|'responsable'>) => a==='etapa'?i.etapa:a==='responsable'?clavePersona(i.responsable):(i.categoria??'sin');
 
 export function gruposCalendario(a:Agrupacion,guardados:ColorGuardado[]):Grupo[] {
+ if(a==='responsable')return []; // por persona los arma personasDe() en el calendario
  const propio=new Map(guardados.filter(g=>g.agrupacion===a&&esColor(g.color)).map(g=>[g.clave,g.color.toLowerCase()]));
  const base:[string,string,string][]=a==='etapa'
   ?Object.entries(ETAPAS).map(([k,n])=>[k,`${k} · ${n}`,COLORES_ETAPA[k as keyof typeof ETAPAS]])
@@ -89,4 +97,109 @@ export function datosFechas(i:ItemApertura,inicio:string,fin:string) {
  const v=(x:unknown)=>x===null||x===undefined?'':String(x);
  return {estado:i.estado,responsable:v(i.responsable),inicio,fin,cantidad:v(i.cantidad),recibido:v(i.recibido),precio:v(i.precio),
   evidencia:v(i.evidencia),notas:v(i.notas),orden_id:v(i.orden_id),factura_id:v(i.factura_id)};
+}
+
+// ── Responsables (HD-7/HD-8) ──
+// El responsable es texto libre: se junta por persona sin acentos ni mayúsculas, sin lo que va entre paréntesis.
+// Con "A → B desde 28-nov" cuenta para quien recibe la actividad (B).
+export type Persona = {clave:string;nombre:string;iniciales:string;color:string};
+export const SIN_ASIGNAR = {clave:'sin',nombre:'Sin asignar',color:'#a0a0a0'} as const;
+// Paleta tipo Google Calendar, un color por persona (en orden alfabético, así no cambia al filtrar).
+// Sin el tomate (#d50000), para no confundirse con el rojo de alerta.
+export const COLORES_PERSONA = ['#e67c73','#f4511e','#f6bf26','#33b679','#0b8043','#039be5','#3f51b5','#7986cb','#8e24aa','#616161'];
+const sinAcentos=(t:string)=>t.normalize('NFD').replace(/[̀-ͯ]/g,'').toLocaleLowerCase('es-MX');
+export function nombrePersona(texto:string|null|undefined):string {
+ let t=(texto??'').split('→').at(-1)!;
+ t=t.replace(/\([^)]*\)?/g,' ').replace(/\s+desde\b.*$/i,'').replace(/\s+/g,' ').trim();
+ return t;
+}
+export const clavePersona = (texto:string|null|undefined) => {const n=nombrePersona(texto);return n?sinAcentos(n):SIN_ASIGNAR.clave;};
+
+const CONECTORES=new Set(['y','de','del','la','las','los','e']);
+const palabras=(n:string)=>n.split(/\s+/).filter(p=>p&&!CONECTORES.has(sinAcentos(p))&&/\p{L}/u.test(p));
+function inicialesBase(n:string) {const p=palabras(n);return (p.length>1?p[0][0]+p[1][0]:(p[0]??'?').slice(0,2)).toLocaleUpperCase('es-MX');}
+function inicialesLargas(n:string) {
+ const p=palabras(n),may=(t:string)=>t.toLocaleUpperCase('es-MX');
+ return p.length>1?may(p[0][0])+p[0].slice(1,2)+may(p[1][0]):may((p[0]??'?')[0])+(p[0]??'').slice(1,3);
+}
+
+// Personas de una lista de tareas, con iniciales únicas (José Villa = JoV y Julio Verdeja = JuV) y color estable.
+export function personasDe(items:Pick<ItemCalendario,'responsable'>[]):Persona[] {
+ const nombres=new Map<string,string>();
+ for(const i of items){const c=clavePersona(i.responsable);if(c!==SIN_ASIGNAR.clave&&!nombres.has(c))nombres.set(c,nombrePersona(i.responsable));}
+ const claves=[...nombres.keys()].sort((a,b)=>a.localeCompare(b,'es-MX'));
+ const base=new Map(claves.map(c=>[c,inicialesBase(nombres.get(c)!)]));
+ // Se comparan sin acentos: "CE" y "CÉ" se confunden en pantalla.
+ const vistas=[...base.values()].map(sinAcentos);
+ const repetidas=new Set([...base.values()].filter(v=>vistas.indexOf(sinAcentos(v))!==vistas.lastIndexOf(sinAcentos(v))));
+ const usadas=new Set<string>();
+ const personas=claves.map((clave,k)=>{
+  const nombre=nombres.get(clave)!;let ini=repetidas.has(base.get(clave)!)?inicialesLargas(nombre):base.get(clave)!;
+  for(let n=2;usadas.has(sinAcentos(ini));n++)ini=`${ini.replace(/\d+$/,'')}${n}`;usadas.add(sinAcentos(ini));
+  return {clave,nombre,iniciales:ini,color:COLORES_PERSONA[k%COLORES_PERSONA.length]};
+ });
+ if(items.some(i=>clavePersona(i.responsable)===SIN_ASIGNAR.clave))personas.push({...SIN_ASIGNAR,iniciales:'—'});
+ return personas;
+}
+
+// "Solo actividades": oculta equipo, referencias y validaciones técnicas.
+export const esActividad = (i:Pick<ItemCalendario,'tipo'>) => i.tipo==='actividad';
+export type Momento = 'solo'|'empieza'|'continua'|'termina';
+export const MOMENTOS:Record<Momento,string> = {solo:'Solo este día',empieza:'Empieza',continua:'Continúa',termina:'Termina'};
+export function momentoEnDia(i:Pick<ItemCalendario,'inicio'|'fin'>,dia:string):Momento|null {
+ const r=rangoItem(i);if(!r||dia<r.desde||dia>r.hasta)return null;
+ return r.desde===r.hasta?'solo':dia===r.desde?'empieza':dia===r.hasta?'termina':'continua';
+}
+
+// Lo de un día agrupado por responsable, en el orden de la lista de personas; dentro, por nombre.
+export function diaPorPersona<T extends ItemCalendario>(items:T[],dia:string,personas:Persona[]) {
+ const del=items.filter(i=>enCalendario(i)&&cubreDia(i,dia));
+ return personas.map(persona=>({persona,tareas:del.filter(i=>clavePersona(i.responsable)===persona.clave)
+  .sort((a,b)=>a.nombre.localeCompare(b.nombre,'es-MX')).map(item=>({item,momento:momentoEnDia(item,dia)!}))})).filter(g=>g.tareas.length>0);
+}
+// Cuántas tareas tiene cada persona un día (para el cuadro del mes).
+export const conteoDia = (items:ItemCalendario[],dia:string,personas:Persona[]) => diaPorPersona(items,dia,personas).map(g=>({persona:g.persona,n:g.tareas.length}));
+
+// Semana de lunes a domingo que contiene un día.
+export const esDia = (v:unknown):v is string => typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(aMs(v))&&aFecha(aMs(v))===v;
+export function semanaDe(dia:string):Celda[] {
+ const ms=aMs(dia),lunes=ms-((new Date(ms).getUTCDay()+6)%7)*DIA;
+ return Array.from({length:7},(_,i)=>{const d=aFecha(lunes+i*DIA);return {dia:d,delMes:d.slice(0,7)===dia.slice(0,7)};});
+}
+export const moverDias = (dia:string,dias:number) => aFecha(aMs(dia)+dias*DIA);
+export const tituloSemana = (semana:Celda[]) => {
+ const f=(d:string,mes:boolean)=>new Intl.DateTimeFormat('es-MX',{day:'numeric',...(mes?{month:'short'}:{}),timeZone:'UTC'}).format(new Date(aMs(d)));
+ const a=semana[0].dia,b=semana[6].dia;return `${f(a,a.slice(5,7)!==b.slice(5,7))} – ${f(b,true)} ${b.slice(0,4)}`;
+};
+
+// Sugerencias para el campo Responsable: usuarios activos y los nombres que ya se usan en el proyecto, sin repetir.
+// Sigue siendo texto libre: se puede asignar a alguien sin usuario (proveedor, agencia).
+export function sugerenciasResponsable(usuarios:(string|null)[],usados:(string|null)[]) {
+ const vistos=new Map<string,string>();
+ for(const n of [...usuarios.map(u=>(u??'').replace(/\s+/g,' ').trim()),...usados.map(nombrePersona)]){if(!n)continue;const c=clavePersona(n);if(!vistos.has(c))vistos.set(c,n);}
+ return [...vistos.values()].sort((a,b)=>a.localeCompare(b,'es-MX'));
+}
+
+// ── Estilo Google Calendar ──
+// Mini mes del panel: siempre 6 semanas, para que no salte de alto.
+export function miniMes(mes:string):Celda[][] {
+ const s=semanasCalendario(mes);
+ while(s.length<6){const ult=s.at(-1)!.at(-1)!.dia;s.push(Array.from({length:7},(_,i)=>({dia:moverDias(ult,i+1),delMes:false})));}
+ return s;
+}
+export const esDeUnDia = (i:Pick<ItemCalendario,'inicio'|'fin'>) => {const r=rangoItem(i);return r!==null&&r.desde===r.hasta;};
+export const filtrarOcultos = <T extends Pick<ItemCalendario,'responsable'>>(items:T[],ocultos:ReadonlySet<string>) => items.filter(i=>!ocultos.has(clavePersona(i.responsable)));
+// Tareas de cada persona en el periodo (el número junto a su casilla).
+export function conteoPorPersona(items:Pick<ItemCalendario,'responsable'|'inicio'|'fin'|'estado'>[],desde:string,hasta:string):Record<string,number> {
+ const r:Record<string,number>={};
+ for(const i of items){if(!enCalendario(i))continue;const g=rangoItem(i)!;if(g.desde>hasta||g.hasta<desde)continue;const c=clavePersona(i.responsable);r[c]=(r[c]??0)+1;}
+ return r;
+}
+// Cuántas barras no caben en cada día de la semana (para «N más»).
+export const ocultasPorDia = (barras:Barra<unknown>[],semana:Celda[],limite:number) =>
+ semana.map((_,col)=>barras.filter(b=>b.carril>=limite&&b.col<=col&&col<b.col+b.span).length);
+export const tituloPeriodo = (modo:ModoCalendario,mes:string,semana:string) => modo==='mes'?nombreMes(mes):tituloSemana(semanaDe(semana));
+// Personas ocultas guardadas en el navegador: JSON de claves; se ignora lo roto y a quien ya no está.
+export function leerOcultos(texto:string|null,claves:readonly string[]):Set<string> {
+ try{const v=JSON.parse(texto??'[]');return new Set(Array.isArray(v)?v.filter((c):c is string=>typeof c==='string'&&claves.includes(c)):[]);}catch{return new Set();}
 }

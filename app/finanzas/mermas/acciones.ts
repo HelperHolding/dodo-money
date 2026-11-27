@@ -6,6 +6,10 @@ import { hoyCalendarioMX } from "@/lib/formato";
 import { leerHojas } from "@/lib/ventas/xlsx";
 import { leerMermasDodo, nombresParaMermas, resumirMermas } from "@/lib/finanzas/mermasDodo";
 import { leerTodo } from "@/lib/ventas/paginar";
+import { tokenDeAcceso } from "@/lib/dodois/cliente";
+import { ventanaMermas } from "@/lib/dodois/mermas";
+import { crearClienteAdmin } from "@/lib/supabase/admin";
+import { sincronizarMermas } from "./sincronizar";
 export type Revision = { error?: string; huella?: string; archivo?: string; dias?: ReturnType<typeof resumirMermas>; nombres?: Record<string,string>; reemplazados?: number };
 export async function importarMermas(_: Revision, fd: FormData): Promise<Revision> {
   const supabase = await clienteFinanzas("/finanzas/mermas");
@@ -36,6 +40,24 @@ export async function importarMermas(_: Revision, fd: FormData): Promise<Revisio
   return {huella,archivo:archivo.name,dias:resumirMermas(lectura.filas,lectura.dias),nombres:Object.fromEntries((sucursales??[]).map(s=>[s.id,s.nombre])),reemplazados:existentes.filter(d=>claves.has(`${d.sucursal_id}|${d.fecha}`)).length};
 }
 
+
+/** «Traer de Dodo IS»: reemplaza los días del rango (máximo 31) con las bajas de la API, a nombre del admin. */
+export async function traerMermasApi(fd:FormData) {
+ const ruta="/finanzas/mermas";
+ const supabase=await clienteFinanzas(ruta);
+ const v=ventanaMermas(hoyCalendarioMX(),String(fd.get("desde")??""),String(fd.get("hasta")??""));
+ if(!v)return volver(ruta,"error","Elige un rango de hasta 31 días que no pase de hoy.");
+ let token:string;
+ try{token=await tokenDeAcceso(crearClienteAdmin());}catch(e){return volver(ruta,"error",`Dodo IS: ${(e as Error).message}`);}
+ const {data:sucursales,error}=await supabase.from("sucursales").select("id,nombre,dodois_unit_id").not("dodois_unit_id","is",null).order("nombre")
+  .returns<{id:string;nombre:string;dodois_unit_id:string}[]>();
+ if(error)return volver(ruta,"error",error.message);
+ const r=await sincronizarMermas(supabase,token,sucursales??[],v,async(dias,filas,huella)=>await supabase.rpc("importar_mermas_dodo",{p_archivo:"API Dodo IS (manual)",p_huella:huella,p_dias:dias,p_filas:filas}));
+ revalidatePath("/finanzas","layout");revalidatePath("/reporte/pl","layout");
+ const destino=`${ruta}?mes=${v.hasta.slice(0,7)}`,fallas=r.filter(x=>x.estado==="error");
+ if(fallas.length)return volver(destino,"error",fallas.map(x=>`${x.sucursal}: ${x.mensaje}`).join(" · "));
+ return volver(destino,"ok",r.map(x=>`${x.sucursal}: ${x.mensaje}`).join(" · ")||"No hay sucursales ligadas a Dodo IS.");
+}
 
 export async function guardarCostoMerma(fd:FormData) {
  const supabase=await clienteFinanzas("/finanzas/mermas");

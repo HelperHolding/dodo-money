@@ -2,7 +2,9 @@ import { ConInfo } from "@/components/ConInfo";
 import {leerRazonesSociales} from '@/lib/compras/razonesSociales';
 import {TablaFacturasPago} from './TablaFacturasPago';
 import {SubtotalesRazon} from './SubtotalesRazon';
+import {enlaceRazon} from '@/lib/compras/agruparProveedor';
 import {subtotalesPorRazon} from '@/lib/compras/subtotalRazon';
+import {agruparPorProveedor} from '@/lib/compras/agruparProveedor';
 import {validarFiltroCorrida} from '@/lib/compras/corridaPagos';
 import Link from "next/link";
 import { Aviso } from "@/components/Aviso";
@@ -33,8 +35,10 @@ type Pago = { id: string; fecha: string; monto: number; forma: FormaPago; refere
 type Liga = { factura_id: string; ordenes_compra: { sucursal_id: string | null } | null };
 type Aplicacion = { pago_id: string; factura_id: string; monto: number; facturas: { sucursal_id: string | null; rfc_receptor: string | null } | null; pagos: { fecha: string; anulado_en: string | null; proveedor_id: string } };
 
-export default async function Pagos({ searchParams }: { searchParams: Promise<{ proveedor?: string; sucursal?: string; complemento?: string; ok?: string; error?: string;desde?:string;hasta?:string }> }) {
+export default async function Pagos({ searchParams }: { searchParams: Promise<{ proveedor?: string; sucursal?: string; empresa?: string; complemento?: string; ok?: string; error?: string;desde?:string;hasta?:string }> }) {
   const { proveedor = "", sucursal = "", complemento, ok, error,desde,hasta } = await searchParams;
+  // Razón social que paga (RFC receptor): se elige tocando su tarjeta.
+  const empresa = ((await searchParams).empresa ?? "").trim().toUpperCase();
   const { supabase, perfil } = await obtenerPerfil();
   const hoy = hoyCalendarioMX();
   const [facturasLeidas, pagos, ligas, { data: proveedores }, { data: sucursales }, { data: conComplemento }, aplicacionesMes] = await Promise.all([
@@ -77,11 +81,14 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   }
   const deSucursalId = (id: string, sucursalId: string | null, s: string) => (sucursalesDe.get(id) ?? new Set([sucursalId ?? "oficina"])).has(s);
   const deSucursal = (f: Factura, s: string) => deSucursalId(f.id, f.sucursal_id, s);
-  const visibles = facturas.filter((f) => Number(f.saldo) > 0
+  const deEmpresa = (rfc: string | null | undefined) => !empresa || (rfc ?? "").toUpperCase() === empresa;
+  // Sin el filtro de razón social, para que las tarjetas de razón social muestren todas las opciones.
+  const sinFiltroRazon = facturas.filter((f) => Number(f.saldo) > 0
     && (!proveedor || f.proveedor_id === proveedor)
     && (!sucursal || deSucursal(f, sucursal))
     && (complemento !== "si" || f.falta_complemento));
-  const sinComplemento = (conComplemento ?? []).filter((f) => (!proveedor || f.proveedor_id === proveedor) && (!sucursal || deSucursal(f, sucursal)));
+  const visibles = sinFiltroRazon.filter((f) => deEmpresa(f.rfc_receptor));
+  const sinComplemento = (conComplemento ?? []).filter((f) => (!proveedor || f.proveedor_id === proveedor) && (!sucursal || deSucursal(f, sucursal)) && deEmpresa(f.rfc_receptor));
 
   const razones=await leerRazonesSociales(supabase);
   const empresas=new Map(razones.map(e=>[e.rfc,e.razon_social]));
@@ -98,13 +105,14 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const empresaDe=(f:Factura)=>({empresa:empresas.get(f.rfc_receptor)??'Razón social por identificar',rfcReceptor:f.rfc_receptor});
   const r = resumenPagos(visibles, [], hoy);
   const aplicadas = aplicacionesMes.filter((a) => (!proveedor || a.pagos.proveedor_id === proveedor)
-    && (!sucursal || deSucursalId(a.factura_id, a.facturas?.sucursal_id ?? null, sucursal)));
+    && (!sucursal || deSucursalId(a.factura_id, a.facturas?.sucursal_id ?? null, sucursal))
+    && deEmpresa(a.facturas?.rfc_receptor));
   const pagado = pagadoDelMes(aplicadas.map((a) => ({ pago_id: a.pago_id, fecha: a.pagos.fecha, monto: Number(a.monto), anulado: !!a.pagos.anulado_en })), hoy);
   // Pagado por razón social: lo aplicado a facturas de cada empresa, sin pagos anulados.
   const pagadoPorRazon = subtotalesPorRazon(aplicadas.filter((a) => !a.pagos.anulado_en && a.pagos.fecha.slice(0, 7) === hoy.slice(0, 7)).map((a) => ({ monto: Number(a.monto), rfc: a.facturas?.rfc_receptor, empresa: empresas.get(a.facturas?.rfc_receptor ?? "") })));
   const porRazon = (fs: Factura[]) => subtotalesPorRazon(fs.map((f) => ({ monto: Number(f.saldo), rfc: f.rfc_receptor, empresa: empresas.get(f.rfc_receptor) })));
   const idsDelFiltro = new Set(aplicadas.map((a) => a.pago_id));
-  const pagosVisibles = proveedor || sucursal ? pagos.filter((p) => idsDelFiltro.has(p.id)) : pagos;
+  const pagosVisibles = proveedor || sucursal || empresa ? pagos.filter((p) => idsDelFiltro.has(p.id)) : pagos;
   const nombre = (f: Factura) => nombreFactura(f);
   const proveedorDe = (f: { proveedores: { razon_social: string; nombre_comercial: string | null } | null }) => f.proveedores?.nombre_comercial ?? f.proveedores?.razon_social ?? "";
   const porDia: Record<string, FacturaDelDia[]> = {};
@@ -124,33 +132,43 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
   const datosTabla=(fs:typeof visibles)=>fs.map(f=>({id:f.id,nombre:nombre(f),proveedor:proveedorDe(f),saldo:Number(f.saldo),uuid:f.uuid??f.uuid_manual,uuidManual:!f.uuid&&!!f.uuid_manual,fechaPago:fechaDePago(f),formaPrevista:f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:undefined,...empresaDe(f),comprobantes:comprobantesDe(f),xml:!!f.xml_ruta,proveedorId:f.proveedor_id,sucursal:[...(sucursalesDe.get(f.id)??new Set([f.sucursal_id??'oficina']))].map(s=>s==='oficina'?'Oficina':nombreSucursal.get(s)??s).join(', ')}));
 
 
+  // Las tarjetas de razón social filtran toda la página y conservan los demás filtros.
+  const filtroRazon = { query: { proveedor, sucursal, complemento, desde: rango?.desde, hasta: rango?.hasta, empresa }, actual: empresa };
+  const nombreEmpresa = empresa ? empresas.get(empresa) ?? empresa : "";
+
+  // Facturas de un mismo proveedor juntas: encabezado con cuántas son y el total, y sus tarjetas de corrido.
   const Tarjetas = ({ lista }: { lista: Factura[] }) => (
     <>
-    <SubtotalesRazon grupos={porRazon(lista)} />
-    <div className="tarjetas">
-      {lista.map((f) => (
-        <article key={f.id} className="tarjeta factura-tarjeta" data-alerta={vencida(f, hoy) ? "si" : undefined}>
-          <div className="tarjeta-encabezado">
-            <div>
-              <h3>{proveedorDe(f)}</h3>
-              <p className="factura-tarjeta-folio"><Link href={`/compras/facturas/${f.id}`}>{nombre(f)}</Link></p>
-            </div>
-            <strong className="factura-tarjeta-monto">{pesos(f.saldo)}</strong>
-          </div>
-          <p className="factura-tarjeta-estados">
+    <SubtotalesRazon grupos={porRazon(lista)} filtro={filtroRazon} />
+    {agruparPorProveedor(lista, { clave: (f) => f.proveedor_id, nombre: proveedorDe, monto: (f) => Number(f.saldo), fecha: fechaDePago }).map((g) => (
+    <section key={g.clave} className="pagos-proveedor" aria-label={`Facturas de ${g.proveedor}`}>
+      <header className="pagos-proveedor-encabezado">
+        <h3>{g.proveedor}</h3>
+        <span>{g.facturas.length} {g.facturas.length === 1 ? "factura" : "facturas"}</span>
+        <strong>{pesos(g.total)}</strong>
+        {edita && g.facturas.length > 1 && <Link className="boton boton-secundario boton-compacto" href={`/compras/pagos/nuevo?proveedor=${g.clave}`}>Pagar las {g.facturas.length}</Link>}
+      </header>
+    {/* Un renglón por factura: el proveedor ya está en el encabezado del grupo. */}
+    <ul className="pagos-renglones">
+      {g.facturas.map((f) => (
+        <li key={f.id} className="pagos-renglon" data-alerta={vencida(f, hoy) ? "si" : undefined}>
+          <Link className="pagos-renglon-folio" href={`/compras/facturas/${f.id}`}>{nombre(f)}</Link>
+          <span className="pagos-renglon-fechas">
+            Vence {fechaTexto(f.vence_el)}
+            {f.pago_programado_el && <> · programada {fechaTexto(f.pago_programado_el)} · {f.pago_programado_forma ? NOMBRE_FORMA_PAGO[f.pago_programado_forma] : "forma por definir"}</>}
+          </span>
+          <span className="pagos-renglon-estados">
             {vencida(f, hoy) && <span className="insignia" data-tono="peligro">Vencida</span>}
             {f.estado === "parcial" && <span className="insignia" data-tono="info">Abonada</span>}
-            {f.pago_programado_el && <span className="insignia" data-tono="exito">Programada</span>}
             {f.falta_complemento && <span className="insignia" data-tono="aviso">Falta complemento</span>}
-          </p>
-          <dl className="tarjeta-datos">
-            <dt>Vence</dt><dd>{fechaTexto(f.vence_el)}{vencida(f, hoy) ? " · vencida" : ""}</dd>
-            {f.pago_programado_el && <><dt>Programada</dt><dd>{fechaTexto(f.pago_programado_el)} · {f.pago_programado_forma?NOMBRE_FORMA_PAGO[f.pago_programado_forma]:"Forma por definir"}</dd></>}
-          </dl>
-          {edita && Number(f.saldo) > 0 && <Link className="boton boton-secundario" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}
-        </article>
+          </span>
+          <strong className="pagos-renglon-monto">{pesos(f.saldo)}</strong>
+          <span className="pagos-renglon-accion">{edita && Number(f.saldo) > 0 && <Link className="boton boton-secundario boton-compacto" href={`/compras/pagos/nuevo?proveedor=${f.proveedor_id}&factura=${f.id}`}>Registrar pago</Link>}</span>
+        </li>
       ))}
-    </div>
+    </ul>
+    </section>
+    ))}
     </>
   );
 
@@ -181,15 +199,24 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
         </a>
       </section></div>
       <Aviso ok={ok} error={error??((desde||hasta)&&!rangoValido?'El rango de fechas no es válido. Se muestran los pagos de hoy.':undefined)} />
-      <section className="seccion pagos-hoy" aria-labelledby="pagos-hoy-titulo"><div className="pagos-hoy-resumen"><div><h2 id="pagos-hoy-titulo">Por pagar hoy</h2><p>{fechaTexto(hoy)} · {deHoy.length} {deHoy.length===1?'factura':'facturas'} · con los filtros de proveedor y sucursal</p></div><strong className="pagos-hoy-monto">{pesos(suma(deHoy))}</strong></div><ConInfo titulo="Por pagar hoy" etiqueta="Cómo leer esto">Saldo pendiente de las facturas programadas o sugeridas para hoy. Los abonos ya están descontados. Tipo de pago indica la forma prevista, no un pago realizado.</ConInfo>
-      {deHoy.length?<TablaFacturasPago filas={datosTabla(deHoy)} edita={edita}/>:<p className="vacio">No hay facturas pendientes programadas o sugeridas para hoy con estos filtros.</p>}</section>
-      {rango&&<section className="seccion" aria-labelledby="pagos-rango-titulo"><h2 id="pagos-rango-titulo">Rango de Tesorería: {fechaTexto(rango.desde)} al {fechaTexto(rango.hasta)}</h2><p><strong>{pesos(suma(delRango))}</strong> · {delRango.length} facturas pendientes actualmente. Los saldos pueden haber cambiado desde que se exportó el Excel.</p>{delRango.length?<TablaFacturasPago filas={datosTabla(delRango)} edita={edita}/>:<p>Sin saldo pendiente para este rango.</p>}</section>}
+      <section className="seccion pagos-razones" aria-labelledby="pagos-razones-titulo">
+        <div className="pagos-razones-cabecera">
+          <h2 id="pagos-razones-titulo">Pagar desde</h2>
+          {empresa ? <p>Solo lo que se paga desde <strong>{nombreEmpresa}</strong> · <Link href={enlaceRazon(filtroRazon.query, null, empresa)} scroll={false}>Ver todas las razones sociales</Link></p>
+            : <p>Toca una razón social para ver solo lo que se paga desde ella.</p>}
+        </div>
+        <SubtotalesRazon grupos={porRazon(sinFiltroRazon)} filtro={filtroRazon} />
+      </section>
+      <section className="seccion pagos-hoy" aria-labelledby="pagos-hoy-titulo"><div className="pagos-hoy-resumen"><div><h2 id="pagos-hoy-titulo">Por pagar hoy</h2><p>{fechaTexto(hoy)} · {deHoy.length} {deHoy.length===1?'factura':'facturas'} · con los filtros de proveedor, sucursal y razón social</p></div><strong className="pagos-hoy-monto">{pesos(suma(deHoy))}</strong></div><ConInfo titulo="Por pagar hoy" etiqueta="Cómo leer esto">Saldo pendiente de las facturas programadas o sugeridas para hoy. Los abonos ya están descontados. Tipo de pago indica la forma prevista, no un pago realizado.</ConInfo>
+      {deHoy.length?<TablaFacturasPago filas={datosTabla(deHoy)} edita={edita} filtroRazon={filtroRazon}/>:<p className="vacio">No hay facturas pendientes programadas o sugeridas para hoy con estos filtros.</p>}</section>
+      {rango&&<section className="seccion" aria-labelledby="pagos-rango-titulo"><h2 id="pagos-rango-titulo">Rango de Tesorería: {fechaTexto(rango.desde)} al {fechaTexto(rango.hasta)}</h2><p><strong>{pesos(suma(delRango))}</strong> · {delRango.length} facturas pendientes actualmente. Los saldos pueden haber cambiado desde que se exportó el Excel.</p>{delRango.length?<TablaFacturasPago filas={datosTabla(delRango)} edita={edita} filtroRazon={filtroRazon}/>:<p>Sin saldo pendiente para este rango.</p>}</section>}
 
 
 
 
       <form className="barra-filtros pagos-filtros" role="search">
         {rango&&<><input type="hidden" name="desde" value={rango.desde}/><input type="hidden" name="hasta" value={rango.hasta}/></>}
+        {empresa&&<input type="hidden" name="empresa" value={empresa}/>}
 
         <div className="barra-filtros">
           <div className="campo">
@@ -214,7 +241,7 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
 
       {(avisosFijos.vencidosSinFactura > 0 || avisosFijos.serviciosSinComprobar > 0) && <p className="aviso aviso-error">
         <Link href="/compras/pagos/compromisos">{[avisosFijos.vencidosSinFactura ? `${avisosFijos.vencidosSinFactura} pagos fijos vencidos sin factura` : "", avisosFijos.serviciosSinComprobar ? `${avisosFijos.serviciosSinComprobar} servicios sin comprobar` : ""].filter(Boolean).join(" · ")}</Link></p>}
-      <CalendarioPagos key={`${desde??''}:${hasta??''}:${proveedor}:${sucursal}:${complemento??''}`} hoy={hoy} porDia={porDia} previstos={previstos} filtros={{proveedor,sucursal,complemento}} rangoInicial={rango} />
+      <CalendarioPagos key={`${desde??''}:${hasta??''}:${proveedor}:${sucursal}:${empresa}:${complemento??''}`} hoy={hoy} porDia={porDia} previstos={previstos} filtros={{proveedor,sucursal,empresa,complemento}} rangoInicial={rango} filtroRazon={filtroRazon} />
 
       {complemento === "si" && sinComplemento.length > 0 && (
         <Plegable id="t-sin-complemento" titulo="Falta complemento de pago" resumen={`${sinComplemento.length} facturas`} alerta>
@@ -229,18 +256,18 @@ export default async function Pagos({ searchParams }: { searchParams: Promise<{ 
 
       <Plegable id="t-pagos" titulo="Pagos de este mes" resumen={pesos(pagado.monto)}>
         {!pagosVisibles.length && <p className="vacio">Aún no hay pagos este mes.</p>}
-        <SubtotalesRazon grupos={pagadoPorRazon} unidad={["factura pagada", "facturas pagadas"]} />
-        <div className="tarjetas">
+        <SubtotalesRazon grupos={pagadoPorRazon} unidad={["factura pagada", "facturas pagadas"]} filtro={filtroRazon} />
+        <ul className="pagos-renglones">
           {pagosVisibles.map((p) => (
-            <article key={p.id} className="tarjeta" data-alerta={p.anulado_en ? "si" : undefined}>
-              <div className="tarjeta-encabezado"><div>
-                <h3><Link href={`/compras/pagos/${p.id}`}>{pesos(p.monto)}</Link> · {proveedorDe(p)}</h3>
-                <p className="tarjeta-estado">{fechaTexto(p.fecha)} <span className="insignia">{NOMBRE_FORMA_PAGO[p.forma]}</span>{p.anulado_en && <span className="insignia" data-tono="peligro">Anulado</span>}</p>
-              </div></div>
-              {p.referencia && <dl className="tarjeta-datos"><dt>Referencia</dt><dd>{p.referencia}</dd></dl>}
-            </article>
+            <li key={p.id} className="pagos-renglon pagos-renglon-pago" data-alerta={p.anulado_en ? "si" : undefined}>
+              <span className="pagos-renglon-folio">{proveedorDe(p)}</span>
+              <span className="pagos-renglon-fechas">{fechaTexto(p.fecha)}{p.referencia && <> · ref. {p.referencia}</>}</span>
+              <span className="pagos-renglon-estados"><span className="insignia">{NOMBRE_FORMA_PAGO[p.forma]}</span>{p.anulado_en && <span className="insignia" data-tono="peligro">Anulado</span>}</span>
+              <strong className="pagos-renglon-monto"><Link href={`/compras/pagos/${p.id}`}>{pesos(p.monto)}</Link></strong>
+              <span className="pagos-renglon-accion" />
+            </li>
           ))}
-        </div>
+        </ul>
       </Plegable>
 
       {edita && (

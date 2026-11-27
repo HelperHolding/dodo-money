@@ -70,27 +70,30 @@ const grupos = (rol: R) => menuLateral(rol).grupos.map((g) => g.titulo);
 const grupo = (rol: R, titulo: string) => menuLateral(rol).grupos.find((g) => g.titulo === titulo)?.enlaces.map((e) => e.href);
 
 test("menú lateral: cada puesto ve solo sus áreas", () => {
-  assert.deepEqual(grupos("operacion"), ["Inicio", "Tareas", "Operación diaria", "Conocimiento"]);
-  assert.deepEqual(grupos("encargado"), ["Inicio", "Tareas", "Operación diaria", "Conocimiento"]);
-  assert.deepEqual(grupos("gerente"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Conocimiento"]);
-  assert.deepEqual(grupos("admin"), ["Inicio", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "CAPEX", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Usuarios y sucursales", "Correos", "Conocimiento"]);
-  assert.deepEqual(grupos("corporativo"), ["Vista general", "Tareas", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "CAPEX", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Correos", "Conocimiento"]);
+  assert.deepEqual(grupos("operacion"), ["Inicio", "Tareas", "Ayuda", "Operación diaria", "Conocimiento"]);
+  assert.deepEqual(grupos("encargado"), ["Inicio", "Tareas", "Ayuda", "Operación diaria", "Conocimiento"]);
+  assert.deepEqual(grupos("gerente"), ["Inicio", "Tareas", "Ayuda", "Ventas", "Operación diaria", "Efectivo", "Conocimiento"]);
+  assert.deepEqual(grupos("admin"), ["Inicio", "Tareas", "Ayuda", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "CAPEX", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Usuarios y sucursales", "Correos", "Conocimiento"]);
+  assert.deepEqual(grupos("corporativo"), ["Vista general", "Tareas", "Ayuda", "Ventas", "Operación diaria", "Efectivo", "Compras", "Inventario", "Mantenimiento", "P&L", "Banca", "CAPEX", "Nómina", "Catálogos", "Aperturas", "Cumplimiento", "Correos", "Conocimiento"]);
   assert.deepEqual(grupo("corporativo", "Inventario"), ["/inventario", "/inventario/uniformes"]);
   assert.deepEqual(grupo("operacion", "Tareas"), ["/tareas"]);
   assert.deepEqual(grupo("encargado", "Tareas"), ["/tareas", "/tareas/tablero"]);
   assert.deepEqual(grupo("admin", "Aperturas"), ["/aperturas"]);
   assert.deepEqual(grupo("admin", "Usuarios y sucursales"), ["/administracion/usuarios"]);
   assert.equal(grupo("corporativo", "Usuarios y sucursales"), undefined);
+  assert.deepEqual(grupo("operacion", "Ayuda"), ["/soporte", "/soporte/nuevo"]);
+  assert.deepEqual(grupo("admin", "Ayuda"), ["/soporte", "/soporte/nuevo", "/soporte/ajustes"]);
+  assert.deepEqual(grupo("marketing", "Ayuda"), ["/soporte", "/soporte/nuevo"]);
 });
 
-// Foto tomada de main (6258adf) antes de reorganizar: cada puesto debe seguir viendo exactamente estas páginas.
+// Foto tomada de main (6258adf) antes de reorganizar, más el Help Desk (2026-11-23): cada puesto debe ver exactamente estas páginas.
 const FOTO: Record<R, string[]> = {
-  operacion: ["/","/arqueo","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/tareas"],
-  encargado: ["/","/arqueo","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/recepciones","/tareas","/tareas/tablero","/turnos"],
-  gerente: ["/","/arqueo","/asistente","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/recepciones","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/rappi"],
-  admin: ["/","/activos","/administracion/usuarios","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/cargar","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/correos/contactos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/capex","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/bi","/ventas/conciliacion","/ventas/costos","/ventas/dodois","/ventas/importar","/ventas/rappi"],
-  corporativo: ["/","/activos","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/capex","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/bi","/ventas/conciliacion","/ventas/costos","/ventas/rappi"],
-  marketing: ["/correos","/correos/contactos"],
+  operacion: ["/","/arqueo","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/soporte","/soporte/nuevo","/tareas"],
+  encargado: ["/","/arqueo","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/recepciones","/soporte","/soporte/nuevo","/tareas","/tareas/tablero","/turnos"],
+  gerente: ["/","/arqueo","/asistente","/caja-chica","/checklists","/cierre","/conocimiento","/movimientos","/recepciones","/recolecciones","/soporte","/soporte/nuevo","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/conciliacion","/ventas/rappi"],
+  admin: ["/","/activos","/administracion/usuarios","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/cargar","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/correos/contactos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/capex","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/finanzas/transito","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/soporte","/soporte/ajustes","/soporte/nuevo","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/bi","/ventas/conciliacion","/ventas/costos","/ventas/dodois","/ventas/importar","/ventas/rappi"],
+  corporativo: ["/","/activos","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/capex","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/finanzas/transito","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/soporte","/soporte/nuevo","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/bi","/ventas/conciliacion","/ventas/costos","/ventas/rappi"],
+  marketing: ["/correos","/correos/contactos","/soporte","/soporte/nuevo"],
 };
 test("menú por áreas: cada puesto ve exactamente las mismas páginas que antes", () => {
   for (const rol of Object.keys(FOTO) as R[]) {
@@ -217,7 +220,7 @@ test("finanzas: admin y corporativo ven; solo admin edita; grupo Finanzas", () =
   for (const rol of ["operacion", "encargado", "gerente"] as const) assert.equal(puedeVerFinanzas(rol), false);
   assert.equal(puedeEditarFinanzas("admin"), true);
   assert.equal(puedeEditarFinanzas("corporativo"), false);
-  assert.deepEqual(grupo("admin", "P&L"), ["/finanzas", "/finanzas/flujo", "/finanzas/mermas", "/finanzas/parametros"]);
+  assert.deepEqual(grupo("admin", "P&L"), ["/finanzas", "/finanzas/flujo", "/finanzas/mermas", "/finanzas/transito", "/finanzas/parametros"]);
   assert.deepEqual(grupo("admin", "Banca"), ["/banca"]);
   assert.deepEqual(grupo("admin", "Nómina"), ["/finanzas/nomina", "/finanzas/personal", "/finanzas/retenciones"]);
   assert.deepEqual(grupo("admin", "CAPEX"), ["/finanzas/capex"]);
@@ -251,14 +254,14 @@ test("accesos rápidos del celular: 3 por puesto y todos están en su menú", ()
   assert.deepEqual(accesosRapidos("admin").map((a) => a.href), ["/corporativo", "/ventas", "/compras/documentos"]);
 });
 
-test("marketing: solo la sección Correos; corporativo consulta", () => {
+test("marketing: solo Ayuda y Correos; corporativo consulta", () => {
   assert.equal(NOMBRE_ROL.marketing, "Marketing");
   for (const rol of ["marketing", "admin"] as const) { assert.equal(puedeVerCorreos(rol), true); assert.equal(puedeEditarCorreos(rol), true); }
   assert.equal(puedeVerCorreos("corporativo"), true); assert.equal(puedeEditarCorreos("corporativo"), false);
   for (const rol of ["gerente", "encargado", "operacion"] as const) assert.equal(puedeVerCorreos(rol), false);
   const menu = menuLateral("marketing");
   assert.deepEqual(menu.inicio, { href: "/correos", texto: "Campañas" });
-  assert.deepEqual(menu.grupos.map((g) => g.titulo), ["Correos"]);
+  assert.deepEqual(menu.grupos.map((g) => g.titulo), ["Ayuda", "Correos"]);
   assert.deepEqual(menuLateral("admin").grupos.find((g) => g.titulo === "Correos")?.enlaces.map((e) => e.href), ["/correos", "/correos/contactos"]);
   assert.deepEqual(menuLateral("corporativo").grupos.find((g) => g.titulo === "Correos")?.enlaces.map((e) => e.href), ["/correos"]);
   assert.deepEqual(accesosRapidos("marketing").map((e) => e.href), ["/correos", "/correos/contactos", "/correos/nueva"]);

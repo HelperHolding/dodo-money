@@ -10,6 +10,7 @@ import {resumenProductos} from './productos';
 import {filtrosBI,parametrosBI,periodoBI,resumenBI,type SalidaBI} from './bi';
 import {hoyMX} from '@/lib/formato';
 import {resumenTiempos} from './tiempos';
+import {ejecutarCompras} from './comprasDatos';
 
 type PedidoTiempo=Pedido&{sucursal_id:string};
 
@@ -25,6 +26,7 @@ export async function ejecutarHerramienta(supabase:SupabaseClient,rol:string,a:A
   const {data,error}=await supabase.from('sucursales').select('id').eq('id',sucursal).maybeSingle();
   if(error||!data)throw Error('Sucursal no disponible. Usa la herramienta sucursales para ver los id válidos.');
  }
+ if(a.herramienta==='por_pagar'||a.herramienta==='pagos'||a.herramienta==='compras'||a.herramienta==='ordenes')return absolutizar(await ejecutarCompras(supabase,a),origen);
  const fuentes:FuenteIA[]=[],c=consultasIA(supabase,sucursal,rol,fuentes);
  const conFuentes=(r:object)=>absolutizar({...r,fuentes},origen);
  switch(a.herramienta){

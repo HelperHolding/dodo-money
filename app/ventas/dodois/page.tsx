@@ -86,10 +86,10 @@ export default async function PaginaDodoIS({ searchParams }: { searchParams: Pro
           <ul className="lista-filas" style={{ "--columnas": 3 } as React.CSSProperties}>
             {(registros ?? []).map((r) => (
               <li key={r.id} className="fila" data-alerta={r.estado === "error" ? "si" : undefined}>
-                <div className="fila-nombre"><strong>{r.tipo === "recepciones" ? "Recepciones" : "Ventas"} · {r.sucursales?.nombre ?? "—"} · {r.fecha ? fechaTexto(r.fecha) : "—"}</strong><small>{ORIGEN[r.origen] ?? r.origen} · {fechaTexto(fechaMX(r.inicio))} {hora(r.inicio)}</small></div>
+                <div className="fila-nombre"><strong>{r.tipo === "recepciones" ? "Recepciones" : r.tipo === "mermas" ? "Mermas" : "Ventas"} · {r.sucursales?.nombre ?? "—"} · {r.fecha ? fechaTexto(r.fecha) : "—"}</strong><small>{ORIGEN[r.origen] ?? r.origen} · {fechaTexto(fechaMX(r.inicio))} {hora(r.inicio)}</small></div>
                 <div className="fila-datos">
                   <span>{r.estado === "ok" ? "Al día" : r.estado === "omitido" ? "Sin cambios" : "Error"}</span>
-                  <span>{r.pedidos ?? 0} {r.tipo === "recepciones" ? "renglones" : "pedidos"} · {pesos(Number(r.total ?? 0))}</span>
+                  <span>{r.pedidos ?? 0} {r.tipo === "ventas" ? "pedidos" : "renglones"} · {pesos(Number(r.total ?? 0))}</span>
                   <span>{r.mensaje ?? ""}</span>
                 </div>
               </li>

@@ -9,10 +9,9 @@ import { TablaAsesores } from "./TablaAsesores";
 import { TablaComparativo } from "./TablaComparativo";
 import TablaCuentas from "./TablaCuentas";
 import { cuentasPL } from "./cuentasDatos";
-import { TablaPL } from "./TablaPL";
 import { ListaAjustes } from "./ListaAjustes";
 import AdvertenciasPL from "./AdvertenciasPL";
-import { ResumenPL } from "./ResumenPL";
+import { IndicadoresAkton, LecturaAkton, TablaAkton, repartirAvisos } from "./PLAkton";
 import { EncabezadoPagina } from "@/components/EncabezadoPagina";
 import { EstadoVacio } from "@/components/EstadoVacio";
 import { Icono } from "@/components/Icono";
@@ -153,14 +152,20 @@ export default async function PaginaPL({ searchParams }: { searchParams: Promise
           : <TablaComparativo columnas={comp.columnas} total={comp.total} />
       ) : meta && p.vacio ? (
         <EstadoVacio icono="calendario" titulo={p.tipo === "semana" ? "La semana apenas empieza" : "El mes apenas empieza"} descripcion="Todavía no hay días cerrados. Elige un periodo anterior para ver resultados." />
-      ) : meta && (
-        <>
-          <ResumenPL filas={meta.filas} />
-          <AdvertenciasPL avisos={meta.avisos} />
-          <TablaPL r={meta} columnas={meta.columnas} ajustado={meta.ajustado?.filas ?? null} captura={captura} />
-          {meta.ajustado && <ListaAjustes lista={meta.ajustado.lista} conSucursal={!meta.suc} anular={anular} />}
-        </>
-      )}
+      ) : meta && (() => {
+        const avisos = repartirAvisos(meta.avisos);
+        const dias = Math.round((Date.parse(p.hasta) - Date.parse(p.desde)) / 864e5) + 1;
+        return (
+          <div className="akton">
+            <IndicadoresAkton entrada={meta.entrada} filas={meta.filas} dias={dias} />
+            <LecturaAkton filas={meta.filas} />
+            <AdvertenciasPL avisos={avisos.generales} />
+            <TablaAkton r={meta} ajustado={meta.ajustado?.filas ?? null} ajustes={meta.ajustado?.lista ?? []}
+              avisos={avisos} conSucursal={!meta.suc} captura={captura} />
+            {meta.ajustado && <ListaAjustes lista={meta.ajustado.lista} conSucursal={!meta.suc} anular={anular} />}
+          </div>
+        );
+      })()}
     </div>
   );
 }

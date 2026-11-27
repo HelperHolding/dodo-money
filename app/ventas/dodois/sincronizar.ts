@@ -1,12 +1,14 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ErrorDodo, recepcionesDe, tiemposDelDia, tokenDeAcceso, ventasDelDia } from "@/lib/dodois/cliente";
+import { ventanaMermas } from "@/lib/dodois/mermas";
 import { DIAS_RECEPCIONES, traducirRecepciones, ventanaRecepciones } from "@/lib/dodois/recepciones";
+import { sincronizarMermas } from "@/app/finanzas/mermas/sincronizar";
 import { fechaASincronizar, tiemposDePedidos, traducirVentas, ventanaDelDia, type OrigenSincronizacion } from "@/lib/dodois/ventas";
 import { tamanoPorNombre } from "@/lib/ventas/calculos";
 import { ivaDe, resumirDias } from "@/lib/ventas/pedidos";
 
-export type ResultadoDia = { tipo: "ventas" | "recepciones"; sucursal: string; fecha: string; estado: "ok" | "omitido" | "error"; pedidos: number; total: number; mensaje: string };
+export type ResultadoDia = { tipo: "ventas" | "recepciones" | "mermas"; sucursal: string; fecha: string; estado: "ok" | "omitido" | "error"; pedidos: number; total: number; mensaje: string };
 const centavos = (n: number) => Math.round(n * 100) / 100;
 
 async function registrar(admin: SupabaseClient, origen: OrigenSincronizacion, sucursalId: string | null, r: ResultadoDia, desconocidos: string[], inicio: string) {
@@ -99,6 +101,17 @@ export async function sincronizarVentas(admin: SupabaseClient, origen: OrigenSin
       }
       resultados.push(r);
       await registrar(admin, origen, s.id, r, [], inicio);
+    }
+  }
+  // Mermas: una vez en la noche (o a mano) se reemplazan los últimos 3 días con lo que trae la API.
+  if (!opciones.simular && (origen === "noche" || origen === "manual")) {
+    const v = ventanaMermas(fechaASincronizar("manual", inicio))!;
+    const mermas = await sincronizarMermas(admin, token, sucursales ?? [], v,
+      async (dias, filas) => await admin.rpc("importar_mermas_dodo_api", { p_dias: dias, p_filas: filas }));
+    for (const m of mermas) {
+      const r: ResultadoDia = { tipo: "mermas", sucursal: m.sucursal, fecha: m.hasta, estado: m.estado, pedidos: m.filas, total: m.costo, mensaje: m.mensaje };
+      resultados.push(r);
+      await registrar(admin, origen, m.sucursal_id, r, [], inicio);
     }
   }
   if (!opciones.simular) await admin.from("dodois_sincronizaciones").delete().lt("inicio", new Date(Date.now() - 60 * 86_400_000).toISOString());

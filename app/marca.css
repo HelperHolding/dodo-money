@@ -11,12 +11,17 @@
   --display: var(--fuente-archivo, "Archivo"), var(--fuente);
   --dodo-naranja: #ff4e00;
   --fondo-pagina: var(--papel-2);   /* contenido sobre beige; las tarjetas van blancas encima */
+  /* Menú lateral con tema (estilo Google Calendar): claro de día */
+  --menu-fondo: var(--papel-2); --menu-texto: var(--tinta); --menu-texto-2: var(--tinta-2); --menu-linea: var(--linea);
+  --menu-hover: rgb(0 0 0 / .05); --menu-activo-fondo: var(--accion-tinte); --menu-activo-texto: var(--accion-oscuro);
 }
 
 /* ─── Noche: fondos sólidos casi negros, texto beige, naranja en acciones. Solo con el marco o el acceso:
    las vistas de impresión siguen en blanco. --blanco no se toca: es el texto del menú negro y de los totales del P&L. ─── */
 html[data-luz="noche"]:has(.marco, .login) {
   color-scheme: dark;
+  --menu-fondo: #121212; --menu-texto: var(--tinta); --menu-texto-2: var(--tinta-2); --menu-linea: var(--linea);
+  --menu-hover: rgb(255 255 255 / .06); --menu-activo-fondo: var(--accion-tinte); --menu-activo-texto: var(--accion-oscuro);
   --papel: #121212;
   --tinta: #f9f1e6; --tinta-2: #d4cdc6; --tinta-3: #b8b0a8;
   --linea: #2e2e2e; --linea-fuerte: #4a4a4a;
@@ -58,9 +63,9 @@ html[data-luz="noche"]:has(.marco) .tabla-pl { --pl-barra: #5a4636; }
 /* ─── Marco ─── */
 /* El panel del menú se estira con la página (el menú en sí sigue fijo a la vista); filete naranja de marca */
 @media (min-width: 901px) {
-  .marco { background: linear-gradient(90deg, #000 0 260px, var(--accion) 260px 264px, transparent 264px); }
+  .marco { background: linear-gradient(90deg, var(--menu-fondo) 0 263px, var(--menu-linea) 263px 264px, transparent 264px); }
 }
-.lateral, .franja-movil { background: #000; }
+.lateral, .franja-movil { background: var(--menu-fondo); color: var(--menu-texto); }
 .marco-contenido { min-height: 100vh; background: var(--fondo-pagina); overflow-x: clip; }
 
 /* Interruptor sol / luna */
@@ -250,7 +255,6 @@ html[data-luz="noche"]:has(.marco) .esqueleto { background-color: #242424; }
    Las rejillas se acomodan por el ancho del contenido (consultas de contenedor), no de la ventana: el menú lateral
    ya ocupa 264 px. Colores de las barras de reparto validados con la skill dataviz (día sobre blanco, noche sobre
    carbón): naranja, azul, verde agua y violeta; el color sigue al concepto y la leyenda escribe nombre, importe y %. */
-.pagina:has(> .tablero-graficas) { max-width: 1280px; }
 
 /* Resumen del periodo: venta, pedidos y ticket junto a los canales; cada cifra en su tarjeta,
    las cinco del mismo ancho y alto en un solo renglón */
@@ -619,17 +623,7 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-lg); color: inherit; text-decoration: none;
   transition: border-color var(--dur-rapida) var(--curva); }
 .ap-tarjeta:hover, .ap-tarjeta:focus-visible { border-color: var(--accion); }
-.ap-tarjeta-nombre { font-family: var(--display); font-weight: 800; font-size: 1.35rem; line-height: 1.1; overflow-wrap: anywhere; }
 .ap-tarjeta-dato { color: var(--tinta-2); font-size: var(--t-sm); }
-.ap-tarjeta-avance { display: grid; gap: 6px; width: 100%; margin-top: 4px; }
-.ap-tarjeta-barra { display: flex; align-items: center; gap: 12px; }
-.ap-tarjeta-barra progress { flex: 1; }
-.ap-tarjeta-porcentaje { font-family: var(--display); font-weight: 800; font-size: 1.25rem; line-height: 1; font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
-.ap-tarjeta-avance small { color: var(--tinta-2); font-variant-numeric: tabular-nums; }
-.ap-tarjeta progress { width: 100%; height: 6px; border: 0; border-radius: var(--r-full); overflow: hidden; background: var(--papel-2); appearance: none; }
-.ap-tarjeta progress::-webkit-progress-bar { background: var(--papel-2); border-radius: var(--r-full); }
-.ap-tarjeta progress::-webkit-progress-value { background: var(--accion); border-radius: var(--r-full); }
-.ap-tarjeta progress::-moz-progress-bar { background: var(--accion); border-radius: var(--r-full); }
 
 /* ─── Estado con tono (p. ej. campañas y envíos de Correos): fondo y texto de los tokens de estado, legibles de día y de noche ─── */
 .estado[data-tono="ok"] { background: var(--cuadra-fondo); color: var(--cuadra-texto); }
@@ -777,3 +771,45 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
   .pestanas-area { display: none; }
   :is(.seccion, .tarjeta, .indicador, .saldo) { box-shadow: none; background: #fff; }
 }
+
+/* ─── Menú lateral con tema (estilo Google Calendar): claro de día, oscuro de noche; activo como píldora tenue ─── */
+.lateral { border-right: 1px solid var(--menu-linea); }
+.lateral-cabecera, .lateral-luz { border-color: var(--menu-linea); }
+.lateral-pie { border-top-color: var(--menu-linea); }
+.lateral-detalle, .lateral-usuario span { color: var(--menu-texto-2); opacity: 1; }
+.lateral .lateral-seccion-titulo { color: var(--menu-texto-2); }
+.lateral .lateral-enlace { color: var(--menu-texto); border-left: 0; }
+.lateral .lateral-enlace .icono { color: var(--menu-texto-2); }
+.lateral .lateral-enlace:hover { background: var(--menu-hover); color: var(--menu-texto); }
+.lateral .lateral-area[aria-current="page"] { background: var(--menu-activo-fondo); color: var(--menu-activo-texto); font-weight: 700; box-shadow: none; border-radius: 0 999px 999px 0; margin-left: -8px; padding-left: 20px; }
+.lateral .lateral-area[aria-current="page"] .icono { color: var(--menu-activo-texto); }
+.lateral-acciones a { color: var(--menu-texto); }
+.lateral-acciones button { color: var(--menu-texto); border-color: var(--menu-linea); }
+.lateral-acciones button:hover { background: var(--menu-hover); }
+.lateral .buscador-boton { background: var(--superficie); color: var(--menu-texto-2); border-color: var(--menu-linea); }
+.lateral .buscador-boton:hover { color: var(--menu-texto); border-color: var(--linea-fuerte); }
+.lateral .buscador-boton kbd { border-color: var(--menu-linea); color: var(--menu-texto-2); }
+.interruptor-luz { background: var(--superficie); border-color: var(--menu-linea); color: var(--menu-texto-2); }
+.interruptor-luz-riel { background: var(--tinta-3); }
+@media (max-width: 900px) {
+  .franja-movil { color: var(--menu-texto); border-bottom: 1px solid var(--menu-linea); }
+  .franja-movil-boton, .lateral-cerrar { color: var(--menu-texto); }
+}
+
+/* ─── Menú plegable (computadora): ☰ lo oculta y el contenido usa todo el ancho ─── */
+.lateral-plegar, .marco-mostrar-menu {
+  display: none; align-items: center; justify-content: center; width: 40px; height: 40px; flex: none;
+  border: 0; border-radius: 50%; background: transparent; color: var(--menu-texto-2); cursor: pointer;
+}
+.lateral-plegar:hover, .marco-mostrar-menu:hover { background: var(--menu-hover); color: var(--menu-texto); }
+@media (min-width: 901px) {
+  .lateral-plegar { display: inline-flex; margin: -2px 0 0 -6px; }
+  .marco { transition: grid-template-columns 200ms ease; }
+  html[data-menu="plegado"] .marco { grid-template-columns: 0 minmax(0, 1fr); background: none; }
+  html[data-menu="plegado"] .lateral { visibility: hidden; overflow: hidden; }
+  html[data-menu="plegado"] .marco-mostrar-menu { display: inline-flex; position: fixed; top: 12px; left: 12px; z-index: 25; background: var(--superficie); box-shadow: 0 0 0 1px var(--menu-linea); }
+  html[data-menu="plegado"] .marco-contenido { padding-top: 60px; }
+}
+@media print { .marco-mostrar-menu, .lateral-plegar { display: none !important; } html[data-menu="plegado"] .marco-contenido { padding-top: 0; } }
+/* El buscador (Ctrl K) vive dentro del menú: con el menú plegado u oculto tiene que verse igual. */
+.lateral .buscador { visibility: visible; }
