@@ -108,6 +108,7 @@ export function menuLateral(rol: Rol): Menu {
       { href: "/ventas", texto: "Tablero" },
       { href: "/ventas/rappi", texto: "Rappi" },
       { href: "/ventas/conciliacion", texto: "Conciliación" },
+      ...(finanzas ? [{ href: "/ventas/cierre-semanal", texto: "Cierre semanal" }] : []),
       ...(veVentasDeTodas(rol) ? [{ href: "/ventas/bi", texto: "BI" }] : []),
       ...(puedeImportarVentas(rol) ? [{ href: "/ventas/importar", texto: "Importar" }] : []),
       ...(puedeImportarVentas(rol) ? [{ href: "/ventas/dodois", texto: "Dodo IS" }] : []),
