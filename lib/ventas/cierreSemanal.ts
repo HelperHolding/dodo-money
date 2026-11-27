@@ -49,8 +49,9 @@ const hoyMexico = () => new Date().toLocaleDateString("en-CA", { timeZone: "Amer
  * `tarjeta_real` y `rappi_real` se capturan en el mismo arqueo y se toman igual, por turno.
  */
 function arqueoDeVenta(arqueos: ArqueoDia[], turno: ArqueoDia["turno"]): ArqueoDia | undefined {
-  // Matutino: el último traspaso, si no el cierre. Vespertino: el cierre, si no el último traspaso.
-  const orden: ArqueoDia["momento"][] = turno === "matutino" ? ["traspaso", "cierre"] : ["cierre", "traspaso"];
+  // En cualquier turno: el cierre (las ventas del turno son acumuladas hasta ese arqueo), si no el último traspaso.
+  // Un traspaso a media jornada es un cambio de persona dentro del mismo turno, no el fin de la venta.
+  const orden: ArqueoDia["momento"][] = ["cierre", "traspaso"];
   const delTurno = arqueos.filter((x) => x.turno === turno);
   for (const m of orden) {
     const candidatos = delTurno.filter((x) => x.momento === m);
