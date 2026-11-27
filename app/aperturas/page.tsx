@@ -50,7 +50,11 @@ export default async function Aperturas() {
      {sinAvance&&pasada?<strong className="ap-tarjeta-dias">Sin dato de avance</strong>
       :<strong className="ap-tarjeta-dias" data-tono={dias.tono}>{dias.valor}{t.dias.tipo==='faltan'&&<small> {t.dias.dias===1?'día':'días'}</small>}</strong>}
      <small className="ap-tarjeta-dato">{p.responsable} · {rango(p.objetivo_desde,p.objetivo_hasta)}</small>
-     {!sinAvance&&<span className="ap-tarjeta-linea">Avance {a.real===null?'—':`${a.real} %`} · {a.esperado===null||a.realConFecha===null?'esperado sin fechas':`con fecha ${a.realConFecha} % vs ${a.esperado} % esperado`}
+     {!sinAvance&&<div className="ap-avance" data-favorable={a.favorable??undefined}>
+      <div className="ap-avance-cabeza"><b className="ap-avance-pct">{a.real===null?'—':`${a.real} %`}</b><span>de avance</span></div>
+      <div className="ap-avance-pista" role="progressbar" aria-label="Avance de la apertura" aria-valuemin={0} aria-valuemax={100} aria-valuenow={a.real??undefined}><i style={{width:`${a.real??0}%`}}/></div>
+     </div>}
+     {!sinAvance&&<span className="ap-tarjeta-linea">{a.esperado===null||a.realConFecha===null?'esperado sin fechas':`con fecha ${a.realConFecha} % vs ${a.esperado} % esperado`}
       {a.variacion!==null&&<b className="akton-var" data-favorable={a.favorable??undefined}> {textoPts(a.variacion)}</b>}</span>}
      {(t.vencidas>0||t.bloqueadas>0)&&<p className="akton-nota">{[t.vencidas?plural(t.vencidas,'vencida','vencidas'):'',t.bloqueadas?plural(t.bloqueadas,'bloqueada','bloqueadas'):''].filter(Boolean).join(' · ')}</p>}
     </Link>;

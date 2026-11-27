@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {nombreEstado,MARCAS,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
 import {escalaGantt,ganttEtapas,type Escala} from '@/lib/aperturasGantt';
+import {avanceComparado} from '@/lib/aperturasAkton';
 import {fechaTexto} from '@/lib/formato';
 import {BotonEnviar} from '@/components/BotonEnviar';
 import {crearTarea} from '@/app/tareas/acciones';
@@ -54,6 +55,8 @@ export function Gantt({proyecto:p,items,hoy,pendientes={},personas=[],volverA=''
    {hoy>=escala.desde&&hoy<=escala.hasta&&<b className="ap-gantt-hoy-etiqueta" style={{left:`${escala.pos(hoy)}%`}}>Hoy</b>}</div></div>}
   {etapas.map((e,n)=>{
    const ancho=escala&&e.desde&&e.hasta?escala.ancho(e.desde,e.hasta):0,adentro=ancho>=14;
+   // Verde si la etapa va en tiempo contra lo esperado a hoy, naranja si va más de 5 pts abajo (mismo criterio que la portada).
+   const favorable=avanceComparado(e.tareas.map(t=>t.item),hoy).favorable;
    return <details key={e.clave} className="ap-gantt-etapa">
     <summary className="ap-gantt-fila">
      <div className="ap-gantt-nombre">
@@ -66,7 +69,7 @@ export function Gantt({proyecto:p,items,hoy,pendientes={},personas=[],volverA=''
      </div>
      <div className="ap-gantt-linea">
       {escala&&<Guias escala={escala} hoy={hoy} objetivo={p.objetivo_hasta}/>}
-      {escala&&e.desde&&e.hasta?<span className="ap-gantt-barra" style={{left:`${escala.pos(e.desde)}%`,width:`${ancho}%`}} title={`${e.nombre}: ${e.porcentaje??0} % · ${rango(e.desde,e.hasta)}`}>
+      {escala&&e.desde&&e.hasta?<span className="ap-gantt-barra" data-favorable={favorable??undefined} style={{left:`${escala.pos(e.desde)}%`,width:`${ancho}%`}} title={`${e.nombre}: ${e.porcentaje??0} % · ${rango(e.desde,e.hasta)}`}>
        <i style={{width:`${e.porcentaje??0}%`}}/>{adentro&&<span>{e.porcentaje??0} %</span>}
       </span>:<span className="ap-gantt-sin">Sin fechas</span>}
       {escala&&e.desde&&!adentro&&<span className="ap-gantt-fuera" style={{left:`calc(${escala.pos(e.desde)+ancho}% + 6px)`}}>{e.porcentaje??0} %</span>}
