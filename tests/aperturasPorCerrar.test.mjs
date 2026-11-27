@@ -35,6 +35,8 @@ test('por_cerrar: actividad y técnico lo aceptan sin evidencia y queda guardado
   for(const tipo of ['actividad','tecnico']){
    const x=await item(db,tipo);
    await rpc(db,x.id,x.revision,{estado:'por_cerrar'});
+   // Ejercita la versión previa a 20261127160000 (esta prueba no carga esa migración): ahí una clave ausente se vaciaba;
+   // desde 20261127160000 una clave ausente conserva su valor.
    const r=(await db.query(`select estado,evidencia,revision from apertura_items where id=$1`,[x.id])).rows[0];
    assert.deepEqual({estado:r.estado,evidencia:r.evidencia},{estado:'por_cerrar',evidencia:null});
    assert.equal(r.revision,x.revision+1);

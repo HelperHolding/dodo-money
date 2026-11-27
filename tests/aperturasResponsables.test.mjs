@@ -358,7 +358,7 @@ test('dividir: crea de 2 a 10 partes con origen_id y deja la original en no_apli
   await rechaza(dividir(ITEM_B,[parte(1),'texto']),/Datos de la parte/);
   assert.equal(await cuenta(),antes);assert.equal(await rev(db,ITEM_B),revAntes);assert.equal((await fila(db,ITEM_B)).estado,'por_cotizar');
   const claves=await dividir(ITEM_B,[parte(1,{responsable_id:A,descripcion:'Horno 1',inicio:'2026-12-01',fin:'2026-12-02'}),parte(2,{responsable_id:B})]);
-  assert.equal(claves.length,2);for(const c of claves)assert.match(c,/^MAN-[0-9a-f-]{36}$/);assert.notEqual(claves[0],claves[1]);
+  assert.deepEqual(claves,['E-001-1','E-001-2']);
   const nuevas=(await db.query(`select clave,nombre,descripcion,proyecto_id,tipo,etapa,categoria,origen_id,responsable,estado,precio,fuente from apertura_items where origen_id=$1 order by nombre`,[ITEM_B])).rows;
   assert.deepEqual(nuevas.map(n=>n.clave),claves);
   assert.deepEqual(nuevas.map(({clave,...n})=>n),[
@@ -370,8 +370,10 @@ test('dividir: crea de 2 a 10 partes con origen_id y deja la original en no_apli
   assert.deepEqual(h,[{a:'por_cotizar',n:'no_aplica'}]);
   assert.equal((await db.query(`select count(*)::int n from apertura_historial h join apertura_items i on i.id=h.item_id where i.origen_id=$1`,[ITEM_B])).rows[0].n,2);
   await rechaza(dividir(ITEM_B,[parte(1),parte(2)]),/ya no aplica/);
-  // Diez partes sí.
-  assert.equal((await dividir(ITEM_X,Array.from({length:10},(_,i)=>parte(i)))).length,10);
+  // Diez partes, saltando una clave que ya existe en la apertura.
+  await db.exec(`insert into apertura_items(proyecto_id,clave,tipo,etapa,nombre,fuente,original) values('${P1}','T-003-1','actividad','P2','Ya existía','t','{}')`);
+  assert.deepEqual(await dividir(ITEM_X,Array.from({length:10},(_,i)=>parte(i))),Array.from({length:10},(_,i)=>`T-003-${i+2}`));
+  assert.equal((await fila(db,ITEM_X)).evidencia,`Dividida en ${Array.from({length:10},(_,i)=>`T-003-${i+2}`).join(', ')}`);
   // La parte asignada a OPER le aparece; la original, no.
   assert.ok((await sesion(db,OPER,()=>ids(db,`select nombre from apertura_items`))).includes('Parte 1'));
  }finally{await db.close();}

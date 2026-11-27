@@ -268,11 +268,11 @@ grant execute on function public.agregar_bitacora_apertura(uuid,date,integer,tex
 
 -- <division>
 -- Divide un registro en 2 a 10 nuevos ({nombre, descripcion, responsable_id, inicio, fin}) con el mismo proyecto, tipo, etapa y
--- categoría, clave MAN-uuid y origen_id. La original queda no_aplica con «Dividida en …». Todo o nada. Solo administración.
+-- categoría, clave legible <clave original>-<n> (n = 1, 2, …, saltando las que ya existan en la apertura) y origen_id. La original queda no_aplica con «Dividida en …». Todo o nada. Solo administración.
 create function public.dividir_apertura_item(p_item uuid,p_partes jsonb) returns text[]
 language plpgsql security definer set search_path='' as $$
 declare antes public.apertura_items;despues public.apertura_items;p jsonb;v_claves text[]:=array[]::text[];v_id uuid;v_clave text;
- v_nombre text;v_desc text;v_resp uuid;v_ini date;v_fin date;
+ v_n integer:=0;v_nombre text;v_desc text;v_resp uuid;v_ini date;v_fin date;
 begin
  if not public.edita_compras() then raise exception 'Solo administración puede dividir registros.';end if;
  select * into antes from public.apertura_items where id=p_item for update;
@@ -289,7 +289,7 @@ begin
   if v_resp is not null and not exists(select 1 from public.apertura_responsables where id=v_resp and activo) then raise exception 'El responsable no existe o está inactivo.';end if;
   v_ini:=nullif(p->>'inicio','')::date;v_fin:=nullif(p->>'fin','')::date;
   if v_fin<v_ini then raise exception 'La fecha de fin no puede ser anterior al inicio.';end if;
-  v_clave:='MAN-'||gen_random_uuid()::text;
+  loop v_n:=v_n+1;v_clave:=antes.clave||'-'||v_n;exit when not exists(select 1 from public.apertura_items where proyecto_id=antes.proyecto_id and clave=v_clave);end loop;
   insert into public.apertura_items(proyecto_id,clave,tipo,etapa,categoria,nombre,descripcion,responsable_id,inicio,fin,fuente,original,estado,origen_id)
   values(antes.proyecto_id,v_clave,antes.tipo,antes.etapa,antes.categoria,v_nombre,v_desc,v_resp,v_ini,v_fin,'División',jsonb_build_object('dividida_de',antes.clave),
    case when antes.tipo in ('equipo','referencia') then 'por_cotizar' else 'pendiente' end,p_item) returning id into v_id;

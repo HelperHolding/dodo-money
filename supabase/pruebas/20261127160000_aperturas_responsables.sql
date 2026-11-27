@@ -20,7 +20,8 @@ begin
 
  -- División en 2.
  claves:=public.dividir_apertura_item(i,jsonb_build_array(jsonb_build_object('nombre','Parte A de prueba','responsable_id',r),jsonb_build_object('nombre','Parte B de prueba')));
- if coalesce(array_length(claves,1),0)<>2 or claves[1]=claves[2] or claves[1] not like 'MAN-%' or claves[2] not like 'MAN-%' then raise exception 'FALLÓ: claves de la división (%)',claves;end if;
+ select clave into t from public.apertura_items where id=i;
+ if claves is distinct from array[t||'-1',t||'-2'] then raise exception 'FALLÓ: claves de la división (%), se esperaban %-1 y %-2',claves,t,t;end if;
  if (select count(*) from public.apertura_items where origen_id=i and proyecto_id=p and clave=any(claves))<>2 then raise exception 'FALLÓ: las partes no guardaron origen_id';end if;
  if not exists(select 1 from public.apertura_items where id=i and estado='no_aplica' and evidencia='Dividida en '||array_to_string(claves,', ')) then raise exception 'FALLÓ: la original no quedó no_aplica';end if;
  begin perform public.dividir_apertura_item(i,'[{"nombre":"x"},{"nombre":"y"}]');raise exception 'FALLÓ: dividió una original que ya no aplica';
