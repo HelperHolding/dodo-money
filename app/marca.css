@@ -106,17 +106,24 @@ a, a:hover { text-decoration: none !important; }
 .migas:has(.migas-regresar) { width: auto; }
 
 /* ─── Encabezado de página: la D oficial y el título en mayúsculas, plano ─── */
-.encabezado-pagina { display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
-.encabezado-titulo { display: flex; align-items: center; gap: 16px; }
-.encabezado-marca { flex: none; width: 48px; height: auto; }
+/* Compacto: la D, el título y el contexto en una fila, con los botones a la derecha (si no caben, bajan). */
+.encabezado-pagina { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.encabezado-titulo { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.encabezado-marca { flex: none; width: 30px; height: auto; }
 .encabezado-titulo h1, main.pagina h1:not(.seccion h1, .tarjeta h1, .ap-panel h1, .zona-plegable h1, .error-pagina h1, .estado-vacio h1) {
   margin: 0; min-width: 0; overflow-wrap: anywhere; text-wrap: balance;
   font-family: var(--display); font-weight: 800; text-transform: uppercase; line-height: 1.05; letter-spacing: 0;
   color: var(--tinta);
 }
-.encabezado-titulo h1 { font-size: clamp(2rem, 3.6vw, 3rem); }
-.encabezado-vitrina { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
-.encabezado-vitrina > p { flex: 1 1 320px; color: var(--tinta-2); max-width: 75ch; }
+.encabezado-titulo h1 { font-size: clamp(1.4rem, 2vw, 1.75rem); }
+.encabezado-contexto { flex: 1 1 240px; margin: 0; color: var(--tinta-2); font-size: var(--t-sm); max-width: 75ch; }
+.encabezado-acciones { margin-left: auto; align-items: center; }
+/* Migas y pestañas en una sola fila, pegadas al encabezado; menos aire antes del contenido. */
+.pagina-cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.pagina-cabeza:empty { display: none; }
+.pagina-cabeza :is(.migas, .pestanas-area) { margin: 0; }
+.pagina > .pagina-cabeza { margin-bottom: -14px; }
+.pagina > .encabezado-pagina { margin-bottom: -8px; }
 
 /* ─── Botones: los de globals (planos). Secundario elegido: tinte naranja con borde de marca ─── */
 .boton-secundario:is([aria-pressed="true"], [aria-current="page"]), .costeo-rapidos button[aria-pressed="true"] {
@@ -745,16 +752,16 @@ html[data-luz="noche"]:has(.marco) .tablero-rejilla { --serie-2: #3d8bff; --seri
 .lateral-area .contador-menu { margin-left: auto; }
 .pestanas-area { display: flex; gap: 4px; margin: 0 0 16px; padding: 4px; width: fit-content; max-width: 100%; overflow-x: auto;
   background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--r-full); scrollbar-width: none; }
-.pestanas-area a { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--r-full);
+.pestanas-area a { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--r-full);
   color: var(--tinta-2); font-weight: 600; font-size: var(--t-sm); white-space: nowrap; }
 .pestanas-area a:hover { background: var(--accion-tinte); color: var(--tinta); }
 .pestanas-area a[aria-current="page"] { background: var(--accion); color: var(--accion-texto); }
 
 /* ─── Celular ─── */
 @media (max-width: 900px) {
-  .encabezado-titulo { gap: 12px; }
-  .encabezado-titulo h1 { font-size: 1.9rem; }
-  .encabezado-marca { width: 36px; }
+  .encabezado-titulo { gap: 8px; }
+  .encabezado-titulo h1 { font-size: 1.35rem; }
+  .encabezado-marca { width: 24px; }
   .barra-inferior { background: var(--superficie-solida); }
 }
 

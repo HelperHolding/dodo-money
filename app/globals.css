@@ -238,7 +238,7 @@ a { color: var(--accion-oscuro); }
 
 /* Todo el ancho disponible (sin tope ni centrado): el texto largo y los formularios cortos limitan su propio ancho. */
 .pagina {
-  padding: 28px clamp(16px, 2vw, 28px) 64px;
+  padding: 18px clamp(16px, 2vw, 28px) 64px;
   display: flex; flex-direction: column; gap: 28px;
 }
 .encabezado { display: flex; flex-direction: column; gap: 6px; }
@@ -1402,7 +1402,7 @@ button.ap-check-marca:hover { box-shadow:0 0 0 3px var(--dato-pista); }
 @media print { .periodo-barra { position: static; box-shadow: none; } }
 /* Mientras se carga el periodo nuevo, los datos de abajo se atenúan (siguen visibles hasta que llegan los nuevos). */
 .pagina > * { transition: opacity var(--dur-media) var(--curva); }
-.pagina:has(.periodo-barra[aria-busy]) > :not(.periodo-barra):not(.calendario):not(.encabezado-pagina):not(.migas):not(.periodo-actual):not(.periodo-sucursal):not(.periodo-rapidos) { opacity: 0.5; }
+.pagina:has(.periodo-barra[aria-busy]) > :not(.periodo-barra):not(.calendario):not(.encabezado-pagina):not(.migas):not(.pagina-cabeza):not(.periodo-actual):not(.periodo-sucursal):not(.periodo-rapidos) { opacity: 0.5; }
 .calendario-rejilla[aria-busy] { opacity: 0.7; }
 
 /* ─── Avance "X de Y" (checklists) ─── */
