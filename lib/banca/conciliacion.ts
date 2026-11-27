@@ -53,8 +53,8 @@ const sumarDias = (f: string, n: number) => new Date((dia(f) + n) * 864e5).toISO
 /** CLABE destino de un SPEI, en el formato del Excel ("SPEI. BANCO. CLABE.") o del PDF ("SPEI, BANCO, CLABE,"). */
 export const clabeDestino = (descripcion: string) => descripcion.match(/SPEI[.,]\s*[^.,]+[.,]\s*(\d{18})[.,]/i)?.[1] ?? null;
 const textoDe = (m: MovimientoBanco) => `${m.descripcion} ${m.referencia}`;
-const esNetPay = (m: MovimientoBanco) => m.abono > 0 && /NET PAY/i.test(textoDe(m)) && !/DOMI:/i.test(textoDe(m));
-const esComisionNetPay = (m: MovimientoBanco) => m.cargo > 0 && /DOMI:.*COM VTAS/i.test(textoDe(m));
+export const esNetPay = (m: MovimientoBanco) => m.abono > 0 && /NET PAY/i.test(textoDe(m)) && !/DOMI:/i.test(textoDe(m));
+export const esComisionNetPay = (m: MovimientoBanco) => m.cargo > 0 && /DOMI:.*COM VTAS/i.test(textoDe(m));
 const esRappi = (m: MovimientoBanco) => m.abono > 0 && /TECNOLO/i.test(textoDe(m));
 const esNomina = (m: MovimientoBanco) => m.cargo > 0 && /SPEI/i.test(textoDe(m)) && /N[OÓ]MINA|\bQ\d{1,2}\b/i.test(textoDe(m));
 
