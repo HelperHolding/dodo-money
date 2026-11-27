@@ -35,14 +35,23 @@ test("dos turnos: ventas_efectivo es del turno (no acumulada), se suman sin rest
   assert.equal(dia(c, "2026-11-25").sinArqueos, false);
 });
 
-test("turno único con cierre; traspaso gana al cierre del matutino", () => {
+test("turno único con cierre; el cierre gana al traspaso de media jornada", () => {
   const c = armarCierreSemanal(L, { ...vacio, arqueos: [
     arq("2026-11-24", "matutino", "cierre", 1000, 0, 50),
     arq("2026-11-26", "matutino", "traspaso", 800),
     arq("2026-11-26", "matutino", "cierre", 9999),
   ] });
   assert.equal(dia(c, "2026-11-24").efectivo, 1000);
-  assert.equal(dia(c, "2026-11-26").efectivo, 800);
+  assert.equal(dia(c, "2026-11-26").efectivo, 9999);
+});
+
+test("caso real La Calma 22-nov: un turno con inicio, traspaso y cierre usa el cierre", () => {
+  const c = armarCierreSemanal(L, { ...vacio, arqueos: [
+    arq("2026-11-27", "matutino", "inicio", 0, 0),
+    arq("2026-11-27", "matutino", "traspaso", 6778.5, -5446.5),
+    arq("2026-11-27", "matutino", "cierre", 17150, -11396),
+  ] });
+  assert.equal(dia(c, "2026-11-27").efectivo, 5754);
 });
 
 test("Rappi normal contra Turbo, y su diferencia contra rappi_real", () => {
