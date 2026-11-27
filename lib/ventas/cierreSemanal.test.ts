@@ -114,3 +114,38 @@ test("cambiosDesdeAprobacion: con y sin cambios", () => {
   const c = armarCierreSemanal(L, { ...vacio, arqueos: [arq("2026-11-25", "matutino", "cierre", 5000.5)] });
   assert.deepEqual(cambiosDesdeAprobacion(a, c), []);
 });
+
+test("rappi_real cuenta una vez por turno aunque haya traspaso y cierre", () => {
+  const c = armarCierreSemanal(L, { ...vacio,
+    arqueos: [arq("2026-11-24", "vespertino", "traspaso", 10, 0, null, 700), arq("2026-11-24", "vespertino", "cierre", 20, 0, null, 700)],
+    rappi: [{ fecha: "2026-11-24", turbo: false, subtotal: 700 }] });
+  assert.equal(dia(c, "2026-11-24").difRappi, 0);
+});
+
+test("vespertino cerrado como traspaso cuenta; con dos traspasos gana el último", () => {
+  const solo = armarCierreSemanal(L, { ...vacio, arqueos: [arq("2026-11-24", "vespertino", "traspaso", 400)] });
+  assert.equal(dia(solo, "2026-11-24").efectivo, 400);
+  const dos = armarCierreSemanal(L, { ...vacio, arqueos: [
+    { ...arq("2026-11-24", "matutino", "traspaso", 100), creado_en: "2026-11-24T20:00:00Z" },
+    { ...arq("2026-11-24", "matutino", "traspaso", 300), creado_en: "2026-11-24T18:00:00Z" },
+  ] });
+  assert.equal(dia(dos, "2026-11-24").efectivo, 100);
+  const sinOrden = armarCierreSemanal(L, { ...vacio, arqueos: [arq("2026-11-24", "matutino", "traspaso", 300), arq("2026-11-24", "matutino", "traspaso", 100)] });
+  assert.equal(dia(sinOrden, "2026-11-24").efectivo, 100);
+});
+
+test("arqueos anulados se ignoran", () => {
+  const c = armarCierreSemanal(L, { ...vacio, arqueos: [{ ...arq("2026-11-24", "matutino", "cierre", 999), anulado: true }] });
+  assert.equal(dia(c, "2026-11-24").sinArqueos, true);
+  assert.equal(dia(c, "2026-11-24").efectivo, 0);
+});
+
+test("cambiosDesdeAprobacion: tarjeta y depositado de NetPay", () => {
+  const a = armarCierreSemanal(L, { ...vacio, arqueos: [arq("2026-11-25", "matutino", "cierre", 0, 0, 1000)],
+    netpay: [{ fecha: "2026-11-26", tipo: "deposito", monto: 900, conciliadoSemana: null }] });
+  const b = armarCierreSemanal(L, { ...vacio, arqueos: [arq("2026-11-25", "matutino", "cierre", 0, 0, 1100)],
+    netpay: [{ fecha: "2026-11-26", tipo: "deposito", monto: 950, conciliadoSemana: null }] });
+  const t = cambiosDesdeAprobacion(a, b);
+  assert.ok(t.includes("mié 25: tarjeta $1,000.00 → $1,100.00"), t.join("|"));
+  assert.ok(t.includes("NetPay: depositado $900.00 → $950.00"), t.join("|"));
+});

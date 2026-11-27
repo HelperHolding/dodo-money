@@ -5,6 +5,10 @@ import { pesos } from "../formato.ts";
 export type ArqueoDia = {
   fecha: string; turno: "matutino" | "vespertino"; momento: "inicio" | "traspaso" | "cierre";
   ventas_efectivo: number; diferencia: number; tarjeta_real: number | null; rappi_real: number | null;
+  /** Orden de captura (ISO). Si falta, la entrada debe venir ordenada ascendente y gana el último. */
+  creado_en?: string;
+  /** Arqueo anulado (`anulado_en`): se ignora. */
+  anulado?: boolean;
 };
 export type OrdenRappi = { fecha: string; turbo: boolean; subtotal: number };
 export type VentaDodoDia = { fecha: string; efectivo: number };
@@ -45,10 +49,14 @@ const hoyMexico = () => new Date().toLocaleDateString("en-CA", { timeZone: "Amer
  * `tarjeta_real` y `rappi_real` se capturan en el mismo arqueo y se toman igual, por turno.
  */
 function arqueoDeVenta(arqueos: ArqueoDia[], turno: ArqueoDia["turno"]): ArqueoDia | undefined {
-  const orden: ArqueoDia["momento"][] = turno === "matutino" ? ["traspaso", "cierre"] : ["cierre"];
+  // Matutino: el último traspaso, si no el cierre. Vespertino: el cierre, si no el último traspaso.
+  const orden: ArqueoDia["momento"][] = turno === "matutino" ? ["traspaso", "cierre"] : ["cierre", "traspaso"];
+  const delTurno = arqueos.filter((x) => x.turno === turno);
   for (const m of orden) {
-    const a = arqueos.find((x) => x.turno === turno && x.momento === m);
-    if (a) return a;
+    const candidatos = delTurno.filter((x) => x.momento === m);
+    if (!candidatos.length) continue;
+    // Gana el último capturado: por creado_en si viene; si no, el último de la entrada (ordenada ascendente).
+    return candidatos.reduce((a, b) => (a.creado_en && b.creado_en ? (b.creado_en >= a.creado_en ? b : a) : b));
   }
   return undefined;
 }
@@ -59,7 +67,7 @@ export function armarCierreSemanal(
 ): CierreSemanal {
   const hoy = d.hoy ?? hoyMexico();
   const dias: DiaCierre[] = diasDeSemana(lunes).map((fecha) => {
-    const delDia = d.arqueos.filter((a) => a.fecha === fecha);
+    const delDia = d.arqueos.filter((a) => a.fecha === fecha && !a.anulado);
     const usados = (["matutino", "vespertino"] as const).map((t) => arqueoDeVenta(delDia, t)).filter((a): a is ArqueoDia => !!a);
     const sinArqueos = usados.length === 0;
     const efectivo = sinArqueos ? 0 : suma(usados.map((a) => Number(a.ventas_efectivo) + Number(a.diferencia)));
@@ -68,7 +76,7 @@ export function armarCierreSemanal(
     const rappi = suma(ordenes.filter((o) => !o.turbo).map((o) => Number(o.subtotal)));
     const turbo = suma(ordenes.filter((o) => o.turbo).map((o) => Number(o.subtotal)));
     const dodo = d.dodo.filter((v) => v.fecha === fecha);
-    const rappiReal = suma(delDia.map((a) => Number(a.rappi_real ?? 0)));
+    const rappiReal = suma(usados.map((a) => Number(a.rappi_real ?? 0)));
     return {
       fecha, efectivo, tarjeta, rappi, turbo,
       total: suma([efectivo, tarjeta, rappi, turbo]),
@@ -85,6 +93,7 @@ export function armarCierreSemanal(
     difEfectivo: suma(dias.map((x) => x.difEfectivo ?? 0)), difRappi: suma(dias.map((x) => x.difRappi ?? 0)),
   };
 
+  // Las comisiones siguen la misma regla que el depositado: conciliadas a esta semana o, sin conciliar, dentro del rango.
   // NetPay deposita a los 1 a 3 días hábiles: de martes de la semana a jueves siguiente.
   const desde = sumarDias(lunes, 1);
   const hasta = sumarDias(lunes, 10);
