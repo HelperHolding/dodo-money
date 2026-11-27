@@ -1,7 +1,9 @@
 -- Ejecutar completo después de 20261102120000_tareas.sql. PRUEBAS OK revierte los datos mediante un ERROR intencional.
--- Cada corrida consume números e ids de las secuencias (no son transaccionales): deja un hueco inofensivo.
+-- La numeración de tareas (T-001…) vuelve al final a donde estaba: no deja huecos. Córrela cuando nadie esté creando tareas.
 do $$
-declare a uuid;c uuid;g record;o uuid;f uuid;n bigint;ok boolean;k integer;t text;r text;q text;
+declare a uuid;c uuid;g record;o uuid;f uuid;n bigint;ok boolean;k integer;t text;r text;q text;sec_ultimo bigint;sec_usado boolean;
+begin
+  select last_value,is_called into sec_ultimo,sec_usado from public.tareas_numero;
 begin
   select id into a from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='admin' order by nombre limit 1;
   select id into c from public.perfiles where activo and not debe_cambiar_contrasena and rol::text='corporativo' limit 1;
@@ -63,4 +65,9 @@ begin
   end loop;
 
   raise exception 'PRUEBAS OK';
+exception when others then
+  -- setval no se revierte con el ERROR: devuelve los números que consumió la prueba.
+  perform setval('public.tareas_numero',sec_ultimo,sec_usado);
+  raise;
+end;
 end $$;

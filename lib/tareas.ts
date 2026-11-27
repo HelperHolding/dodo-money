@@ -31,9 +31,11 @@ export type Tarea = {
 };
 export type Quien = { id: string; rol: Rol; sucursal_id: string | null };
 
-export const clave = (numero: number) => `DODO-${numero}`;
+/** T-001, T-042, T-1234. */
+export const clave = (numero: number) => `T-${String(numero).padStart(3, "0")}`;
+/** Acepta T-001, el número solo y el formato anterior DODO-n (enlaces y búsquedas viejas). */
 export function numeroDeClave(texto: string): number | null {
-  const m = /^(?:dodo-)?(\d{1,12})$/i.exec(texto.trim());
+  const m = /^(?:t-|dodo-)?(\d{1,12})$/i.exec(texto.trim());
   return m ? Number(m[1]) : null;
 }
 
