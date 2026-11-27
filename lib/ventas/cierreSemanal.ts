@@ -94,9 +94,9 @@ export function armarCierreSemanal(
   };
 
   // Las comisiones siguen la misma regla que el depositado: conciliadas a esta semana o, sin conciliar, dentro del rango.
-  // NetPay deposita a los 1 a 3 días hábiles: de martes de la semana a jueves siguiente.
+  // Sin conciliar: del martes de la semana al lunes siguiente, sin traslaparse con la ventana de la semana de al lado.
   const desde = sumarDias(lunes, 1);
-  const hasta = sumarDias(lunes, 10);
+  const hasta = sumarDias(lunes, 7);
   const enRango = (m: MovNetPay) => m.fecha >= desde && m.fecha <= hasta;
   const propio = (m: MovNetPay) => m.conciliadoSemana === lunes || (m.conciliadoSemana === null && enRango(m));
   const depositado = suma(d.netpay.filter((m) => m.tipo === "deposito" && propio(m)).map((m) => Number(m.monto)));
@@ -130,4 +130,44 @@ export function cambiosDesdeAprobacion(aprobado: CierreSemanal, actual: CierreSe
     cambios.push(`NetPay: depositado ${pesos(aprobado.netpay.depositado)} → ${pesos(actual.netpay.depositado)}`);
   }
   return cambios;
+}
+
+/** Movimiento NetPay del banco con lo necesario para atribuirlo a una sucursal. */
+export type MovBancoNetPay = {
+  fecha: string; tipo: MovNetPay["tipo"]; monto: number;
+  /** Sucursal del movimiento o de su importación. */
+  sucursal: string | null;
+  /** La cuenta es de una razón social que solo tiene esta sucursal. */
+  exclusiva: boolean;
+  /** Ventas de la conciliación `cobro_tarjeta` vigente; null o vacío si no está conciliado. */
+  documentos: { sucursal: string; fecha: string; monto: number | null }[] | null;
+};
+
+/**
+ * Atribuye los movimientos NetPay a una sucursal (HD-5).
+ * - Conciliado: cuenta la parte de esta sucursal, en proporción al monto de sus documentos sobre el total de la
+ *   conciliación (si algún documento no trae monto, por número de documentos), y va a la semana de su venta más reciente.
+ * - Sin conciliar: cuenta completo si su sucursal es esta, o si no tiene sucursal y la cuenta es exclusiva de esta sucursal.
+ * - Sin conciliar, sin sucursal y en cuenta compartida: no se puede atribuir y se suma en `sinAsignar`.
+ */
+export function atribuirNetPay(sucursal: string, movs: readonly MovBancoNetPay[]): { netpay: MovNetPay[]; sinAsignar: number } {
+  const netpay: MovNetPay[] = [];
+  let sinAsignar = 0;
+  for (const m of movs) {
+    if (m.documentos && m.documentos.length) {
+      const propios = m.documentos.filter((d) => d.sucursal === sucursal);
+      if (!propios.length) continue;
+      const total = suma(m.documentos.map((d) => Number(d.monto ?? 0)));
+      const parte = m.documentos.every((d) => d.monto !== null) && total > 0
+        ? suma(propios.map((d) => Number(d.monto))) / total
+        : propios.length / m.documentos.length;
+      const ultima = propios.map((d) => d.fecha).sort()[propios.length - 1];
+      netpay.push({ fecha: m.fecha, tipo: m.tipo, monto: centavos(Number(m.monto) * parte), conciliadoSemana: semanaDe(ultima) });
+    } else if (m.sucursal === sucursal || (m.sucursal === null && m.exclusiva)) {
+      netpay.push({ fecha: m.fecha, tipo: m.tipo, monto: Number(m.monto), conciliadoSemana: null });
+    } else if (m.sucursal === null) {
+      sinAsignar += Number(m.monto);
+    }
+  }
+  return { netpay, sinAsignar: centavos(sinAsignar) };
 }

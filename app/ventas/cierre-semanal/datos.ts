@@ -1,11 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leerTodo } from "@/lib/ventas/paginar";
-import { esTurbo } from "@/lib/ventas/rappi";
+import { PREFIJO_EN_VIVO, esTurbo } from "@/lib/ventas/rappi";
 import { esComisionNetPay, esNetPay, type MovimientoBanco } from "@/lib/banca/conciliacion";
 import {
-  armarCierreSemanal, cambiosDesdeAprobacion, diasDeSemana, semanaDe,
-  type ArqueoDia, type CierreSemanal, type MovNetPay, type OrdenRappi, type VentaDodoDia,
+  armarCierreSemanal, atribuirNetPay, cambiosDesdeAprobacion, diasDeSemana,
+  type ArqueoDia, type CierreSemanal, type MovBancoNetPay, type MovNetPay, type OrdenRappi, type VentaDodoDia,
 } from "@/lib/ventas/cierreSemanal";
+
+type Documento = NonNullable<MovBancoNetPay["documentos"]>[number];
 
 export type AprobacionCierre = { id: string; nota: string | null; aprobadoPor: string; aprobadoEn: string; totales: CierreSemanal };
 export type DatosCierreSemanal = {
@@ -40,7 +42,8 @@ type FilaMov = {
  * NetPay: las cuentas son las de `banca_cuentas` cuya razón social (`rfc`) está ligada a la sucursal en
  * `razon_social_sucursales`; si la sucursal no tiene razón social propia, las de la razón social principal.
  * Un movimiento NetPay cuenta para la sucursal si:
- *  - está conciliado como `cobro_tarjeta` contra ventas de esta sucursal (y entonces se atribuye a la semana de esas ventas), o
+ *  - está conciliado como `cobro_tarjeta` contra ventas de esta sucursal: cuenta su parte prorrateada por el monto de los
+ *    documentos y va a la semana de la venta más reciente de esta sucursal (`atribuirNetPay`), o
  *  - no está conciliado y su sucursal (la del movimiento o la de su importación) es esta, o
  *  - no está conciliado, no tiene sucursal y la cuenta es de una razón social exclusiva de esta sucursal.
  * Los de una cuenta compartida sin sucursal no se pueden atribuir: se cuentan aparte en `netpaySinAsignar`.
@@ -48,8 +51,9 @@ type FilaMov = {
 export async function cargarCierreSemanal(db: SupabaseClient, sucursal: string, lunes: string): Promise<DatosCierreSemanal> {
   const dias = diasDeSemana(lunes);
   const domingo = dias[6];
-  // NetPay deposita de 1 a 4 días después: del martes de la semana al jueves siguiente.
-  const desdeBanco = sumarDias(lunes, 1), hastaBanco = sumarDias(lunes, 10);
+  // Sin conciliar cuentan del martes de la semana al lunes siguiente (lo filtra armarCierreSemanal). Los conciliados contra
+  // ventas de esta semana pueden llegar después: se leen hasta tres semanas para encontrarlos por su conciliación.
+  const desdeBanco = sumarDias(lunes, 1), hastaBanco = sumarDias(lunes, 21);
 
   const [arqueos, dodo, rappi, propias, principal, aprobada] = await Promise.all([
     leer<FilaArqueo>("los arqueos", (a, b) => db.from("arqueos")
@@ -58,9 +62,10 @@ export async function cargarCierreSemanal(db: SupabaseClient, sucursal: string, 
       .order("id").range(a, b).returns<FilaArqueo[]>()),
     leer<VentaDodoDia>("las ventas de Dodo IS", (a, b) => db.from("ventas_dia").select("fecha, efectivo")
       .eq("sucursal_id", sucursal).gte("fecha", lunes).lte("fecha", domingo).order("fecha").range(a, b).returns<VentaDodoDia[]>()),
-    // Mismo criterio que el resto de Ventas: finalizadas, que suman, y sin los pedidos de agregador que vienen de Dodo IS.
+    // El portal de aliados es la fuente: órdenes del extractor (`portal-rappi-…`, igual que Ventas → Rappi) y finalizadas.
+    // No se filtra `sumar`: en días que Dodo IS ya trae agregador llegan con sumar=false, pero siguen siendo la venta del portal.
     leer<{ fecha: string; tienda_id: string; subtotal_restaurante: number }>("las órdenes de Rappi", (a, b) => db.from("rappi_ordenes")
-      .select("fecha, tienda_id, subtotal_restaurante").eq("sucursal_id", sucursal).eq("estado", "Finalizado").eq("sumar", true).neq("archivo", "dodo-is")
+      .select("fecha, tienda_id, subtotal_restaurante").eq("sucursal_id", sucursal).eq("estado", "Finalizado").like("archivo", `${PREFIJO_EN_VIVO}%`)
       .gte("fecha", lunes).lte("fecha", domingo).order("rappi_id").range(a, b).returns<{ fecha: string; tienda_id: string; subtotal_restaurante: number }[]>()),
     db.from("razon_social_sucursales").select("rfc").eq("sucursal_id", sucursal).returns<{ rfc: string }[]>(),
     db.from("razones_sociales").select("rfc").eq("principal", true).maybeSingle<{ rfc: string }>(),
@@ -115,30 +120,32 @@ export async function cargarCierreSemanal(db: SupabaseClient, sucursal: string, 
       if (r.error) fallo("las conciliaciones de Banca", r.error.message);
       for (const x of r.data ?? []) conciliacionDe.set(x.movimiento_id, x.conciliacion_id);
     }
-    const ventasDe = new Map<string, { fecha: string; sucursal_id: string }[]>();
+    // Documentos de venta de cada conciliación, con su monto para prorratear entre sucursales (paginado: nunca se corta en 1000).
+    const documentosDe = new Map<string, Documento[]>();
     for (const t of trozos([...new Set(conciliacionDe.values())])) {
-      const r = await db.from("banca_conciliacion_documentos").select("conciliacion_id, ventas_dia(fecha, sucursal_id)")
-        .eq("activa", true).eq("tipo_documento", "venta_dia").in("conciliacion_id", t)
-        .returns<{ conciliacion_id: string; ventas_dia: { fecha: string; sucursal_id: string } | null }[]>();
-      if (r.error) fallo("los documentos conciliados", r.error.message);
-      for (const x of r.data ?? []) if (x.ventas_dia) ventasDe.set(x.conciliacion_id, [...(ventasDe.get(x.conciliacion_id) ?? []), x.ventas_dia]);
+      const filas = await leer<{ conciliacion_id: string; monto: number | null; ventas_dia: { fecha: string; sucursal_id: string } | null }>("los documentos conciliados",
+        (a, b) => db.from("banca_conciliacion_documentos").select("id, conciliacion_id, monto, ventas_dia(fecha, sucursal_id)")
+          .eq("activa", true).eq("tipo_documento", "venta_dia").in("conciliacion_id", t).order("id").range(a, b)
+          .returns<{ conciliacion_id: string; monto: number | null; ventas_dia: { fecha: string; sucursal_id: string } | null }[]>());
+      for (const x of filas) if (x.ventas_dia) {
+        const doc = { sucursal: x.ventas_dia.sucursal_id, fecha: x.ventas_dia.fecha, monto: x.monto === null ? null : Number(x.monto) };
+        documentosDe.set(x.conciliacion_id, [...(documentosDe.get(x.conciliacion_id) ?? []), doc]);
+      }
     }
 
-    for (const { m, b } of deNetPay) {
+    const bancos = deNetPay.map(({ m, b }): MovBancoNetPay => {
       const tipo: MovNetPay["tipo"] = esNetPay(b) ? "deposito" : "comision";
-      const monto = tipo === "deposito" ? b.abono : b.cargo;
       const conc = conciliacionDe.get(m.id);
-      const ventas = conc ? ventasDe.get(conc) ?? [] : [];
-      if (ventas.length) {
-        // Conciliado: cuenta para la sucursal de sus ventas y para la semana de la venta más reciente que liquida.
-        const propiasV = ventas.filter((v) => v.sucursal_id === sucursal).map((v) => v.fecha).sort();
-        if (propiasV.length) netpay.push({ fecha: m.fecha, tipo, monto, conciliadoSemana: semanaDe(propiasV[propiasV.length - 1]) });
-        continue;
-      }
-      const suc = m.sucursal_id ?? m.banca_importaciones?.sucursal_id ?? null;
-      if (suc === sucursal || (suc === null && exclusivaDe.get(m.cuenta_id))) netpay.push({ fecha: m.fecha, tipo, monto, conciliadoSemana: null });
-      else if (suc === null) netpaySinAsignar += monto;
-    }
+      return {
+        fecha: m.fecha, tipo, monto: tipo === "deposito" ? b.abono : b.cargo,
+        sucursal: m.sucursal_id ?? m.banca_importaciones?.sucursal_id ?? null, exclusiva: !!exclusivaDe.get(m.cuenta_id),
+        documentos: conc ? documentosDe.get(conc) ?? null : null,
+      };
+    });
+    netpay.push(...atribuirNetPay(sucursal, bancos).netpay);
+    // Sin asignar: solo lo que caería en la ventana de esta semana (martes a lunes siguiente).
+    const finVentana = sumarDias(lunes, 7);
+    netpaySinAsignar = atribuirNetPay(sucursal, bancos.filter((x) => x.fecha <= finVentana)).sinAsignar;
   }
 
   const arqueosDia: ArqueoDia[] = arqueos.map((a) => ({

@@ -11,6 +11,11 @@ test('cierre semanal: la página arma el cierre y exige permiso de finanzas',()=
  assert.match(p,/semanaDe\(/);
  const d=leer('app/ventas/cierre-semanal/datos.ts');
  assert.match(d,/armarCierreSemanal\(/);assert.match(d,/esNetPay/);assert.match(d,/esComisionNetPay/);assert.match(d,/cobro_tarjeta/);
+ // Rappi: solo órdenes del portal (mismo filtro que Ventas → Rappi); NetPay prorrateado con la función pura.
+ assert.match(d,/\.like\("archivo", `\$\{PREFIJO_EN_VIVO\}%`\)/);assert.doesNotMatch(d,/neq\("archivo"/);
+ assert.match(d,/atribuirNetPay\(/);
+ // El nombre del aprobador no se inventa si la consulta falla.
+ assert.match(p,/if \(r\.error\) throw new Error/);
 });
 test('cierre semanal: la acción recalcula en el servidor y aprueba con la RPC',()=>{
  const a=leer('app/ventas/cierre-semanal/acciones.ts');

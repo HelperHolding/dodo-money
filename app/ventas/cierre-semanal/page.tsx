@@ -72,6 +72,7 @@ function Tabla({ c }: { c: CierreSemanal }) {
 
 function NetPay({ c, sinAsignar, cuentas }: { c: CierreSemanal; sinAsignar: number; cuentas: number }) {
   const n = c.netpay;
+  const faltan = c.dias.filter((d) => d.sinArqueos).length;
   return (
     <section className="seccion cierre-netpay" aria-labelledby="cierre-netpay">
       <h2 id="cierre-netpay">NetPay de la semana</h2>
@@ -79,15 +80,18 @@ function NetPay({ c, sinAsignar, cuentas }: { c: CierreSemanal; sinAsignar: numb
         <div><dt>Tarjeta en arqueos</dt><dd>{pesos(n.tarjeta)}</dd></div>
         <div><dt>Depositado por NetPay</dt><dd>{pesos(n.depositado)}</dd></div>
         <div><dt>Comisiones NetPay</dt><dd>{pesos(n.comisiones)}</dd></div>
-        <div data-alerta={n.diferencia !== null && Math.abs(n.diferencia) > 1 ? "si" : undefined}>
-          <dt>Diferencia</dt><dd>{n.diferencia === null ? "Pendiente" : firmado(n.diferencia)}</dd>
+        {/* Con días sin arqueo la tarjeta está incompleta: la diferencia va en tono neutro y dice cuántos días faltan. */}
+        <div data-alerta={!faltan && n.diferencia !== null && Math.abs(n.diferencia) > 1 ? "si" : undefined}>
+          <dt>Diferencia</dt><dd>{n.diferencia === null ? "Pendiente" : firmado(n.diferencia)}
+            {faltan > 0 && <small className="cierre-dif"> Faltan arqueos de {faltan} {faltan === 1 ? "día" : "días"}</small>}</dd>
         </div>
       </dl>
       {n.pendiente && <p className="saldo-nota"><strong>Pendiente de estado de cuenta</strong> (último movimiento: {n.ultimoMovimiento ? fechaConAnio(n.ultimoMovimiento) : "sin movimientos"}).</p>}
       {cuentas === 0 && <p className="saldo-nota">La razón social de esta sucursal no tiene cuenta de banco registrada en Banca.</p>}
       {sinAsignar > 0 && <p className="saldo-nota">Hay {pesos(sinAsignar)} de NetPay en una cuenta compartida sin sucursal asignada; no se cuentan aquí.</p>}
       <p className="saldo-nota">Diferencia = tarjeta − (depositado + comisiones). La atribución es aproximada mientras no se concilie en Banca:
-        se toman los depósitos conciliados contra ventas de esta semana y, si no, los abonos NetPay del martes al jueves siguiente que no estén conciliados contra otra semana.</p>
+        se toman los depósitos conciliados contra ventas de esta semana (si la conciliación incluye ventas de otra sucursal, solo la parte proporcional)
+        y, si no, los abonos y comisiones NetPay del martes de la semana al lunes siguiente que no estén conciliados.</p>
     </section>
   );
 }
@@ -113,7 +117,8 @@ export default async function CierreSemanalPagina({ searchParams }: { searchPara
   let aprobador: string | null = null;
   if (aprobacion) {
     const r = await supabase.from("perfiles").select("nombre").eq("id", aprobacion.aprobadoPor).maybeSingle<{ nombre: string }>();
-    aprobador = r.data?.nombre ?? "administración";
+    if (r.error) throw new Error(`No se pudo consultar quién aprobó el cierre semanal: ${r.error.message}`);
+    aprobador = r.data?.nombre ?? "un usuario que ya no aparece en perfiles";
   }
   const liga = (s: string) => `/ventas/cierre-semanal?${new URLSearchParams({ sucursal: suc.id, semana: s })}`;
   const rango = `lun ${MES.format(new Date(`${semana}T00:00:00Z`))} – dom ${MES.format(new Date(`${dias[6]}T00:00:00Z`))}`;
