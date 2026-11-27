@@ -63,9 +63,12 @@ function arqueoDeVenta(arqueos: ArqueoDia[], turno: ArqueoDia["turno"]): ArqueoD
 
 export function armarCierreSemanal(
   lunes: string,
-  d: { arqueos: ArqueoDia[]; rappi: OrdenRappi[]; dodo: VentaDodoDia[]; netpay: MovNetPay[]; ultimoMovimiento: string | null; hoy?: string },
+  d: { arqueos: ArqueoDia[]; rappi: OrdenRappi[]; dodo: VentaDodoDia[]; netpay: MovNetPay[]; ultimoMovimiento: string | null; hoy?: string;
+    /** Fechas con al menos una orden importada del portal, de cualquier estado. Si falta, se usan las fechas de `rappi`. */
+    diasConPortal?: string[] },
 ): CierreSemanal {
   const hoy = d.hoy ?? hoyMexico();
+  const conPortal = new Set(d.diasConPortal ?? d.rappi.map((o) => o.fecha));
   const dias: DiaCierre[] = diasDeSemana(lunes).map((fecha) => {
     const delDia = d.arqueos.filter((a) => a.fecha === fecha && !a.anulado);
     const usados = (["matutino", "vespertino"] as const).map((t) => arqueoDeVenta(delDia, t)).filter((a): a is ArqueoDia => !!a);
@@ -77,13 +80,14 @@ export function armarCierreSemanal(
     const turbo = suma(ordenes.filter((o) => o.turbo).map((o) => Number(o.subtotal)));
     const dodo = d.dodo.filter((v) => v.fecha === fecha);
     const rappiReal = suma(usados.map((a) => Number(a.rappi_real ?? 0)));
+    const sinPortal = !conPortal.has(fecha) && fecha < hoy;
     return {
       fecha, efectivo, tarjeta, rappi, turbo,
       total: suma([efectivo, tarjeta, rappi, turbo]),
       sinArqueos,
-      sinPortal: ordenes.length === 0 && fecha < hoy,
+      sinPortal,
       difEfectivo: sinArqueos || dodo.length === 0 ? null : centavos(efectivo - suma(dodo.map((v) => Number(v.efectivo)))),
-      difRappi: sinArqueos ? null : centavos(rappi + turbo - rappiReal),
+      difRappi: sinArqueos || sinPortal ? null : centavos(rappi + turbo - rappiReal),
     };
   });
 
@@ -126,10 +130,16 @@ export function cambiosDesdeAprobacion(aprobado: CierreSemanal, actual: CierreSe
       if (Math.abs(dia[c] - antes[c]) > 1) cambios.push(`${etiquetaDia(dia.fecha)}: ${c} ${pesos(antes[c])} → ${pesos(dia[c])}`);
     }
   }
-  if (Math.abs(actual.netpay.depositado - aprobado.netpay.depositado) > 1) {
+  // Con NetPay pendiente al aprobar, los depósitos que llegan después son lo esperado, no un cambio.
+  if (aprobado.netpay.pendiente === false && Math.abs(actual.netpay.depositado - aprobado.netpay.depositado) > 1) {
     cambios.push(`NetPay: depositado ${pesos(aprobado.netpay.depositado)} → ${pesos(actual.netpay.depositado)}`);
   }
   return cambios;
+}
+
+/** NetPay se completó después de aprobar con NetPay pendiente: línea neutra, no cuenta como cambio. */
+export function netpayCompletadoDespues(aprobado: CierreSemanal, actual: CierreSemanal): number | null {
+  return aprobado.netpay.pendiente !== false && !actual.netpay.pendiente ? actual.netpay.depositado : null;
 }
 
 /** Movimiento NetPay del banco con lo necesario para atribuirlo a una sucursal. */

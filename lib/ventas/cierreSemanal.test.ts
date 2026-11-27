@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 // @ts-expect-error Node strip-types requiere extensión explícita.
-import { armarCierreSemanal, atribuirNetPay, cambiosDesdeAprobacion, diasDeSemana, semanaDe } from "./cierreSemanal.ts";
+import { armarCierreSemanal, atribuirNetPay, cambiosDesdeAprobacion, diasDeSemana, netpayCompletadoDespues, semanaDe } from "./cierreSemanal.ts";
 
 const L = "2026-11-23";
 const vacio = { arqueos: [], rappi: [], dodo: [], netpay: [], ultimoMovimiento: null, hoy: "2026-12-20" };
@@ -146,9 +146,9 @@ test("arqueos anulados se ignoran", () => {
 });
 
 test("cambiosDesdeAprobacion: tarjeta y depositado de NetPay", () => {
-  const a = armarCierreSemanal(L, { ...vacio, arqueos: [arq("2026-11-25", "matutino", "cierre", 0, 0, 1000)],
+  const a = armarCierreSemanal(L, { ...vacio, ultimoMovimiento: "2026-12-01", arqueos: [arq("2026-11-25", "matutino", "cierre", 0, 0, 1000)],
     netpay: [{ fecha: "2026-11-26", tipo: "deposito", monto: 900, conciliadoSemana: null }] });
-  const b = armarCierreSemanal(L, { ...vacio, arqueos: [arq("2026-11-25", "matutino", "cierre", 0, 0, 1100)],
+  const b = armarCierreSemanal(L, { ...vacio, ultimoMovimiento: "2026-12-01", arqueos: [arq("2026-11-25", "matutino", "cierre", 0, 0, 1100)],
     netpay: [{ fecha: "2026-11-26", tipo: "deposito", monto: 950, conciliadoSemana: null }] });
   const t = cambiosDesdeAprobacion(a, b);
   assert.ok(t.includes("mié 25: tarjeta $1,000.00 → $1,100.00"), t.join("|"));
@@ -189,4 +189,25 @@ test("atribuirNetPay: sin conciliar por sucursal del movimiento, cuenta exclusiv
   ]);
   assert.deepEqual(r.netpay.map((x) => [x.monto, x.conciliadoSemana]), [[100, null], [200, null], [7, null]]);
   assert.equal(r.sinAsignar, 50);
+});
+
+test("NetPay pendiente al aprobar: el depósito posterior no es un cambio, solo línea neutra", () => {
+  const a = armarCierreSemanal(L, { ...vacio, arqueos: [arq("2026-11-25", "matutino", "cierre", 0, 0, 1000)] });
+  assert.equal(a.netpay.pendiente, true);
+  const b = armarCierreSemanal(L, { ...vacio, ultimoMovimiento: "2026-12-01", arqueos: [arq("2026-11-25", "matutino", "cierre", 0, 0, 1000)],
+    netpay: [{ fecha: "2026-11-26", tipo: "deposito", monto: 950, conciliadoSemana: null }] });
+  assert.equal(b.netpay.pendiente, false);
+  assert.deepEqual(cambiosDesdeAprobacion(a, b), []);
+  assert.equal(netpayCompletadoDespues(a, b), 950);
+  assert.equal(netpayCompletadoDespues(b, b), null, "ya estaba completo al aprobar");
+  assert.equal(netpayCompletadoDespues(a, a), null, "sigue pendiente");
+});
+
+test("sinPortal: solo si no se importó ninguna orden ese día (cualquier estado) y difRappi queda en null", () => {
+  const dr = { ...vacio, hoy: "2026-11-27", arqueos: [arq("2026-11-24", "matutino", "cierre", 0, 0, null, 500), arq("2026-11-25", "matutino", "cierre", 0, 0, null, 500)] };
+  const c = armarCierreSemanal(L, { ...dr, rappi: [], diasConPortal: ["2026-11-24"] });
+  assert.equal(dia(c, "2026-11-24").sinPortal, false, "hubo órdenes importadas aunque ninguna finalizada");
+  assert.equal(dia(c, "2026-11-24").difRappi, -500);
+  assert.equal(dia(c, "2026-11-25").sinPortal, true);
+  assert.equal(dia(c, "2026-11-25").difRappi, null);
 });

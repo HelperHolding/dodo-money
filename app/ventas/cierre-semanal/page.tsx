@@ -113,7 +113,7 @@ export default async function CierreSemanalPagina({ searchParams }: { searchPara
   const suc = lista.find((s) => s.id === q.sucursal) ?? lista.find((s) => s.id === perfil.sucursal_id) ?? lista[0];
   if (!suc) return <EncabezadoPagina titulo="Cierre semanal" descripcion="No hay sucursales registradas." />;
 
-  const { cierre, aprobacion, cambios, netpaySinAsignar, cuentas } = await cargarCierreSemanal(supabase, suc.id, semana);
+  const { cierre, aprobacion, cambios, netpayCompletado, sinMigracion, netpaySinAsignar, cuentas } = await cargarCierreSemanal(supabase, suc.id, semana);
   let aprobador: string | null = null;
   if (aprobacion) {
     const r = await supabase.from("perfiles").select("nombre").eq("id", aprobacion.aprobadoPor).maybeSingle<{ nombre: string }>();
@@ -147,7 +147,14 @@ export default async function CierreSemanalPagina({ searchParams }: { searchPara
           <p><strong>{cambios.length ? "Cambió después de aprobar" : "Aprobado"}</strong> · aprobado por {aprobador} el {fechaTexto(fechaMX(aprobacion.aprobadoEn))} a las {hora(aprobacion.aprobadoEn)}
             {aprobacion.nota && <> · «{aprobacion.nota}»</>}</p>
         )}
-        {cambios.length > 0 && <ul>{cambios.map((c) => <li key={c}>{c}</li>)}</ul>}
+        {sinMigracion && <p>La aprobación estará disponible cuando se aplique la migración.</p>}
+        {cambios.length > 0 && (
+          <>
+            <p>La tabla muestra las cifras actuales, no la copia aprobada.</p>
+            <ul>{cambios.map((c) => <li key={c}>{c}</li>)}</ul>
+          </>
+        )}
+        {netpayCompletado !== null && <p>NetPay completado después de aprobar: depositado {pesos(netpayCompletado)}</p>}
       </section>
 
       <section className="akton-tabla-marco">
@@ -158,7 +165,7 @@ export default async function CierreSemanalPagina({ searchParams }: { searchPara
 
       <NetPay c={cierre} sinAsignar={netpaySinAsignar} cuentas={cuentas} />
 
-      {admin && terminada && (
+      {admin && terminada && !sinMigracion && (
         <section className="seccion no-imprimir" aria-labelledby="cierre-aprobar">
           <h2 id="cierre-aprobar">{aprobacion ? "Volver a aprobar" : "Aprobar semana"}</h2>
           <form action={aprobarSemana} className="cierre-aprobar">
@@ -167,6 +174,7 @@ export default async function CierreSemanalPagina({ searchParams }: { searchPara
             <div className="campo"><label htmlFor="nota">Nota (opcional)</label>
               <textarea id="nota" name="nota" maxLength={500} rows={2} defaultValue="" /></div>
             <button className="boton" type="submit">{aprobacion ? "Volver a aprobar" : "Aprobar semana"}</button>
+            {cierre.netpay.pendiente && <small className="saldo-nota">NetPay sigue pendiente; se completará solo después de aprobar.</small>}
             <small className="saldo-nota">Se guarda una copia de los totales tal como se ven ahora.</small>
           </form>
         </section>

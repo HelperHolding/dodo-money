@@ -1,9 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { faltaTabla } from "@/lib/finanzas/ajustes";
 import { leerTodo } from "@/lib/ventas/paginar";
 import { PREFIJO_EN_VIVO, esTurbo } from "@/lib/ventas/rappi";
 import { esComisionNetPay, esNetPay, type MovimientoBanco } from "@/lib/banca/conciliacion";
 import {
-  armarCierreSemanal, atribuirNetPay, cambiosDesdeAprobacion, diasDeSemana,
+  armarCierreSemanal, atribuirNetPay, cambiosDesdeAprobacion, diasDeSemana, netpayCompletadoDespues,
   type ArqueoDia, type CierreSemanal, type MovBancoNetPay, type MovNetPay, type OrdenRappi, type VentaDodoDia,
 } from "@/lib/ventas/cierreSemanal";
 
@@ -12,6 +13,10 @@ type Documento = NonNullable<MovBancoNetPay["documentos"]>[number];
 export type AprobacionCierre = { id: string; nota: string | null; aprobadoPor: string; aprobadoEn: string; totales: CierreSemanal };
 export type DatosCierreSemanal = {
   cierre: CierreSemanal; aprobacion: AprobacionCierre | null; cambios: string[];
+  /** Depositado NetPay si la semana se aprobó con NetPay pendiente y ya se completó; no cuenta como cambio. */
+  netpayCompletado: number | null;
+  /** La tabla `cierres_semanales` aún no existe (migración sin aplicar): no se puede aprobar. */
+  sinMigracion: boolean;
   /** Abonos o comisiones NetPay de una cuenta compartida sin sucursal asignada: no se pueden atribuir y quedan fuera. */
   netpaySinAsignar: number;
   /** Cuentas de banco que se revisaron para NetPay. */
@@ -55,7 +60,7 @@ export async function cargarCierreSemanal(db: SupabaseClient, sucursal: string, 
   // ventas de esta semana pueden llegar después: se leen hasta tres semanas para encontrarlos por su conciliación.
   const desdeBanco = sumarDias(lunes, 1), hastaBanco = sumarDias(lunes, 21);
 
-  const [arqueos, dodo, rappi, propias, principal, aprobada] = await Promise.all([
+  const [arqueos, dodo, rappi, rappiDias, propias, principal, aprobada] = await Promise.all([
     leer<FilaArqueo>("los arqueos", (a, b) => db.from("arqueos")
       .select("id, momento, ventas_efectivo, diferencia, tarjeta_real, rappi_real, creado_en, anulado_en, turnos!inner(sucursal_id, fecha, tipo)")
       .eq("turnos.sucursal_id", sucursal).gte("turnos.fecha", lunes).lte("turnos.fecha", domingo)
@@ -67,6 +72,10 @@ export async function cargarCierreSemanal(db: SupabaseClient, sucursal: string, 
     leer<{ fecha: string; tienda_id: string; subtotal_restaurante: number }>("las órdenes de Rappi", (a, b) => db.from("rappi_ordenes")
       .select("fecha, tienda_id, subtotal_restaurante").eq("sucursal_id", sucursal).eq("estado", "Finalizado").like("archivo", `${PREFIJO_EN_VIVO}%`)
       .gte("fecha", lunes).lte("fecha", domingo).order("rappi_id").range(a, b).returns<{ fecha: string; tienda_id: string; subtotal_restaurante: number }[]>()),
+    // Días con alguna orden importada, de cualquier estado: «Sin datos del portal» es que no se importó nada ese día.
+    leer<{ fecha: string; rappi_id: string }>("los días con órdenes de Rappi", (a, b) => db.from("rappi_ordenes")
+      .select("fecha, rappi_id").eq("sucursal_id", sucursal).like("archivo", `${PREFIJO_EN_VIVO}%`)
+      .gte("fecha", lunes).lte("fecha", domingo).order("rappi_id").range(a, b).returns<{ fecha: string; rappi_id: string }[]>()),
     db.from("razon_social_sucursales").select("rfc").eq("sucursal_id", sucursal).returns<{ rfc: string }[]>(),
     db.from("razones_sociales").select("rfc").eq("principal", true).maybeSingle<{ rfc: string }>(),
     db.from("cierres_semanales").select("id, totales, nota, aprobado_por, aprobado_en").eq("sucursal_id", sucursal).eq("semana", lunes)
@@ -74,7 +83,8 @@ export async function cargarCierreSemanal(db: SupabaseClient, sucursal: string, 
   ]);
   if (propias.error) fallo("la razón social de la sucursal", propias.error.message);
   if (principal.error) fallo("la razón social principal", principal.error.message);
-  if (aprobada.error) fallo("la aprobación guardada", aprobada.error.message);
+  const sinMigracion = faltaTabla(aprobada.error);
+  if (aprobada.error && !sinMigracion) fallo("la aprobación guardada", aprobada.error.message);
 
   // Cuentas de banco de la razón social de la sucursal y si esa razón social es solo de esta sucursal.
   const rfcs = (propias.data ?? []).map((r) => r.rfc);
@@ -157,12 +167,14 @@ export async function cargarCierreSemanal(db: SupabaseClient, sucursal: string, 
   const ordenes: OrdenRappi[] = rappi.map((o) => ({ fecha: o.fecha, turbo: esTurbo(o), subtotal: Number(o.subtotal_restaurante) }));
   const cierre = armarCierreSemanal(lunes, {
     arqueos: arqueosDia, rappi: ordenes, dodo: dodo.map((v) => ({ fecha: v.fecha, efectivo: Number(v.efectivo) })), netpay, ultimoMovimiento,
+    diasConPortal: [...new Set(rappiDias.map((o) => o.fecha))],
   });
 
-  const fila = aprobada.data;
+  const fila = sinMigracion ? null : aprobada.data;
   const aprobacion: AprobacionCierre | null = fila
     ? { id: fila.id, nota: fila.nota, aprobadoPor: fila.aprobado_por, aprobadoEn: fila.aprobado_en, totales: fila.totales }
     : null;
   const cambios = aprobacion ? cambiosDesdeAprobacion(aprobacion.totales, cierre) : [];
-  return { cierre, aprobacion, cambios, netpaySinAsignar: Math.round(netpaySinAsignar * 100) / 100, cuentas: ids.length };
+  const netpayCompletado = aprobacion ? netpayCompletadoDespues(aprobacion.totales, cierre) : null;
+  return { cierre, aprobacion, cambios, netpayCompletado, sinMigracion, netpaySinAsignar: Math.round(netpaySinAsignar * 100) / 100, cuentas: ids.length };
 }
