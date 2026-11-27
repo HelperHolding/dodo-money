@@ -18,6 +18,7 @@ function cliente({ sucursales = { data: ['s1', 's2'], error: null }, actual = va
 // calcularPL de prueba: la entrada de cada sucursal ya trae sus renglones.
 const datos = (datosPL) => cargar('app/ventas/bi/datos.ts', {
   '@/app/finanzas/datos': { datosPL }, '@/lib/finanzas/pl': { calcularPL: (entrada) => entrada?.renglones ?? [] }, '@/lib/ventas/bi': bi,
+  '@/lib/ventas/paginar': cargar('lib/ventas/paginar.ts'),
 });
 // P&L de octubre de una sucursal: venta 1000, sin variables, fijos (renta) dados → P.E. mensual = fijos.
 const plDe = (id, renta) => ({ id, entrada: { renglones: [{ clave: 'venta_neta', monto: 1000 }, { clave: 'renta', monto: renta }] }, metas: null, ctx: null });

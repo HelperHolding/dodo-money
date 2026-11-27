@@ -6,7 +6,7 @@ import {
   type Categoria, type CierreDia, type Costo, type Periodo, type RenglonCosteo, type VentaDia, type VentaProducto,
 } from "@/lib/ventas/calculos";
 import type { TipoDesglose } from "@/lib/ventas/extraer";
-import { leerTodo } from "@/lib/ventas/paginar";
+import { conReintento, leerTodo } from "@/lib/ventas/paginar";
 import type { LineaPedido, Pedido } from "@/lib/ventas/pedidos";
 import { cargarAgregadorDodo, cargarRappi } from "./rappi/datos";
 import { claveDia, combinarDiasRappi, diasConAgregador, diasDeTienda, quitarAgregador, rappiPorTienda, ventasRappi, type AgregadorDodo, type RappiGuardada } from "@/lib/ventas/rappi";
@@ -45,11 +45,13 @@ export function sucursalElegida(todas: boolean, pedida: string | undefined, prop
 
 /** Último día importado (de una sucursal o de cualquiera); null si no hay nada. */
 export async function ultimoDiaConDatos(supabase: SupabaseClient, sucursal: string | null): Promise<string | null> {
-  let q = supabase.from("ventas_dia").select("fecha");
-  if (sucursal) q = q.eq("sucursal_id", sucursal);
-  const { data, error } = await q.order("fecha", { ascending: false }).limit(1).maybeSingle<{ fecha: string }>();
-  let qr=supabase.from("rappi_ordenes").select("fecha").eq("sumar",true).eq("estado","Finalizado");if(sucursal)qr=qr.eq("sucursal_id",sucursal);
-  const rappi=await qr.order("fecha",{ascending:false}).limit(1).maybeSingle<{fecha:string}>();
+  const { data, error } = await conReintento(() => {
+    let q = supabase.from("ventas_dia").select("fecha");
+    if (sucursal) q = q.eq("sucursal_id", sucursal);
+    return q.order("fecha", { ascending: false }).limit(1).maybeSingle<{ fecha: string }>();
+  });
+  const rappi=await conReintento(()=>{let qr=supabase.from("rappi_ordenes").select("fecha").eq("sumar",true).eq("estado","Finalizado");if(sucursal)qr=qr.eq("sucursal_id",sucursal);
+    return qr.order("fecha",{ascending:false}).limit(1).maybeSingle<{fecha:string}>();});
   if(rappi.error)throw Error(rappi.error.message);
   if (error) throw new Error(`No se pudieron cargar las ventas: ${error.message}`);
   return [data?.fecha,rappi.data?.fecha].filter((x):x is string=>!!x).sort().at(-1)??null;
