@@ -2,6 +2,9 @@
  * Un UUID de CFDI (folio fiscal) se sube una sola vez entre facturas (XML o captura manual) y gastos de caja chica.
  * La pantalla avisa antes de guardar con `buscar_uuid_cfdi`; el trigger de la base vuelve a validar (HD-19).
  */
+// @ts-expect-error Node strip-types requiere extensión explícita.
+import { ligaSegura } from "../ligas.ts";
+
 export type CoincidenciaUuid = {
   origen: "factura" | "gasto";
   registro_id: string;
@@ -23,10 +26,6 @@ export const fechaDMA = (iso: string) => diaMX.format(new Date(iso)).split("-").
 export const mensajeUuidRepetido = (c: CoincidenciaUuid) =>
   `Este UUID ya se subió el ${fechaDMA(c.creado_en)} por ${c.usuario ?? "usuario sin registro"} en ${c.sucursal ?? "Oficina"} (${c.origen === "factura" ? "factura" : "gasto de caja chica"}).`;
 
-const ID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-const LIGA = new RegExp(`^(/compras/facturas/${ID}|/caja-chica(#gasto-${ID})?)$`);
-/** La liga viaja en la URL (`?liga=`) o en la pista del error: solo se acepta una ruta interna conocida. */
-export const ligaSegura = (x: string | null | undefined): string | null => (x && LIGA.test(x) ? x : null);
 
 /** Error de Supabase (por ejemplo, el trigger que saltó por una carrera): su mensaje y, si trae, la liga. */
 export const avisoDeError = (e: { message: string; hint?: string | null }): AvisoUuid => ({ texto: e.message, liga: ligaSegura(e.hint) });

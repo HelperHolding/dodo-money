@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { avisoDeError, buscarUuidRepetido, fechaDMA, ligaSegura, mensajeUuidRepetido, normalizarUuidCfdi, type CoincidenciaUuid } from "./uuidCfdi.ts";
+import { avisoDeError, buscarUuidRepetido, fechaDMA, mensajeUuidRepetido, normalizarUuidCfdi, type CoincidenciaUuid } from "./uuidCfdi.ts";
+import { ligaSegura } from "../ligas.ts";
 
 const U = "1DAFB285-3B68-4AC2-AAED-DBB6423832E6";
 const F = "0a0a0a0a-1111-4111-8111-000000000001";

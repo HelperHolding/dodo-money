@@ -113,12 +113,13 @@ test('UUID único: editar un registro sin cambiar su UUID se permite',async()=>{
  }finally{await db.close();}
 });
 
-test('UUID único: un gasto eliminado (captura equivocada) no bloquea volver a capturarlo',async()=>{
+test('UUID único: un gasto eliminado (anulado) sigue bloqueando su UUID para facturas y gastos nuevos',async()=>{
  const db=await montar();
  try{
-  await id(db,gasto(U2,{anulado:true}));
-  await id(db,gasto(U2));
-  await assert.rejects(db.query(factura(U2)),repetido);
+  const g=await id(db,gasto(U2,{anulado:true}));
+  await assert.rejects(db.query(gasto(U2.toLowerCase())),e=>{repetido(e);assert.equal(e.hint,`/caja-chica#gasto-${g}`);return true;});
+  await assert.rejects(db.query(factura(U2)),e=>{assert.match(e.message,/\(gasto de caja chica\)\.$/);return true;});
+  assert.equal((await db.query(`select registro_id from public.buscar_uuid_cfdi($1)`,[U2])).rows[0].registro_id,g);
  }finally{await db.close();}
 });
 
@@ -148,6 +149,7 @@ test('UUID único: la migración aborta si ya hay UUIDs repetidos entre registro
   `${factura(U1)};${factura(U1.toLowerCase())};`,
   `${factura(U1)};${gasto(U1.toLowerCase())};`,
   `${factura(null,{origen:'manual',manual:U1})};${gasto(U1)};`,
+  `${factura(U1)};${gasto(U1,{anulado:true})};`,
  ]){
   const db=new PGlite();
   try{

@@ -37,4 +37,6 @@ test('UUID único: gasto de caja chica avisa antes de guardar al registrar y al 
 test('UUID único: el aviso muestra la liga solo si es una ruta interna segura',()=>{
  const aviso=load('components/Aviso.tsx');
  assert.match(aviso,/ligaSegura\(liga\)/);
+ // El componente común no depende de Compras: la regla de ligas vive en un módulo neutral.
+ assert.match(aviso,/from "@\/lib\/ligas"/);assert.doesNotMatch(aviso,/lib\/compras/);
 });

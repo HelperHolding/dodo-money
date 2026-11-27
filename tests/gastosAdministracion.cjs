@@ -1,9 +1,10 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');const ts=require('typescript');
-// El helper real de HD-19 (uuidCfdi), transpilado igual que la acción.
-const uuidCfdi=(()=>{const js=ts.transpileModule(fs.readFileSync('lib/compras/uuidCfdi.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
- const mod={exports:{}};new Function('require','module','exports',js)(require,mod,mod.exports);return mod.exports;})();
+// Los helpers reales de HD-19 (ligas y uuidCfdi), transpilados igual que la acción.
+const cargarTs=(ruta,mocks={})=>{const js=ts.transpileModule(fs.readFileSync(ruta,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+ const mod={exports:{}};new Function('require','module','exports',js)(id=>mocks[id]??require(id),mod,mod.exports);return mod.exports;};
+const uuidCfdi=cargarTs('lib/compras/uuidCfdi.ts',{'../ligas.ts':cargarTs('lib/ligas.ts')});
 function escenario({rol='admin',gasto=true,errorRpc=null,hintRpc=null,fotoPrevia=null,repetidos=[]}={}) {
  const llamadas=[];
  const consulta={select:()=>consulta,eq:(k,v)=>{llamadas.push(['filtro',k,v]);return consulta;},maybeSingle:async()=>({data:gasto?{id:'gasto',foto_path:fotoPrevia}:null,error:null})};

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Icono } from "@/components/Icono";
-import { ligaSegura } from "@/lib/compras/uuidCfdi";
+import { ligaSegura } from "@/lib/ligas";
 
 /** `liga` llega por la URL: solo se muestra si es una ruta interna conocida (el registro que ya tiene el UUID). */
 export function Aviso({ ok, error, liga }: { ok?: string; error?: string; liga?: string }) {
