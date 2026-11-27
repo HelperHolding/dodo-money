@@ -18,7 +18,7 @@ export function FormSubir() {
         <ul className="seccion" style={{ listStyle: "none", paddingLeft: 0, display: "grid", gap: 8 }}>
           {estado.resultados.map((r, i) => (
             <li key={i} className={r.ok ? "aviso aviso-ok texto-partible" : "aviso aviso-error texto-partible"}>
-              {r.archivo && <strong>{r.archivo}: </strong>}{r.texto}{r.id && <> <Link href={`/compras/facturas/${r.id}`}>Ver</Link></>}
+              {r.archivo && <strong>{r.archivo}: </strong>}{r.texto}{(r.liga || r.id) && <> <Link href={r.liga || `/compras/facturas/${r.id}`}>Ver</Link></>}
             </li>
           ))}
         </ul>

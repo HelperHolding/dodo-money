@@ -7,8 +7,10 @@ import { hoyMX, numero } from "@/lib/formato";
 import { BUCKET_FOTOS, rutaFoto, validarFoto } from "@/lib/fotos";
 import { esCuentaGasto } from "@/lib/finanzas/cuentas";
 import { leerOrigen } from "@/lib/gastos";
+import { avisoDeError, buscarUuidRepetido } from "@/lib/compras/uuidCfdi";
 
-const volver = (clave: "ok" | "error", texto: string) => redirect(`/caja-chica?${clave}=${encodeURIComponent(texto)}`);
+const volver = (clave: "ok" | "error", texto: string, liga?: string | null) =>
+  redirect(`/caja-chica?${clave}=${encodeURIComponent(texto)}${liga ? `&liga=${encodeURIComponent(liga)}` : ""}`);
 
 export async function registrarGasto(formData: FormData) {
   const { supabase, sucursal, perfil } = await obtenerContextoParaEscribir("/caja-chica");
@@ -25,6 +27,16 @@ export async function registrarGasto(formData: FormData) {
   if (!origen) volver("error", "Elige de dónde salió el dinero.");
   if (!esCuentaGasto(cuenta)) volver("error", "Elige el tipo de gasto.");
   if (comprobante === "cfdi" && !uuid) volver("error", "Con factura, escribe el folio fiscal (UUID) del CFDI.");
+  // HD-19: el UUID no puede estar ya en una factura ni en otro gasto. Antes de subir la foto, para no dejarla huérfana.
+  // Si es el reenvío de esta misma solicitud (doble clic), su gasto ya guardado no cuenta.
+  if (uuid) {
+    const solicitud = String(formData.get("solicitud") ?? "");
+    const { data: previo } = solicitud
+      ? await supabase.from("gastos_caja_chica").select("id").eq("solicitud_id", solicitud).maybeSingle<{ id: string }>()
+      : { data: null };
+    const repetido = await buscarUuidRepetido(supabase, uuid, previo?.id ?? null);
+    if (repetido) volver("error", repetido.texto, repetido.liga);
+  }
 
   const foto = formData.get("foto");
   const archivo = foto instanceof File && foto.size > 0 ? foto : null;
@@ -47,7 +59,7 @@ export async function registrarGasto(formData: FormData) {
     informativo:formData.get("informativo")==="si",motivo:String(formData.get("motivo_informativo")??""),
     referencia:String(formData.get("referencia_informativa")??""),confirmado:String(formData.get("confirmado")??"")
   }});
-  if (error) volver("error", error.message);
+  if (error) { const aviso = avisoDeError(error); volver("error", aviso.texto, aviso.liga); }
   revalidatePath("/", "layout");
   volver("ok", formData.get("informativo")==="si" ? "Gasto informativo registrado. No se descontó efectivo ni se generó reposición." : origen === "empleado" ? "Gasto registrado. Queda por reponer a quien lo pagó." : "Gasto registrado.");
 }

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { obtenerPerfil } from "@/lib/contexto";
 import { leerCfdi } from "@/lib/compras/cfdi";
 import { archivoYaSubido, avisoGastosSinCfdi, baseArchivo, rutaArchivoFactura } from "@/lib/compras/facturas";
-import { fechaTexto, fechaMX, hoyCalendarioMX, pesos } from "@/lib/formato";
+import { hoyCalendarioMX, pesos } from "@/lib/formato";
 import { leerGastoManual, type GastoManual } from "@/lib/compras/gastoManual";
 import { leerDiasPago } from "@/lib/compras/diasPago";
 import { CUENTAS_GASTO, CUENTAS_MEMO } from "@/lib/finanzas/cuentas";
@@ -13,6 +13,7 @@ import { REGIMENES } from "@/lib/compras/proveedores";
 import {leerRazonesSociales} from "@/lib/compras/razonesSociales";
 import { leerEmpresa } from "@/lib/compras/empresa";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
+import { avisoDeError, buscarUuidRepetido } from "@/lib/compras/uuidCfdi";
 import { clienteAdmin, volver } from "../servidor";
 
 const BUCKET = "facturas";
@@ -34,7 +35,7 @@ export async function guardarEmpresa(fd: FormData) {
   volver("/compras/facturas", "ok", "Datos de la empresa guardados.");
 }
 
-export type ResultadoSubida = { resultados: { archivo: string; ok: boolean; texto: string; id?: string }[] };
+export type ResultadoSubida = { resultados: { archivo: string; ok: boolean; texto: string; id?: string; liga?: string }[] };
 
 /**
  * Cada XML se valida antes de subir nada (para no dejar archivos huérfanos): que sea CFDI, que no esté registrado
@@ -64,8 +65,9 @@ export async function subirFacturas(_previo: ResultadoSubida | null, fd: FormDat
       resultados.push({ archivo: xml.name, ok: false, texto: `El RFC receptor ${cfdi.rfc_receptor} no está dado de alta como razón social activa del grupo.` });
       continue;
     }
-    const { data: previa } = await supabase.from("facturas").select("id, creado_en").eq("uuid", cfdi.uuid).maybeSingle<{ id: string; creado_en: string }>();
-    if (previa) { resultados.push({ archivo: xml.name, ok: false, texto: `Ya se registró el ${fechaTexto(fechaMX(previa.creado_en))}.`, id: previa.id }); continue; }
+    // HD-19: el UUID no puede estar ya en otra factura (XML o captura manual) ni en un gasto de caja chica.
+    const repetido = await buscarUuidRepetido(supabase, cfdi.uuid);
+    if (repetido) { resultados.push({ archivo: xml.name, ok: false, texto: repetido.texto, liga: repetido.liga ?? undefined }); continue; }
     if (!altaProveedor) {
       const { data: prov } = await supabase.from("proveedores").select("id").eq("rfc", cfdi.rfc_emisor).maybeSingle<{ id: string }>();
       if (!prov) { resultados.push({ archivo: xml.name, ok: false, texto: `El proveedor con RFC ${cfdi.rfc_emisor} no está en la cartera.` }); continue; }
@@ -86,7 +88,7 @@ export async function subirFacturas(_previo: ResultadoSubida | null, fd: FormDat
       else avisoPdf = ` El PDF no se pudo guardar: ${errorPdf.message}`;
     }
     const { data: id, error } = await supabase.rpc("registrar_factura", { p_cfdi: cfdi, p_alta_proveedor: altaProveedor, p_xml: rutaXml, p_pdf: pdfRuta });
-    if (error) { resultados.push({ archivo: xml.name, ok: false, texto: error.message }); continue; }
+    if (error) { const aviso = avisoDeError(error); resultados.push({ archivo: xml.name, ok: false, texto: aviso.texto, liga: aviso.liga ?? undefined }); continue; }
     const nombre = cfdi.tipo === "egreso" ? "Nota de crédito" : "Factura";
     // Si el proveedor tiene gastos sin CFDI abiertos, se recuerda sustituirlos (si no, el gasto se cuenta doble).
     let avisoSinCfdi = "";
@@ -111,7 +113,7 @@ async function llamarFactura(fd: FormData, funcion: string, argumentos: Record<s
   const id = texto(fd, "id");
   const supabase = await clienteAdmin(rutaFactura(id));
   const { error } = await supabase.rpc(funcion, argumentos);
-  if (error) volver(rutaFactura(id), "error", error.message);
+  if (error) { const aviso = avisoDeError(error); volver(rutaFactura(id), "error", aviso.texto, aviso.liga); }
   revalidatePath("/compras", "layout");
   if (funcion === "cancelar_factura") { revalidatePath("/finanzas", "layout"); revalidatePath("/recepciones"); revalidatePath("/", "page"); }
   if (funcion === "programar_recepcion_factura") revalidatePath("/recepciones");
@@ -128,6 +130,11 @@ export async function asignarDestino(fd: FormData) {
   await llamarFactura(fd, "asignar_destino_factura", { p_factura: texto(fd, "id"), p_sucursal: s === "oficina" || !s ? null : s }, "Destino guardado.");
 }
 export async function guardarUuidManualFactura(fd:FormData) {
+ const id=texto(fd,'id');
+ const supabase=await clienteAdmin(rutaFactura(id));
+ // HD-19: avisa con liga si otro registro ya tiene el UUID; la propia factura no cuenta.
+ const repetido=await buscarUuidRepetido(supabase,texto(fd,'uuid_manual'),id);
+ if(repetido)volver(rutaFactura(id),'error',repetido.texto,repetido.liga);
  await llamarFactura(fd,'guardar_uuid_manual_factura',{p_solicitud:texto(fd,'solicitud'),p_factura:texto(fd,'id'),p_anterior:texto(fd,'uuid_anterior')||null,p_uuid:texto(fd,'uuid_manual'),p_motivo:texto(fd,'motivo')},'UUID manual guardado. El XML sigue pendiente.');
 }
 export async function asignarCuentaFactura(fd: FormData) {
