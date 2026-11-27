@@ -41,7 +41,8 @@ export function OrdenesRappi({ ordenes, nombres, edita, sumadas, total }: {
                       {edita && (
                         <form action={fuenteOrden}>
                           <input type="hidden" name="id" value={o.rappi_id} /><input type="hidden" name="sumar" value={o.sumar ? "no" : "si"} />
-                          <BotonEnviar className="boton boton-secundario" confirmar="¿Cambiar la fuente de esta orden?">{o.sumar ? "Ya incluida en Dodo IS" : "Sumar desde Rappi"}</BotonEnviar>
+                          {/* El texto es la acción, no el estado: el estado ya lo dice la insignia de arriba. */}
+                          <BotonEnviar className="boton boton-secundario boton-compacto" confirmar={o.sumar ? "¿Marcar esta orden como incluida en Dodo IS? Dejará de sumar en la venta de Rappi." : "¿Volver a sumar esta orden desde Rappi?"}>{o.sumar ? "Marcar como incluida en Dodo IS" : "Volver a sumar desde Rappi"}</BotonEnviar>
                         </form>
                       )}
                     </div>
