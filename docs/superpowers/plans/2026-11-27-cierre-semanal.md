@@ -45,7 +45,7 @@
 ## Review Focus
 
 1. **Dos turnos en un día:** el efectivo y la tarjeta no se cuentan doble (Task 2; el implementador confirma en el código de arqueo si `ventas_efectivo` es del turno o acumulada).
-2. **Semana que cruza de mes, y domingo:** `semanaDe` devuelve el lunes correcto. Por ejemplo, el domingo 2026-11-30 da el lunes 2026-11-24 (Task 2).
+2. **Semana que cruza de mes, y domingo:** `semanaDe` devuelve el lunes correcto. Por ejemplo, el domingo 2026-11-29 da el lunes 2026-11-23 (Task 2).
 3. **Aprobar con totales del navegador:** la acción recalcula y no acepta totales enviados (Task 3).
 4. **Semana en curso:** no se puede aprobar (Task 1 y Task 3).
 5. **Datos faltantes:** un día sin arqueos o sin portal aparece marcado y no como $0 cuadrado (Task 2).
