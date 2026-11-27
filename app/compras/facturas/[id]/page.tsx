@@ -52,8 +52,8 @@ type Orden = { id: string; folio: string; estado: string; sucursales: { nombre: 
 type Renglon = { orden_id: string; descripcion: string; cantidad: number; precio: number; tasa_iva: TasaIva; recibido: number };
 type Relacionada = { id: string; serie: string | null; folio: string | null; uuid: string; tipo: string; total: number; estado: EstadoFactura };
 
-export default async function DetalleFactura({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const [{ id }, { ok, error }] = await Promise.all([params, searchParams]);
+export default async function DetalleFactura({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ok?: string; error?: string; liga?: string }> }) {
+  const [{ id }, { ok, error, liga }] = await Promise.all([params, searchParams]);
   const { supabase, perfil } = await obtenerPerfil();
   const { data: f } = await supabase.from("facturas_saldo")
     .select("id, uuid, uuid_manual, origen, sustituido_por, serie, folio, tipo, fecha_emision, rfc_receptor, rfc_emisor, nombre_emisor, regimen_emisor, metodo_pago, forma_pago, subtotal, descuento, iva, retenciones, total, saldo, proveedor_id, sucursal_id, cuenta_pl, cubre_desde, cubre_hasta, uuid_relacionado, vence_el, estado, revisada, revision_nota, pagado, falta_complemento, recepcion_programada_el,pago_programado_forma, pago_programado_el, xml_ruta, pdf_ruta, motivo_cancelacion, proveedores(razon_social, nombre_comercial, regimen_fiscal,dias_entrega)")
@@ -241,7 +241,7 @@ export default async function DetalleFactura({ params, searchParams }: { params:
           </details>
       )}
       </div>
-      <Aviso ok={ok} error={error} /><TareasDelDocumento supabase={supabase} tipo="factura" id={id} rol={perfil.rol} hoy={hoyCalendarioMX()} />
+      <Aviso ok={ok} error={error} liga={liga} /><TareasDelDocumento supabase={supabase} tipo="factura" id={id} rol={perfil.rol} hoy={hoyCalendarioMX()} />
       {anteriores.length > 0 && <section className="seccion" aria-labelledby="t-cfdi-anteriores"><h2 id="t-cfdi-anteriores">CFDI anteriores</h2>
         <p className="saldo-nota">Esta factura cambió de CFDI. Pagos, órdenes y recepciones se conservaron en el mismo registro.</p>
         <ul className="lista-simple">{anteriores.map((x) => <li key={x.id}><strong>{x.original.serie ?? ""}{x.original.folio ?? "Sin folio"}</strong> · UUID {x.uuid_anterior} · emitido {fechaTexto(x.original.fecha_emision)} · {pesos(Number(x.original.total))}

@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { obtenerPerfil } from "@/lib/contexto";
 import { puedeEditarCompras, SOLO_CONSULTA } from "@/lib/roles";
 
-/** Regresa a `ruta` con un aviso (ok o error). */
-export const volver = (ruta: string, clave: "ok" | "error", texto: string): never =>
-  redirect(`${ruta}${ruta.includes("?") ? "&" : "?"}${clave}=${encodeURIComponent(texto)}`);
+/** Regresa a `ruta` con un aviso (ok o error) y, si hay, la liga al registro relacionado (`&liga=`). */
+export const volver = (ruta: string, clave: "ok" | "error", texto: string, liga?: string | null): never =>
+  redirect(`${ruta}${ruta.includes("?") ? "&" : "?"}${clave}=${encodeURIComponent(texto)}${liga ? `&liga=${encodeURIComponent(liga)}` : ""}`);
 
 /** Cliente de Supabase de un admin; cualquier otro regresa con el aviso de solo consulta. */
 export async function clienteAdmin(ruta: string) {

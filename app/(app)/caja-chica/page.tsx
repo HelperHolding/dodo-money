@@ -14,8 +14,8 @@ import { marcarRepuesto, registrarGasto, solicitarReposicion } from "./actions";
 
 const COLUMNAS = "id, fecha, fecha_capturada_original, concepto, proveedor, monto, comprobante, creado_en, foto_path, origen, pagado_por, repuesto_en, informativo, motivo_informativo, referencia_informativa, informado_por, informado_en, respaldo_informativo, uuid_cfdi, cuenta_pl, version, anulado_en, motivo_anulacion";
 
-export default async function CajaChica({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const { ok, error } = await searchParams;
+export default async function CajaChica({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string; liga?: string }> }) {
+  const { ok, error, liga } = await searchParams;
   const { supabase, perfil, sucursal, soloLectura } = await obtenerContexto();
 
   const [{ data: ultima }, { data: saldo }, { data: personas }, { data: deEmpleados }] = await Promise.all([
@@ -57,7 +57,7 @@ export default async function CajaChica({ searchParams }: { searchParams: Promis
     <>
       <EncabezadoPagina titulo="Gastos" info="Registra limpieza, agua y otros gastos con su origen y comprobante. Si ya estaban descontados en un corte anterior, elige el registro informativo para evitar otra salida." />
       {perfil.rol==='admin'&&<p><Link className="boton boton-secundario" href="/finanzas/asignacion">Revisar cuentas contables de gastos</Link></p>}
-      <Aviso ok={ok} error={error} />
+      <Aviso ok={ok} error={error} liga={liga} />
 
       <section className="seccion" aria-labelledby="t-estado">
         <h2 id="t-estado">Fondo de caja chica</h2>

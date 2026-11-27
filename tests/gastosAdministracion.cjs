@@ -1,12 +1,15 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');const ts=require('typescript');
-function escenario({rol='admin',gasto=true,errorRpc=null,fotoPrevia=null}={}) {
+// El helper real de HD-19 (uuidCfdi), transpilado igual que la acción.
+const uuidCfdi=(()=>{const js=ts.transpileModule(fs.readFileSync('lib/compras/uuidCfdi.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+ const mod={exports:{}};new Function('require','module','exports',js)(require,mod,mod.exports);return mod.exports;})();
+function escenario({rol='admin',gasto=true,errorRpc=null,hintRpc=null,fotoPrevia=null,repetidos=[]}={}) {
  const llamadas=[];
  const consulta={select:()=>consulta,eq:(k,v)=>{llamadas.push(['filtro',k,v]);return consulta;},maybeSingle:async()=>({data:gasto?{id:'gasto',foto_path:fotoPrevia}:null,error:null})};
  const storage={from:b=>({upload:async(r,a,o)=>{llamadas.push(['subir',b,r,o.contentType]);return {error:null};},remove:async rs=>{llamadas.push(['borrar',b,rs]);return {error:null};}})};
- const supabase={storage,from:n=>{llamadas.push(['tabla',n]);return consulta;},rpc:async(n,p)=>{llamadas.push(['rpc',n,p]);return {error:errorRpc?{message:errorRpc}:null};}};
- const mocks={'@/lib/contexto':{obtenerContextoParaEscribir:async()=>({supabase,perfil:{rol},sucursal:{id:'sucursal-activa'}})},'next/navigation':{redirect:url=>{throw {redirect:url};}},'next/cache':{revalidatePath:(...p)=>llamadas.push(['revalidar',...p])},'@/lib/fotos':{BUCKET_FOTOS:'fotos',rutaFoto:(s,id)=>`${s}/${id}.jpg`,validarFoto:a=>!a||a.type.startsWith('image/')?null:'Sube una foto.'}};
+ const supabase={storage,from:n=>{llamadas.push(['tabla',n]);return consulta;},rpc:async(n,p)=>{llamadas.push(['rpc',n,p]);if(n==='buscar_uuid_cfdi')return {data:repetidos,error:null};return {error:errorRpc?{message:errorRpc,hint:hintRpc}:null};}};
+ const mocks={'@/lib/contexto':{obtenerContextoParaEscribir:async()=>({supabase,perfil:{rol},sucursal:{id:'sucursal-activa'}})},'next/navigation':{redirect:url=>{throw {redirect:url};}},'next/cache':{revalidatePath:(...p)=>llamadas.push(['revalidar',...p])},'@/lib/compras/uuidCfdi':uuidCfdi,'@/lib/fotos':{BUCKET_FOTOS:'fotos',rutaFoto:(s,id)=>`${s}/${id}.jpg`,validarFoto:a=>!a||a.type.startsWith('image/')?null:'Sube una foto.'}};
  const js=ts.transpileModule(fs.readFileSync('app/(app)/caja-chica/administrar.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  const mod={exports:{}};new Function('require','module','exports',js)(id=>mocks[id]??require(id),mod,mod.exports);
  const fd=new FormData();for(const [k,v] of Object.entries({id:'gasto',version:'2',solicitud:'sol',accion:'eliminar',motivo:'Captura equivocada',confirmado:'si'}))fd.set(k,v);
@@ -28,6 +31,19 @@ test('gastos: RPC recibe versión e identificador; borrar no envía datos editab
 });
 test('gastos: error de saldo o versión no informa éxito',async()=>{
  const s=escenario({errorRpc:'El gasto cambió'});await assert.rejects(s.accion(s.fd),destino('error'));assert.ok(!s.llamadas.some(c=>c[0]==='revalidar'));
+});
+const G='0a0a0a0a-1111-4111-8111-000000000001',U='1DAFB285-3B68-4AC2-AAED-DBB6423832E6';
+const aviso=(texto,liga)=>e=>{const u=new URL(e.redirect,'http://x');assert.equal(u.searchParams.get('error'),texto);assert.equal(u.searchParams.get('liga'),liga);return true;};
+test('gastos: editar con un UUID que ya tiene otro registro avisa con liga y no llama la RPC de edición',async()=>{
+ const s=escenario({repetidos:[{origen:'factura',registro_id:G,fecha:'2026-10-09',sucursal:null,usuario:'Julio',creado_en:'2026-10-10T02:30:00Z',liga:`/compras/facturas/${G}`}]});
+ s.fd.set('accion','editar');s.fd.set('uuid_cfdi',` ${U.toLowerCase()}`);
+ await assert.rejects(s.accion(s.fd),aviso('Este UUID ya se subió el 09/10/2026 por Julio en Oficina (factura).',`/compras/facturas/${G}`));
+ assert.deepEqual(s.llamadas.filter(c=>c[0]==='rpc').map(c=>c.slice(1)),[['buscar_uuid_cfdi',{p_uuid:U,p_excluir:'gasto'}]]);
+});
+test('gastos: si el trigger de UUID salta en la RPC (carrera), se muestra su mensaje y su liga',async()=>{
+ const m='Este UUID ya se subió el 01/11/2026 por Ana en Zapopan-1 La Calma (gasto de caja chica).';
+ const s=escenario({errorRpc:m,hintRpc:`/caja-chica#gasto-${G}`});s.fd.set('accion','editar');s.fd.set('uuid_cfdi',U);
+ await assert.rejects(s.accion(s.fd),aviso(m,`/caja-chica#gasto-${G}`));
 });
 
 const conFoto=s=>{s.fd.set('foto',new File(['x'],'ticket.jpg',{type:'image/jpeg'}));return s;};
