@@ -59,7 +59,7 @@ export async function Marco({ perfil, titulo, detalle, aviso, children }: {
       />
       <div className="marco-contenido">
         {aviso}
-        <main className="pagina"><MigasDePan menu={menu} /><PestanasArea menu={menu} />{children}</main>
+        <main className="pagina"><div className="pagina-cabeza"><MigasDePan menu={menu} /><PestanasArea menu={menu} /></div>{children}</main>
       </div>
     </div>
   );

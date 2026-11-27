@@ -61,6 +61,6 @@ test('las páginas usan todo el ancho disponible: sin tope ni centrado, y sin ex
   assert.ok(regla, 'no encontré la regla .pagina');
   assert.doesNotMatch(regla[1], /max-width/);
   assert.doesNotMatch(regla[1], /margin: 0 auto/);
-  assert.match(regla[1], /padding: 28px clamp\(16px, 2vw, 28px\) 64px;/);
+  assert.match(regla[1], /padding: 18px clamp\(16px, 2vw, 28px\) 64px;/);
   for (const css of [g, m]) assert.doesNotMatch(css, /\.pagina:has\([^)]*\)\s*\{[^}]*max-width/);
 });
