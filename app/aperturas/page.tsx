@@ -4,7 +4,8 @@ import Link from 'next/link';
 import {obtenerPerfil} from '@/lib/contexto';
 import {hoyCalendarioMX,pesos} from '@/lib/formato';
 import {leerTodo} from '@/lib/ventas/paginar';
-import {ordenarProyectos,type ProyectoApertura} from '@/lib/aperturas';
+import {COLUMNAS_PROYECTO_RESPONSABLE,avanceApertura,ordenarProyectos,type ProyectoApertura} from '@/lib/aperturas';
+import {puedeVerAperturasCompleto} from '@/lib/roles';
 import {resumenPortada,textoDiasApertura,textoPts,type Concepto} from '@/lib/aperturasAkton';
 import {Kpi} from '@/app/finanzas/PLAkton';
 
@@ -20,37 +21,43 @@ type ConceptoPortada=Concepto&{proyecto_id:string};
  * el mismo del checklist; por eso la consulta trae la categoría. Primero la apertura más próxima.
  */
 export default async function Aperturas() {
- const {supabase}=await obtenerPerfil();
+ const {supabase,perfil}=await obtenerPerfil();
+ // Un responsable (no admin ni corporativo) ve solo las aperturas donde tiene registros (RLS), sin presupuesto ni inversión, y su propio avance (HD-27).
+ const completo=puedeVerAperturasCompleto(perfil.rol);
  const [{data,error},items,inversion]=await Promise.all([
-  supabase.from('apertura_proyectos').select('*,sucursales(nombre)').returns<ProyectoApertura[]>(),
+  supabase.from('apertura_proyectos').select(completo?'*,sucursales(nombre)':COLUMNAS_PROYECTO_RESPONSABLE).returns<ProyectoApertura[]>(),
   leerTodo<ConceptoPortada>((d,h)=>supabase.from('apertura_items').select('id,proyecto_id,nombre,tipo,etapa,estado,categoria,inicio,fin,responsable,notas').order('id').range(d,h).returns<ConceptoPortada[]>()).catch(()=>null),
   // Si la tabla de inversión no existe o falla, la franja muestra «—».
-  Promise.resolve(supabase.from('inversion_apertura_fuentes').select('total').returns<{total:number}[]>()).then(r=>r.error?null:{total:(r.data??[]).reduce((s,f)=>s+Number(f.total),0),fuentes:(r.data??[]).length}).catch(()=>null),
+  !completo?Promise.resolve(null):Promise.resolve(supabase.from('inversion_apertura_fuentes').select('total').returns<{total:number}[]>()).then(r=>r.error?null:{total:(r.data??[]).reduce((s,f)=>s+Number(f.total),0),fuentes:(r.data??[]).length}).catch(()=>null),
  ]);
  const hoy=hoyCalendarioMX();
- const encabezado=<EncabezadoPagina titulo="Aperturas" info="Del proyecto a la tienda lista: actividades, equipo, compras y validaciones." acciones={<Link className="boton boton-secundario" href="/aperturas/inversion">Inversión de apertura</Link>}/>;
+ const encabezado=completo?<EncabezadoPagina titulo="Aperturas" info="Del proyecto a la tienda lista: actividades, equipo, compras y validaciones." acciones={<Link className="boton boton-secundario" href="/aperturas/inversion">Inversión de apertura</Link>}/>
+  :<EncabezadoPagina titulo="Aperturas" info="Las aperturas donde tienes actividades. El avance cuenta solo los registros a tu nombre."/>;
  if(error)return <>{encabezado}<p className="aviso aviso-error">No se pudieron consultar los proyectos. Revisa la migración 0037 de Aperturas.</p></>;
- if(!data?.length)return <>{encabezado}<EstadoVacio titulo="Sin proyectos de apertura" descripcion="Cuando se cargue el proyecto de una sucursal nueva aparecerá aquí."/></>;
+ if(!data?.length)return <>{encabezado}{completo?<EstadoVacio titulo="Sin proyectos de apertura" descripcion="Cuando se cargue el proyecto de una sucursal nueva aparecerá aquí."/>:<EstadoVacio titulo="Sin actividades a tu nombre" descripcion="Cuando te asignen una actividad de apertura aparecerá aquí."/>}</>;
  // Sin el avance no se sabe si una apertura pasada ya abrió: no se inventan vencidas, atrasadas ni «en curso».
  const sinAvance=items===null;
- const r=resumenPortada(data,items??[],hoy),nombre=(id:string)=>data.find(p=>p.id===id)?.sucursales?.nombre??'Sucursal';
+ const r=resumenPortada(data,items??[],hoy,{avanceAbre:completo}),nombre=(id:string)=>data.find(p=>p.id===id)?.sucursales?.nombre??'Sucursal';
  return <>{encabezado}
   <div className="akton">
    <section className="akton-kpis" aria-label="Indicadores de aperturas">
     <Kpi etiqueta="Aperturas en curso" valor={sinAvance?'—':r.enCurso} pie={`De ${plural(data.length,'proyecto','proyectos')}`}/>
     <Kpi etiqueta="Próxima apertura" tono={r.proxima?'destacado':undefined} valor={r.proxima?(r.proxima.dias===0?'Hoy':plural(r.proxima.dias,'día','días')):'Ninguna programada'} pie={r.proxima?nombre(r.proxima.id):'Sin aperturas por venir'}/>
     <Kpi etiqueta="Atrasadas contra lo esperado" tono={!sinAvance&&r.atrasados?'no':undefined} valor={sinAvance?'—':r.atrasados} pie="Más de 5 pts abajo de lo esperado a hoy"/>
-    <Kpi etiqueta="Inversión registrada" valor={inversion===null||inversion.fuentes===0?'—':pesos(inversion.total)} pie={inversion&&inversion.fuentes>0?<>Total de {inversion.fuentes===1?'1 fuente':`${inversion.fuentes} fuentes`} · <Link href="/aperturas/inversion">ver detalle</Link></>:<Link href="/aperturas/inversion">Ver Inversión de apertura</Link>}/>
+    {completo&&<Kpi etiqueta="Inversión registrada" valor={inversion===null||inversion.fuentes===0?'—':pesos(inversion.total)} pie={inversion&&inversion.fuentes>0?<>Total de {inversion.fuentes===1?'1 fuente':`${inversion.fuentes} fuentes`} · <Link href="/aperturas/inversion">ver detalle</Link></>:<Link href="/aperturas/inversion">Ver Inversión de apertura</Link>}/>}
    </section>
    {sinAvance&&<p className="aviso aviso-error">No se pudo consultar el avance de las aperturas.</p>}
    <div className="ap-portada">{ordenarProyectos(data,hoy).map(p=>{
     const t=r.tarjetas[p.id],a=t.avance,dias=textoDiasApertura(t.dias),pasada=t.dias.tipo==='vencida'||t.dias.tipo==='abierta';
+    // Barra: avance ponderado por bloque de lo que ve quien entra (para un responsable, solo lo suyo).
+    const barra=sinAvance?null:avanceApertura((items??[]).filter(i=>i.proyecto_id===p.id)).general,etiqueta=completo?'Avance':'Tu avance';
     return <Link key={p.id} href={`/aperturas/${p.id}`} className="ap-tarjeta ap-tarjeta-akton">
      <span className="akton-kpi-etiqueta">{p.sucursales?.nombre??'Sucursal'}</span>
      {sinAvance&&pasada?<strong className="ap-tarjeta-dias">Sin dato de avance</strong>
       :<strong className="ap-tarjeta-dias" data-tono={dias.tono}>{dias.valor}{t.dias.tipo==='faltan'&&<small> {t.dias.dias===1?'día':'días'}</small>}</strong>}
      <small className="ap-tarjeta-dato">{p.responsable} · {rango(p.objetivo_desde,p.objetivo_hasta)}</small>
-     {!sinAvance&&<span className="ap-tarjeta-linea">Avance {a.real===null?'—':`${a.real} %`} · {a.esperado===null||a.realConFecha===null?'esperado sin fechas':`con fecha ${a.realConFecha} % vs ${a.esperado} % esperado`}
+     {!sinAvance&&<progress className="ap-tarjeta-barra" value={barra??0} max={100} aria-label={`${etiqueta}: ${barra===null?'sin registros':`${barra} %`}`}/>}
+     {!sinAvance&&<span className="ap-tarjeta-linea">{etiqueta} {a.real===null?'—':`${a.real} %`} · {a.esperado===null||a.realConFecha===null?'esperado sin fechas':`con fecha ${a.realConFecha} % vs ${a.esperado} % esperado`}
       {a.variacion!==null&&<b className="akton-var" data-favorable={a.favorable??undefined}> {textoPts(a.variacion)}</b>}</span>}
      {(t.vencidas>0||t.bloqueadas>0)&&<p className="akton-nota">{[t.vencidas?plural(t.vencidas,'vencida','vencidas'):'',t.bloqueadas?plural(t.bloqueadas,'bloqueada','bloqueadas'):''].filter(Boolean).join(' · ')}</p>}
     </Link>;

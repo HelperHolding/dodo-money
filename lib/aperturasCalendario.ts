@@ -10,7 +10,7 @@ export const esModoCalendario = (v:unknown):v is ModoCalendario => v==='mes'||v=
 export const modoCalendario = (v:unknown):ModoCalendario => v==='semana'?'semana':'mes';
 // Los colores que se guardan en apertura_colores (por persona son automáticos).
 export const esAgrupacionGuardable = (v:unknown):v is 'etapa'|'categoria' => v==='etapa'||v==='categoria';
-export type ItemCalendario = Pick<ItemApertura,'id'|'clave'|'nombre'|'tipo'|'etapa'|'categoria'|'estado'|'responsable'|'inicio'|'fin'|'revision'>;
+export type ItemCalendario = Pick<ItemApertura,'id'|'clave'|'nombre'|'tipo'|'etapa'|'categoria'|'estado'|'responsable'|'inicio'|'fin'|'revision'|'responsable_id'>;
 export type ColorGuardado = {agrupacion:string;clave:string;color:string};
 export type Grupo = {clave:string;nombre:string;color:string;predeterminado:string};
 
@@ -24,7 +24,7 @@ export const COLORES_CATEGORIA:Record<CategoriaApertura|"sin",string> = {
 };
 
 export const esColor = (v:string) => /^#[0-9a-f]{6}$/i.test(v);
-export const claveGrupo = (a:Agrupacion,i:Pick<ItemCalendario,'etapa'|'categoria'|'responsable'>) => a==='etapa'?i.etapa:a==='responsable'?clavePersona(i.responsable):(i.categoria??'sin');
+export const claveGrupo = (a:Agrupacion,i:Pick<ItemCalendario,'etapa'|'categoria'|'responsable'|'responsable_id'>) => a==='etapa'?i.etapa:a==='responsable'?claveResponsable(i):(i.categoria??'sin');
 
 export function gruposCalendario(a:Agrupacion,guardados:ColorGuardado[]):Grupo[] {
  if(a==='responsable')return []; // por persona los arma personasDe() en el calendario
@@ -114,6 +114,25 @@ export function nombrePersona(texto:string|null|undefined):string {
  return t;
 }
 export const clavePersona = (texto:string|null|undefined) => {const n=nombrePersona(texto);return n?sinAcentos(n):SIN_ASIGNAR.clave;};
+// Responsables del catálogo (HD-27): con responsable_id se agrupa por id (`r:<id>`); sin él (registros viejos, hasta correr la limpieza), por el texto.
+export type ResponsableCatalogo = {id:string;nombre:string};
+type ConResponsable = {responsable:string|null;responsable_id?:string|null};
+export const claveResponsable = (i:ConResponsable) => i.responsable_id?`r:${i.responsable_id}`:clavePersona(i.responsable);
+const nombreDe = (i:ConResponsable) => i.responsable_id?(i.responsable??'').replace(/\s+/g,' ').trim()||'Sin nombre':nombrePersona(i.responsable);
+// Pone el nombre del catálogo a lo que tiene id y une al catálogo el texto viejo que coincide con un solo nombre, para que nadie salga dos veces.
+// Sin catálogo (migración pendiente o error al leerlo) deja todo igual.
+export function conCatalogo<T extends ConResponsable>(items:T[],catalogo:readonly ResponsableCatalogo[]|null):T[] {
+ if(!catalogo?.length)return items;
+ const porId=new Map(catalogo.map(r=>[r.id,r.nombre]));
+ const porClave=new Map<string,ResponsableCatalogo|null>();
+ for(const r of catalogo){const c=clavePersona(r.nombre);porClave.set(c,porClave.has(c)?null:r);}
+ return items.map(i=>{
+  if(i.responsable_id){const n=porId.get(i.responsable_id);return n?{...i,responsable:n}:i;}
+  if(!nombrePersona(i.responsable))return i;
+  const r=porClave.get(clavePersona(i.responsable));
+  return r?{...i,responsable_id:r.id,responsable:r.nombre}:i;
+ });
+}
 
 const CONECTORES=new Set(['y','de','del','la','las','los','e']);
 const palabras=(n:string)=>n.split(/\s+/).filter(p=>p&&!CONECTORES.has(sinAcentos(p))&&/\p{L}/u.test(p));
@@ -124,10 +143,11 @@ function inicialesLargas(n:string) {
 }
 
 // Personas de una lista de tareas, con iniciales únicas (José Villa = JoV y Julio Verdeja = JuV) y color estable.
-export function personasDe(items:Pick<ItemCalendario,'responsable'>[]):Persona[] {
+export function personasDe(items:Pick<ItemCalendario,'responsable'|'responsable_id'>[]):Persona[] {
  const nombres=new Map<string,string>();
- for(const i of items){const c=clavePersona(i.responsable);if(c!==SIN_ASIGNAR.clave&&!nombres.has(c))nombres.set(c,nombrePersona(i.responsable));}
- const claves=[...nombres.keys()].sort((a,b)=>a.localeCompare(b,'es-MX'));
+ for(const i of items){const c=claveResponsable(i);if(c!==SIN_ASIGNAR.clave&&!nombres.has(c))nombres.set(c,nombreDe(i));}
+ // Por nombre sin acentos y no por clave: con el catálogo la clave es un id.
+ const claves=[...nombres.keys()].sort((a,b)=>sinAcentos(nombres.get(a)!).localeCompare(sinAcentos(nombres.get(b)!),'es-MX')||a.localeCompare(b));
  const base=new Map(claves.map(c=>[c,inicialesBase(nombres.get(c)!)]));
  // Se comparan sin acentos: "CE" y "CÉ" se confunden en pantalla.
  const vistas=[...base.values()].map(sinAcentos);
@@ -138,7 +158,7 @@ export function personasDe(items:Pick<ItemCalendario,'responsable'>[]):Persona[]
   for(let n=2;usadas.has(sinAcentos(ini));n++)ini=`${ini.replace(/\d+$/,'')}${n}`;usadas.add(sinAcentos(ini));
   return {clave,nombre,iniciales:ini,color:COLORES_PERSONA[k%COLORES_PERSONA.length]};
  });
- if(items.some(i=>clavePersona(i.responsable)===SIN_ASIGNAR.clave))personas.push({...SIN_ASIGNAR,iniciales:'—'});
+ if(items.some(i=>claveResponsable(i)===SIN_ASIGNAR.clave))personas.push({...SIN_ASIGNAR,iniciales:'—'});
  return personas;
 }
 
@@ -154,7 +174,7 @@ export function momentoEnDia(i:Pick<ItemCalendario,'inicio'|'fin'>,dia:string):M
 // Lo de un día agrupado por responsable, en el orden de la lista de personas; dentro, por nombre.
 export function diaPorPersona<T extends ItemCalendario>(items:T[],dia:string,personas:Persona[]) {
  const del=items.filter(i=>enCalendario(i)&&cubreDia(i,dia));
- return personas.map(persona=>({persona,tareas:del.filter(i=>clavePersona(i.responsable)===persona.clave)
+ return personas.map(persona=>({persona,tareas:del.filter(i=>claveResponsable(i)===persona.clave)
   .sort((a,b)=>a.nombre.localeCompare(b.nombre,'es-MX')).map(item=>({item,momento:momentoEnDia(item,dia)!}))})).filter(g=>g.tareas.length>0);
 }
 // Cuántas tareas tiene cada persona un día (para el cuadro del mes).
@@ -188,11 +208,11 @@ export function miniMes(mes:string):Celda[][] {
  return s;
 }
 export const esDeUnDia = (i:Pick<ItemCalendario,'inicio'|'fin'>) => {const r=rangoItem(i);return r!==null&&r.desde===r.hasta;};
-export const filtrarOcultos = <T extends Pick<ItemCalendario,'responsable'>>(items:T[],ocultos:ReadonlySet<string>) => items.filter(i=>!ocultos.has(clavePersona(i.responsable)));
+export const filtrarOcultos = <T extends Pick<ItemCalendario,'responsable'|'responsable_id'>>(items:T[],ocultos:ReadonlySet<string>) => items.filter(i=>!ocultos.has(claveResponsable(i)));
 // Tareas de cada persona en el periodo (el número junto a su casilla).
-export function conteoPorPersona(items:Pick<ItemCalendario,'responsable'|'inicio'|'fin'|'estado'>[],desde:string,hasta:string):Record<string,number> {
+export function conteoPorPersona(items:Pick<ItemCalendario,'responsable'|'responsable_id'|'inicio'|'fin'|'estado'>[],desde:string,hasta:string):Record<string,number> {
  const r:Record<string,number>={};
- for(const i of items){if(!enCalendario(i))continue;const g=rangoItem(i)!;if(g.desde>hasta||g.hasta<desde)continue;const c=clavePersona(i.responsable);r[c]=(r[c]??0)+1;}
+ for(const i of items){if(!enCalendario(i))continue;const g=rangoItem(i)!;if(g.desde>hasta||g.hasta<desde)continue;const c=claveResponsable(i);r[c]=(r[c]??0)+1;}
  return r;
 }
 // Cuántas barras no caben en cada día de la semana (para «N más»).

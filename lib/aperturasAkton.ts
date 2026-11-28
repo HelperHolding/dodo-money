@@ -156,12 +156,13 @@ export function lecturaApertura(k:IndicadoresProyecto,filas:FilaCronograma[]):Le
 
 export type TarjetaPortada = {id:string;dias:DiasApertura;avance:Avance;vencidas:number;bloqueadas:number};
 // Portada: por proyecto, días para abrir, avance contra esperado, vencidas y bloqueadas; y los totales de la franja.
-export function resumenPortada(proyectos:Pick<ProyectoApertura,'id'|'objetivo_hasta'>[],items:(Concepto&{proyecto_id:string})[],hoy:string) {
+// avanceAbre=false: quien ve solo sus registros (HD-27); su 100 % no quiere decir que la tienda abrió.
+export function resumenPortada(proyectos:Pick<ProyectoApertura,'id'|'objetivo_hasta'>[],items:(Concepto&{proyecto_id:string})[],hoy:string,{avanceAbre=true}:{avanceAbre?:boolean}={}) {
  const tarjetas:Record<string,TarjetaPortada>={};
  for(const p of proyectos){
   const de=items.filter(i=>i.proyecto_id===p.id),avance=avanceComparado(de,hoy),aplicables=de.filter(cuentaEnAvance);
   // «Abierta» con la misma regla que el detalle: avance general al 100 % (todas las partidas con 1 punto).
-  tarjetas[p.id]={id:p.id,dias:diasParaApertura(p.objetivo_hasta,hoy,avance.real===100),avance,
+  tarjetas[p.id]={id:p.id,dias:diasParaApertura(p.objetivo_hasta,hoy,avanceAbre&&avance.real===100),avance,
    vencidas:aplicables.filter(i=>diasVencido(i,hoy)!==null).length,bloqueadas:aplicables.filter(i=>i.estado==='bloqueado').length};
  }
  const lista=Object.values(tarjetas),porVenir=lista.filter(t=>t.dias.tipo==='faltan'||t.dias.tipo==='hoy').sort((a,b)=>a.dias.dias-b.dias.dias);

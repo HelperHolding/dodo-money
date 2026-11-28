@@ -11,7 +11,8 @@ import {borrarPlano,colocarMarca,quitarMarca} from './acciones';
 
 export type HojaPlano={id:string;hoja:string;nombre:string;version_fecha:string;ancho:number;alto:number;revision:number};
 export type MarcaPlano={item_id:string;x:number;y:number};
-export type ItemPlano=Pick<ItemApertura,'id'|'clave'|'nombre'|'tipo'|'etapa'|'categoria'|'estado'|'responsable'|'inicio'|'fin'|'cantidad'|'recibido'|'precio'|'evidencia'|'notas'|'orden_id'|'factura_id'|'revision'>&{unidad:string|null};
+export type ItemPlano=Pick<ItemApertura,'id'|'clave'|'nombre'|'tipo'|'etapa'|'categoria'|'estado'|'responsable'|'inicio'|'fin'|'cantidad'|'recibido'|'evidencia'|'notas'|'revision'>&Partial<Pick<ItemApertura,'precio'|'orden_id'|'factura_id'>>&{unidad:string|null};
+// Precio, orden y factura solo llegan y se pintan con la vista completa (admin y corporativo); un responsable no los recibe (HD-27).
 
 const COLORES:ColorMarca[]=['gris','amarillo','azul','morado','verde'];
 const ZOOMS=[0.5,0.75,1,1.5,2,3,4];
@@ -19,7 +20,7 @@ const ddmmaaaa=(f:string)=>{const [a,m,d]=f.slice(0,10).split('-');return `${d}/
 type Arrastre={id:string;pointer:number;movio:boolean;x:number;y:number};
 
 /** Pestaña «Plano» de una apertura (HD-14): hojas, marcas por etapa, leyenda, filtros, zoom, ficha, modo Ubicar e impresión. */
-export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasIniciales,url,items,edita,fotos}:{proyecto:string;base:string;hoy:string;hojas:HojaPlano[];activa:HojaPlano|null;marcas:MarcaPlano[];url:string|null;items:ItemPlano[];edita:boolean;fotos?:Record<string,string>}) {
+export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasIniciales,url,items,edita,completo,fotos}:{proyecto:string;base:string;hoy:string;hojas:HojaPlano[];activa:HojaPlano|null;marcas:MarcaPlano[];url:string|null;items:ItemPlano[];edita:boolean;completo:boolean;fotos?:Record<string,string>}) {
  const router=useRouter();
  const [porId,setPorId]=useState<Record<string,ItemPlano>>(()=>Object.fromEntries(items.map(i=>[i.id,i])));
  const [marcas,setMarcas]=useState<Record<string,{x:number;y:number}>>(()=>Object.fromEntries(marcasIniciales.map(m=>[m.item_id,{x:Number(m.x),y:Number(m.y)}])));
@@ -147,14 +148,14 @@ export function PlanoApertura({proyecto,base,hoy,hojas,activa,marcas:marcasInici
      <button type="button" className="boton boton-secundario" onClick={()=>setFicha(null)} aria-label="Cerrar ficha">×</button></header>
     <dl>
      {actual.cantidad!==null&&<><dt>Cantidad / recibido</dt><dd>{actual.recibido} / {actual.cantidad}{actual.unidad?` ${actual.unidad}`:''}</dd></>}
-     <dt>Precio</dt><dd>{actual.precio===null?'Sin precio':pesos(actual.precio)}</dd>
+     {completo&&<><dt>Precio</dt><dd>{actual.precio==null?'Sin precio':pesos(actual.precio)}</dd></>}
      <dt>Responsable</dt><dd>{actual.responsable??'Sin asignar'}</dd>
      <dt>Fecha prevista</dt><dd>{actual.fin??actual.inicio?fechaTexto((actual.fin??actual.inicio)!):'Sin fecha'}</dd>
      {actual.notas&&<><dt>Notas</dt><dd>{actual.notas}</dd></>}
     </dl>
     <p className="ap-plano-ligas">
-     {actual.orden_id&&<Link href={`/compras/ordenes/${actual.orden_id}`}>Orden de compra</Link>}
-     {actual.factura_id&&<Link href={`/compras/facturas/${actual.factura_id}`}>Factura</Link>}
+     {completo&&actual.orden_id&&<Link href={`/compras/ordenes/${actual.orden_id}`}>Orden de compra</Link>}
+     {completo&&actual.factura_id&&<Link href={`/compras/facturas/${actual.factura_id}`}>Factura</Link>}
      <Link href={`${base}/items/${actual.id}`}>Ficha del concepto</Link>
     </p>
     {edita&&<div className="acciones"><button type="button" className="boton" onClick={()=>setEditando(aItemChecklist({...actual,original:{unidad:actual.unidad}}))}>Cambiar etapa</button>

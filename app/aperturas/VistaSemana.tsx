@@ -1,6 +1,6 @@
 "use client";
 import {nombreEstado} from '@/lib/aperturas';
-import {clavePersona,MOMENTOS,momentoEnDia,semanaDe,textoSobre,type ItemCalendario,type Momento,type Persona} from '@/lib/aperturasCalendario';
+import {claveResponsable,MOMENTOS,momentoEnDia,semanaDe,textoSobre,type ItemCalendario,type Momento,type Persona} from '@/lib/aperturasCalendario';
 import type {TonoConcepto} from '@/lib/aperturasAkton';
 
 const DIAS=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
@@ -14,6 +14,6 @@ export function VistaSemana({semana,hoy,items,personas,colorDe,tono,abrirDia,abr
     <span>{DIAS[k]}</span><b data-hoy={c.dia===hoy||undefined}>{Number(c.dia.slice(8))}</b></button>
    {del.map(({i,m}:{i:ItemCalendario;m:Momento})=>{const color=colorDe(i),t=tono(i);return <button key={i.id} type="button" className="ap-gcal-bloque" data-tono={t}
     style={{background:color,color:textoSobre(color)}} title={`${i.nombre} · ${nombreEstado(i)}`} onClick={()=>abrirItem(i)}>
-    <strong>{t==='alerta'&&'! '}{i.nombre}</strong><small>{ini.get(clavePersona(i.responsable))??'—'} · {MOMENTOS[m]}</small></button>;})}
+    <strong>{t==='alerta'&&'! '}{i.nombre}</strong><small>{ini.get(claveResponsable(i))??'—'} · {MOMENTOS[m]}</small></button>;})}
   </div>;})}</div>;
 }

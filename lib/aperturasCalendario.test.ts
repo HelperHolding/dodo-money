@@ -149,3 +149,23 @@ test('calendario google: título del periodo, también cruzando año',()=>{
  assert.equal(tituloPeriodo('mes','2026-11','2026-11-23'),'noviembre de 2026');
  assert.equal(tituloPeriodo('semana','2026-12','2026-12-28'),'28 dic – 3 ene 2027');
 });
+
+// ── Responsables del catálogo (HD-27) ──
+import {claveResponsable,conCatalogo} from './aperturasCalendario.ts';
+test('catálogo: agrupa por responsable_id con el nombre del catálogo y une el texto viejo que coincide',()=>{
+ const cat=[{id:'u1',nombre:'José Villa'},{id:'u2',nombre:'Diego Barreto'}];
+ const con=(id:string,responsable:string|null,responsable_id:string|null)=>({...tarea(id,responsable,'2026-12-02','2026-12-02'),responsable_id});
+ const items=conCatalogo([con('a','Jose Villa (obra)','u1'),con('b','jose villa',null),con('c','Julio Verdeja',null),con('d',null,null),con('e','Pepe','u2')],cat);
+ // Con id manda el catálogo; sin id, el texto que coincide con un nombre del catálogo se une a esa persona.
+ assert.deepEqual(items.map(i=>[i.responsable,i.responsable_id]),[['José Villa','u1'],['José Villa','u1'],['Julio Verdeja',null],[null,null],['Diego Barreto','u2']]);
+ assert.equal(claveResponsable(items[0]),'r:u1');assert.equal(claveResponsable(items[2]),clavePersona('Julio Verdeja'));
+ const p=personasDe(items);
+ assert.deepEqual(p.map(x=>x.nombre),['Diego Barreto','José Villa','Julio Verdeja','Sin asignar'],'una sola José Villa');
+ assert.deepEqual(diaPorPersona(items,'2026-12-02',p).map(g=>[g.persona.nombre,g.tareas.length]),[['Diego Barreto',1],['José Villa',2],['Julio Verdeja',1],['Sin asignar',1]]);
+ assert.deepEqual(conteoPorPersona(items,'2026-12-01','2026-12-31'),{'r:u2':1,'r:u1':2,[clavePersona('Julio Verdeja')]:1,sin:1});
+ assert.equal(filtrarOcultos(items,new Set(['r:u1'])).length,3);
+ // Sin catálogo (migración pendiente) todo sigue por texto.
+ assert.deepEqual(conCatalogo([con('x','Ana',null)],null).map(i=>i.responsable),['Ana']);
+ // Un id que ya no está en el catálogo conserva el texto.
+ assert.deepEqual(conCatalogo([con('y','Ana','u9')],cat).map(i=>[i.responsable,i.responsable_id]),[['Ana','u9']]);
+});

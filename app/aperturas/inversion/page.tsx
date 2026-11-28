@@ -1,7 +1,9 @@
-import Link from 'next/link';import {obtenerPerfil} from '@/lib/contexto';import {puedeEditarCompras} from '@/lib/roles';import {leerTodo} from '@/lib/ventas/paginar';import {analisisInversion,type DetalleInversion,type FuenteInversion} from '@/lib/inversionApertura';import {pesos} from '@/lib/formato';import {Kpi} from '@/app/finanzas/PLAkton';import {LecturaProyecto} from '../AktonProyecto';import {Fragment} from 'react';import {vincular} from './acciones';
+import Link from 'next/link';import {obtenerPerfil} from '@/lib/contexto';import {puedeEditarCompras,puedeVerAperturasCompleto} from '@/lib/roles';import {redirect} from 'next/navigation';import {leerTodo} from '@/lib/ventas/paginar';import {analisisInversion,type DetalleInversion,type FuenteInversion} from '@/lib/inversionApertura';import {pesos} from '@/lib/formato';import {Kpi} from '@/app/finanzas/PLAkton';import {LecturaProyecto} from '../AktonProyecto';import {Fragment} from 'react';import {vincular} from './acciones';
 type Vinculo={id:string;fuente_id:string;detalle_id:string;proveedor_id:string|null;factura_id:string|null;activo_id:string|null;motivo:string;creado_en:string};
 export default async function Inversion({searchParams}:{searchParams:Promise<{q?:string;tipo?:string;fuente?:string;error?:string;ok?:string}>}){
  const params=await searchParams;const {supabase,perfil}=await obtenerPerfil();
+ // Inversión es dinero: solo la vista completa de Aperturas (admin y corporativo), no un responsable (HD-27).
+ if(!puedeVerAperturasCompleto(perfil.rol))redirect('/aperturas');
  const {data:fuentes,error}=await supabase.from('inversion_apertura_fuentes').select('*,sucursales(nombre)').returns<FuenteInversion[]>();
  if(error)return <><h1>Inversión de apertura</h1><p className="aviso aviso-error">Falta aplicar la migración 0055 o no se pudo consultar la inversión.</p></>;
  const f=fuentes?.find(x=>x.id===params.fuente)??fuentes?.[0];if(!f)return <><h1>Inversión de apertura</h1><p>No hay CAPEX cargado.</p></>;

@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import {notFound} from 'next/navigation';
+import {notFound,redirect} from 'next/navigation';
+import {puedeVerAperturasCompleto} from '@/lib/roles';
 import {obtenerPerfil} from '@/lib/contexto';
 import {fechaTexto,hoyCalendarioMX} from '@/lib/formato';
 import type {ItemApertura} from '@/lib/aperturas';
@@ -13,7 +14,9 @@ const texto=(v:unknown)=>typeof v==='string'&&v.trim()?v.trim():typeof v==='numb
 // Solicitud de cotización para proveedores: las partidas marcadas en Equipo y compras, con foto y datos de Dodo, y columnas vacías para precio y entrega.
 export default async function Cotizacion({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{items?:string|string[]}>}) {
  const [{id},q]=await Promise.all([params,searchParams]);
- const {supabase}=await obtenerPerfil();
+ const {supabase,perfil}=await obtenerPerfil();
+ // Precios de compra: solo la vista completa de Aperturas (admin y corporativo), no un responsable (HD-27).
+ if(!puedeVerAperturasCompleto(perfil.rol))redirect(`/aperturas/${id}`);
  const crudos=Array.isArray(q.items)?q.items:q.items?[q.items]:[];
  const validos=[...new Set(crudos.filter(x=>UUID.test(x)))];
  const ids=validos.slice(0,MAX);

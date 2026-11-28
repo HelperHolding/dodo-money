@@ -219,6 +219,9 @@ test('aperturas akton: resumen de la portada',()=>{
  // «Abierta» con la regla de puntos (avance general 100 %), igual que el detalle: referencia instalada vale 1 punto.
  const ab=resumenPortada([{id:'e',objetivo_hasta:'2026-10-01'}],[{...c({id:'4',tipo:'referencia',etapa:'P4',estado:'instalado'}),proyecto_id:'e'},{...c({id:'5',estado:'completado'}),proyecto_id:'e'}],hoy);
  assert.equal(ab.tarjetas.e.avance.real,100);assert.equal(ab.tarjetas.e.dias.tipo,'abierta');
+ // Un responsable ve solo lo suyo: terminar sus registros no abre la tienda (HD-27).
+ const tuyo=resumenPortada([{id:'e',objetivo_hasta:'2026-10-01'}],[{...c({id:'5',estado:'completado'}),proyecto_id:'e'}],hoy,{avanceAbre:false});
+ assert.equal(tuyo.tarjetas.e.avance.real,100);assert.equal(tuyo.tarjetas.e.dias.tipo,'vencida');
 });
 test('aperturas akton: solo bloqueadas lleva sustantivo',()=>{
  const items=[it({id:'a',estado:'bloqueado'}),it({id:'b',estado:'bloqueado'})];
