@@ -159,7 +159,8 @@ create policy fotos_leer_responsable on storage.objects for select to authentica
 --  * Una clave ausente conserva el valor actual (antes quedaba vacía, salvo categoría). Las pantallas actuales mandan todas.
 --  * Admin: además nombre (1–300), descripción (hasta 4000) y responsable_id (fila activa del catálogo; vacío lo quita).
 --  * El texto «responsable» solo se respeta en registros sin responsable_id (legado); con responsable_id lo pone el disparador.
---  * Quien no es admin pero es responsable del registro: solo estado, inicio, fin, notas y evidencia.
+--  * Quien no es admin pero es responsable del registro: solo estado, inicio, fin, notas, evidencia y recibido (la recepción;
+--    la cantidad necesaria y el precio siguen siendo de administración).
 -- Se conservan la revisión, las validaciones de estado, evidencia, cantidades, orden y factura, y el historial.
 create or replace function public.actualizar_apertura_item(p_item uuid,p_revision integer,p_datos jsonb) returns void
 language plpgsql security definer set search_path='' as $$
@@ -176,7 +177,7 @@ begin
  if antes.revision is distinct from p_revision then raise exception 'El registro cambió. Recarga antes de guardar.';end if;
  if jsonb_typeof(p_datos) is distinct from 'object' or exists(select 1 from jsonb_object_keys(p_datos) k where k not in ('estado','responsable','responsable_id','nombre','descripcion','inicio','fin','cantidad','recibido','precio','evidencia','notas','orden_id','factura_id','categoria')) then raise exception 'Datos de apertura inválidos.';end if;
  if not v_admin then
-  select string_agg(k,', ' order by k) into v_prohibidas from jsonb_object_keys(p_datos) k where k not in ('estado','inicio','fin','notas','evidencia');
+  select string_agg(k,', ' order by k) into v_prohibidas from jsonb_object_keys(p_datos) k where k not in ('estado','inicio','fin','notas','evidencia','recibido');
   if v_prohibidas is not null then raise exception 'Solo administración puede cambiar %.',v_prohibidas;end if;
  end if;
  v_estado:=case when p_datos?'estado' then p_datos->>'estado' else antes.estado end;

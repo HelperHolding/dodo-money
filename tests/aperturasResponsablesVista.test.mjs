@@ -125,9 +125,22 @@ test('ficha del responsable: columnas seguras, sin precio, OC, factura, origen c
  // El formulario del responsable va a su propia acción, que solo manda las claves permitidas.
  assert.match(p,/action=\{guardarSeguimiento\}/);
  const a=leer('app/aperturas/acciones.ts');
- assert.match(a,/CAMPOS_RESPONSABLE=\['estado','inicio','fin','notas','evidencia'\]/);
+ // Solo estas 6 claves: la recepción (recibido) sí; cantidad necesaria y precio, no.
+ assert.match(a,/CAMPOS_RESPONSABLE=\['estado','inicio','fin','notas','evidencia','recibido'\]/);
  const f=a.slice(a.indexOf('export async function guardarSeguimiento'));
  assert.doesNotMatch(f.slice(0,f.indexOf('\n}')),/precio|orden_id|factura_id|cantidad/);
+ // Formulario del responsable en compras: cantidad necesaria como texto, cantidad recibida editable.
+ const r=p.slice(p.indexOf('action={guardarSeguimiento}'));const form=r.slice(0,r.indexOf('</form>'));
+ assert.match(form,/name="recibido"/);
+ assert.match(form,/Cantidad necesaria/);
+ assert.doesNotMatch(form,/name="(cantidad|precio|orden_id|factura_id)"/);
+});
+test('ficha: en el catálogo, «Sin asignar» limpia el texto anterior; el texto anterior se conserva si no se toca',()=>{
+ const s=leer('app/aperturas/[id]/items/[item]/SelectorResponsable.tsx'),a=leer('app/aperturas/acciones.ts');
+ assert.match(s,/value=\{RESPONSABLE_LEGADO\}/);
+ assert.match(a,/RESPONSABLE_LEGADO/);
+ // Sin asignar (responsable_id vacío) manda también el texto vacío; la función solo lo respeta en registros de legado.
+ assert.match(a,/datos\.responsable_id===''\)datos\.responsable=''/);
 });
 test('catálogo de responsables: solo admin, con enlace desde la lista de Aperturas',()=>{
  const p=leer('app/aperturas/responsables/page.tsx'),a=leer('app/aperturas/responsables/acciones.ts');

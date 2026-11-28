@@ -17,6 +17,8 @@ export type ItemApertura = {id:string;proyecto_id:string;clave:string;tipo:'acti
 export const COLUMNAS_ITEM_RESPONSABLE = 'id,proyecto_id,clave,tipo,etapa,nombre,descripcion,fuente,estado,responsable,responsable_id,inicio,fin,cantidad,recibido,evidencia,notas,revision,categoria';
 // Ficha de un registro para el responsable: lo mismo más el registro del que viene si se dividió.
 export const COLUMNAS_FICHA_RESPONSABLE = `${COLUMNAS_ITEM_RESPONSABLE},origen_id`;
+// Opción del selector para un registro con responsable solo en texto (legado): guardar sin tocarlo conserva ese texto.
+export const RESPONSABLE_LEGADO = 'legado';
 export const COLUMNAS_PROYECTO_RESPONSABLE = 'id,sucursal_id,responsable,objetivo_desde,objetivo_hasta,revision,sucursales(nombre)';
 export const VISTAS_RESPONSABLE = ['checklist','calendario','actividades','plano'] as const;
 export function resumenApertura(items:ItemApertura[]) {

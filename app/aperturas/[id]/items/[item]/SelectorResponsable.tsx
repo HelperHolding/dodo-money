@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {Icono} from '@/components/Icono';
+import {RESPONSABLE_LEGADO} from '@/lib/aperturas';
 import {crearResponsableExterno} from '../../../acciones';
 
 export type OpcionResponsable={id:string;nombre:string};
@@ -10,7 +11,7 @@ export type OpcionResponsable={id:string;nombre:string};
 // La ventana va en un portal fuera del formulario de la ficha: no tiene formulario propio para no anidarlo.
 export function SelectorResponsable({opciones,valor,legado}:{opciones:OpcionResponsable[];valor:string|null;legado:string|null}) {
  const modal=useRef<HTMLDialogElement>(null);
- const [lista,setLista]=useState(opciones),[elegido,setElegido]=useState(valor??''),[montado,setMontado]=useState(false);
+ const [lista,setLista]=useState(opciones),[elegido,setElegido]=useState(valor??(legado?RESPONSABLE_LEGADO:'')),[montado,setMontado]=useState(false);
  const [nombre,setNombre]=useState(''),[ocupado,setOcupado]=useState(false),[error,setError]=useState('');
  useEffect(()=>setMontado(true),[]);
  const agregar=async()=>{
@@ -22,9 +23,9 @@ export function SelectorResponsable({opciones,valor,legado}:{opciones:OpcionResp
  };
  return <div className="campo"><label htmlFor="responsable_id">Responsable de este registro</label>
   <select id="responsable_id" name="responsable_id" value={elegido} onChange={e=>setElegido(e.target.value)}>
-   <option value="">Sin asignar</option>{lista.map(o=><option key={o.id} value={o.id}>{o.nombre}</option>)}
+   {!valor&&legado&&<option value={RESPONSABLE_LEGADO}>{legado} (texto anterior, sin catálogo)</option>}<option value="">Sin asignar</option>{lista.map(o=><option key={o.id} value={o.id}>{o.nombre}</option>)}
   </select>
-  {!valor&&legado&&<small>Antes: «{legado}». Elige a la persona del catálogo para que el calendario la agrupe.</small>}
+  {!valor&&legado&&<small>«{legado}» es texto anterior: elige a la persona del catálogo para que el calendario la agrupe, o «Sin asignar» para quitarlo.</small>}
   <button type="button" className="boton-enlace" onClick={()=>{setError('');modal.current?.showModal();}}>+ Nuevo externo</button>
   {montado&&createPortal(<dialog ref={modal} className="compra-filtros-modal ap-externo-modal" aria-labelledby="ap-externo-titulo" onCancel={e=>{if(ocupado)e.preventDefault();}}>
    <header className="compra-modal-encabezado"><div><h2 id="ap-externo-titulo">Nuevo responsable externo</h2><p>Para proveedores o personas sin usuario en Dodo MX.</p></div><button type="button" className="boton-icono compra-modal-cerrar" disabled={ocupado} aria-label="Cerrar" onClick={()=>modal.current?.close()}><Icono nombre="cerrar" tamano={22}/></button></header>

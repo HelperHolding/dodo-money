@@ -233,7 +233,7 @@ test('edición acotada: el responsable cambia estado, fechas, notas y evidencia 
   assert.equal(f.inicio.toISOString().slice(0,10),'2026-12-01');
   // Solo notas: conserva el estado.
   await actualizar(db,ITEM,{notas:'Sigue'});assert.equal((await fila(db,ITEM)).estado,'en_curso');
-  for(const k of ['precio','nombre','cantidad','recibido','responsable','responsable_id','descripcion','orden_id','factura_id','categoria']){
+  for(const k of ['precio','nombre','cantidad','responsable','responsable_id','descripcion','orden_id','factura_id','categoria']){
    await rechaza(actualizar(db,ITEM,{estado:'en_curso',[k]:k==='precio'?'1':''}),new RegExp(`Solo administración puede cambiar ${k}`));
   }
   await rechaza(actualizar(db,ITEM,{estado:'en_curso',inventado:'1'}),/Datos de apertura inválidos/);
@@ -246,6 +246,15 @@ test('edición acotada: el responsable cambia estado, fechas, notas y evidencia 
   await rechaza(actualizar(db,ITEM_B,{estado:'por_cotizar'}),/Solo administración puede editar aperturas/);
   await rechaza(actualizar(db,'00000000-0000-0000-0000-0000000000ff',{estado:'pendiente'},1),/Solo administración puede editar aperturas/);
   for(const u of [CORP,APERT]){await como(db,u);await rechaza(actualizar(db,ITEM_X,{estado:'en_curso'}),/Solo administración puede editar aperturas/);}
+  // Equipo: el responsable registra la recepción (recibido), pero no la cantidad necesaria ni el precio.
+  await como(db,OPER2);
+  await rechaza(actualizar(db,ITEM_B,{estado:'recibido',recibido:'1'}),/recepción completa/);
+  await actualizar(db,ITEM_B,{estado:'recibido_parcial',recibido:'1'});
+  let b=await fila(db,ITEM_B);assert.deepEqual([b.estado,Number(b.recibido),Number(b.cantidad),Number(b.precio)],['recibido_parcial',1,2,100]);
+  await actualizar(db,ITEM_B,{estado:'recibido',recibido:'2'});
+  b=await fila(db,ITEM_B);assert.deepEqual([b.estado,Number(b.recibido),Number(b.cantidad),Number(b.precio)],['recibido',2,2,100]);
+  for(const k of ['cantidad','precio'])await rechaza(actualizar(db,ITEM_B,{estado:'recibido',recibido:'2',[k]:'5'}),new RegExp(`Solo administración puede cambiar ${k}`));
+  await como(db,OPER);
   // El historial registra quién y qué.
   const h=(await db.query(`select usuario_id,anterior->>'notas' a,nuevo->>'notas' n from apertura_historial where item_id=$1 and nuevo->>'notas'='Sigue' and anterior->>'notas'='Voy'`,[ITEM])).rows;
   assert.deepEqual(h,[{usuario_id:OPER,a:'Voy',n:'Sigue'}]);

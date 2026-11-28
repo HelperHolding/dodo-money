@@ -3,6 +3,7 @@ import {obtenerPerfil} from '@/lib/contexto';
 import {puedeEditarCompras} from '@/lib/roles';
 import {redirect} from 'next/navigation';
 import {revalidatePath} from 'next/cache';
+import {RESPONSABLE_LEGADO} from '@/lib/aperturas';
 export async function guardarItem(fd:FormData) {
  const id=String(fd.get('proyecto_id')??''),item=String(fd.get('item_id')??'');
  const ruta=`/aperturas/${id}/items/${item}`;
@@ -11,17 +12,23 @@ export async function guardarItem(fd:FormData) {
  // sin ella, el responsable sigue como texto libre y la función anterior no conoce esas claves.
  const opcionales=['responsable','nombre','descripcion','responsable_id','categoria'].filter(c=>fd.has(c));
  const campos=['estado','inicio','fin','cantidad','recibido','precio','evidencia','notas','orden_id','factura_id',...opcionales];
- const datos=Object.fromEntries(campos.map(c=>[c,String(fd.get(c)??'')]));
+ const datos:Record<string,string>=Object.fromEntries(campos.map(c=>[c,String(fd.get(c)??'')]));
+ // Registro de legado sin tocar el selector: no se mandan responsable_id ni texto, así el texto anterior se conserva.
+ if(datos.responsable_id===RESPONSABLE_LEGADO){delete datos.responsable_id;delete datos.responsable;}
+ // «Sin asignar» en el catálogo también limpia el texto anterior; la función solo respeta el texto en registros sin responsable_id.
+ else if(datos.responsable_id==='')datos.responsable='';
  const {error}=await supabase.rpc('actualizar_apertura_item',{p_item:item,p_revision:Number(fd.get('revision')),p_datos:datos});
  if(error)redirect(`${ruta}?error=${encodeURIComponent(error.message)}`);
  revalidatePath('/aperturas','layout');redirect(`${ruta}?ok=${encodeURIComponent('Registro actualizado.')}`);
 }
-// Lo único que el responsable de un registro puede cambiar (HD-27). La función rechaza cualquier otra clave.
-const CAMPOS_RESPONSABLE=['estado','inicio','fin','notas','evidencia'];
+// Lo único que el responsable de un registro puede cambiar (HD-27): estado, fechas, notas, evidencia y la cantidad recibida.
+// Cantidad necesaria y precio son de administración. La función rechaza cualquier otra clave.
+const CAMPOS_RESPONSABLE=['estado','inicio','fin','notas','evidencia','recibido'];
 export async function guardarSeguimiento(fd:FormData) {
  const id=String(fd.get('proyecto_id')??''),item=String(fd.get('item_id')??''),ruta=`/aperturas/${id}/items/${item}`;
  const {supabase}=await obtenerPerfil();
- const datos=Object.fromEntries(CAMPOS_RESPONSABLE.map(c=>[c,String(fd.get(c)??'')]));
+ // recibido solo va si el formulario lo trae (registros de compra).
+ const datos=Object.fromEntries(CAMPOS_RESPONSABLE.filter(c=>c!=='recibido'||fd.has(c)).map(c=>[c,String(fd.get(c)??'')]));
  const {error}=await supabase.rpc('actualizar_apertura_item',{p_item:item,p_revision:Number(fd.get('revision')),p_datos:datos});
  if(error)redirect(`${ruta}?error=${encodeURIComponent(error.message)}`);
  revalidatePath('/aperturas','layout');redirect(`${ruta}?ok=${encodeURIComponent('Seguimiento actualizado.')}`);

@@ -2380,6 +2380,7 @@ body { background: var(--papel-2); }
 .ap-dividir-parte legend { font-weight:700; padding:0 4px; }
 .ap-casilla { display:flex; align-items:center; gap:8px; font-weight:600; }
 .ap-casilla input[type="checkbox"] { flex:none; }
+.ap-dato-fijo { margin:0; min-height:44px; display:flex; align-items:center; color:var(--tinta-2); }
 .ap-seccion-akton { margin-top:16px; }
 @media (max-width:640px) { .ap-tabla-datos th[scope="row"] { display:none; } }
 .ap-tarjeta-dias[data-tono="si"] { color:var(--cuadra); }
