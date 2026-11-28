@@ -12,7 +12,7 @@ import { verSucursal } from "@/app/corporativo/actions";
 import styles from "./usuarios.module.css";
 export type Usuario=Perfil;
 export type CambioUsuario={id:string;usuario_id:string;autor_id:string;motivo:string;antes:Usuario;despues:Usuario;creado_en:string};
-const general=(u:Usuario)=>u.rol==="admin"||u.rol==="corporativo"||u.rol==="marketing";
+const general=(u:Usuario)=>u.rol==="admin"||u.rol==="corporativo"||u.rol==="marketing"||u.rol==="aperturas";
 const iniciales=(nombre:string)=>nombre.trim().split(/\s+/).map(p=>p[0]).slice(0,2).join("").toUpperCase();
 function Guardar() {
   const {pending}=useFormStatus();
@@ -25,7 +25,7 @@ function Editor({u,sucursales,yo}:{u:Usuario;sucursales:{id:string;nombre:string
     <label>Nombre<input name="nombre" defaultValue={u.nombre} required maxLength={160}/></label>
     <label>Rol<select name="rol" value={rol} onChange={e=>setRol(e.target.value as Rol)} disabled={u.id===yo}>{Object.entries(NOMBRE_ROL).map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></label>
     {u.id===yo&&<input type="hidden" name="rol" value={u.rol}/>}
-    <label>Sucursal {rol==="admin"?"activa":"asignada"}<select name="sucursal_id" defaultValue={u.sucursal_id??sucursales[0]?.id??""} disabled={["corporativo","marketing"].includes(rol)} required={!["corporativo","marketing"].includes(rol)}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
+    <label>Sucursal {rol==="admin"?"activa":"asignada"}<select name="sucursal_id" defaultValue={u.sucursal_id??sucursales[0]?.id??""} disabled={["corporativo","marketing","aperturas"].includes(rol)} required={!["corporativo","marketing","aperturas"].includes(rol)}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
     <label className={styles.check}><input type="checkbox" name="activo" defaultChecked={u.activo} disabled={u.id===yo}/>Cuenta activa</label>
     {u.id===yo&&<input type="hidden" name="activo" value="on"/>}
     <label className={styles.wide}>Motivo del cambio<textarea name="motivo" required minLength={5} maxLength={1000} placeholder="Explica la asignación, cambio de puesto o baja…"/></label>

@@ -28,7 +28,7 @@ const BASE=`create role anon;create role authenticated;create schema auth;create
  create function mi_rol() returns rol_usuario language sql stable security definer set search_path='' as $$select rol from public.perfiles where id=auth.uid() and activo and not debe_cambiar_contrasena$$;
  create function ve_compras() returns boolean language sql stable security definer set search_path=public as $$select coalesce(mi_rol()::text in ('admin','corporativo'),false)$$;
  create function edita_compras() returns boolean language sql stable security definer set search_path=public as $$select coalesce(mi_rol()::text='admin',false)$$;
- create table sucursales(id uuid primary key default gen_random_uuid(),nombre text not null);insert into sucursales(nombre) values('dodo-2');
+ create table sucursales(id uuid primary key default gen_random_uuid(),nombre text not null);insert into sucursales(nombre) values('dodo-2');update perfiles set sucursal_id=(select id from sucursales limit 1) where rol::text not in ('corporativo','marketing');alter table perfiles add constraint perfiles_sin_sucursal check ((rol::text in ('corporativo','marketing'))=(sucursal_id is null));
  create table auth.users(id uuid primary key,email text);
  create table usuarios_historial(id uuid primary key default gen_random_uuid(),usuario_id uuid not null references perfiles(id),autor_id uuid not null references perfiles(id),motivo text not null,antes jsonb not null,despues jsonb not null,creado_en timestamptz not null default now());
  create table usuarios_invitaciones(id uuid primary key,correo text not null unique,nombre text not null,rol rol_usuario not null,sucursal_id uuid references sucursales(id),usuario_id uuid unique references perfiles(id),creado_por uuid not null references perfiles(id),creado_en timestamptz not null default now(),estado text not null default 'pendiente' check(estado in ('pendiente','enviada','aceptada','error')),envio_id uuid,envio_por uuid references perfiles(id),reservado_hasta timestamptz,enviada_en timestamptz,aceptada_en timestamptz,envios integer not null default 0,error_envio text);
@@ -36,7 +36,7 @@ const BASE=`create role anon;create role authenticated;create schema auth;create
  create table ordenes_compra(id uuid primary key,sucursal_id uuid);create table facturas(id uuid primary key,sucursal_id uuid);
  grant select on perfiles to authenticated;`;
 const preparar=async db=>{await db.exec(BASE);await db.exec(aperturas);for(const m of previas)await db.exec(m);await db.exec(rol);
- await db.exec(`insert into perfiles values('${APERT}',true,'aperturas','Solo aperturas',false)`);await db.exec(resp);
+ await db.exec(resp);await db.exec(`insert into perfiles values('${APERT}',true,'aperturas','Solo aperturas',false)`);
  await db.exec(`insert into apertura_proyectos(id,sucursal_id,responsable,objetivo_desde,objetivo_hasta) select '00000000-0000-0000-0000-0000000000f2',id,'x','2026-01-01','2026-02-01' from sucursales;
   insert into apertura_items(id,proyecto_id,clave,tipo,etapa,nombre,fuente,original) values('00000000-0000-0000-0000-0000000000f3','00000000-0000-0000-0000-0000000000f2','T-001','actividad','P1','x','t','{}')`);};
 const como=(db,id)=>db.exec(`select set_config('request.jwt.claims','{"sub":"${id}","role":"authenticated"}',false)`);
@@ -450,24 +450,28 @@ test('prueba SQL de producción: termina en PRUEBAS OK y no deja nada',async()=>
   await rechaza(db.exec(pruebas),/^PRUEBAS OK.*usuario responsable: ve solo su registro/);
   assert.equal(await conteo(),antes);
   // Sin perfiles no admin libres: también termina bien (se salta la parte del responsable con usuario).
-  await db.exec(`update perfiles set rol='admin' where rol::text not in ('admin','corporativo')`);
+  await db.exec(`update perfiles set rol='admin',sucursal_id=(select id from sucursales limit 1) where rol::text not in ('admin','corporativo')`);
   await rechaza(db.exec(pruebas),/^PRUEBAS OK(?!.*usuario responsable)/);
  }finally{await db.close();}
 });
 
-test('usuarios e invitaciones aceptan el puesto aperturas con sucursal y rechazan roles desconocidos',async()=>{
+test('usuarios e invitaciones aceptan el puesto aperturas sin sucursal y rechazan roles desconocidos',async()=>{
  const db=new PGlite();
  try{await preparar(db);await como(db,ADMIN);
   const suc=(await db.query('select id from sucursales limit 1')).rows[0].id;
-  const orig=JSON.stringify({id:OPER,nombre:'Operación',rol:'operacion',sucursal_id:null,activo:true,debe_cambiar_contrasena:false});
-  await rechaza(db.query(`select public.administrar_usuario($1,$2::jsonb,'Operación','aperturas',null,true,'Pasa a aperturas')`,[OPER,orig]),/sucursal válida/);
+  const orig=JSON.stringify({id:OPER,nombre:'Operación',rol:'operacion',sucursal_id:suc,activo:true,debe_cambiar_contrasena:false});
   await rechaza(db.query(`select public.administrar_usuario($1,$2::jsonb,'Operación','inventado',$3,true,'Pasa a aperturas')`,[OPER,orig,suc]),/Rol o estado inválido/);
+  // Con sucursal enviada, la función la fuerza a null (oficina o externo).
   await db.query(`select public.administrar_usuario($1,$2::jsonb,'Operación','aperturas',$3,true,'Pasa a aperturas')`,[OPER,orig,suc]);
-  assert.equal((await db.query('select rol::text r from perfiles where id=$1',[OPER])).rows[0].r,'aperturas');
+  const u=(await db.query('select rol::text r,sucursal_id s from perfiles where id=$1',[OPER])).rows[0];
+  assert.equal(u.r,'aperturas');assert.equal(u.s,null);
+  // La restricción de perfiles exige null para aperturas y sucursal para el resto.
+  await rechaza(db.exec(`update perfiles set sucursal_id='${suc}' where id='${OPER}'`),/perfiles_sin_sucursal/);
+  await rechaza(db.exec(`update perfiles set sucursal_id=null where id='${OPER2}'`),/perfiles_sin_sucursal/);
   const inv='00000000-0000-0000-0000-0000000000aa',env='00000000-0000-0000-0000-0000000000ab';
-  await rechaza(db.query(`select public.preparar_invitacion_usuario($1,$2,'a@x.mx','Ana Perez','aperturas',null)`,[inv,env]),/sucursal válida/);
   await rechaza(db.query(`select public.preparar_invitacion_usuario($1,$2,'a@x.mx','Ana Perez','inventado',$3)`,[inv,env,suc]),/Rol inválido/);
   await db.query(`select public.preparar_invitacion_usuario($1,$2,'a@x.mx','Ana Perez','aperturas',$3)`,[inv,env,suc]);
-  assert.equal((await db.query('select rol::text r from usuarios_invitaciones where id=$1',[inv])).rows[0].r,'aperturas');
+  const i=(await db.query('select rol::text r,sucursal_id s from usuarios_invitaciones where id=$1',[inv])).rows[0];
+  assert.equal(i.r,'aperturas');assert.equal(i.s,null);
  }finally{await db.close();}
 });

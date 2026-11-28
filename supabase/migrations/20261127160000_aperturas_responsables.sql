@@ -306,7 +306,10 @@ grant execute on function public.dividir_apertura_item(uuid,jsonb) to authentica
 -- </division>
 
 -- <roles-usuarios>
--- Administración e invitaciones aceptan el puesto aperturas (con sucursal, como operación).
+-- Aperturas es personal de oficina o externo, sin sucursal (como corporativo y marketing); administración e invitaciones lo aceptan.
+alter table public.perfiles drop constraint perfiles_sin_sucursal;
+alter table public.perfiles add constraint perfiles_sin_sucursal
+  check ((rol::text in ('corporativo','marketing','aperturas')) = (sucursal_id is null));
 create or replace function public.administrar_usuario(p_id uuid,p_original jsonb,p_nombre text,p_rol text,p_sucursal uuid,p_activo boolean,p_motivo text) returns void
 language plpgsql security definer set search_path='' as $$
 declare v public.perfiles; v_antes jsonb; v_despues jsonb;
@@ -317,7 +320,7 @@ begin
  if p_nombre is null or length(trim(p_nombre)) not between 2 and 160 then raise exception 'Escribe un nombre de 2 a 160 caracteres.';end if;
  if p_motivo is null or length(trim(p_motivo)) not between 5 and 1000 then raise exception 'Escribe un motivo de 5 a 1000 caracteres.';end if;
  if p_activo is null or p_rol is null or p_rol not in ('operacion','encargado','gerente','admin','corporativo','marketing','aperturas') then raise exception 'Rol o estado inválido.';end if;
- if p_rol in ('corporativo','marketing') then p_sucursal:=null;
+ if p_rol in ('corporativo','marketing','aperturas') then p_sucursal:=null;
  elsif p_sucursal is null or not exists(select 1 from public.sucursales where id=p_sucursal) then raise exception 'Selecciona una sucursal válida.';end if;
  select * into v from public.perfiles where id=p_id for update;
  if not found then raise exception 'Usuario no encontrado.';end if;
@@ -347,7 +350,7 @@ begin
   if p_correo is null or length(p_correo)>254 or p_correo !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then raise exception 'Correo inválido.';end if;
   if p_nombre is null or length(trim(p_nombre)) not between 2 and 160 then raise exception 'Nombre inválido.';end if;
   if p_rol is null or p_rol not in ('operacion','encargado','gerente','admin','corporativo','marketing','aperturas') then raise exception 'Rol inválido.';end if;
-  if p_rol in ('corporativo','marketing') then p_sucursal:=null;
+  if p_rol in ('corporativo','marketing','aperturas') then p_sucursal:=null;
   elsif p_sucursal is null or not exists(select 1 from public.sucursales where id=p_sucursal) then raise exception 'Selecciona una sucursal válida.';end if;
   if exists(select 1 from public.usuarios_invitaciones where correo=p_correo) then raise exception 'Ya hay una invitación para ese correo. Reenvíala desde la lista.';end if;
   if exists(select 1 from auth.users where lower(email)=p_correo) then raise exception 'Ese correo ya tiene una cuenta. Administra el usuario existente.';end if;

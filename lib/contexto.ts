@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { esCorporativo, puedeEntrar, SOLO_CONSULTA } from "@/lib/roles";
@@ -63,3 +64,10 @@ export async function obtenerContextoParaEscribir(ruta: string) {
   if (contexto.soloLectura) redirect(`${ruta}?error=${encodeURIComponent(SOLO_CONSULTA)}`);
   return contexto;
 }
+
+/** ¿Es el usuario responsable de alguna actividad de apertura? Una sola consulta por petición (layout y menú); un error cuenta como no. */
+export const esResponsableApertura = cache(async (): Promise<boolean> => {
+  const supabase = await crearClienteServidor();
+  const { data, error } = await supabase.rpc("mi_responsable_id");
+  return !error && data != null;
+});

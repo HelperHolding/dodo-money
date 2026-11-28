@@ -7,6 +7,7 @@ import { accesosRapidos, menuLateral, NOMBRE_ROL, puedeVerAperturasCompleto } fr
 import { BotonReportar } from "@/components/BotonReportar";
 import { contarSoporte } from "@/app/soporte/datos";
 import { contarMisTareas } from "@/app/tareas/datos";
+import { esResponsableApertura } from "@/lib/contexto";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import type { Rol } from "@/lib/tipos";
 
@@ -26,8 +27,8 @@ export async function Marco({ perfil, titulo, detalle, aviso, children }: {
     contarMisTareas(supabase).catch(() => ({ abiertas: 0, vencidas: 0 })),
     contarSoporte(supabase),
     // Quien es responsable de actividades de apertura ve el enlace aunque su puesto no sea de oficina.
-    puedeVerAperturasCompleto(perfil.rol) || perfil.rol === "aperturas" ? Promise.resolve(false)
-      : Promise.resolve(supabase.rpc("mi_responsable_id")).then(({ data, error }) => !error && data != null, () => false),
+    puedeVerAperturasCompleto(perfil.rol) || perfil.rol === "aperturas" || perfil.rol === "marketing" ? Promise.resolve(false)
+      : esResponsableApertura().catch(() => false),
   ]);
   const base = menuLateral(perfil.rol, { responsableApertura: responsable });
   const contadores: Record<string, { n: number; urgente: boolean }> = {};
