@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { datosPL } from "@/app/finanzas/datos";
 import { calcularPL } from "@/lib/finanzas/pl";
+import { conReintento } from "@/lib/ventas/paginar";
 import { metaDelRango, parametrosSQL, puntoEquilibrio, prorratear, rangoComparacion, ventaParcial, type FiltrosBI } from "@/lib/ventas/bi";
 
 type Num = number | string;
@@ -30,16 +31,18 @@ export async function datosBI(supabase: SupabaseClient, f: FiltrosBI, hoy: strin
   const cerrado = mesCerrado(hoy);
   const p = parametrosSQL(f, f);
   const [actual, anterior, historico, filtradas, metas, pl] = await Promise.all([
-    supabase.rpc("ventas_bi", { p }),
-    supabase.rpc("ventas_bi", { p: parametrosSQL(f, comp) }),
-    supabase.rpc("ventas_bi_historico", { p }),
+    conReintento(() => supabase.rpc("ventas_bi", { p })),
+    conReintento(() => supabase.rpc("ventas_bi", { p: parametrosSQL(f, comp) })),
+    conReintento(() => supabase.rpc("ventas_bi_historico", { p })),
     // Sucursales que pasan sucursal, razón social y antigüedad: las mismas que suma ventas_bi, para que P.E. y meta comparen lo mismo.
-    supabase.rpc("ventas_bi_sucursales", { p, p_hasta: f.hasta }),
+    conReintento(() => supabase.rpc("ventas_bi_sucursales", { p, p_hasta: f.hasta })),
     supabase.from("ventas_metas").select("sucursal_id, mes, monto").gte("mes", `${f.desde.slice(0, 7)}-01`).lte("mes", f.hasta),
     // Si el P&L no carga, se marca error: no es que falte capturar datos.
     datosPL(supabase, cerrado).then((d) => ({ d, error: false }), () => ({ d: null, error: true })),
   ]);
-  if (actual.error || anterior.error || historico.error || filtradas.error) throw new Error("No se pudo calcular Ventas BI.");
+  const fallo = actual.error ?? anterior.error ?? historico.error ?? filtradas.error;
+  // El motivo va en el mensaje para que el log de Vercel diga qué pasó (la pantalla solo muestra el código).
+  if (fallo) throw new Error(`No se pudo calcular Ventas BI: ${fallo.message}`);
   const elegidas: string[] = ((filtradas.data ?? []) as (string | { ventas_bi_sucursales: string })[]).map((x) => (typeof x === "string" ? x : x.ventas_bi_sucursales));
   const resultado = actual.data as ResultadoBI;
   // Venta del rango por sucursal: el medidor compara cada objetivo solo con la venta de las sucursales que lo forman.
