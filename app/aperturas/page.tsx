@@ -5,7 +5,7 @@ import {obtenerPerfil} from '@/lib/contexto';
 import {hoyCalendarioMX,pesos} from '@/lib/formato';
 import {leerTodo} from '@/lib/ventas/paginar';
 import {COLUMNAS_PROYECTO_RESPONSABLE,avanceApertura,ordenarProyectos,type ProyectoApertura} from '@/lib/aperturas';
-import {puedeVerAperturasCompleto} from '@/lib/roles';
+import {puedeEditarCompras,puedeVerAperturasCompleto} from '@/lib/roles';
 import {resumenPortada,textoDiasApertura,textoPts,type Concepto} from '@/lib/aperturasAkton';
 import {Kpi} from '@/app/finanzas/PLAkton';
 
@@ -31,7 +31,7 @@ export default async function Aperturas() {
   !completo?Promise.resolve(null):Promise.resolve(supabase.from('inversion_apertura_fuentes').select('total').returns<{total:number}[]>()).then(r=>r.error?null:{total:(r.data??[]).reduce((s,f)=>s+Number(f.total),0),fuentes:(r.data??[]).length}).catch(()=>null),
  ]);
  const hoy=hoyCalendarioMX();
- const encabezado=completo?<EncabezadoPagina titulo="Aperturas" info="Del proyecto a la tienda lista: actividades, equipo, compras y validaciones." acciones={<Link className="boton boton-secundario" href="/aperturas/inversion">Inversión de apertura</Link>}/>
+ const encabezado=completo?<EncabezadoPagina titulo="Aperturas" info="Del proyecto a la tienda lista: actividades, equipo, compras y validaciones." acciones={<>{puedeEditarCompras(perfil.rol)&&<Link className="boton boton-secundario" href="/aperturas/responsables">Responsables</Link>}<Link className="boton boton-secundario" href="/aperturas/inversion">Inversión de apertura</Link></>}/>
   :<EncabezadoPagina titulo="Aperturas" info="Las aperturas donde tienes actividades. El avance cuenta solo los registros a tu nombre."/>;
  if(error)return <>{encabezado}<p className="aviso aviso-error">No se pudieron consultar los proyectos. Revisa la migración 0037 de Aperturas.</p></>;
  if(!data?.length)return <>{encabezado}{completo?<EstadoVacio titulo="Sin proyectos de apertura" descripcion="Cuando se cargue el proyecto de una sucursal nueva aparecerá aquí."/>:<EstadoVacio titulo="Sin actividades a tu nombre" descripcion="Cuando te asignen una actividad de apertura aparecerá aquí."/>}</>;

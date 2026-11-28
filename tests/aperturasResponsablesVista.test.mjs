@@ -78,3 +78,64 @@ test('calendario: agrupa por responsable_id con el nombre del catálogo',()=>{
 test('la prueba corre con npm test',()=>{
  assert.match(JSON.parse(leer('package.json')).scripts.test,/tests\/aperturasResponsablesVista\.test\.mjs/);
 });
+// Ficha del registro y catálogo de responsables (HD-17, HD-18, HD-27).
+const FICHA='app/aperturas/[id]/items/[item]/page.tsx';
+test('ficha: Nombre, Descripción, responsable del catálogo, Bitácora y Dividir para admin',()=>{
+ const p=leer(FICHA),a=leer('app/aperturas/acciones.ts');
+ assert.match(p,/name="nombre"/);
+ assert.match(p,/name="descripcion"/);
+ assert.match(p,/<SelectorResponsable /);
+ assert.match(leer('app/aperturas/[id]/items/[item]/SelectorResponsable.tsx'),/Nuevo externo/);
+ assert.match(p,/Bitácora/);
+ assert.match(p,/from\('apertura_bitacora'\)/);
+ assert.match(p,/<VentanaDividir /);
+ const d=leer('app/aperturas/[id]/items/[item]/VentanaDividir.tsx');
+ assert.match(d,/Dividir/);
+ assert.match(d,/MAX_PARTES=10/);
+ assert.match(d,/MIN_PARTES=2/);
+ assert.match(p,/Viene de /);
+ assert.match(p,/Dividida en /);
+ assert.match(a,/rpc\('agregar_bitacora_apertura',\{p_item:/);
+ assert.match(a,/rpc\('dividir_apertura_item',\{p_item:/);
+ assert.match(a,/rpc\('guardar_responsable_apertura',\{p_id:null,/);
+ assert.match(a,/Dividida en \$\{/);
+ // Sin la migración la ficha sigue: texto libre del responsable y aviso.
+ assert.match(p,/hayMigracion=catalogo!==null/);
+ assert.match(p,/hayMigracion\?<SelectorResponsable[\s\S]*list="responsables-sugeridos"/);
+ // El historial muestra los cambios de nombre.
+ assert.match(leer('app/aperturas/Historial.tsx'),/nombre:'Nombre'/);
+});
+test('ficha del responsable: columnas seguras, sin precio, OC, factura, origen con precios ni activo',()=>{
+ const p=leer(FICHA),lib=leer('lib/aperturas.ts');
+ assert.match(p,/completo=puedeVerAperturasCompleto\(perfil\.rol\)/);
+ assert.match(p,/select\(completo\?'\*':COLUMNAS_FICHA_RESPONSABLE\)/);
+ assert.match(lib,/export const COLUMNAS_FICHA_RESPONSABLE\s*=\s*`\$\{COLUMNAS_ITEM_RESPONSABLE\},origen_id`/);
+ assert.match(p,/precio:null,orden_id:null,factura_id:null,original:\{\}/);
+ // No consulta órdenes ni facturas de la sucursal.
+ assert.match(p,/completo\?supabase\.from\('ordenes_compra'\)/);
+ assert.match(p,/completo\?supabase\.from\('facturas'\)/);
+ assert.match(p,/\{completo&&compra&&<Kpi etiqueta="Importe con IVA"/);
+ assert.match(p,/\{completo&&compra&&<tr><th scope="row">Precio unitario estimado/);
+ assert.match(p,/\{completo&&i\.orden_id&&/);
+ assert.match(p,/\{completo&&i\.factura_id&&/);
+ assert.match(p,/\{completo&&<section [^>]*aria-labelledby="ap-origen"/);
+ assert.match(p,/\{edita&&compra&&\[[^\]]+\]\.includes\(i\.estado\)&&<p><Link className="boton" href=\{`\/activos\/nuevo/);
+ // Historial sin dinero para quien no es completo.
+ assert.match(p,/sinDinero\(/);
+ // El formulario del responsable va a su propia acción, que solo manda las claves permitidas.
+ assert.match(p,/action=\{guardarSeguimiento\}/);
+ const a=leer('app/aperturas/acciones.ts');
+ assert.match(a,/CAMPOS_RESPONSABLE=\['estado','inicio','fin','notas','evidencia'\]/);
+ const f=a.slice(a.indexOf('export async function guardarSeguimiento'));
+ assert.doesNotMatch(f.slice(0,f.indexOf('\n}')),/precio|orden_id|factura_id|cantidad/);
+});
+test('catálogo de responsables: solo admin, con enlace desde la lista de Aperturas',()=>{
+ const p=leer('app/aperturas/responsables/page.tsx'),a=leer('app/aperturas/responsables/acciones.ts');
+ assert.match(p,/if\(!puedeEditarCompras\(perfil\.rol\)\)redirect\('\/aperturas'\)/);
+ assert.match(a,/if\(!puedeEditarCompras\(perfil\.rol\)\)redirect\('\/aperturas'\)/);
+ assert.match(a,/rpc\('guardar_responsable_apertura',\{p_id:/);
+ assert.match(p,/Externo/);
+ assert.match(p,/name="perfil_id"/);
+ assert.match(p,/name="activo"/);
+ assert.match(leer('app/aperturas/page.tsx'),/puedeEditarCompras\(perfil\.rol\)&&<Link [^>]*href="\/aperturas\/responsables"/);
+});

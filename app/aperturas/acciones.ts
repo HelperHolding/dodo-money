@@ -7,11 +7,55 @@ export async function guardarItem(fd:FormData) {
  const id=String(fd.get('proyecto_id')??''),item=String(fd.get('item_id')??'');
  const ruta=`/aperturas/${id}/items/${item}`;
  const {supabase,perfil}=await obtenerPerfil();if(!puedeEditarCompras(perfil.rol))redirect('/aperturas');
- const campos=['estado','responsable','inicio','fin','cantidad','recibido','precio','evidencia','notas','orden_id','factura_id',...(fd.has('categoria')?['categoria']:[])];
+ // Nombre, descripción y responsable del catálogo solo van si la ficha los muestra (con la migración de responsables);
+ // sin ella, el responsable sigue como texto libre y la función anterior no conoce esas claves.
+ const opcionales=['responsable','nombre','descripcion','responsable_id','categoria'].filter(c=>fd.has(c));
+ const campos=['estado','inicio','fin','cantidad','recibido','precio','evidencia','notas','orden_id','factura_id',...opcionales];
  const datos=Object.fromEntries(campos.map(c=>[c,String(fd.get(c)??'')]));
  const {error}=await supabase.rpc('actualizar_apertura_item',{p_item:item,p_revision:Number(fd.get('revision')),p_datos:datos});
  if(error)redirect(`${ruta}?error=${encodeURIComponent(error.message)}`);
  revalidatePath('/aperturas','layout');redirect(`${ruta}?ok=${encodeURIComponent('Registro actualizado.')}`);
+}
+// Lo único que el responsable de un registro puede cambiar (HD-27). La función rechaza cualquier otra clave.
+const CAMPOS_RESPONSABLE=['estado','inicio','fin','notas','evidencia'];
+export async function guardarSeguimiento(fd:FormData) {
+ const id=String(fd.get('proyecto_id')??''),item=String(fd.get('item_id')??''),ruta=`/aperturas/${id}/items/${item}`;
+ const {supabase}=await obtenerPerfil();
+ const datos=Object.fromEntries(CAMPOS_RESPONSABLE.map(c=>[c,String(fd.get(c)??'')]));
+ const {error}=await supabase.rpc('actualizar_apertura_item',{p_item:item,p_revision:Number(fd.get('revision')),p_datos:datos});
+ if(error)redirect(`${ruta}?error=${encodeURIComponent(error.message)}`);
+ revalidatePath('/aperturas','layout');redirect(`${ruta}?ok=${encodeURIComponent('Seguimiento actualizado.')}`);
+}
+// Bitácora: admin o el responsable del registro (la función lo valida). Sin fecha, hoy; avance opcional de 0 a 100.
+export async function agregarBitacora(fd:FormData) {
+ const id=String(fd.get('proyecto_id')??''),item=String(fd.get('item_id')??''),ruta=`/aperturas/${id}/items/${item}`;
+ const {supabase}=await obtenerPerfil();const texto=(c:string)=>String(fd.get(c)??'').trim();
+ const avance=texto('avance');
+ const {error}=await supabase.rpc('agregar_bitacora_apertura',{p_item:item,p_fecha:texto('fecha')||null,p_avance:avance===''?null:Number(avance),p_estatus:texto('estatus')||null,p_comentario:texto('comentario')});
+ if(error)redirect(`${ruta}?error=${encodeURIComponent(error.message)}`);
+ revalidatePath(ruta);redirect(`${ruta}?ok=${encodeURIComponent('Entrada agregada a la bitácora.')}`);
+}
+// Divide un registro en 2 a 10 partes (HD-18). Cada fila de la ventana manda parte_nombre, parte_responsable, parte_inicio y parte_fin.
+export async function dividirItem(fd:FormData) {
+ const id=String(fd.get('proyecto_id')??''),item=String(fd.get('item_id')??''),ruta=`/aperturas/${id}/items/${item}`;
+ const {supabase,perfil}=await obtenerPerfil();if(!puedeEditarCompras(perfil.rol))redirect('/aperturas');
+ const lista=(c:string)=>fd.getAll(c).map(v=>String(v).trim());
+ const nombres=lista('parte_nombre'),resp=lista('parte_responsable'),ini=lista('parte_inicio'),fin=lista('parte_fin');
+ const partes=nombres.map((nombre,n)=>({nombre,responsable_id:resp[n]??'',inicio:ini[n]??'',fin:fin[n]??''}));
+ const {data,error}=await supabase.rpc('dividir_apertura_item',{p_item:item,p_partes:partes});
+ if(error)redirect(`${ruta}?error=${encodeURIComponent(error.message)}`);
+ const claves=(data as string[]|null)??[];
+ const vista=['compras','tecnico'].includes(String(fd.get('vista')))?String(fd.get('vista')):'actividades';
+ revalidatePath('/aperturas','layout');redirect(`/aperturas/${id}?vista=${vista}&ok=${encodeURIComponent(`Dividida en ${claves.join(', ')}.`)}`);
+}
+// «+ Nuevo externo» desde la ficha: alta rápida en el catálogo; la ventana agrega la opción y la deja elegida.
+export async function crearResponsableExterno(nombre:string):Promise<{id:string;nombre:string}|{error:string}> {
+ const {supabase,perfil}=await obtenerPerfil();if(!puedeEditarCompras(perfil.rol))return {error:'Solo administración gestiona responsables.'};
+ const limpio=String(nombre??'').trim();
+ const {data,error}=await supabase.rpc('guardar_responsable_apertura',{p_id:null,p_nombre:limpio,p_perfil:null,p_externo:true,p_activo:true});
+ if(error||!data)return {error:error?.message??'No se pudo agregar el responsable.'};
+ revalidatePath('/aperturas/responsables');
+ return {id:String(data),nombre:limpio};
 }
 export async function agregarItem(fd:FormData) {
  const id=String(fd.get('proyecto_id')??'');const {supabase,perfil}=await obtenerPerfil();if(!puedeEditarCompras(perfil.rol))redirect('/aperturas');

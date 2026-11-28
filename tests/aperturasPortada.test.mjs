@@ -49,7 +49,8 @@ test('en celular los valores largos de la franja se acomodan sin salirse', () =>
 });
 test('el importe del detalle es solo para compras y dice que es con IVA; el historial no llama alta a otros cambios', () => {
   const d = leer('app/aperturas/[id]/items/[item]/page.tsx');
-  assert.match(d, /\{compra&&<Kpi etiqueta="Importe con IVA"/);
+  // Solo compras, y solo para quien ve compras (el responsable no ve importes, HD-27).
+  assert.match(d, /\{completo&&compra&&<Kpi etiqueta="Importe con IVA"/);
   assert.match(leer('app/aperturas/Historial.tsx'), /Sin cambios en campos visibles/);
 });
 
