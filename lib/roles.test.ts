@@ -10,7 +10,7 @@ test('corte diario: encargado de sucursal puede cerrar sin ampliar otros permiso
  assert.equal(puedeEditarCompras('encargado'),false);
 });
 import {
-  accesosRapidos, areaActiva, enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, SECCIONES, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
+  accesosRapidos, areaActiva, puedeVerAperturasCompleto, enlaceActivo, enlacesDelMenu, esCorporativo, grupoAbierto, menuLateral, SECCIONES, NOMBRE_ROL, puedeAbrirTurno, puedeEditarCompras, puedeEntrar, puedeRecibirCompras,
   puedeGestionar, puedeImportarVentas, puedeRecibirEfectivo, puedeRecibirSalida, puedeVerEfectivo, puedeVerTurnos, puedeSupervisar, puedeVerCompras, puedeVerVentas, veAvisoSinCosto, veVentasDeTodas,
   puedeVerFinanzas, puedeEditarFinanzas, puedeCambiarSucursal, puedeVerVistaGeneral, puedeVerCorreos, puedeEditarCorreos } from "./roles.ts";
 
@@ -94,6 +94,7 @@ const FOTO: Record<R, string[]> = {
   admin: ["/","/activos","/administracion/usuarios","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/cargar","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/correos/contactos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/capex","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/finanzas/transito","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/soporte","/soporte/ajustes","/soporte/nuevo","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/bi","/ventas/cierre-semanal","/ventas/conciliacion","/ventas/costos","/ventas/dodois","/ventas/importar","/ventas/rappi"],
   corporativo: ["/","/activos","/aperturas","/arqueo","/asistente","/banca","/caja-chica","/catalogos","/checklists","/cierre","/compras","/compras/articulos","/compras/documentos","/compras/pagos","/compras/pagos/compromisos","/compras/pagos/reservas","/compras/razones-sociales","/compras/recepciones","/conocimiento","/corporativo","/correos","/cumplimiento","/efectivo","/finanzas","/finanzas/asignacion","/finanzas/capex","/finanzas/catalogo","/finanzas/flujo","/finanzas/mermas","/finanzas/nomina","/finanzas/parametros","/finanzas/personal","/finanzas/retenciones","/finanzas/transito","/inventario","/inventario/uniformes","/movimientos","/recolecciones","/soporte","/soporte/nuevo","/tareas","/tareas/tablero","/turnos","/ventas","/ventas/bi","/ventas/cierre-semanal","/ventas/conciliacion","/ventas/costos","/ventas/rappi"],
   marketing: ["/correos","/correos/contactos","/soporte","/soporte/nuevo"],
+  aperturas: ["/aperturas"],
 };
 test("menú por áreas: cada puesto ve exactamente las mismas páginas que antes", () => {
   for (const rol of Object.keys(FOTO) as R[]) {
@@ -207,7 +208,7 @@ test("aviso de productos sin costo: admin y corporativo lo ven; gerente, encarga
 });
 
 test("nombre de cada puesto como se muestra en la app", () => {
-  assert.deepEqual(NOMBRE_ROL, { operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo", marketing: "Marketing" });
+  assert.deepEqual(NOMBRE_ROL, { operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo", marketing: "Marketing", aperturas: "Aperturas" });
 });
 
 test("un usuario desactivado no entra", () => {
@@ -266,4 +267,19 @@ test("marketing: solo Ayuda y Correos; corporativo consulta", () => {
   assert.deepEqual(menuLateral("corporativo").grupos.find((g) => g.titulo === "Correos")?.enlaces.map((e) => e.href), ["/correos"]);
   assert.deepEqual(accesosRapidos("marketing").map((e) => e.href), ["/correos", "/correos/contactos", "/correos/nueva"]);
   for (const rol of ["gerente", "operacion"] as const) assert.equal(menuLateral(rol).grupos.some((g) => g.titulo === "Correos"), false);
+});
+
+test("aperturas: el puesto solo ve Aperturas y un responsable de otro puesto gana el enlace", () => {
+  assert.equal(NOMBRE_ROL.aperturas, "Aperturas");
+  const menu = menuLateral("aperturas");
+  assert.deepEqual(menu.inicio, { href: "/aperturas", texto: "Aperturas" });
+  assert.deepEqual(menu.grupos.map((g) => g.titulo), ["Aperturas"]);
+  assert.deepEqual(accesosRapidos("aperturas").map((a) => a.href), ["/aperturas"]);
+  assert.equal(puedeVerAperturasCompleto("aperturas"), false);
+  assert.equal(puedeVerAperturasCompleto("admin"), true);
+  assert.equal(puedeVerAperturasCompleto("corporativo"), true);
+  assert.equal(puedeVerAperturasCompleto("gerente"), false);
+  assert.equal(menuLateral("gerente").grupos.some((g) => g.titulo === "Aperturas"), false);
+  assert.deepEqual(menuLateral("gerente", { responsableApertura: true }).grupos.find((g) => g.titulo === "Aperturas")?.enlaces.map((e) => e.href), ["/aperturas"]);
+  assert.deepEqual(menuLateral("encargado", { responsableApertura: false }).grupos.some((g) => g.titulo === "Aperturas"), false);
 });

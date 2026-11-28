@@ -23,12 +23,16 @@ const BASE=`create role anon;create role authenticated;create schema auth;create
  create function auth.uid() returns uuid language sql stable as $$select (nullif(current_setting('request.jwt.claims',true),'')::json->>'sub')::uuid$$;
  grant usage on schema auth to authenticated;
  create type rol_usuario as enum('admin','gerente','encargado','operacion','corporativo','marketing');
- create table perfiles(id uuid primary key,activo boolean not null default true,rol rol_usuario not null,nombre text,debe_cambiar_contrasena boolean not null default false);
+ create table perfiles(id uuid primary key,activo boolean not null default true,rol rol_usuario not null,nombre text,debe_cambiar_contrasena boolean not null default false,sucursal_id uuid);
  insert into perfiles values('${ADMIN}',true,'admin','Admin',false),('${CORP}',true,'corporativo','Corporativo',false),('${OPER}',true,'operacion','Operación',false),('${INACT}',false,'operacion','Inactivo',false),('${OPER2}',true,'gerente','Gerente',false);
  create function mi_rol() returns rol_usuario language sql stable security definer set search_path='' as $$select rol from public.perfiles where id=auth.uid() and activo and not debe_cambiar_contrasena$$;
  create function ve_compras() returns boolean language sql stable security definer set search_path=public as $$select coalesce(mi_rol()::text in ('admin','corporativo'),false)$$;
  create function edita_compras() returns boolean language sql stable security definer set search_path=public as $$select coalesce(mi_rol()::text='admin',false)$$;
  create table sucursales(id uuid primary key default gen_random_uuid(),nombre text not null);insert into sucursales(nombre) values('dodo-2');
+ create table auth.users(id uuid primary key,email text);
+ create table usuarios_historial(id uuid primary key default gen_random_uuid(),usuario_id uuid not null references perfiles(id),autor_id uuid not null references perfiles(id),motivo text not null,antes jsonb not null,despues jsonb not null,creado_en timestamptz not null default now());
+ create table usuarios_invitaciones(id uuid primary key,correo text not null unique,nombre text not null,rol rol_usuario not null,sucursal_id uuid references sucursales(id),usuario_id uuid unique references perfiles(id),creado_por uuid not null references perfiles(id),creado_en timestamptz not null default now(),estado text not null default 'pendiente' check(estado in ('pendiente','enviada','aceptada','error')),envio_id uuid,envio_por uuid references perfiles(id),reservado_hasta timestamptz,enviada_en timestamptz,aceptada_en timestamptz,envios integer not null default 0,error_envio text);
+ create table usuarios_invitaciones_historial(id uuid primary key default gen_random_uuid(),invitacion_id uuid not null references usuarios_invitaciones(id),autor_id uuid not null references perfiles(id),evento text not null,creado_en timestamptz not null default now());
  create table ordenes_compra(id uuid primary key,sucursal_id uuid);create table facturas(id uuid primary key,sucursal_id uuid);
  grant select on perfiles to authenticated;`;
 const preparar=async db=>{await db.exec(BASE);await db.exec(aperturas);for(const m of previas)await db.exec(m);await db.exec(rol);
@@ -448,5 +452,22 @@ test('prueba SQL de producción: termina en PRUEBAS OK y no deja nada',async()=>
   // Sin perfiles no admin libres: también termina bien (se salta la parte del responsable con usuario).
   await db.exec(`update perfiles set rol='admin' where rol::text not in ('admin','corporativo')`);
   await rechaza(db.exec(pruebas),/^PRUEBAS OK(?!.*usuario responsable)/);
+ }finally{await db.close();}
+});
+
+test('usuarios e invitaciones aceptan el puesto aperturas con sucursal y rechazan roles desconocidos',async()=>{
+ const db=new PGlite();
+ try{await preparar(db);await como(db,ADMIN);
+  const suc=(await db.query('select id from sucursales limit 1')).rows[0].id;
+  const orig=JSON.stringify({id:OPER,nombre:'Operación',rol:'operacion',sucursal_id:null,activo:true,debe_cambiar_contrasena:false});
+  await rechaza(db.query(`select public.administrar_usuario($1,$2::jsonb,'Operación','aperturas',null,true,'Pasa a aperturas')`,[OPER,orig]),/sucursal válida/);
+  await rechaza(db.query(`select public.administrar_usuario($1,$2::jsonb,'Operación','inventado',$3,true,'Pasa a aperturas')`,[OPER,orig,suc]),/Rol o estado inválido/);
+  await db.query(`select public.administrar_usuario($1,$2::jsonb,'Operación','aperturas',$3,true,'Pasa a aperturas')`,[OPER,orig,suc]);
+  assert.equal((await db.query('select rol::text r from perfiles where id=$1',[OPER])).rows[0].r,'aperturas');
+  const inv='00000000-0000-0000-0000-0000000000aa',env='00000000-0000-0000-0000-0000000000ab';
+  await rechaza(db.query(`select public.preparar_invitacion_usuario($1,$2,'a@x.mx','Ana Perez','aperturas',null)`,[inv,env]),/sucursal válida/);
+  await rechaza(db.query(`select public.preparar_invitacion_usuario($1,$2,'a@x.mx','Ana Perez','inventado',$3)`,[inv,env,suc]),/Rol inválido/);
+  await db.query(`select public.preparar_invitacion_usuario($1,$2,'a@x.mx','Ana Perez','aperturas',$3)`,[inv,env,suc]);
+  assert.equal((await db.query('select rol::text r from usuarios_invitaciones where id=$1',[inv])).rows[0].r,'aperturas');
  }finally{await db.close();}
 });

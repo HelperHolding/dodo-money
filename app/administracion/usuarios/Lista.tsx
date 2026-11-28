@@ -29,7 +29,7 @@ function Editor({u,sucursales,yo}:{u:Usuario;sucursales:{id:string;nombre:string
     <label className={styles.check}><input type="checkbox" name="activo" defaultChecked={u.activo} disabled={u.id===yo}/>Cuenta activa</label>
     {u.id===yo&&<input type="hidden" name="activo" value="on"/>}
     <label className={styles.wide}>Motivo del cambio<textarea name="motivo" required minLength={5} maxLength={1000} placeholder="Explica la asignación, cambio de puesto o baja…"/></label>
-    <p className={styles.nota}>{rol==="admin"?"Administración tiene acceso a todas las sucursales y puede gestionar datos.":rol==="corporativo"?"Corporativo consulta todas las sucursales y recibe efectivo.":rol==="marketing"?"Marketing solo entra a Correos: campañas, contactos y estadísticas.":"Este usuario queda limitado a la sucursal asignada y a las funciones de su rol."}</p>
+    <p className={styles.nota}>{rol==="admin"?"Administración tiene acceso a todas las sucursales y puede gestionar datos.":rol==="corporativo"?"Corporativo consulta todas las sucursales y recibe efectivo.":rol==="marketing"?"Marketing solo entra a Correos: campañas, contactos y estadísticas.":rol==="aperturas"?"Solo ve sus actividades de apertura.":"Este usuario queda limitado a la sucursal asignada y a las funciones de su rol."}</p>
     <Guardar/>
   </form>;
 }
