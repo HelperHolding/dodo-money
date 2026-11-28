@@ -4,7 +4,7 @@ import Link from 'next/link';
 import {obtenerPerfil} from '@/lib/contexto';
 import {hoyCalendarioMX,pesos} from '@/lib/formato';
 import {leerTodo} from '@/lib/ventas/paginar';
-import {COLUMNAS_PROYECTO_RESPONSABLE,avanceApertura,conNombreSucursal,ordenarProyectos,type NombreApertura,type ProyectoApertura} from '@/lib/aperturas';
+import {COLUMNAS_PROYECTO_RESPONSABLE,conNombreSucursal,ordenarProyectos,type NombreApertura,type ProyectoApertura} from '@/lib/aperturas';
 import {esAperturas,puedeEditarCompras,puedeVerAperturasCompleto} from '@/lib/roles';
 import {resumenPortada,textoDiasApertura,textoPts,type Concepto} from '@/lib/aperturasAkton';
 import {Kpi} from '@/app/finanzas/PLAkton';
@@ -58,15 +58,18 @@ export default async function Aperturas() {
    {sinAvance&&<p className="aviso aviso-error">No se pudo consultar el avance de las aperturas.</p>}
    <div className="ap-portada">{ordenarProyectos(data,hoy).map(p=>{
     const t=r.tarjetas[p.id],a=t.avance,dias=textoDiasApertura(t.dias),pasada=t.dias.tipo==='vencida'||t.dias.tipo==='abierta';
-    // Barra: avance ponderado por bloque de lo que ve quien entra (para un responsable, solo lo suyo).
-    const barra=sinAvance?null:avanceApertura((items??[]).filter(i=>i.proyecto_id===p.id)).general,etiqueta=completo?'Avance':'Tu avance';
+    // El avance es el de lo que ve quien entra (para un responsable, solo lo suyo por RLS).
+    const etiqueta=completo?'Avance':'Tu avance';
     return <Link key={p.id} href={`/aperturas/${p.id}`} className="ap-tarjeta ap-tarjeta-akton">
      <span className="akton-kpi-etiqueta">{p.sucursales?.nombre??'Sucursal'}</span>
      {sinAvance&&pasada?<strong className="ap-tarjeta-dias">Sin dato de avance</strong>
       :<strong className="ap-tarjeta-dias" data-tono={dias.tono}>{dias.valor}{t.dias.tipo==='faltan'&&<small> {t.dias.dias===1?'día':'días'}</small>}</strong>}
      <small className="ap-tarjeta-dato">{p.responsable} · {rango(p.objetivo_desde,p.objetivo_hasta)}</small>
-     {!sinAvance&&<progress className="ap-tarjeta-barra" value={barra??0} max={100} aria-label={`${etiqueta}: ${barra===null?'sin registros':`${barra} %`}`}/>}
-     {!sinAvance&&<span className="ap-tarjeta-linea">{etiqueta} {a.real===null?'—':`${a.real} %`} · {a.esperado===null||a.realConFecha===null?'esperado sin fechas':`con fecha ${a.realConFecha} % vs ${a.esperado} % esperado`}
+     {!sinAvance&&<div className="ap-avance" data-favorable={a.favorable??undefined}>
+      <div className="ap-avance-cabeza"><b className="ap-avance-pct">{a.real===null?'—':`${a.real} %`}</b><span>{completo?'de avance':'tu avance'}</span></div>
+      <div className="ap-avance-pista" role="progressbar" aria-label={`${etiqueta} de la apertura`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={a.real??undefined}><i style={{width:`${a.real??0}%`}}/></div>
+     </div>}
+     {!sinAvance&&<span className="ap-tarjeta-linea">{a.esperado===null||a.realConFecha===null?'esperado sin fechas':`con fecha ${a.realConFecha} % vs ${a.esperado} % esperado`}
       {a.variacion!==null&&<b className="akton-var" data-favorable={a.favorable??undefined}> {textoPts(a.variacion)}</b>}</span>}
      {(t.vencidas>0||t.bloqueadas>0)&&<p className="akton-nota">{[t.vencidas?plural(t.vencidas,'vencida','vencidas'):'',t.bloqueadas?plural(t.bloqueadas,'bloqueada','bloqueadas'):''].filter(Boolean).join(' · ')}</p>}
     </Link>;

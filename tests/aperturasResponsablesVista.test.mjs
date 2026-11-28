@@ -48,11 +48,9 @@ test('hijos: el plano no pinta precio, OC ni factura si no es completo',()=>{
  for(const f of ['app/aperturas/ListaConceptos.tsx','app/aperturas/Checklist.tsx','app/aperturas/ChecklistEditable.tsx','app/aperturas/Calendario.tsx'])
   assert.doesNotMatch(leer(f),/precio|orden_id|factura_id|pesos\(/,f);
 });
-test('lista: barra de avance con avanceApertura, días que faltan y «Tu avance» para el responsable',()=>{
+test('lista: barra de avance, días que faltan y «Tu avance» para el responsable',()=>{
  const p=leer('app/aperturas/page.tsx');
- assert.match(p,/import \{[^}]*avanceApertura[^}]*\} from '@\/lib\/aperturas'/);
- assert.match(p,/avanceApertura\(/);
- assert.match(p,/<progress /);
+ assert.match(p,/className="ap-avance-pista" role="progressbar"/);
  assert.match(p,/Tu avance/);
  assert.match(p,/completo=puedeVerAperturasCompleto\(perfil\.rol\)/);
  assert.match(p,/completo\?'\*,sucursales\(nombre\)':COLUMNAS_PROYECTO_RESPONSABLE/);
