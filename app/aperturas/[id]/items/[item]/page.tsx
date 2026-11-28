@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {obtenerPerfil} from '@/lib/contexto';
 import {puedeEditarCompras,puedeVerAperturasCompleto} from '@/lib/roles';
-import {CATEGORIAS,COLUMNAS_FICHA_RESPONSABLE,COLUMNAS_PROYECTO_RESPONSABLE,ETAPAS,estadosPara,nombreEstado,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
+import {CATEGORIAS,COLUMNAS_FICHA_RESPONSABLE,COLUMNAS_PROYECTO_RESPONSABLE,conNombreSucursal,type NombreApertura,ETAPAS,estadosPara,nombreEstado,type ItemApertura,type ProyectoApertura} from '@/lib/aperturas';
 import {pesos,fechaTexto,hoyCalendarioMX} from '@/lib/formato';
 import {Kpi} from '@/app/finanzas/PLAkton';
 import {diasVencido,fechaConcepto,tonoConcepto} from '@/lib/aperturasAkton';
@@ -20,7 +20,8 @@ import {SelectorResponsable} from './SelectorResponsable';
 import {VentanaDividir} from './VentanaDividir';
 
 type Responsable={id:string;nombre:string;activo:boolean;perfil_id:string|null};
-type EntradaBitacora={id:string;fecha:string;avance:number|null;estatus:string|null;comentario:string;perfiles:{nombre:string|null}|null};
+// Entradas de bitacora_apertura(): el autor llega de la función porque el RLS de perfiles se lo oculta a un responsable.
+type EntradaBitacora={id:string;fecha:string;avance:number|null;estatus:string|null;comentario:string;usuario_nombre:string|null};
 // Claves con dinero o documentos de compra: no se muestran en el historial de quien no ve compras (HD-27).
 const DINERO=['precio','orden_id','factura_id','original'];
 const sinDinero=(h:CambioApertura):CambioApertura=>{const limpia=(o:Record<string,unknown>)=>Object.fromEntries(Object.entries(o??{}).filter(([k])=>!DINERO.includes(k)));return {...h,anterior:limpia(h.anterior),nuevo:limpia(h.nuevo)};};
@@ -34,12 +35,15 @@ const sinDinero=(h:CambioApertura):CambioApertura=>{const limpia=(o:Record<strin
 export default async function Item({params,searchParams}:{params:Promise<{id:string;item:string}>;searchParams:Promise<{ok?:string;error?:string}>}) {
  const [{id,item},avisos]=await Promise.all([params,searchParams]);const {supabase,perfil}=await obtenerPerfil();
  const completo=puedeVerAperturasCompleto(perfil.rol),edita=puedeEditarCompras(perfil.rol);
- const [{data:p,error:ep},{data:i0,error},catalogo]=await Promise.all([
+ const [{data:p0,error:ep},{data:i0,error},catalogo,nombres]=await Promise.all([
   supabase.from('apertura_proyectos').select(completo?'*,sucursales(nombre)':COLUMNAS_PROYECTO_RESPONSABLE).eq('id',id).maybeSingle<ProyectoApertura>(),
   supabase.from('apertura_items').select(completo?'*':COLUMNAS_FICHA_RESPONSABLE).eq('id',item).eq('proyecto_id',id).maybeSingle<ItemApertura>(),
   // Si el catálogo no existe (migración pendiente) o falla, null: sin selector, bitácora ni división.
-  Promise.resolve(supabase.from('apertura_responsables').select('id,nombre,activo,perfil_id').order('nombre').returns<Responsable[]>()).then(r=>r.error?null:r.data??[]).catch(()=>null)]);
- if(error||ep)return <p className="aviso aviso-error">No se pudo consultar el registro.</p>;if(!p||!i0)notFound();
+  Promise.resolve(supabase.from('apertura_responsables').select('id,nombre,activo,perfil_id').order('nombre').returns<Responsable[]>()).then(r=>r.error?null:r.data??[]).catch(()=>null),
+  // Nombre de la sucursal para el responsable: el RLS de sucursales no se lo deja embeber (si falla, sin nombre).
+  completo?Promise.resolve(null):Promise.resolve(supabase.rpc('nombres_aperturas_visibles')).then(r=>r.error?null:(r.data as NombreApertura[]|null)??[]).catch(()=>null)]);
+ if(error||ep)return <p className="aviso aviso-error">No se pudo consultar el registro.</p>;if(!p0||!i0)notFound();
+ const p=completo?p0:conNombreSucursal(p0,nombres);
  // Sin precio, orden, factura ni fila original aunque el tipo los pida: se rellenan en el servidor.
  const i:ItemApertura=completo?i0:{...i0,precio:null,orden_id:null,factura_id:null,original:{}};
  const compra=i.tipo==='equipo'||i.tipo==='referencia',hayMigracion=catalogo!==null;
@@ -51,7 +55,7 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
   completo?supabase.from('ordenes_compra').select('id,folio,estado').eq('sucursal_id',p.sucursal_id).order('creado_en',{ascending:false}).limit(1000).returns<{id:string;folio:string;estado:string}[]>():vacio,
   completo?supabase.from('facturas').select('id,folio,total,estado').eq('sucursal_id',p.sucursal_id).order('creado_en',{ascending:false}).limit(1000).returns<{id:string;folio:string|null;total:number;estado:string}[]>():vacio,
   supabase.from('apertura_historial').select('fecha,anterior,nuevo,perfiles(nombre)').eq('item_id',item).order('fecha',{ascending:false}).limit(50).returns<CambioApertura[]>(),
-  !hayMigracion?Promise.resolve(null):Promise.resolve(supabase.from('apertura_bitacora').select('id,fecha,avance,estatus,comentario,perfiles(nombre)').eq('item_id',item).order('fecha',{ascending:false}).order('creado_en',{ascending:false}).limit(200).returns<EntradaBitacora[]>()).then(r=>r.error?null:r.data??[]).catch(()=>null),
+  !hayMigracion?Promise.resolve(null):Promise.resolve(supabase.rpc('bitacora_apertura',{p_item:item})).then(r=>r.error?null:(r.data as EntradaBitacora[]|null)??[]).catch(()=>null),
   hayMigracion?supabase.from('apertura_items').select('id,clave,nombre').eq('origen_id',item).order('clave').returns<{id:string;clave:string;nombre:string}[]>():Promise.resolve({data:null}),
   i.origen_id?supabase.from('apertura_items').select('id,clave').eq('id',i.origen_id).maybeSingle<{id:string;clave:string}>():Promise.resolve({data:null})]);
  // Sugerencias del responsable en texto libre, solo sin catálogo: si alguna consulta falla, el campo sigue siendo texto libre.
@@ -61,6 +65,7 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
  const responsableNombre=(i.responsable_id&&catalogo?.find(r=>r.id===i.responsable_id)?.nombre)||i.responsable||'Sin asignar';
  // Opciones del selector: activos, más el actual aunque esté inactivo para no perderlo al guardar.
  const opciones=(catalogo??[]).filter(r=>r.activo||r.id===i.responsable_id).map(({id,nombre})=>({id,nombre}));
+ const activosDividir=(catalogo??[]).filter(r=>r.activo).map(({id,nombre})=>({id,nombre}));
  // Fotos de Dodo (HD-16): solo equipo y referencia. Si la consulta falla, la sección no aparece.
  const dodo=!compra?null:await (async()=>{try{const {data,error}=await supabase.from('apertura_item_dodo').select('item_id,codigo,matriz_url,sustituto,foto_proyecto,foto_real').eq('item_id',item).maybeSingle<{item_id:string;codigo:string|null;matriz_url:string|null;sustituto:string|null;foto_proyecto:string|null;foto_real:string|null}>();if(error)return null;const rutas=[data?.foto_proyecto,data?.foto_real].filter((x):x is string=>!!x);return {fila:data,urls:await urlsFotos(rutas)};}catch{return null;}})();
  if(eo||ef||eh)return <p className="aviso aviso-error">No se pudo consultar el seguimiento completo. Vuelve a intentar antes de editar.</p>;
@@ -110,7 +115,9 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
  <div className="campo"><label htmlFor="categoria">Categoría</label><select id="categoria" name="categoria" defaultValue={i.categoria??''}><option value="">Sin categoría</option>{Object.entries(CATEGORIAS).map(([k,c])=><option key={k} value={k}>{c.hoja} · {c.nombre}</option>)}</select></div>
  {compra?<>{[['cantidad','Cantidad necesaria',i.cantidad],['recibido','Cantidad recibida',i.recibido],['precio','Precio unitario estimado con IVA MXN',i.precio]].map(([c,t,v])=><div className="campo" key={String(c)}><label htmlFor={String(c)}>{t}</label><input id={String(c)} name={String(c)} type="number" min={c==='cantidad'?'0.0001':'0'} max={c==='precio'?'999999999':'99999999'} step="0.0001" defaultValue={v===null?'':String(v)}/></div>)}<div className="campo"><label htmlFor="orden_id">Orden de compra</label><select id="orden_id" name="orden_id" defaultValue={i.orden_id??''}><option value="">Sin vincular</option>{ordenes?.map(o=><option key={o.id} value={o.id}>{o.folio} · {o.estado}</option>)}</select></div><div className="campo"><label htmlFor="factura_id">Factura</label><select id="factura_id" name="factura_id" defaultValue={i.factura_id??''}><option value="">Sin vincular</option>{facturas?.map(f=><option key={f.id} value={f.id}>{f.folio??'Sin folio'} · {pesos(f.total)} · {f.estado}</option>)}</select></div></>:<><input type="hidden" name="cantidad" value=""/><input type="hidden" name="recibido" value="0"/><input type="hidden" name="precio" value=""/><input type="hidden" name="orden_id" value=""/><input type="hidden" name="factura_id" value=""/></>}
  </div><div className="campo"><label htmlFor="evidencia">Evidencia o motivo de no aplicar</label><textarea id="evidencia" name="evidencia" rows={3} maxLength={4000} defaultValue={i.evidencia??''} placeholder="Resultado de prueba, recepción, aprobación o enlace al documento"/><small>Obligatoria para completar, verificar o descartar. Una recepción completa requiere confirmar cantidad y unidades recibidas.</small></div><div className="campo"><label htmlFor="notas">Notas / bloqueo</label><textarea id="notas" name="notas" rows={3} maxLength={4000} defaultValue={i.notas??''}/></div><BotonEnviar>Guardar registro</BotonEnviar></form>
-  {hayMigracion&&i.estado!=='no_aplica'&&<div className="acciones ap-dividir"><VentanaDividir proyecto={id} item={item} vista={compra?'compras':i.tipo==='tecnico'?'tecnico':'actividades'} nombre={i.nombre} responsable={i.responsable_id??null} inicio={i.inicio} fin={i.fin} opciones={opciones}/><small>Divide este registro en 2 a 10 partes, cada una con su responsable y fechas.</small></div>}
+  {/* Solo actividades y validaciones: dividir equipo perdería cantidad, precio, orden y factura (la función también lo rechaza).
+      Las partes solo ofrecen responsables activos; si el actual está inactivo, cada parte empieza sin asignar. */}
+  {hayMigracion&&!compra&&i.estado!=='no_aplica'&&<div className="acciones ap-dividir"><VentanaDividir proyecto={id} item={item} vista={i.tipo==='tecnico'?'tecnico':'actividades'} nombre={i.nombre} responsable={activosDividir.some(o=>o.id===i.responsable_id)?i.responsable_id??null:null} inicio={i.inicio} fin={i.fin} opciones={activosDividir}/><small>Divide este registro en 2 a 10 partes, cada una con su responsable y fechas.</small></div>}
  </section>}
  {esResponsable&&<section className="akton-tabla-marco ap-seccion-akton"><h2 className="akton-titulo">Actualizar seguimiento</h2><p className="akton-subtitulo">Como responsable puedes cambiar el estado, las fechas, la evidencia, las notas y, en compras, la cantidad recibida.</p>
   <form action={guardarSeguimiento} className="formulario"><input type="hidden" name="proyecto_id" value={id}/><input type="hidden" name="item_id" value={item}/><input type="hidden" name="revision" value={i.revision}/>
@@ -122,7 +129,7 @@ export default async function Item({params,searchParams}:{params:Promise<{id:str
  {hayMigracion&&<div className="akton"><section className="akton-tabla-marco" aria-labelledby="ap-bitacora" id="bitacora"><h2 id="ap-bitacora" className="akton-titulo">Bitácora</h2>
   {bitacora===null?<p className="aviso aviso-error">No se pudo consultar la bitácora.</p>:!bitacora.length?<p className="akton-subtitulo">Sin entradas todavía.</p>:
   <div className="tabla-contenedor"><table className="akton-tabla tabla-tarjetas ap-tabla"><thead><tr><th>Fecha</th><th>Avance</th><th>Estatus</th><th>Comentario</th><th>Quién</th></tr></thead>
-   <tbody>{bitacora.map(b=><tr key={b.id}><td data-label="Fecha" className="ap-crono-fecha">{fechaTexto(b.fecha)}</td><td data-label="Avance">{b.avance===null?'—':`${b.avance} %`}</td><td data-label="Estatus">{b.estatus??'—'}</td><td data-label="Comentario" className="texto-saltos">{b.comentario}</td><td data-label="Quién">{b.perfiles?.nombre??'—'}</td></tr>)}</tbody></table></div>}
+   <tbody>{bitacora.map(b=><tr key={b.id}><td data-label="Fecha" className="ap-crono-fecha">{fechaTexto(b.fecha)}</td><td data-label="Avance">{b.avance===null?'—':`${b.avance} %`}</td><td data-label="Estatus">{b.estatus??'—'}</td><td data-label="Comentario" className="texto-saltos">{b.comentario}</td><td data-label="Quién">{b.usuario_nombre??'—'}</td></tr>)}</tbody></table></div>}
   {(edita||esResponsable)&&<form action={agregarBitacora} className="formulario"><input type="hidden" name="proyecto_id" value={id}/><input type="hidden" name="item_id" value={item}/>
    <div className="rejilla"><div className="campo"><label htmlFor="bit-fecha">Fecha</label><input id="bit-fecha" name="fecha" type="date" max={hoy} defaultValue={hoy}/></div><div className="campo"><label htmlFor="bit-avance">Avance % (opcional)</label><input id="bit-avance" name="avance" type="number" min="0" max="100" step="1"/></div><div className="campo"><label htmlFor="bit-estatus">Estatus (opcional)</label><input id="bit-estatus" name="estatus" maxLength={80} placeholder="Ej. Esperando material"/></div></div>
    <div className="campo"><label htmlFor="bit-comentario">Comentario</label><textarea id="bit-comentario" name="comentario" rows={3} required maxLength={2000}/></div><BotonEnviar>Agregar a la bitácora</BotonEnviar></form>}

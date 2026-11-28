@@ -301,6 +301,62 @@ test('legado: el texto de un registro sin responsable_id se conserva y solo admi
  }finally{await db.close();}
 });
 
+test('legado: guardar sin tocar un nombre de más de 300 o con espacios no falla; solo se valida si cambia',async()=>{
+ const db=new PGlite();
+ try{await escenario(db);await como(db,ADMIN);
+  const largo=`  ${'n'.repeat(350)} `;
+  await db.query(`update apertura_items set nombre=$1 where id=$2`,[largo,LEGADO]);
+  const nombre=async()=>(await fila(db,LEGADO)).nombre;
+  // La pantalla manda el nombre tal cual o recortado: se conserva el original.
+  await actualizar(db,LEGADO,{estado:'en_curso',nombre:largo});assert.equal(await nombre(),largo);
+  await actualizar(db,LEGADO,{estado:'en_curso',nombre:largo.trim()});assert.equal(await nombre(),largo);
+  await rechaza(actualizar(db,LEGADO,{nombre:'m'.repeat(301)}),/nombre de 1 a 300/);
+  await rechaza(actualizar(db,LEGADO,{nombre:'  '}),/nombre de 1 a 300/);
+  assert.equal(await nombre(),largo);
+  await actualizar(db,LEGADO,{nombre:'  Instalación eléctrica '});assert.equal(await nombre(),'Instalación eléctrica');
+ }finally{await db.close();}
+});
+
+// RLS real de sucursales y perfiles (0004): un responsable de otra sucursal o sin sucursal no los ve directo.
+const RLS_SUCURSALES_PERFILES=`
+ create function mi_sucursal() returns uuid language sql stable security definer set search_path='' as $$select sucursal_id from public.perfiles where id=auth.uid() and activo and not debe_cambiar_contrasena$$;
+ create function ve_todas_las_sucursales() returns boolean language sql stable security definer set search_path=public as $$select coalesce(mi_rol()::text in ('admin','corporativo'),false)$$;
+ grant select on sucursales to authenticated;
+ alter table sucursales enable row level security;alter table perfiles enable row level security;
+ create policy ver_sucursal on sucursales for select using (id = mi_sucursal() or ve_todas_las_sucursales());
+ create policy ver_perfiles on perfiles for select using (id = auth.uid() or sucursal_id = mi_sucursal() or ve_todas_las_sucursales());`;
+
+test('nombres de sucursal y autores de bitácora: el responsable los recibe por función, solo de lo suyo',async()=>{
+ const db=new PGlite();
+ try{await escenario(db);await db.exec(RLS_SUCURSALES_PERFILES);
+  const nombres=async u=>sesion(db,u,async()=>(await db.query(`select proyecto_id,sucursal_nombre from public.nombres_aperturas_visibles() order by sucursal_nombre`)).rows);
+  // APERT (rol aperturas, sin sucursal) sin registros: nada. Con un registro de P1: su nombre, aunque no ve la sucursal directo.
+  assert.deepEqual(await nombres(APERT),[]);
+  await como(db,ADMIN);const ap=await guardar(db,null,'Solo aperturas',APERT,false);
+  await db.query(`update apertura_items set responsable_id=$1 where id=$2`,[ap,LEGADO]);
+  await sesion(db,APERT,async()=>{
+   assert.equal((await db.query(`select count(*)::int n from sucursales`)).rows[0].n,0);
+   // El embebido que usaba la pantalla llega vacío: por eso la función.
+   assert.equal((await db.query(`select count(*)::int n from perfiles where id='${ADMIN}'`)).rows[0].n,0);
+  });
+  assert.deepEqual(await nombres(APERT),[{proyecto_id:P1,sucursal_nombre:'dodo-2'}]);
+  // OPER2 (gerente de dodo-2) responsable en P1 y en P2 (dodo-3): ambos nombres, aunque dodo-3 no es su sucursal.
+  await sesion(db,OPER2,async()=>assert.deepEqual((await db.query(`select nombre from sucursales`)).rows,[{nombre:'dodo-2'}]));
+  assert.deepEqual(await nombres(OPER2),[{proyecto_id:P1,sucursal_nombre:'dodo-2'},{proyecto_id:P2,sucursal_nombre:'dodo-3'}]);
+  assert.deepEqual(await nombres(OPER),[{proyecto_id:P1,sucursal_nombre:'dodo-2'}]);
+  assert.equal((await nombres(CORP)).length,2);
+  // Bitácora: el autor (Admin) aparece para el responsable del registro; un registro ajeno no devuelve nada.
+  const bit=async(u,item)=>sesion(db,u,async()=>(await db.query(`select comentario,usuario_nombre from public.bitacora_apertura($1)`,[item])).rows);
+  assert.deepEqual(await bit(APERT,LEGADO),[{comentario:'Inicio',usuario_nombre:'Admin'}]);
+  assert.deepEqual(await bit(APERT,ITEM),[]);
+  assert.deepEqual(await bit(OPER2,ITEM_C),[{comentario:'Inicio',usuario_nombre:'Admin'}]);
+  // Orden: fecha y alta más recientes primero; el responsable también ve su propio nombre.
+  await como(db,OPER2);await db.query(`select public.agregar_bitacora_apertura($1,null,10,null,'Segunda')`,[ITEM_C]);
+  assert.deepEqual((await bit(OPER2,ITEM_C)).map(b=>b.usuario_nombre),['Gerente','Admin']);
+  assert.equal((await bit(CORP,ITEM_C)).length,2);
+ }finally{await db.close();}
+});
+
 test('bitácora: la agrega el responsable o admin; la rechaza un tercero; valida sus campos',async()=>{
  const db=new PGlite();
  try{await escenario(db);
@@ -358,31 +414,38 @@ test('dividir: crea de 2 a 10 partes con origen_id y deja la original en no_apli
   const dividir=(item,partes)=>db.query(`select public.dividir_apertura_item($1,$2::jsonb) claves`,[item,JSON.stringify(partes)]).then(r=>r.rows[0].claves);
   const cuenta=async()=>(await db.query(`select count(*)::int n from apertura_items`)).rows[0].n;
   const parte=(n,extra={})=>({nombre:`Parte ${n}`,...extra});
-  for(const u of [CORP,OPER2]){await como(db,u);await rechaza(dividir(ITEM_B,[parte(1),parte(2)]),/Solo administración/);}
-  await como(db,ADMIN);const antes=await cuenta(),revAntes=await rev(db,ITEM_B);
-  await rechaza(dividir(ITEM_B,[parte(1)]),/de 2 a 10 partes/);
-  await rechaza(dividir(ITEM_B,Array.from({length:11},(_,i)=>parte(i))),/de 2 a 10 partes/);
-  await rechaza(dividir(ITEM_B,{nombre:'x'}),/de 2 a 10 partes/);
+  // Una validación técnica de OPER2 (B) para dividir; el equipo (ITEM_B) y la referencia no se dividen.
+  const VAL='00000000-0000-0000-0000-000000000201',REF='00000000-0000-0000-0000-000000000202';
+  await db.query(`insert into apertura_items(id,proyecto_id,clave,tipo,etapa,nombre,fuente,original,estado,categoria,responsable_id) values($1,$2,'V-001','tecnico','P2','Tablero','t','{}','pendiente','iluminacion',$3)`,[VAL,P1,B]);
+  await db.query(`insert into apertura_items(id,proyecto_id,clave,tipo,etapa,nombre,fuente,original,estado,cantidad,precio) values($1,$2,'R-001','referencia','P4','Ref','t','{}','por_cotizar',3,10)`,[REF,P1]);
+  for(const u of [CORP,OPER2]){await como(db,u);await rechaza(dividir(VAL,[parte(1),parte(2)]),/Solo administración/);}
+  await como(db,ADMIN);const antes=await cuenta(),revAntes=await rev(db,VAL);
+  // Equipo y referencia: rechazo sin crear nada ni tocar la original (conserva cantidad y precio).
+  for(const x of [ITEM_B,REF])await rechaza(dividir(x,[parte(1),parte(2)]),/^Solo se pueden dividir actividades y validaciones; para equipo, ajusta cantidades o agrega partidas\.$/);
+  assert.deepEqual([(await fila(db,ITEM_B)).estado,Number((await fila(db,ITEM_B)).precio),(await fila(db,REF)).estado],['por_cotizar',100,'por_cotizar']);
+  await rechaza(dividir(VAL,[parte(1)]),/de 2 a 10 partes/);
+  await rechaza(dividir(VAL,Array.from({length:11},(_,i)=>parte(i))),/de 2 a 10 partes/);
+  await rechaza(dividir(VAL,{nombre:'x'}),/de 2 a 10 partes/);
   // Una parte inválida (la última) no deja nada creado ni la original cambiada.
-  await rechaza(dividir(ITEM_B,[parte(1),parte(2),{nombre:'  '}]),/nombre de 1 a 300/);
-  await rechaza(dividir(ITEM_B,[parte(1),parte(2,{precio:'1'})]),/Datos de la parte/);
-  await rechaza(dividir(ITEM_B,[parte(1),parte(2,{inicio:'2026-12-05',fin:'2026-12-01'})]),/fin no puede ser anterior/);
-  await rechaza(dividir(ITEM_B,[parte(1),parte(2,{responsable_id:'00000000-0000-0000-0000-0000000000ff'})]),/responsable no existe/);
-  await rechaza(dividir(ITEM_B,[parte(1),'texto']),/Datos de la parte/);
-  assert.equal(await cuenta(),antes);assert.equal(await rev(db,ITEM_B),revAntes);assert.equal((await fila(db,ITEM_B)).estado,'por_cotizar');
-  const claves=await dividir(ITEM_B,[parte(1,{responsable_id:A,descripcion:'Horno 1',inicio:'2026-12-01',fin:'2026-12-02'}),parte(2,{responsable_id:B})]);
-  assert.deepEqual(claves,['E-001-1','E-001-2']);
-  const nuevas=(await db.query(`select clave,nombre,descripcion,proyecto_id,tipo,etapa,categoria,origen_id,responsable,estado,precio,fuente from apertura_items where origen_id=$1 order by nombre`,[ITEM_B])).rows;
+  await rechaza(dividir(VAL,[parte(1),parte(2),{nombre:'  '}]),/nombre de 1 a 300/);
+  await rechaza(dividir(VAL,[parte(1),parte(2,{precio:'1'})]),/Datos de la parte/);
+  await rechaza(dividir(VAL,[parte(1),parte(2,{inicio:'2026-12-05',fin:'2026-12-01'})]),/fin no puede ser anterior/);
+  await rechaza(dividir(VAL,[parte(1),parte(2,{responsable_id:'00000000-0000-0000-0000-0000000000ff'})]),/responsable no existe/);
+  await rechaza(dividir(VAL,[parte(1),'texto']),/Datos de la parte/);
+  assert.equal(await cuenta(),antes);assert.equal(await rev(db,VAL),revAntes);assert.equal((await fila(db,VAL)).estado,'pendiente');
+  const claves=await dividir(VAL,[parte(1,{responsable_id:A,descripcion:'Tablero 1',inicio:'2026-12-01',fin:'2026-12-02'}),parte(2,{responsable_id:B})]);
+  assert.deepEqual(claves,['V-001-1','V-001-2']);
+  const nuevas=(await db.query(`select clave,nombre,descripcion,proyecto_id,tipo,etapa,categoria,origen_id,responsable,estado,precio,fuente from apertura_items where origen_id=$1 order by nombre`,[VAL])).rows;
   assert.deepEqual(nuevas.map(n=>n.clave),claves);
   assert.deepEqual(nuevas.map(({clave,...n})=>n),[
-   {nombre:'Parte 1',descripcion:'Horno 1',proyecto_id:P1,tipo:'equipo',etapa:'P4',categoria:'equipo_cocina',origen_id:ITEM_B,responsable:'Operador A',estado:'por_cotizar',precio:null,fuente:'División'},
-   {nombre:'Parte 2',descripcion:null,proyecto_id:P1,tipo:'equipo',etapa:'P4',categoria:'equipo_cocina',origen_id:ITEM_B,responsable:'Gerente B',estado:'por_cotizar',precio:null,fuente:'División'}]);
-  const o=await fila(db,ITEM_B);
+   {nombre:'Parte 1',descripcion:'Tablero 1',proyecto_id:P1,tipo:'tecnico',etapa:'P2',categoria:'iluminacion',origen_id:VAL,responsable:'Operador A',estado:'pendiente',precio:null,fuente:'División'},
+   {nombre:'Parte 2',descripcion:null,proyecto_id:P1,tipo:'tecnico',etapa:'P2',categoria:'iluminacion',origen_id:VAL,responsable:'Gerente B',estado:'pendiente',precio:null,fuente:'División'}]);
+  const o=await fila(db,VAL);
   assert.deepEqual([o.estado,o.evidencia,o.revision],['no_aplica',`Dividida en ${claves.join(', ')}`,revAntes+1]);
-  const h=(await db.query(`select anterior->>'estado' a,nuevo->>'estado' n from apertura_historial where item_id=$1 and nuevo->>'estado'='no_aplica'`,[ITEM_B])).rows;
-  assert.deepEqual(h,[{a:'por_cotizar',n:'no_aplica'}]);
-  assert.equal((await db.query(`select count(*)::int n from apertura_historial h join apertura_items i on i.id=h.item_id where i.origen_id=$1`,[ITEM_B])).rows[0].n,2);
-  await rechaza(dividir(ITEM_B,[parte(1),parte(2)]),/ya no aplica/);
+  const h=(await db.query(`select anterior->>'estado' a,nuevo->>'estado' n from apertura_historial where item_id=$1 and nuevo->>'estado'='no_aplica'`,[VAL])).rows;
+  assert.deepEqual(h,[{a:'pendiente',n:'no_aplica'}]);
+  assert.equal((await db.query(`select count(*)::int n from apertura_historial h join apertura_items i on i.id=h.item_id where i.origen_id=$1`,[VAL])).rows[0].n,2);
+  await rechaza(dividir(VAL,[parte(1),parte(2)]),/ya no aplica/);
   // Diez partes, saltando una clave que ya existe en la apertura.
   await db.exec(`insert into apertura_items(proyecto_id,clave,tipo,etapa,nombre,fuente,original) values('${P1}','T-003-1','actividad','P2','Ya existía','t','{}')`);
   assert.deepEqual(await dividir(ITEM_X,Array.from({length:10},(_,i)=>parte(i))),Array.from({length:10},(_,i)=>`T-003-${i+2}`));
@@ -411,6 +474,7 @@ test('security definer: toda función que lee apertura_* exige acceso o no se pu
   mi_responsable_id:'solo devuelve el id propio',
   ve_item_apertura:'función de acceso',ve_proyecto_apertura:'función de acceso',
   ve_carpeta_apertura_responsable:'función de acceso',ve_foto_apertura_responsable:'función de acceso',
+  nombres_aperturas_visibles:'filtra por ve_proyecto_apertura',bitacora_apertura:'filtra por ve_item_apertura',
  };
  const guardas=/public\.(edita_compras|ve_compras|edita_finanzas|ve_finanzas|mi_responsable_id)\(\)|mi_rol\(\)::text,''\)<>'admin'/;
  const sinGuarda=leen.filter(([n,d])=>!revisadas[n]&&!guardas.test(d.cuerpo)).map(([n,d])=>`${n} (${d.archivo})`);
@@ -435,7 +499,7 @@ test('security definer: toda función que lee apertura_* exige acceso o no se pu
   assert.equal((await db.query(`select count(*)::int n from apertura_plano_marcas`)).rows[0].n,3);
   // Las funciones nuevas de acceso son ejecutables por authenticated y no por anon.
   for(const f of ['ve_item_apertura(uuid)','ve_proyecto_apertura(uuid)','agregar_bitacora_apertura(uuid,date,integer,text,text)','dividir_apertura_item(uuid,jsonb)',
-   'crear_apertura_item_completo(uuid,text,text,text,text,text,uuid,date,date)'])
+   'crear_apertura_item_completo(uuid,text,text,text,text,text,uuid,date,date)','nombres_aperturas_visibles()','bitacora_apertura(uuid)'])
    assert.deepEqual((await db.query(`select has_function_privilege('authenticated','public.${f}','EXECUTE') a,has_function_privilege('anon','public.${f}','EXECUTE') n`)).rows[0],{a:true,n:false});
  }finally{await db.close();}
 });

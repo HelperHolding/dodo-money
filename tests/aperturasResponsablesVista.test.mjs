@@ -87,7 +87,10 @@ test('ficha: Nombre, Descripción, responsable del catálogo, Bitácora y Dividi
  assert.match(p,/<SelectorResponsable /);
  assert.match(leer('app/aperturas/[id]/items/[item]/SelectorResponsable.tsx'),/Nuevo externo/);
  assert.match(p,/Bitácora/);
- assert.match(p,/from\('apertura_bitacora'\)/);
+ // La bitácora se lee con la función que trae el nombre del autor (el RLS de perfiles lo oculta a un responsable).
+ assert.match(p,/rpc\('bitacora_apertura',\{p_item:item\}\)/);
+ assert.doesNotMatch(p,/from\('apertura_bitacora'\)/);
+ assert.match(p,/b\.usuario_nombre\?\?'—'/);
  assert.match(p,/<VentanaDividir /);
  const d=leer('app/aperturas/[id]/items/[item]/VentanaDividir.tsx');
  assert.match(d,/Dividir/);
@@ -151,4 +154,38 @@ test('catálogo de responsables: solo admin, con enlace desde la lista de Apertu
  assert.match(p,/name="perfil_id"/);
  assert.match(p,/name="activo"/);
  assert.match(leer('app/aperturas/page.tsx'),/puedeEditarCompras\(perfil\.rol\)&&<Link [^>]*href="\/aperturas\/responsables"/);
+});
+// Revisión final (HD-27): nombres de sucursal, división solo de actividades, marketing fuera del selector, aviso sin catálogo y checklist.
+test('nombre de sucursal del responsable: por nombres_aperturas_visibles en lista, detalle y ficha, no por el embebido',()=>{
+ const lib=leer('lib/aperturas.ts');
+ assert.ok(!columnas(lib,'COLUMNAS_PROYECTO_RESPONSABLE').some(c=>c.includes('sucursales')),'sin sucursales(nombre) embebido');
+ assert.match(lib,/export const conNombreSucursal/);
+ for(const f of ['app/aperturas/page.tsx','app/aperturas/[id]/page.tsx',FICHA]){
+  const p=leer(f);
+  assert.match(p,/completo\?Promise\.resolve\(null\):Promise\.resolve\(supabase\.rpc\('nombres_aperturas_visibles'\)/,f);
+  assert.match(p,/conNombreSucursal\(/,f);
+ }
+});
+test('dividir: el botón no aparece en equipo ni referencia; las partes solo con responsables activos',()=>{
+ const p=leer(FICHA);
+ assert.match(p,/hayMigracion&&!compra&&i\.estado!=='no_aplica'&&<div className="acciones ap-dividir"><VentanaDividir /);
+ assert.match(p,/activosDividir=\(catalogo\?\?\[\]\)\.filter\(r=>r\.activo\)/);
+ assert.match(p,/responsable=\{activosDividir\.some\(o=>o\.id===i\.responsable_id\)\?i\.responsable_id\?\?null:null\}/);
+ assert.match(p,/opciones=\{activosDividir\}/);
+});
+test('catálogo: el selector para ligar no ofrece usuarios de marketing',()=>{
+ const p=leer('app/aperturas/responsables/page.tsx');
+ assert.match(p,/select\('id,nombre,activo,rol'\)/);
+ assert.match(p,/libres=\(usuarios\?\?\[\]\)\.filter\(u=>u\.activo&&u\.rol!=='marketing'&&/);
+});
+test('lista: el puesto aperturas sin fila en el catálogo recibe el aviso para pedir que lo liguen',()=>{
+ const p=leer('app/aperturas/page.tsx');
+ assert.match(p,/esAperturas\(perfil\.rol\)&&await Promise\.resolve\(supabase\.rpc\('mi_responsable_id'\)\)/);
+ assert.match(p,/Aún no tienes actividades asignadas\. Pide a administración que te ligue en el catálogo de responsables\./);
+});
+test('checklist: «Abrir la lista con filtros» solo con la vista completa',()=>{
+ const c=leer('app/aperturas/ChecklistEditable.tsx');
+ assert.match(c,/\{completo&&<Link className="ap-check-mas" href=\{enlace\}>Abrir la lista con filtros<\/Link>\}/);
+ assert.match(leer('app/aperturas/Checklist.tsx'),/completo=\{completo\}/);
+ assert.match(leer('app/aperturas/[id]/page.tsx'),/<Checklist [^>]*completo=\{completo\}\/>/);
 });

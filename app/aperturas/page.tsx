@@ -4,8 +4,8 @@ import Link from 'next/link';
 import {obtenerPerfil} from '@/lib/contexto';
 import {hoyCalendarioMX,pesos} from '@/lib/formato';
 import {leerTodo} from '@/lib/ventas/paginar';
-import {COLUMNAS_PROYECTO_RESPONSABLE,avanceApertura,ordenarProyectos,type ProyectoApertura} from '@/lib/aperturas';
-import {puedeEditarCompras,puedeVerAperturasCompleto} from '@/lib/roles';
+import {COLUMNAS_PROYECTO_RESPONSABLE,avanceApertura,conNombreSucursal,ordenarProyectos,type NombreApertura,type ProyectoApertura} from '@/lib/aperturas';
+import {esAperturas,puedeEditarCompras,puedeVerAperturasCompleto} from '@/lib/roles';
 import {resumenPortada,textoDiasApertura,textoPts,type Concepto} from '@/lib/aperturasAkton';
 import {Kpi} from '@/app/finanzas/PLAkton';
 
@@ -24,17 +24,26 @@ export default async function Aperturas() {
  const {supabase,perfil}=await obtenerPerfil();
  // Un responsable (no admin ni corporativo) ve solo las aperturas donde tiene registros (RLS), sin presupuesto ni inversión, y su propio avance (HD-27).
  const completo=puedeVerAperturasCompleto(perfil.rol);
- const [{data,error},items,inversion]=await Promise.all([
+ const [{data:filas,error},items,inversion,nombres]=await Promise.all([
   supabase.from('apertura_proyectos').select(completo?'*,sucursales(nombre)':COLUMNAS_PROYECTO_RESPONSABLE).returns<ProyectoApertura[]>(),
   leerTodo<ConceptoPortada>((d,h)=>supabase.from('apertura_items').select('id,proyecto_id,nombre,tipo,etapa,estado,categoria,inicio,fin,responsable,notas').order('id').range(d,h).returns<ConceptoPortada[]>()).catch(()=>null),
   // Si la tabla de inversión no existe o falla, la franja muestra «—».
   !completo?Promise.resolve(null):Promise.resolve(supabase.from('inversion_apertura_fuentes').select('total').returns<{total:number}[]>()).then(r=>r.error?null:{total:(r.data??[]).reduce((s,f)=>s+Number(f.total),0),fuentes:(r.data??[]).length}).catch(()=>null),
+  // Nombre de la sucursal para el responsable (el RLS de sucursales no se lo deja embeber). Si falla, «Sucursal».
+  completo?Promise.resolve(null):Promise.resolve(supabase.rpc('nombres_aperturas_visibles')).then(r=>r.error?null:(r.data as NombreApertura[]|null)??[]).catch(()=>null),
  ]);
+ const data=completo?filas:filas?.map(p=>conNombreSucursal(p,nombres));
  const hoy=hoyCalendarioMX();
  const encabezado=completo?<EncabezadoPagina titulo="Aperturas" info="Del proyecto a la tienda lista: actividades, equipo, compras y validaciones." acciones={<>{puedeEditarCompras(perfil.rol)&&<Link className="boton boton-secundario" href="/aperturas/responsables">Responsables</Link>}<Link className="boton boton-secundario" href="/aperturas/inversion">Inversión de apertura</Link></>}/>
   :<EncabezadoPagina titulo="Aperturas" info="Las aperturas donde tienes actividades. El avance cuenta solo los registros a tu nombre."/>;
  if(error)return <>{encabezado}<p className="aviso aviso-error">No se pudieron consultar los proyectos. Revisa la migración 0037 de Aperturas.</p></>;
- if(!data?.length)return <>{encabezado}{completo?<EstadoVacio titulo="Sin proyectos de apertura" descripcion="Cuando se cargue el proyecto de una sucursal nueva aparecerá aquí."/>:<EstadoVacio titulo="Sin actividades a tu nombre" descripcion="Cuando te asignen una actividad de apertura aparecerá aquí."/>}</>;
+ if(!data?.length){
+  // El puesto aperturas sin fila en el catálogo nunca verá registros: se le dice a quién pedirlo (si la consulta falla, el aviso general).
+  const sinCatalogo=esAperturas(perfil.rol)&&await Promise.resolve(supabase.rpc('mi_responsable_id')).then(r=>!r.error&&r.data===null).catch(()=>false);
+  return <>{encabezado}{completo?<EstadoVacio titulo="Sin proyectos de apertura" descripcion="Cuando se cargue el proyecto de una sucursal nueva aparecerá aquí."/>
+   :sinCatalogo?<EstadoVacio titulo="Sin actividades a tu nombre" descripcion="Aún no tienes actividades asignadas. Pide a administración que te ligue en el catálogo de responsables."/>
+   :<EstadoVacio titulo="Sin actividades a tu nombre" descripcion="Cuando te asignen una actividad de apertura aparecerá aquí."/>}</>;
+ }
  // Sin el avance no se sabe si una apertura pasada ya abrió: no se inventan vencidas, atrasadas ni «en curso».
  const sinAvance=items===null;
  const r=resumenPortada(data,items??[],hoy,{avanceAbre:completo}),nombre=(id:string)=>data.find(p=>p.id===id)?.sucursales?.nombre??'Sucursal';

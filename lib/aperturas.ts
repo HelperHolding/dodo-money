@@ -19,7 +19,13 @@ export const COLUMNAS_ITEM_RESPONSABLE = 'id,proyecto_id,clave,tipo,etapa,nombre
 export const COLUMNAS_FICHA_RESPONSABLE = `${COLUMNAS_ITEM_RESPONSABLE},origen_id`;
 // Opción del selector para un registro con responsable solo en texto (legado): guardar sin tocarlo conserva ese texto.
 export const RESPONSABLE_LEGADO = 'legado';
-export const COLUMNAS_PROYECTO_RESPONSABLE = 'id,sucursal_id,responsable,objetivo_desde,objetivo_hasta,revision,sucursales(nombre)';
+// Sin sucursales(nombre): el RLS de sucursales (0004) lo oculta a un responsable de otra sucursal o sin sucursal. El nombre
+// llega por nombres_aperturas_visibles() (solo de las aperturas que ve) y se pone con conNombreSucursal.
+export const COLUMNAS_PROYECTO_RESPONSABLE = 'id,sucursal_id,responsable,objetivo_desde,objetivo_hasta,revision';
+export type NombreApertura = {proyecto_id:string;sucursal_nombre:string};
+export const conNombreSucursal = <T extends ProyectoApertura>(p:T,nombres:NombreApertura[]|null):T => {
+ const nombre=nombres?.find(n=>n.proyecto_id===p.id)?.sucursal_nombre;return nombre?{...p,sucursales:{nombre}}:p;
+};
 export const VISTAS_RESPONSABLE = ['checklist','calendario','actividades','plano'] as const;
 export function resumenApertura(items:ItemApertura[]) {
  const aplicables=items.filter(i=>i.estado!=='no_aplica');

@@ -186,10 +186,12 @@ begin
  if length(coalesce(p_datos->>'responsable',''))>200 or length(coalesce(p_datos->>'evidencia',''))>4000 or length(coalesce(p_datos->>'notas',''))>4000 or length(coalesce(p_datos->>'descripcion',''))>4000 then raise exception 'Texto demasiado largo.';end if;
  v_evidencia:=case when p_datos?'evidencia' then nullif(trim(p_datos->>'evidencia'),'') else antes.evidencia end;
  if v_estado in ('completado','verificado','no_aplica') and length(coalesce(v_evidencia,''))<5 then raise exception 'Registra evidencia o el motivo de no aplicar.';end if;
+ -- Nombre: se compara sin espacios de los extremos; si no cambió se conserva tal cual (un registro de legado puede pasar de 300
+ -- o traer espacios) y solo se valida el largo cuando de verdad cambia.
  v_nombre:=antes.nombre;
- if p_datos?'nombre' then
-  v_nombre:=trim(p_datos->>'nombre');
-  if v_nombre is distinct from antes.nombre and (v_nombre is null or length(v_nombre) not between 1 and 300) then raise exception 'Escribe un nombre de 1 a 300 caracteres.';end if;
+ if p_datos?'nombre' and btrim(p_datos->>'nombre') is distinct from btrim(antes.nombre) then
+  v_nombre:=btrim(p_datos->>'nombre');
+  if v_nombre is null or length(v_nombre) not between 1 and 300 then raise exception 'Escribe un nombre de 1 a 300 caracteres.';end if;
  end if;
  v_desc:=case when p_datos?'descripcion' then nullif(trim(p_datos->>'descripcion'),'') else antes.descripcion end;
  v_resp:=antes.responsable_id;
@@ -267,9 +269,26 @@ revoke all on function public.agregar_bitacora_apertura(uuid,date,integer,text,t
 grant execute on function public.agregar_bitacora_apertura(uuid,date,integer,text,text) to authenticated;
 -- </bitacora-alta>
 
+-- <lectura-responsable>
+-- Lo que el RLS de sucursales y perfiles (0004) no deja ver a un responsable de otra sucursal o sin sucursal, limitado a lo suyo:
+-- el nombre de la sucursal de las aperturas que ve y el nombre de quien escribió cada entrada de la bitácora de un registro que ve.
+create function public.nombres_aperturas_visibles() returns table(proyecto_id uuid,sucursal_nombre text)
+language sql stable security definer set search_path='' as $$
+ select p.id,s.nombre from public.apertura_proyectos p join public.sucursales s on s.id=p.sucursal_id where public.ve_proyecto_apertura(p.id)
+$$;
+create function public.bitacora_apertura(p_item uuid) returns table(id uuid,fecha date,avance integer,estatus text,comentario text,usuario_nombre text,creado_en timestamptz)
+language sql stable security definer set search_path='' as $$
+ select b.id,b.fecha,b.avance,b.estatus,b.comentario,u.nombre,b.creado_en from public.apertura_bitacora b left join public.perfiles u on u.id=b.usuario_id
+ where b.item_id=p_item and public.ve_item_apertura(p_item) order by b.fecha desc,b.creado_en desc limit 200
+$$;
+revoke all on function public.nombres_aperturas_visibles(),public.bitacora_apertura(uuid) from public,anon;
+grant execute on function public.nombres_aperturas_visibles(),public.bitacora_apertura(uuid) to authenticated;
+-- </lectura-responsable>
+
 -- <division>
 -- Divide un registro en 2 a 10 nuevos ({nombre, descripcion, responsable_id, inicio, fin}) con el mismo proyecto, tipo, etapa y
 -- categoría, clave legible <clave original>-<n> (n = 1, 2, …, saltando las que ya existan en la apertura) y origen_id. La original queda no_aplica con «Dividida en …». Todo o nada. Solo administración.
+-- Solo actividades y validaciones técnicas: equipo y referencia, no.
 create function public.dividir_apertura_item(p_item uuid,p_partes jsonb) returns text[]
 language plpgsql security definer set search_path='' as $$
 declare antes public.apertura_items;despues public.apertura_items;p jsonb;v_claves text[]:=array[]::text[];v_id uuid;v_clave text;
@@ -278,6 +297,8 @@ begin
  if not public.edita_compras() then raise exception 'Solo administración puede dividir registros.';end if;
  select * into antes from public.apertura_items where id=p_item for update;
  if not found then raise exception 'El registro no existe.';end if;
+ -- Equipo y referencia llevan cantidad, precio, orden y factura: dividirlos los perdería. Ahí se ajustan cantidades o se agregan partidas.
+ if antes.tipo not in ('actividad','tecnico') then raise exception 'Solo se pueden dividir actividades y validaciones; para equipo, ajusta cantidades o agrega partidas.';end if;
  if antes.estado='no_aplica' then raise exception 'Este registro ya no aplica; no se puede dividir.';end if;
  if jsonb_typeof(p_partes) is distinct from 'array' or jsonb_array_length(p_partes) not between 2 and 10 then raise exception 'Indica de 2 a 10 partes.';end if;
  for p in select e.value from jsonb_array_elements(p_partes) with ordinality e(value,n) order by e.n loop

@@ -9,7 +9,7 @@ import {VentanaEstado} from './VentanaEstado';
 const VISIBLES=8;
 type Conexion='conectando'|'en_vivo'|'sin_conexion';
 
-export function ChecklistEditable({items,proyecto,base,edita,encabezado}:{items:ItemChecklist[];proyecto:string;base:string;edita:boolean;encabezado:React.ReactNode}) {
+export function ChecklistEditable({items,proyecto,base,edita,completo,encabezado}:{items:ItemChecklist[];proyecto:string;base:string;edita:boolean;completo:boolean;encabezado:React.ReactNode}) {
  const router=useRouter();
  const [porId,setPorId]=useState<Record<string,ItemChecklist>>(()=>Object.fromEntries(items.map(i=>[i.id,i])));
  const [editando,setEditando]=useState<ItemChecklist|null>(null),[conexion,setConexion]=useState<Conexion>('conectando');
@@ -42,7 +42,7 @@ export function ChecklistEditable({items,proyecto,base,edita,encabezado}:{items:
   if('item' in d){const c=porId[d.item];return c?<li key={l.clave}>{fila(c)}</li>:null;}
   const enlace=`${base}?vista=${d.vista}${d.etapa?`&etapa=${d.etapa}`:''}${d.cat?`&cat=${d.cat}`:''}`;
   return <li key={l.clave}><details className="ap-check-grupo"><summary className="ap-check-linea"><span className="ap-check-marca" data-marca={l.marca} aria-label={MARCAS[l.marca].texto}>{MARCAS[l.marca].icono}</span><span>{l.nombre}</span><small>{l.listos} de {l.total}</small></summary>
-   <ul className="ap-check-lista ap-check-hijos">{(l.hijos??[]).map(id=>porId[id]&&<li key={id}>{fila(porId[id])}</li>)}</ul><Link className="ap-check-mas" href={enlace}>Abrir la lista con filtros</Link></details></li>;
+   <ul className="ap-check-lista ap-check-hijos">{(l.hijos??[]).map(id=>porId[id]&&<li key={id}>{fila(porId[id])}</li>)}</ul>{/* Los grupos llevan a compras o técnico: solo con la vista completa (un responsable ya ve aquí cada concepto). */}{completo&&<Link className="ap-check-mas" href={enlace}>Abrir la lista con filtros</Link>}</details></li>;
  };
  return <><div className="ap-check-encabezado"><p className="ap-check-general"><strong>{general===null?'—':`${general} %`}</strong><span>avance del checklist</span></p>
   <div>{encabezado}<p className="ap-check-conexion" data-conexion={conexion} role="status">{conexion==='en_vivo'?'En vivo: los cambios de otras personas aparecen solos':conexion==='conectando'?'Conectando para ver cambios en vivo…':'Sin conexión en vivo: recarga la página para ver cambios de otras personas'}</p></div></div>
