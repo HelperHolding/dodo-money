@@ -11,7 +11,22 @@ export const CATEGORIAS = {
 export type CategoriaApertura = keyof typeof CATEGORIAS;
 export const esCategoria = (v:unknown):v is CategoriaApertura => typeof v==='string'&&Object.hasOwn(CATEGORIAS,v);
 export type ProyectoApertura = {id:string;sucursal_id:string;responsable:string;objetivo_desde:string;objetivo_hasta:string;presupuesto:number|null;revision:number;sucursales:{nombre:string}|null};
-export type ItemApertura = {id:string;proyecto_id:string;clave:string;tipo:'actividad'|'equipo'|'referencia'|'tecnico';etapa:keyof typeof ETAPAS;nombre:string;fuente:string;original:Record<string,unknown>;estado:string;responsable:string|null;inicio:string|null;fin:string|null;cantidad:number|null;recibido:number;precio:number|null;evidencia:string|null;notas:string|null;orden_id:string|null;factura_id:string|null;revision:number;categoria:CategoriaApertura|null};
+export type ItemApertura = {id:string;proyecto_id:string;clave:string;tipo:'actividad'|'equipo'|'referencia'|'tecnico';etapa:keyof typeof ETAPAS;nombre:string;fuente:string;original:Record<string,unknown>;estado:string;responsable:string|null;inicio:string|null;fin:string|null;cantidad:number|null;recibido:number;precio:number|null;evidencia:string|null;notas:string|null;orden_id:string|null;factura_id:string|null;revision:number;categoria:CategoriaApertura|null;responsable_id?:string|null;descripcion?:string|null;origen_id?:string|null};
+// Vista de un responsable que no es admin ni corporativo (HD-27): columnas sin precio, orden, factura ni la fila original
+// (trae precios de la matriz), y el proyecto sin presupuesto. Las pestañas que ve: checklist, calendario, actividades y plano.
+export const COLUMNAS_ITEM_RESPONSABLE = 'id,proyecto_id,clave,tipo,etapa,nombre,descripcion,fuente,estado,responsable,responsable_id,inicio,fin,cantidad,recibido,evidencia,notas,revision,categoria';
+// Ficha de un registro para el responsable: lo mismo más el registro del que viene si se dividió.
+export const COLUMNAS_FICHA_RESPONSABLE = `${COLUMNAS_ITEM_RESPONSABLE},origen_id`;
+// Opción del selector para un registro con responsable solo en texto (legado): guardar sin tocarlo conserva ese texto.
+export const RESPONSABLE_LEGADO = 'legado';
+// Sin sucursales(nombre): el RLS de sucursales (0004) lo oculta a un responsable de otra sucursal o sin sucursal. El nombre
+// llega por nombres_aperturas_visibles() (solo de las aperturas que ve) y se pone con conNombreSucursal.
+export const COLUMNAS_PROYECTO_RESPONSABLE = 'id,sucursal_id,responsable,objetivo_desde,objetivo_hasta,revision';
+export type NombreApertura = {proyecto_id:string;sucursal_nombre:string};
+export const conNombreSucursal = <T extends ProyectoApertura>(p:T,nombres:NombreApertura[]|null):T => {
+ const nombre=nombres?.find(n=>n.proyecto_id===p.id)?.sucursal_nombre;return nombre?{...p,sucursales:{nombre}}:p;
+};
+export const VISTAS_RESPONSABLE = ['checklist','calendario','actividades','plano'] as const;
 export function resumenApertura(items:ItemApertura[]) {
  const aplicables=items.filter(i=>i.estado!=='no_aplica');
  const terminados=aplicables.filter(i=>i.estado==='completado'||i.estado==='verificado').length;

@@ -5,7 +5,7 @@ export const SOLO_CONSULTA = "Corporativo solo puede consultar.";
 
 /** Cómo se muestra cada puesto. Operación es el puesto base: cocina y caja, sin abrir turno. */
 export const NOMBRE_ROL: Record<Rol, string> = {
-  operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo", marketing: "Marketing",
+  operacion: "Operación", encargado: "Encargado", gerente: "Gerente", admin: "Administrador", corporativo: "Corporativo", marketing: "Marketing", aperturas: "Aperturas",
 };
 
 /** Un usuario desactivado (baja) no entra a la app; la base de datos ya le rechaza todo. */
@@ -44,6 +44,10 @@ export const puedeEditarFinanzas = (rol: Rol) => rol === "admin";
 export const puedeVerCorreos = (rol: Rol) => rol === "marketing" || rol === "admin" || rol === "corporativo";
 export const puedeEditarCorreos = (rol: Rol) => rol === "marketing" || rol === "admin";
 export const esMarketing = (rol: Rol) => rol === "marketing";
+/** Puesto que solo ve sus actividades de apertura (el resto lo filtra la base de datos por responsable). */
+export const esAperturas = (rol: Rol) => rol === "aperturas";
+/** Aperturas completo: todos los proyectos y todas las actividades. */
+export const puedeVerAperturasCompleto = (rol: Rol) => puedeVerCompras(rol);
 /** Confirmar lo recibido de activos fijos, servicios y otros (los consumibles se reciben en Dodo IS). */
 export const puedeRecibirCompras = (rol: Rol) => rol === "encargado" || rol === "gerente" || rol === "admin";
 /** Salidas de efectivo a corporativo de todas las sucursales: un admin las recoge y corporativo las recibe. */
@@ -86,7 +90,11 @@ const ayuda = (rol: Rol): GrupoMenu[] => area("Ayuda", "alerta", "General", [
 ]);
 
 /** Menú lateral por áreas, en el orden de SECCIONES. Cada puesto ve solo lo suyo (mismas reglas de siempre). */
-export function menuLateral(rol: Rol): Menu {
+export function menuLateral(rol: Rol, opciones: { responsableApertura?: boolean } = {}): Menu {
+  const verAperturas = puedeVerAperturasCompleto(rol) || esAperturas(rol) || opciones.responsableApertura === true;
+  const aperturas = area("Aperturas", "ubicacion", "Proyectos", verAperturas ? [{ href: "/aperturas", texto: "Aperturas" }] : []);
+  // El puesto aperturas solo ve Aperturas.
+  if (esAperturas(rol)) return { inicio: { href: "/aperturas", texto: "Aperturas" }, grupos: aperturas };
   const correos = area("Correos", "bandeja", "Marca", puedeVerCorreos(rol)
     ? [{ href: "/correos", texto: "Campañas" }, ...(puedeEditarCorreos(rol) ? [{ href: "/correos/contactos", texto: "Contactos" }] : [])] : []);
   // Marketing solo usa Correos.
@@ -158,7 +166,7 @@ export function menuLateral(rol: Rol): Menu {
       { href: "/finanzas/asignacion", texto: "Asignación de cuentas" },
       { href: "/compras/razones-sociales", texto: "Razones sociales" },
     ] : []),
-    ...area("Aperturas", "ubicacion", "Proyectos", compras ? [{ href: "/aperturas", texto: "Aperturas" }] : []),
+    ...aperturas,
     ...area("Cumplimiento", "calendario", "Proyectos", compras ? [{ href: "/cumplimiento", texto: "Calendario de cumplimiento" }] : []),
     ...area("Usuarios y sucursales", "info", "Proyectos", rol === "admin" ? [{ href: "/administracion/usuarios", texto: "Usuarios y sucursales" }] : []),
     ...correos,
@@ -170,6 +178,7 @@ export function menuLateral(rol: Rol): Menu {
 /** Barra inferior en celular: los 3 destinos que cada puesto usa más (el 4º botón abre el menú completo). */
 export function accesosRapidos(rol: Rol): Enlace[] {
   if (rol === "marketing") return [{ href: "/correos", texto: "Campañas" }, { href: "/correos/contactos", texto: "Contactos" }, { href: "/correos/nueva", texto: "Nueva" }];
+  if (rol === "aperturas") return [{ href: "/aperturas", texto: "Aperturas" }];
   const inicio: Enlace = puedeVerVistaGeneral(rol) ? { href: "/corporativo", texto: "General" } : { href: "/", texto: "Inicio" };
   if (rol === "admin") return [inicio, { href: "/ventas", texto: "Ventas" }, { href: "/compras/documentos", texto: "Compras" }];
   if (rol === "corporativo") return [inicio, { href: "/ventas", texto: "Ventas" }, { href: "/finanzas", texto: "Finanzas" }];

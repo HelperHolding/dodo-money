@@ -5,7 +5,7 @@ import {createPortal} from 'react-dom';
 import {useRouter} from 'next/navigation';
 import {Icono} from '@/components/Icono';
 import {nombreEstado,ETAPAS,CATEGORIAS} from '@/lib/aperturas';
-import {SIN_ASIGNAR,MOMENTOS,clavePersona,conteoPorPersona,cubreDia,diaPorPersona,enCalendario,esActividad,filtrarOcultos,leerOcultos,moverDias,moverMesTexto,personasDe,rangoItem,semanaDe,tituloPeriodo,type ItemCalendario,type ModoCalendario,type Persona} from '@/lib/aperturasCalendario';
+import {SIN_ASIGNAR,MOMENTOS,claveResponsable,conteoPorPersona,cubreDia,diaPorPersona,enCalendario,esActividad,filtrarOcultos,leerOcultos,moverDias,moverMesTexto,personasDe,rangoItem,semanaDe,tituloPeriodo,type ItemCalendario,type ModoCalendario,type Persona} from '@/lib/aperturasCalendario';
 import {tonoConcepto,type TonoConcepto} from '@/lib/aperturasAkton';
 import {fijarFechasApertura} from './accionesCalendario';
 import {PanelCalendario} from './PanelCalendario';
@@ -29,7 +29,7 @@ export function Calendario({proyecto,items,modo,mes,semana,persona,todos,hoy,edi
  const personas=useMemo(()=>personasDe(items.filter(enCalendario)),[items]);
  const claves=useMemo(()=>personas.map(p=>p.clave),[personas]);
  const porClave=useMemo(()=>new Map(personas.map(p=>[p.clave,p])),[personas]);
- const personaDe=(i:ItemCalendario)=>porClave.get(clavePersona(i.responsable));
+ const personaDe=(i:ItemCalendario)=>porClave.get(claveResponsable(i));
  const [ocultos,setOcultos]=useState<Set<string>>(()=>new Set());
  // Ocultos guardados por proyecto en este navegador; con ?resp= de un enlace viejo, solo esa persona.
  // Se aplica una sola vez: al guardar algo la página se refresca y no debe volver a ocultar a quien ya marcaste.

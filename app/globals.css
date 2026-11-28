@@ -2384,6 +2384,16 @@ body { background: var(--papel-2); }
 .ap-tabla-datos th[scope="row"] { width:30%; text-align:left; font-weight:600; color:var(--tinta-2); padding:7px 8px; border-bottom:1px solid var(--linea); vertical-align:top; }
 .ap-cambios { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:2px; font-size:.88rem; }
 .ap-cambios b { font-weight:600; color:var(--tinta-2); }
+/* Ficha: división, ventana para dividir y casilla del catálogo de responsables (HD-17, HD-18, HD-27). */
+.ap-division { display:flex; flex-direction:column; gap:4px; }
+.ap-division p { margin:0; }
+.ap-dividir { margin-top:16px; }
+.ap-dividir-partes { list-style:none; padding:0; margin:0 0 12px; display:flex; flex-direction:column; gap:12px; }
+.ap-dividir-parte fieldset { border:1px solid var(--linea); border-radius:var(--r-md); padding:12px 14px; margin:0; min-width:0; }
+.ap-dividir-parte legend { font-weight:700; padding:0 4px; }
+.ap-casilla { display:flex; align-items:center; gap:8px; font-weight:600; }
+.ap-casilla input[type="checkbox"] { flex:none; }
+.ap-dato-fijo { margin:0; min-height:44px; display:flex; align-items:center; color:var(--tinta-2); }
 .ap-seccion-akton { margin-top:16px; }
 @media (max-width:640px) { .ap-tabla-datos th[scope="row"] { display:none; } }
 .ap-tarjeta-dias[data-tono="si"] { color:var(--cuadra); }

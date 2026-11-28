@@ -3,7 +3,7 @@ import {CATEGORIAS,ESTADOS,esCategoria} from '@/lib/aperturas';
 import {pesos,fechaTexto} from '@/lib/formato';
 export type CambioApertura={fecha:string;anterior:Record<string,unknown>;nuevo:Record<string,unknown>;perfiles:{nombre:string}|null};
 // Solo estos campos se muestran; revision, actualizado_en y lo demás interno quedan fuera.
-const CAMPOS:Record<string,string>={estado:'Estado',responsable:'Responsable',inicio:'Inicio previsto',fin:'Fin previsto',cantidad:'Cantidad necesaria',recibido:'Cantidad recibida',precio:'Precio unitario estimado',evidencia:'Evidencia',notas:'Notas',orden_id:'Orden de compra',factura_id:'Factura',categoria:'Categoría',objetivo_desde:'Objetivo desde',objetivo_hasta:'Objetivo hasta',presupuesto:'Presupuesto'};
+const CAMPOS:Record<string,string>={nombre:'Nombre',descripcion:'Descripción',estado:'Estado',responsable:'Responsable',inicio:'Inicio previsto',fin:'Fin previsto',cantidad:'Cantidad necesaria',recibido:'Cantidad recibida',precio:'Precio unitario estimado',evidencia:'Evidencia',notas:'Notas',orden_id:'Orden de compra',factura_id:'Factura',categoria:'Categoría',objetivo_desde:'Objetivo desde',objetivo_hasta:'Objetivo hasta',presupuesto:'Presupuesto'};
 function valor(k:string,v:unknown){
  if(v===null||v===undefined||v==='')return '—';
  if(k==='estado')return ESTADOS[String(v)]??String(v);

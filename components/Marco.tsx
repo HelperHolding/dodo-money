@@ -3,10 +3,11 @@ import { MenuLateral } from "@/components/MenuLateral";
 import { MigasDePan } from "@/components/MigasDePan";
 import { PestanasArea } from "@/components/PestanasArea";
 import { cerrarSesion } from "@/app/login/actions";
-import { accesosRapidos, menuLateral, NOMBRE_ROL } from "@/lib/roles";
+import { accesosRapidos, menuLateral, NOMBRE_ROL, puedeVerAperturasCompleto } from "@/lib/roles";
 import { BotonReportar } from "@/components/BotonReportar";
 import { contarSoporte } from "@/app/soporte/datos";
 import { contarMisTareas } from "@/app/tareas/datos";
+import { esResponsableApertura } from "@/lib/contexto";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import type { Rol } from "@/lib/tipos";
 
@@ -21,12 +22,15 @@ export async function Marco({ perfil, titulo, detalle, aviso, children }: {
   aviso?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const base = menuLateral(perfil.rol);
   const supabase = await crearClienteServidor();
-  const [{ abiertas, vencidas }, soporte] = await Promise.all([
+  const [{ abiertas, vencidas }, soporte, responsable] = await Promise.all([
     contarMisTareas(supabase).catch(() => ({ abiertas: 0, vencidas: 0 })),
     contarSoporte(supabase),
+    // Quien es responsable de actividades de apertura ve el enlace aunque su puesto no sea de oficina.
+    puedeVerAperturasCompleto(perfil.rol) || perfil.rol === "aperturas" || perfil.rol === "marketing" ? Promise.resolve(false)
+      : esResponsableApertura().catch(() => false),
   ]);
+  const base = menuLateral(perfil.rol, { responsableApertura: responsable });
   const contadores: Record<string, { n: number; urgente: boolean }> = {};
   if (abiertas) contadores["/tareas"] = { n: abiertas, urgente: vencidas > 0 };
   if (soporte.pendientes) contadores["/soporte"] = { n: soporte.pendientes, urgente: soporte.urgente };
